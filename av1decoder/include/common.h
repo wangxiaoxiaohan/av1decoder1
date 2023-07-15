@@ -46,6 +46,25 @@ enum tristate{
 #define MAX_TILE_ROWS 64
 #define	MAX_TILE_COLS 64
 
+#define RESTORATION_TILESIZE_MAX 256
+
+
+
+#define IDENTITY 0 
+#define TRANSLATION 1 
+#define ROTZOOM 2 
+#define AFFINE 3
+
+#define WARPEDMODEL_PREC_BITS 16
+
+#define GM_ABS_TRANS_ONLY_BITS 9
+#define GM_ABS_ALPHA_BITS 12
+#define GM_ABS_TRANS_BITS 12
+#define GM_ALPHA_PREC_BITS 15
+#define GM_TRANS_PREC_BITS 6 
+#define GM_TRANS_ONLY_PREC_BITS 3
+
+
 
 
 enum em_interpolation_filters{
@@ -146,6 +165,25 @@ enum obuType{
 	OBU_TILE_LIST = 8,
 	OBU_PADDING = 15,
 };
+enum em_frame_restoration_type{
+	RESTORE_NONE = 0,
+	RESTORE_WIENER = 1,
+	RESTORE_SGRPROJ = 2,
+	RESTORE_SWITCHABLE =3
+};
+
+enum em_TxMode{
+	ONLY_4X4 = 0,
+	TX_MODE_LARGEST	 = 1,
+	TX_MODE_SELECT = 2
+};
+
+
+
+static uint8_t Remap_Lr_Type[4] = {
+	RESTORE_NONE,RESTORE_SWITCHABLE,RESTORE_WIENER,RESTORE_SGRPROJ
+};
+
 
 int inline tile_log2(int  blkSize, int target){
 	int k;

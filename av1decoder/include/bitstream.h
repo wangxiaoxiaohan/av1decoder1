@@ -101,5 +101,48 @@ uint64_t inline readsu(bitSt *bs,int n) {
 		value = value - 2 * signMask;
 	return value;
 }
+int inline decode_subexp(bitSt * bs,int numSyms ) { 
+	int i = 0;
+	int mk = 0;
+	int k = 3;
+	while ( 1 ) {
+		int b2 = i ? k + i - 1 : k;
+		int a = 1 << b2;
+		if ( numSyms <= mk + 3 * a ) {
+			//subexp_final_bits ns(numSyms - mk);
+			return readns(bs,numSyms - mk) + mk;
+		} else {
+			if ( readOneBit(bs) ) {
+				i++;
+				mk += a;
+			} else {
+				return readBits(bs, 2) + mk;
+			}
+		}
+	}
+}
+int inline inverse_recenter(int r,int v) { 
+	if ( v > 2 * r )
+		return v;
+	else if ( v & 1 )
+		return r - ((v + 1) >> 1);
+	else
+		return r + (v >> 1);
+}
+
+
+int inline decode_unsigned_subexp_with_ref(bitSt * bs,int  mx,int r ) {
+	int v = decode_subexp( bs,mx );
+	if ( (r << 1) <= mx ) {
+		return inverse_recenter(r, v);
+	} else {
+		return mx - 1 - inverse_recenter(mx - 1 - r, v);
+	}
+}
+
+int inline decode_signed_subexp_with_ref(bitSt * bs,int low, int high, int r ) { 
+	int x = decode_unsigned_subexp_with_ref(bs,high - low, r - low);
+	return x + low;
+}
 
 #endif

@@ -127,7 +127,7 @@ typedef struct frameHeader{
 	uint8_t force_integer_mv;
 	uint8_t current_frame_id;
 	uint8_t frame_size_override_flag;
-	uint8_t order_hint; //OrderHint
+	uint8_t OrderHint; //order_hint
 	uint8_t primary_ref_frame;
 	uint8_t buffer_removal_time_present_flag;
 	struct frameHeaderOperatingPoint {
@@ -176,6 +176,7 @@ typedef struct frameHeader{
 		uint8_t using_qmatrix; // 是否使用自定义量化矩阵
         uint8_t qm, qm_y, qm_u, qm_v;//量化参数矩阵等级
         
+		uint8_t SegQMLevel[3][MAX_SEGMENTS];
 	}quantization_params;
 	struct {
 		uint8_t segmentation_enabled;//图像分割（segmentation）是否开启
@@ -192,6 +193,7 @@ typedef struct frameHeader{
 		//这个值被用于只解码与使用的分割段相对应的选项.暂时没弄懂，标记！！！
 		uint8_t qindex[MAX_SEGMENTS];
 		uint8_t LosslessArray[MAX_SEGMENTS];
+
 	}segmentation_params;
 	struct  {
 		uint8_t delta_q_present;//delta_q_res是否存在
@@ -202,6 +204,7 @@ typedef struct frameHeader{
 		uint8_t delta_lf_res; //loop filter delta 值需要左移的位数
 		uint8_t delta_lf_multi; //为1表示亮度的水平、垂直边沿，色度u、v的边沿有独立的loop filter delta，为0则表示都一样
 	}delta_lf_params;
+	uint8_t CodedLossless;
 	uint8_t AllLossless;
 	struct  {
 		uint8_t loop_filter_level[4]/*如果没有色度，则只有2个元素*/;//环路滤波等级
@@ -223,17 +226,64 @@ typedef struct frameHeader{
 	}cdef_params;
 	struct  {
 		uint8_t lr_type[3]; //用于计算FrameRestorationType,也就是帧恢复模式，有一个对应关系，见 6.10.15；
-		uint8_t UsesLr[3]; //指示某个平面 是否 使用  loop restoration
+		uint8_t UsesLr; //指示某个平面 是否 使用  loop restoration
 		uint8_t lr_unit_shift; //亮度恢复 是否缩小一半
 		uint8_t lr_unit_extra_shift; //亮度恢复是否再缩小一半
 		uint8_t lr_uv_shift; //色度恢复是否缩小一半
 		uint8_t LoopRestorationSize[2]; //某个平面  loop restoration unit的大小，单位是sample(什么sample？ 标记！！)
+		uint8_t FrameRestorationType[3];
 	}lr_params;
+	struct  {
+		uint8_t GmType[NUM_REF_FRAMES];
+		uint8_t is_global;
+		uint8_t is_rot_zoom;
+		uint8_t is_translation;
+		uint8_t gm_params[NUM_REF_FRAMES][6];
+		uint8_t PrevGmParams[NUM_REF_FRAMES][6];
+		
+	}global_motion_params;
+	struct {
+		uint16_t grain_seed;
+		uint8_t update_grain;
+		uint8_t film_grain_params_ref_idx;
+		uint8_t num_y_points;
+		uint8_t point_y_value[14];
+		uint8_t point_y_scaling[14];
+		uint8_t point_cb_value[10];
+		uint8_t point_cb_scaling[10];
+		uint8_t point_cr_value[10];
+		uint8_t point_cr_scaling[10];
+
+		uint8_t chroma_scaling_from_luma;
+		uint8_t num_cb_points ;
+		uint8_t num_cr_points ;
+		uint8_t grain_scaling; //grain_scaling_minus_8 + 8
+		uint8_t ar_coeff_lag;
+		uint8_t ar_coeffs_y_plus_128[24];
+		uint8_t ar_coeffs_cb_plus_128[28];
+		uint8_t ar_coeffs_cr_plus_128[28];
+		uint8_t ar_coeff_shift; //ar_coeff_shift_minus_6  + 6
+		uint8_t grain_scale_shift; 
+
+		uint8_t cb_mult;
+		uint8_t cb_luma_mult;
+		uint16_t cb_offset; 
+
+		uint8_t cr_mult;
+		uint8_t cr_luma_mult;
+		uint16_t cr_offset;
+
+		uint8_t overlap_flag;
+		uint8_t clip_to_restricted_range;
+	}film_grain_params;
 	uint8_t tx_mode_select;
+	uint8_t TxMode;
 	uint8_t reference_select;
 
 	uint8_t skipModeAllowed;
 	uint8_t skip_mode_present;
+	uint8_t SkipModeFrame[2];
+	
 	uint8_t allow_warped_motion;//是否使用扭曲运动模式
 	uint8_t reduced_tx_set;
 }frameHeader;
@@ -247,6 +297,8 @@ typedef struct AV1DecodeContext{
 	uint8_t		RefValid[NUM_REF_FRAMES];
 	uint8_t		RefOrderHint[NUM_REF_FRAMES];
 	uint8_t		OrderHints[REFS_PER_FRAME];
+	frameHeader *frameHdr;
+	sequenceHeader *seqHdr;
 }AV1DecodeContext;
 
 #endif

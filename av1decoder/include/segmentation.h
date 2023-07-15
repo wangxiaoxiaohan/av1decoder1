@@ -19,9 +19,9 @@ public:
     segmentation(){}
 	~segmentation(){}
 
-	int get_qindex(int ignoreDeltaQ, int segmentId);
+	static int get_qindex(int ignoreDeltaQ, int segmentId,frameHeader *frameHdr);
 	int seg_feature_active(int feature);
-	int seg_feature_active_idx(int idx, int feature);
+	static int seg_feature_active_idx(int idx, int feature,frameHeader *frameHdr);
 private:
 
 };

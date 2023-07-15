@@ -1,5 +1,6 @@
 #include "obu.h"
 #include "assert.h"
+#include "frame.h"
 
 obu::obu()
 {
@@ -221,7 +222,7 @@ int obu::parseSequenceHeader(int sz,bitSt *bs,sequenceHeader *out)
 }
 
 
-int obu::parseObuInfo(FILE* fp,int fileOffset,uint8_t *buf,int sz)
+int obu::parseObuInfo(FILE* fp,int fileOffset,uint8_t *buf,int sz,AV1DecodeContext *ctx)
 {
 	uint64_t total_size = 1;//obu header + exention header + obu_size
 
@@ -275,13 +276,24 @@ int obu::parseObuInfo(FILE* fp,int fileOffset,uint8_t *buf,int sz)
 	}else{
 		obu_size = sz - 1 - obu_header.obu_extension_flag;
 	}
+
+// read obu payload from file
+	uint8_t obubuffer[obu_size];
+	fread(obubuffer,obu_size,1,fp);
+	initBitStream(&bs,obubuffer);
+	
 	switch(obu_header.obu_type){
 		case OBU_SEQUENCE_HEADER:
+			if(!ctx->seqHdr){
+				printf("ctx->seqHdr is null\n");
+			}
+			parseSequenceHeader(sz,&bs,ctx->seqHdr);
 			break;
 		case OBU_TEMPORAL_DELIMITER:
 			break;
 		case OBU_FRAME:	//frame obu = frame header obu + tile group obu
 		case OBU_FRAME_HEADER:
+			frame::Instance().parseFrameHeader(sz, &bs,ctx, ctx->seqHdr, &obu_header,ctx->frameHdr);
 			if(obu_header.obu_type == OBU_FRAME_HEADER) break;
 		case OBU_TILE_GROUP:
 			break;

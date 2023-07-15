@@ -10,7 +10,7 @@
 class obu{
 public:
     obu();
-	static int parseObuInfo(FILE* fp,int offset,uint8_t *buf,int sz);
+	static int parseObuInfo(FILE* fp,int offset,uint8_t *buf,int sz,AV1DecodeContext *ctx);
 	//void initSequenceHeader(sequenceHeader *out);
 	static int parseSequenceHeader(int sz,bitSt *bs,sequenceHeader *out);
 private:
