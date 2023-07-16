@@ -18,6 +18,13 @@ int obu::parseSequenceHeader(int sz,bitSt *bs,sequenceHeader *out)
 	out->seq_profile = readBits(bs,3);
 	out->still_picture = readOneBit(bs);
 	out->reduced_still_picture_header = readOneBit(bs);
+
+	printf("seq_profile %d\n",out->seq_profile);
+	printf("still_picture %d\n",out->still_picture);
+
+	printf("reduced_still_picture_header %d\n",out->reduced_still_picture_header);
+
+	
 	if(out->reduced_still_picture_header){
 		out->timing_info_present_flag = 0;
 		out->decoder_model_info_present_flag = 0;
@@ -50,6 +57,7 @@ int obu::parseSequenceHeader(int sz,bitSt *bs,sequenceHeader *out)
 		}
 		out->initial_display_delay_present_flag = readOneBit(bs);;
 		out->operating_points_cnt = readBits(bs,5)  + 1;
+		printf("operating_points_cnt %d\n",out->operating_points_cnt);
 
 		for(int i = 0 ; i < out->operating_points_cnt ; i++){
 			out->seqOperatingPoint[i].operating_point_idc = readBits(bs,12);
@@ -87,6 +95,12 @@ int obu::parseSequenceHeader(int sz,bitSt *bs,sequenceHeader *out)
 	out->frame_height_bits = readBits(bs,4) + 1;
 	out->max_frame_width = readBits(bs,out->frame_width_bits) + 1;
 	out->max_frame_height = readBits(bs,out->frame_height_bits) + 1;
+	//printf("frame_width_bits %d\n",out->frame_width_bits);
+	//printf("frame_height_bits %d\n",out->max_frame_height);
+
+	//printf("max_frame_width %d\n",out->max_frame_width);
+	//printf("max_frame_height %d\n",out->max_frame_height);
+
 
 	if(out->reduced_still_picture_header){
 		out->frame_id_numbers_present_flag = 0;
@@ -231,13 +245,14 @@ int obu::parseObuInfo(FILE* fp,int fileOffset,uint8_t *buf,int sz,AV1DecodeConte
     ASSERT(!ret);
 	fread(&obu_header_buf,1,1,fp);
 
-	
     
     bitSt bs;
     initBitStream(&bs,&obu_header_buf);
 
 
 	obuHeader obu_header;
+
+
 
     readOneBit(&bs);  //obu_forbidden_bit 解码器忽略
     obu_header.obu_type = readBits(&bs,4);
@@ -247,6 +262,7 @@ int obu::parseObuInfo(FILE* fp,int fileOffset,uint8_t *buf,int sz,AV1DecodeConte
     obu_header.obu_has_size_field = readOneBit(&bs);
 	//printf("obu_has_size_field %d\n",obu_has_size_field);
     readOneBit(&bs); //obu_reserved_1bit 解码器忽略
+
 
     if(obu_header.obu_extension_flag){
 		uint8_t obu_extension_header;
@@ -261,9 +277,10 @@ int obu::parseObuInfo(FILE* fp,int fileOffset,uint8_t *buf,int sz,AV1DecodeConte
 		readBits(&bs,3); //extension_header_reserved_3bits 解码器忽略
 		total_size += 1;
 	}
-	
+
 	uint8_t obu_size_buf[8];
 	uint64_t obu_size;
+	//!!!!!!
 	if(obu_header.obu_has_size_field){
 		uint8_t obu_size_syntax_length;
 		//fseek(fp,fileOffset + (obu_extension_flag ? 2 :1),SEEK_SET);
@@ -278,10 +295,14 @@ int obu::parseObuInfo(FILE* fp,int fileOffset,uint8_t *buf,int sz,AV1DecodeConte
 	}
 
 // read obu payload from file
+
+	printf("obu_size  %d\n",obu_size);
+
 	uint8_t obubuffer[obu_size];
 	fread(obubuffer,obu_size,1,fp);
 	initBitStream(&bs,obubuffer);
-	
+
+	printf("obu_header.obu_type %d\n",obu_header.obu_type);
 	switch(obu_header.obu_type){
 		case OBU_SEQUENCE_HEADER:
 			if(!ctx->seqHdr){
@@ -308,6 +329,6 @@ int obu::parseObuInfo(FILE* fp,int fileOffset,uint8_t *buf,int sz,AV1DecodeConte
 		default:
 			break;
 	}
-
+	
     return total_size + obu_size;
 }

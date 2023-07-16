@@ -1012,6 +1012,8 @@ int frame::readFrameSize(bitSt *bs, sequenceHeader *seqHdr, frameHeader *frameHd
 		out->FrameWidth = seqHdr->max_frame_width;
 		out->FrameHeight = seqHdr->max_frame_height;
 	}
+	printf("FrameWidth %d\n",out->FrameWidth);
+	printf("FrameHeight %d\n",out->FrameHeight);
 	readSuperresParams(bs, seqHdr, out);
 
 	// compute image size;
