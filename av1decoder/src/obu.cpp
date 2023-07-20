@@ -319,12 +319,29 @@ int obu::parseObuInfo(FILE* fp,int fileOffset,uint8_t *buf,int sz,AV1DecodeConte
 			parseSequenceHeader(sz,&bs,ctx->seqHdr);
 			break;
 		case OBU_TEMPORAL_DELIMITER:
+			ctx->SeenFrameHeader = 0;
 			break;
 		case OBU_FRAME:	//frame obu = frame header obu + tile group obu
 		case OBU_FRAME_HEADER:
-			frame::Instance().parseFrameHeader(sz, &bs,ctx, ctx->seqHdr, &obu_header,ctx->frameHdr);
+			if(ctx->SeenFrameHeader = 1){
+				//copy frame header...
+				//may no need to do anything... frameheader store in context;
+				break;
+			} else {
+				ctx->SeenFrameHeader = 1;
+				frame::Instance().parseFrameHeader(sz, &bs,ctx, ctx->seqHdr, &obu_header,ctx->frameHdr);
+				BitStreamAlign(&bs);//byte alignment
+				if ( ctx->frameHdr->show_existing_frame ) {
+					//decode_frame_wrapup();
+					ctx->SeenFrameHeader = 0;
+				} else {
+					//TileNum = 0;
+					ctx->SeenFrameHeader = 1;
+				}
+			}
 			if(obu_header.obu_type == OBU_FRAME_HEADER) break;
 		case OBU_TILE_GROUP:
+			frame::Instance().decodeFrame(sz - bs.offset, &bs,ctx);
 			break;
 		case OBU_METADATA:
 			break;

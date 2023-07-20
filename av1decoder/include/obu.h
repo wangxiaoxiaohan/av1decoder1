@@ -13,6 +13,11 @@ public:
 	static int parseObuInfo(FILE* fp,int offset,uint8_t *buf,int sz,AV1DecodeContext *ctx);
 	//void initSequenceHeader(sequenceHeader *out);
 	static int parseSequenceHeader(int sz,bitSt *bs,sequenceHeader *out);
+	static obu& Instance() {
+		static obu m_pInstance;
+		return m_pInstance;
+ 
+	}
 private:
 
 

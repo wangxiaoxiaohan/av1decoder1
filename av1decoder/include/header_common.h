@@ -300,6 +300,7 @@ typedef struct AV1DecodeContext{
 	uint8_t		OrderHints[REFS_PER_FRAME]; //OrderHints specifies the expected output order for each reference frame.
 	frameHeader *frameHdr;
 	sequenceHeader *seqHdr;
+	uint8_t SeenFrameHeader;
 }AV1DecodeContext;
 
 #endif

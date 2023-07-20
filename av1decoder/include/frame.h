@@ -30,6 +30,8 @@ public:
 	int read_delta_q(bitSt *bs);
 	int read_global_param(frameHeader *frameHdr,bitSt *bs, int type,int ref,int idx );
 
+	int decodeFrame(int sz, bitSt *bs, AV1DecodeContext *av1ctx);
+
 	static frame& Instance() {
 		static frame m_pInstance;
 		return m_pInstance;

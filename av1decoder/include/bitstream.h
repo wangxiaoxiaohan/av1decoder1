@@ -7,13 +7,18 @@ typedef struct bitSt{
     uint8_t offsetInByte;
     uint8_t *dataPtr;
 }bitSt;
-
 void inline initBitStream(bitSt *bs, uint8_t *data)
 {
     bs->offsetInByte = 0;
     bs->offset = 0;
     bs->dataPtr = data;
 
+}
+void inline BitStreamAlign(bitSt *bs)
+{
+	if(bs->offsetInByte == 0) return;
+	bs->offsetInByte = 0;
+	bs->offset += 1;
 }
 void  inline updateOffset(bitSt *bs)
 {

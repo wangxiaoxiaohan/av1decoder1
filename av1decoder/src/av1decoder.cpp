@@ -25,7 +25,7 @@ int main(int argc ,char **argv){
 	AV1DecodeContext *ctx;
 	initContext(&ctx);
     while(1){
-        int size = obu::parseObuInfo(fp,offset,buffer,0,ctx);
+        int size = obu::Instance().parseObuInfo(fp,offset,buffer,0,ctx);
         offset += size;
     }
 

@@ -392,7 +392,7 @@ int frame::parseFrameHeader(int sz, bitSt *bs, AV1DecodeContext *av1ctx, sequenc
 	//film_grain_params
 	
 	readFilmGrainParams(bs,out,seqHdr);
-	return 0;
+	return sz - bs->offset;
 }
 int frame::readTileInfo(bitSt *bs, sequenceHeader *seqHdr, frameHeader *frameHdr)
 {
@@ -1084,6 +1084,59 @@ int frame::read_global_param(frameHeader *frameHdr,bitSt *bs, int type,int ref,i
 	int r = (frameHdr->global_motion_params.PrevGmParams[ref][idx] >> precDiff) - sub;
 	frameHdr->global_motion_params.gm_params[ref][idx] = (decode_signed_subexp_with_ref(bs, -mx, mx + 1, r )<< precDiff) + round;
 }
+
+
+int frame::decodeFrame(int sz, bitSt *bs, AV1DecodeContext *av1ctx){
+	frameHeader *frameHdr = av1ctx->frameHdr;
+	sequenceHeader *seqHdr = av1ctx->seqHdr;
+
+	int NumTiles = frameHdr->tile_info.TileCols * frameHdr->tile_info.TileRows;
+	int tile_start_and_end_present_flag = 0;
+	int tg_start;
+	int tg_end;
+	int tileBits;
+	int startpos = bs->offset;
+	if ( NumTiles > 1 )
+		tile_start_and_end_present_flag = readOneBit(bs);
+		if ( NumTiles == 1 || !tile_start_and_end_present_flag ) {
+			tg_start = 0;
+		tg_end = NumTiles - 1;
+	} else {
+		tileBits = frameHdr->tile_info.TileColsLog2 + frameHdr->tile_info.TileRowsLog2;
+		tg_start  =  readBits(bs,tileBits); 
+		tg_end  =  readBits(bs,tileBits); 
+	}
+	BitStreamAlign(bs);
+	sz -= (bs->offset - startpos);
+	for (int TileNum = tg_start; TileNum <= tg_end; TileNum++ ) {
+		tileRow = TileNum / TileCols;
+		tileCol = TileNum % TileCols;
+		lastTile = TileNum == tg_end;
+		if ( lastTile ) {
+			tileSize = sz;
+		} else {
+			tile_size_minus_1 le(TileSizeBytes);
+			tileSize = tile_size_minus_1 + 1;
+			sz -= tileSize + TileSizeBytes;
+		}
+		MiRowStart = MiRowStarts[ tileRow ];
+		MiRowEnd = MiRowStarts[ tileRow + 1 ];
+		MiColStart = MiColStarts[ tileCol ];
+		MiColEnd = MiColStarts[ tileCol + 1 ];
+		CurrentQIndex = base_q_idx;
+		init_symbol( tileSize );
+		decode_tile( );
+		exit_symbol( );
+	}
+	if ( tg_end == NumTiles - 1 ) {
+		if ( !disable_frame_end_update_cdf ) {
+		frame_end_update_cdf( )
+		}
+		decode_frame_wrapup( )
+		SeenFrameHeader = 0
+		}
+	}
+
 
 
 
