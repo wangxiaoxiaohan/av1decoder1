@@ -60,6 +60,7 @@ int frame::parseFrameHeader(int sz, bitSt *bs, AV1DecodeContext *av1ctx, sequenc
 		{
 			av1ctx->RefValid[i] = 0;
 			//
+			av1ctx->RefOrderHint[i] = 0;
 		}
 
 		for (int i = 0; i < REFS_PER_FRAME; i++)
@@ -155,7 +156,7 @@ int frame::parseFrameHeader(int sz, bitSt *bs, AV1DecodeContext *av1ctx, sequenc
 	{
 		out->refresh_frame_flags = readBits(bs, 8);
 	}
-	if (out->FrameIsIntra || out->refresh_frame_flags != (1 << NUM_REF_FRAMES) - 1)
+	if (!out->FrameIsIntra || out->refresh_frame_flags != (1 << NUM_REF_FRAMES) - 1)
 	{
 		if (out->error_resilient_mode && seqHdr->enable_order_hint)
 		{
@@ -267,6 +268,7 @@ int frame::parseFrameHeader(int sz, bitSt *bs, AV1DecodeContext *av1ctx, sequenc
 		for (int i = 0; i < REFS_PER_FRAME; i++)
 		{
 			int refFrame = LAST_FRAME + i;
+			//RefOrderHint 要在 Reference frame update process过程中 去更新，现阶段还没有 所以全是0
 			int hint = av1ctx->RefOrderHint[out->ref_frame_idx[i]];
 			av1ctx->OrderHints[refFrame] = hint;
 			if (!seqHdr->enable_order_hint)
@@ -296,9 +298,12 @@ int frame::parseFrameHeader(int sz, bitSt *bs, AV1DecodeContext *av1ctx, sequenc
 		// load_previous( )
 	}
 	if (out->use_ref_frame_mvs == 1)
+	{
 		// motion_field_estimation( )
+	}
+		
 
-		// tile_info
+	// tile_info
 	readTileInfo(bs, seqHdr, out);
 	// quantization_params
 	readQuantizationParams(bs, seqHdr, out);
@@ -403,8 +408,6 @@ int frame::readTileInfo(bitSt *bs, sequenceHeader *seqHdr, frameHeader *frameHdr
 	const int minLog2Tiles = Max(frameHdr->tile_info.minLog2TileCols, tile_log2(maxTileAreaSb, sbRows * sbCols));
 	frameHdr->tile_info.uniform_tile_spacing_flag = readOneBit(bs);
 
-	int MiColStarts[sbCols];
-	int MiRowStarts[sbRows];
 	int startSb;
 	if (frameHdr->tile_info.uniform_tile_spacing_flag)
 	{
@@ -421,10 +424,10 @@ int frame::readTileInfo(bitSt *bs, sequenceHeader *seqHdr, frameHeader *frameHdr
 		int i = 0;
 		for (startSb = 0; startSb < sbCols; startSb += tileWidthSb)
 		{
-			MiColStarts[i] = startSb << sbShift;
+			frameHdr->tile_info.MiColStarts[i] = startSb << sbShift;
 			i += 1;
 		}
-		MiColStarts[i] = frameHdr->MiCols;
+		frameHdr->tile_info.MiColStarts[i] = frameHdr->MiCols;
 		frameHdr->tile_info.TileCols = i;
 
 		frameHdr->tile_info.minLog2TileRows = Max(minLog2Tiles - frameHdr->tile_info.TileColsLog2, 0);
@@ -441,10 +444,10 @@ int frame::readTileInfo(bitSt *bs, sequenceHeader *seqHdr, frameHeader *frameHdr
 		i = 0;
 		for (startSb = 0; startSb < sbRows; startSb += tileHeightSb)
 		{
-			MiRowStarts[i] = startSb << sbShift;
+			frameHdr->tile_info.MiRowStarts[i] = startSb << sbShift;
 			i += 1;
 		}
-		MiRowStarts[i] = frameHdr->MiRows;
+		frameHdr->tile_info.MiRowStarts[i] = frameHdr->MiRows;
 		frameHdr->tile_info.TileRows = i;
 	}
 	else
@@ -454,15 +457,15 @@ int frame::readTileInfo(bitSt *bs, sequenceHeader *seqHdr, frameHeader *frameHdr
 		int i;
 		for (i = 0; startSb < sbCols; i++)
 		{
-			MiColStarts[i] = startSb << sbShift;
+			frameHdr->tile_info.MiColStarts[i] = startSb << sbShift;
 			const int maxWidth = Min(sbCols - startSb, maxTileWidthSb);
-			frameHdr->tile_info.width_in_sbs = readns(bs, maxWidth);
+			frameHdr->tile_info.width_in_sbs = readns(bs, maxWidth) + 1;
 			// const int sizeSb = width_in_sbs_minus_1 + 1;
 			widestTileSb = Max(frameHdr->tile_info.width_in_sbs, widestTileSb);
 
 			startSb += frameHdr->tile_info.width_in_sbs;
 		}
-		MiColStarts[i] = frameHdr->MiCols;
+		frameHdr->tile_info.MiColStarts[i] = frameHdr->MiCols;
 		frameHdr->tile_info.TileCols = i;
 		frameHdr->tile_info.TileColsLog2 = tile_log2(1, frameHdr->tile_info.TileCols);
 		if (minLog2Tiles > 0)
@@ -474,12 +477,12 @@ int frame::readTileInfo(bitSt *bs, sequenceHeader *seqHdr, frameHeader *frameHdr
 		startSb = 0;
 		for (i = 0; startSb < sbRows; i++)
 		{
-			MiRowStarts[i] = startSb << sbShift;
+			frameHdr->tile_info.MiRowStarts[i] = startSb << sbShift;
 			const int maxHeight = Min(sbRows - startSb, maxTileHeightSb);
-			frameHdr->tile_info.height_in_sbs = readns(bs, maxHeight);
+			frameHdr->tile_info.height_in_sbs = readns(bs, maxHeight) + 1;
 			startSb += frameHdr->tile_info.height_in_sbs;
 		}
-		MiRowStarts[i] = frameHdr->MiRows;
+		frameHdr->tile_info.MiRowStarts[i] = frameHdr->MiRows;
 		frameHdr->tile_info.TileRows = i;
 		frameHdr->tile_info.TileRowsLog2 = tile_log2(1, frameHdr->tile_info.TileRows);
 	}
@@ -992,11 +995,13 @@ int frame::readSuperresParams(bitSt *bs, sequenceHeader *seqHdr, sizeInfo *si)
 	{
 		si->SuperresDenom = SUPERRES_NUM;
 	}
-	si->UpscaledWidth = si->FrameHeight;
+	si->UpscaledWidth = si->FrameWidth;
 
+	
 	si->FrameWidth = (si->UpscaledWidth * SUPERRES_NUM +
 					  (si->SuperresDenom / 2)) /
 					 si->SuperresDenom;
+
 	return 0;
 }
 int frame::readFrameSize(bitSt *bs, sequenceHeader *seqHdr, frameHeader *frameHdr, sizeInfo *out)
@@ -1012,8 +1017,8 @@ int frame::readFrameSize(bitSt *bs, sequenceHeader *seqHdr, frameHeader *frameHd
 		out->FrameWidth = seqHdr->max_frame_width;
 		out->FrameHeight = seqHdr->max_frame_height;
 	}
-	printf("FrameWidth %d\n",out->FrameWidth);
-	printf("FrameHeight %d\n",out->FrameHeight);
+	//printf("FrameWidth %d\n",out->FrameWidth);
+	//printf("FrameHeight %d\n",out->FrameHeight);
 	readSuperresParams(bs, seqHdr, out);
 
 	// compute image size;

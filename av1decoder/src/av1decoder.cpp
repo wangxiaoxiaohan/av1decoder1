@@ -18,7 +18,7 @@ void initContext(AV1DecodeContext **ctx){
 	
 }
 int main(int argc ,char **argv){
-    FILE *fp = fopen("./out2.obu","r");
+    FILE *fp = fopen("./out6.obu","r");
     uint8_t *buffer = (uint8_t *)malloc(OBU_BUF_SIZE);
     int offset = 0 ;
 

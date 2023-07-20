@@ -47,11 +47,10 @@ typedef struct sequenceHeader{
 		uint8_t	low_delay_mode_flag;
 	}operating_parameters_infos[MAX_OPERATING_POINTS];
 
-	
-	uint8_t frame_width_bits ;//frame_width_bits_minus_1 + 1
-	uint8_t frame_height_bits ;//frame_height_bits_minus_1 + 1
-	uint8_t max_frame_width ;//max_frame_width_minus_1 + 1
-	uint8_t max_frame_height ;//max_frame_height_minus_1 + 1
+	uint16_t frame_width_bits ;//frame_width_bits_minus_1 + 1
+	uint16_t frame_height_bits ;//frame_height_bits_minus_1 + 1
+	uint16_t max_frame_width ;//max_frame_width_minus_1 + 1
+	uint16_t max_frame_height ;//max_frame_height_minus_1 + 1
 	uint8_t frame_id_numbers_present_flag;
 	uint8_t delta_frame_id_length; //delta_frame_id_length_minus_2 + 2
 	uint8_t additional_frame_id_length; //additional_frame_id_length_minus_1 + 1
@@ -160,8 +159,10 @@ typedef struct frameHeader{
 		uint8_t uniform_tile_spacing_flag; //为1表示帧内的 tile尺寸一样（除了边界的tile）
 		uint8_t increment_tile_cols_log2; //用于计算 TileColsLog2 ，即tile 横向数目（以2为底的对数）
 		uint8_t increment_tile_rows_log2; //用于计算 TileRowsLog2，即tile 竖向数目（以2为底的对数）
-		uint8_t MiColStarts[MAX_TILE_COLS];//每个tile的横向起始位置，以4*4亮度采样块为单位
-		uint8_t MiRowStarts[MAX_TILE_ROWS];//每个tile的纵向起始位置 以4*4亮度采样块为单位
+		uint16_t MiColStarts[MAX_TILE_COLS];//每个tile的横向起始位置，以4*4亮度采样块为单位
+		uint16_t MiRowStarts[MAX_TILE_ROWS];//每个tile的纵向起始位置 以4*4亮度采样块为单位
+
+		
 		uint16_t width_in_sbs; // width_in_sbs_minus_1 + 1  tile宽度 以超级块为单位
 		uint16_t height_in_sbs;// height_in_sbs_minus_1 _1  tile高度 以超级块为单位
 		uint16_t context_update_tile_id; //哪个tile需要更新cdf 标记这里！！！！！ 一帧只能标记一个tile？
@@ -170,9 +171,9 @@ typedef struct frameHeader{
 	}tile_info;
 	struct {
 	    uint8_t base_q_idx;//后面几个语法元素的基准，这个也是Y分量的交流系数的量化参数
-	    uint8_t DeltaQYDc;//y分量的直流量化参数，基于base_q_idx
+	    int8_t DeltaQYDc;//y分量的直流量化参数，基于base_q_idx
 		uint8_t diff_uv_delta; //为1表示u和v的量化参数是分开的
-		uint8_t DeltaQUDc, DeltaQUAc, DeltaQVDc, DeltaQVAc; //uv分量的直流 交流量化参数，基于base_q_idx
+		int8_t DeltaQUDc, DeltaQUAc, DeltaQVDc, DeltaQVAc; //uv分量的直流 交流量化参数，基于base_q_idx
 		uint8_t using_qmatrix; // 是否使用自定义量化矩阵
         uint8_t qm, qm_y, qm_u, qm_v;//量化参数矩阵等级
         
@@ -185,7 +186,7 @@ typedef struct frameHeader{
 		uint8_t segmentation_update_data;//为1表示分割参数将更新，否则表示使用上一帧的
 		
 		uint8_t FeatureEnabled[MAX_SEGMENTS][SEG_LVL_MAX];//从feature_enabled计算而来 ，为1表示每个段的feature_value将会编码
-		uint8_t FeatureData[MAX_SEGMENTS][SEG_LVL_MAX];// feature_value计算而来 ，每个段的具体数据，不是直接读的，需要查表，具体2参见spec 5.9.14
+		int16_t FeatureData[MAX_SEGMENTS][SEG_LVL_MAX];// feature_value计算而来 ，每个段的具体数据，不是直接读的，需要查表，具体2参见spec 5.9.14
 
 
 		uint8_t SegIdPreSkip;//它不是一个在码流中存在的语法元素，但是是解码必须的，为1表示在先读段id，再读skip相关语法，否则先读skip语法
@@ -296,7 +297,7 @@ typedef struct AV1DecodeContext{
 	AV1Frame 	*ref_frames[NUM_REF_FRAMES];
 	uint8_t		RefValid[NUM_REF_FRAMES];
 	uint8_t		RefOrderHint[NUM_REF_FRAMES];
-	uint8_t		OrderHints[REFS_PER_FRAME];
+	uint8_t		OrderHints[REFS_PER_FRAME]; //OrderHints specifies the expected output order for each reference frame.
 	frameHeader *frameHdr;
 	sequenceHeader *seqHdr;
 }AV1DecodeContext;

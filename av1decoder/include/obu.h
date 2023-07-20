@@ -4,7 +4,7 @@
 #include "stdint.h"
 #include "header_common.h"
 #include "bitstream.h"
-#define OBU_BUF_SIZE 500 * 1024
+#define OBU_BUF_SIZE 100 * 1024
 
 
 class obu{

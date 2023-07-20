@@ -43,7 +43,7 @@ int obu::parseSequenceHeader(int sz,bitSt *bs,sequenceHeader *out)
 			out->timing_info.num_units_in_display_tick = readBits(bs,32);
 			out->timing_info.time_scale = readBits(bs,32);
 			out->timing_info.equal_picture_interval = readOneBit(bs);
-			out->timing_info.num_ticks_per_picture =  readUlvc(bs);
+			out->timing_info.num_ticks_per_picture =  readUlvc(bs) + 1;
 			out->decoder_model_info_present_flag = readOneBit(bs);
 			if(out->decoder_model_info_present_flag)
 			{
@@ -55,13 +55,16 @@ int obu::parseSequenceHeader(int sz,bitSt *bs,sequenceHeader *out)
 		}else{
 			out->decoder_model_info_present_flag = 0;
 		}
-		out->initial_display_delay_present_flag = readOneBit(bs);;
+		out->initial_display_delay_present_flag = readOneBit(bs);
 		out->operating_points_cnt = readBits(bs,5)  + 1;
 		printf("operating_points_cnt %d\n",out->operating_points_cnt);
 
 		for(int i = 0 ; i < out->operating_points_cnt ; i++){
 			out->seqOperatingPoint[i].operating_point_idc = readBits(bs,12);
 			out->seqOperatingPoint[i].seq_level_idx = readBits(bs,5);
+
+			printf("out->seqOperatingPoint[i].operating_point_idc %d\n",out->seqOperatingPoint[i].operating_point_idc);
+			printf("out->seqOperatingPoint[i].seq_level_idx %d\n",out->seqOperatingPoint[i].seq_level_idx);
 			if(out->seqOperatingPoint[i].seq_level_idx > 7){
 				out->seqOperatingPoint[i].seq_tier = readOneBit(bs);
 			}else{
@@ -95,11 +98,11 @@ int obu::parseSequenceHeader(int sz,bitSt *bs,sequenceHeader *out)
 	out->frame_height_bits = readBits(bs,4) + 1;
 	out->max_frame_width = readBits(bs,out->frame_width_bits) + 1;
 	out->max_frame_height = readBits(bs,out->frame_height_bits) + 1;
-	//printf("frame_width_bits %d\n",out->frame_width_bits);
-	//printf("frame_height_bits %d\n",out->max_frame_height);
+	printf("frame_width_bits %d\n",out->frame_width_bits);
+	printf("frame_height_bits %d\n",out->frame_height_bits);
 
-	//printf("max_frame_width %d\n",out->max_frame_width);
-	//printf("max_frame_height %d\n",out->max_frame_height);
+	printf("max_frame_width %d\n",out->max_frame_width);
+	printf("max_frame_height %d\n",out->max_frame_height);
 
 
 	if(out->reduced_still_picture_header){
@@ -108,8 +111,8 @@ int obu::parseSequenceHeader(int sz,bitSt *bs,sequenceHeader *out)
 		out->frame_id_numbers_present_flag = readOneBit(bs);
 	}
 	if(out->frame_id_numbers_present_flag ){
-		out->delta_frame_id_length = readBits(bs,4);
-	 	out->additional_frame_id_length = readBits(bs,3);
+		out->delta_frame_id_length = readBits(bs,4) + 2;
+	 	out->additional_frame_id_length = readBits(bs,3) + 1;
 	}
 
 	out->use_128x128_superblock = readOneBit(bs);
@@ -280,7 +283,8 @@ int obu::parseObuInfo(FILE* fp,int fileOffset,uint8_t *buf,int sz,AV1DecodeConte
 
 	uint8_t obu_size_buf[8];
 	uint64_t obu_size;
-	//!!!!!!
+	//!!!!!! 这里 fread 了8个字节之后 ，实际上obu_size 并没有 8个字节，
+	// 又没有 seek回去 ，这就导致后面数据错了
 	if(obu_header.obu_has_size_field){
 		uint8_t obu_size_syntax_length;
 		//fseek(fp,fileOffset + (obu_extension_flag ? 2 :1),SEEK_SET);
@@ -290,11 +294,15 @@ int obu::parseObuInfo(FILE* fp,int fileOffset,uint8_t *buf,int sz,AV1DecodeConte
 		obu_size = readleb128(&bs,&obu_size_syntax_length);
 
 		total_size += obu_size_syntax_length;
+
+		// 上面读了8个字节,但是实际并没有那么长，这里往回退多读的字节
+		fseek(fp,-(8 - obu_size_syntax_length),SEEK_CUR);
 	}else{
 		obu_size = sz - 1 - obu_header.obu_extension_flag;
 	}
 
 // read obu payload from file
+
 
 	printf("obu_size  %d\n",obu_size);
 
