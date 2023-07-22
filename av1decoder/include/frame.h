@@ -30,6 +30,8 @@ public:
 	int read_delta_q(bitSt *bs);
 	int read_global_param(frameHeader *frameHdr,bitSt *bs, int type,int ref,int idx );
 
+	int decode_tile(bitSt *bs, TileData *t_data,AV1DecodeContext *av1ctx);
+	int decode_partition(bitSt *bs,int r,int c,int sbSize, AV1DecodeContext *av1ctx);
 	int decodeFrame(int sz, bitSt *bs, AV1DecodeContext *av1ctx);
 
 	static frame& Instance() {

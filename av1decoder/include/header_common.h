@@ -139,7 +139,8 @@ typedef struct frameHeader{
 	uint8_t allow_intrabc;
 	uint8_t frame_refs_short_signaling;
 	uint8_t	last_frame_idx;
-	uint8_t	gold_frame_idx;
+	uint8_t	gold_frame_idx
+;
 	uint8_t ref_frame_idx[REFS_PER_FRAME];
 	uint32_t delta_frame_id[REFS_PER_FRAME];//delta_frame_id_minus_1 + 1;
 	uint32_t expectedFrameId[REFS_PER_FRAME];
@@ -166,7 +167,7 @@ typedef struct frameHeader{
 		uint16_t width_in_sbs; // width_in_sbs_minus_1 + 1  tile宽度 以超级块为单位
 		uint16_t height_in_sbs;// height_in_sbs_minus_1 _1  tile高度 以超级块为单位
 		uint16_t context_update_tile_id; //哪个tile需要更新cdf 标记这里！！！！！ 一帧只能标记一个tile？
-		uint8_t tile_size_bytes;//tile_size_bytes_minus_1 + 1 tilesize
+		uint8_t TileSizeBytes;//tile_size_bytes_minus_1 + 1 tilesize
 
 	}tile_info;
 	struct {
@@ -288,6 +289,23 @@ typedef struct frameHeader{
 	uint8_t allow_warped_motion;//是否使用扭曲运动模式
 	uint8_t reduced_tx_set;
 }frameHeader;
+typedef struct TileData{
+	uint16_t MiRowStart;
+	uint16_t MiRowEnd;
+	uint16_t MiColStart;
+	uint16_t MiColEnd;
+
+	uint8_t DeltaLF[FRAME_LF_COUNT];
+	uint8_t RefSgrXqd[3][2];
+	uint8_t RefLrWiener[3][2][3];
+	uint8_t ReadDeltas;
+
+}TileData;
+typedef struct BlockData{
+	uint8_t AvailU;
+	uint8_t AvailL;
+
+}BlockData;
 typedef struct AV1Frame{
 	sizeInfo *si;
 	frameHeader *fh;
@@ -296,7 +314,8 @@ typedef struct AV1Frame{
 typedef struct AV1DecodeContext{
 	AV1Frame 	*ref_frames[NUM_REF_FRAMES];
 	uint8_t		RefValid[NUM_REF_FRAMES];
-	uint8_t		RefOrderHint[NUM_REF_FRAMES];
+	uint8_t		RefOrderHint[NUM_REF_FRAMES];
+
 	uint8_t		OrderHints[REFS_PER_FRAME]; //OrderHints specifies the expected output order for each reference frame.
 	frameHeader *frameHdr;
 	sequenceHeader *seqHdr;

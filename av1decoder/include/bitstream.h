@@ -26,6 +26,7 @@ void  inline updateOffset(bitSt *bs)
     bs->offset +=  bs->offsetInByte / 8;
     bs->offsetInByte %= 8;
 }
+
 uint8_t inline readOneBit(bitSt *bs)
 {
     uint8_t ret = bs->dataPtr[bs->offset] << bs->offsetInByte;
@@ -44,24 +45,7 @@ uint32_t inline readBits(bitSt *bs,int len)
     return ret;
 	
 }
-/*
-uint64_t readleb128(bitSt *bs)
-{
-    uint64_t ret = 0;
-	int pos = 0,end;
-	do{
-		int tmp = readBits(bs,8);
-		printf(" %d\n",tmp);
-		end = ! (0x80 & tmp); //最高位标记是否还有数据
-		ret |= (uint64_t)(tmp & 0x7f) << pos;
-		pos += 7;
 
-	}while(!end && (pos + 8) < 64);
-		
-    return ret;
-}
-*/
-//这些读算法都是完全按照spec来写的
 uint64_t inline readleb128(bitSt *bs,uint8_t* Leb128Bytes)
 { 
 	uint64_t value = 0;
@@ -106,6 +90,15 @@ uint64_t inline readsu(bitSt *bs,int n) {
 		value = value - 2 * signMask;
 	return value;
 }
+uint64_t inline readle(bitSt *bs,int n) { 
+	int t = 0;
+	for (int i = 0; i < n; i++) {
+		int byte = readBits(bs,n);
+		t += ( byte << ( i * 8 ) );
+	}
+	return t;
+}
+
 int inline decode_subexp(bitSt * bs,int numSyms ) { 
 	int i = 0;
 	int mk = 0;

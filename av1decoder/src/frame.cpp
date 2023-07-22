@@ -1,5 +1,6 @@
 #include "frame.h"
 #include "segmentation.h"
+#include "cdf.h"
 #include <string.h>
 
 int frame::parseFrameHeader(int sz, bitSt *bs, AV1DecodeContext *av1ctx, sequenceHeader *seqHdr, obuHeader *obuheader, frameHeader *out)
@@ -491,7 +492,7 @@ int frame::readTileInfo(bitSt *bs, sequenceHeader *seqHdr, frameHeader *frameHdr
 		frameHdr->tile_info.context_update_tile_id = readBits(bs,
 															  frameHdr->tile_info.TileRowsLog2 + frameHdr->tile_info.TileColsLog2);
 
-		frameHdr->tile_info.tile_size_bytes = readBits(bs, 2) + 1;
+		frameHdr->tile_info.TileSizeBytes = readBits(bs, 2) + 1;
 	}
 	else
 	{
@@ -1109,34 +1110,178 @@ int frame::decodeFrame(int sz, bitSt *bs, AV1DecodeContext *av1ctx){
 	BitStreamAlign(bs);
 	sz -= (bs->offset - startpos);
 	for (int TileNum = tg_start; TileNum <= tg_end; TileNum++ ) {
-		tileRow = TileNum / TileCols;
-		tileCol = TileNum % TileCols;
-		lastTile = TileNum == tg_end;
+		int tileRow = TileNum / frameHdr->tile_info.TileCols;
+		int tileCol = TileNum % frameHdr->tile_info.TileCols;
+		int lastTile = TileNum == tg_end;
+		int tileSize;
 		if ( lastTile ) {
 			tileSize = sz;
 		} else {
-			tile_size_minus_1 le(TileSizeBytes);
-			tileSize = tile_size_minus_1 + 1;
-			sz -= tileSize + TileSizeBytes;
+			//tile_size_minus_1 le(TileSizeBytes);
+			int tileSize = readle(frameHdr->tile_info.TileSizeBytes) + 1;
+			sz -= tileSize + frameHdr->tile_info.TileSizeBytes;
 		}
-		MiRowStart = MiRowStarts[ tileRow ];
-		MiRowEnd = MiRowStarts[ tileRow + 1 ];
-		MiColStart = MiColStarts[ tileCol ];
-		MiColEnd = MiColStarts[ tileCol + 1 ];
-		CurrentQIndex = base_q_idx;
-		init_symbol( tileSize );
+		TileData t_data;
+		t_data.MiRowStart = frameHdr->tile_info.MiRowStarts[ tileRow ];
+		t_data.MiRowEnd = frameHdr->tile_info.MiRowStarts[ tileRow + 1 ];
+		t_data.MiColStart = frameHdr->tile_info.MiColStarts[ tileCol ];
+		t_data.MiColEnd = frameHdr->tile_info.MiColStarts[ tileCol + 1 ];
+	//	注意这个!!!! spec中有用，但是用到那个地方在 dav1d中，和libaom中又都没有用
+		int CurrentQIndex = frameHdr->quantization_params.base_q_idx;
+		//init_symbol( tileSize );
 		decode_tile( );
-		exit_symbol( );
+		//exit_symbol( );
 	}
 	if ( tg_end == NumTiles - 1 ) {
-		if ( !disable_frame_end_update_cdf ) {
-		frame_end_update_cdf( )
+		if ( !frameHdr->disable_frame_end_update_cdf ) {
+			//frame_end_update_cdf( );
 		}
-		decode_frame_wrapup( )
-		SeenFrameHeader = 0
+		//decode_frame_wrapup( );
+		av1ctx->SeenFrameHeader = 0;
+	}
+
+}
+int frame::decode_tile( bitSt *bs, TileData *t_data,AV1DecodeContext *av1ctx){
+	frameHeader *frameHdr = av1ctx->frameHdr;
+	sequenceHeader *seqHdr = av1ctx->seqHdr;
+
+	//clear_above_context( ).....
+	for (int i = 0; i < FRAME_LF_COUNT; i++ )
+		t_data->DeltaLF[ i ] = 0;
+	for (int plane = 0; plane < seqHdr->color_config.NumPlanes; plane++ ) {
+		for (int pass = 0; pass < 2; pass++ ) {
+			t_data->RefSgrXqd[ plane ][ pass ] = Sgrproj_Xqd_Mid[ pass ];
+			for (int i = 0; i < WIENER_COEFFS; i++ ) {
+				t_data->RefLrWiener[ plane ][ pass ][ i ] = Wiener_Taps_Mid[ i ];
+			}
+		}
+	}
+	int sbSize = seqHdr->use_128x128_superblock ? BLOCK_128X128 : BLOCK_64X64;
+	int sbSize4 = Num_4x4_Blocks_Wide[ sbSize ];
+
+	for (int  r = t_data->MiRowStart; r < t_data->MiRowEnd; r += sbSize4 ) {
+		//clear_left_context( )......
+		for (int  c =t_data->MiColStart; c < t_data->MiColEnd; c += sbSize4 ) {
+			t_data->ReadDeltas = frameHdr->delta_q_params.delta_q_present;
+			//clear_cdef( r, c );...........
+			//clear_block_decoded_flags( r, c, sbSize4 );..........
+			//read_lr( r, c, sbSize );............
+			decode_partition( bs ,r, c, sbSize ,av1ctx);
 		}
 	}
 
+}
+
+int frame::decode_partition(bitSt *bs,TileData *t_data,BlockData *b_data,int r,int c,int bSize, AV1DecodeContext *av1ctx)
+{
+	frameHeader *frameHdr = av1ctx->frameHdr;
+	sequenceHeader *seqHdr = av1ctx->seqHdr;
+
+	if (r >= frameHdr->MiRows || c >= frameHdr->MiCols)
+		return 0;
+	b_data->AvailU = is_inside(r - 1, c,t_data->MiColStart,t_data->MiColEnd,t_data->MiRowStart,t_data->MiRowEnd);
+	b_data->AvailL = is_inside(r, c - 1,t_data->MiColStart,t_data->MiColEnd,t_data->MiRowStart,t_data->MiRowEnd);
+	int num4x4 = Num_4x4_Blocks_Wide[bSize] ;
+	int halfBlock4x4 = num4x4 >> 1 ;
+	int quarterBlock4x4 = halfBlock4x4 >> 1 ;
+	int hasRows = (r + halfBlock4x4) < frameHdr->MiRows;
+	int hasCols = (c + halfBlock4x4) < frameHdr->MiCols ;
+
+	int partition;
+	if (bSize < BLOCK_8X8)
+	{
+		partition = PARTITION_NONE;
+	}
+	else if (hasRows && hasCols)
+	{
+		partition S()
+	}
+	else if (hasCols)
+	{
+		split_or_horz S()
+		partition = split_or_horz ? PARTITION_SPLIT : PARTITION_HORZ
+	}
+	else if (hasRows)
+	{
+		split_or_vert S()
+			partition = split_or_vert ? PARTITION_SPLIT : PARTITION_VERT
+	}
+	else
+	{
+		partition = PARTITION_SPLIT
+	}
+	subSize = Partition_Subsize[partition][bSize];
+	splitSize = Partition_Subsize[PARTITION_SPLIT][bSize] ;
+	
+	if (partition == PARTITION_NONE)
+	{
+		decode_block(r, c, subSize);
+	}
+	else if (partition == PARTITION_HORZ)
+	{
+		decode_block(r, c, subSize);
+		if (hasRows)
+			decode_block(r + halfBlock4x4, c, subSize);
+	}
+	else if (partition == PARTITION_VERT)
+	{
+		decode_block(r, c, subSize)
+		if (hasCols)
+			decode_block(r, c + halfBlock4x4, subSize);
+	}
+	else if (partition == PARTITION_SPLIT)
+	{
+		decode_partition(r, c, subSize);
+		decode_partition(r, c + halfBlock4x4, subSize);
+		decode_partition(r + halfBlock4x4, c, subSize);
+		decode_partition(r + halfBlock4x4, c + halfBlock4x4, subSize);
+	}
+	else if (partition == PARTITION_HORZ_A)
+	{
+		decode_block(r, c, splitSize);
+		decode_block(r, c + halfBlock4x4, splitSize);
+		decode_block(r + halfBlock4x4, c, subSize);
+	}
+	else if (partition == PARTITION_HORZ_B)
+	{
+		decode_block(r, c, subSize);
+		decode_block(r + halfBlock4x4, c, splitSize);
+		decode_block(r + halfBlock4x4, c + halfBlock4x4, splitSize);
+	}
+	else if (partition == PARTITION_VERT_A)
+	{
+		decode_block(r, c, splitSize);
+		decode_block(r + halfBlock4x4, c, splitSize);
+		decode_block(r, c + halfBlock4x4, subSize);
+	}
+	else if (partition == PARTITION_VERT_B)
+	{
+		decode_block(r, c, subSize);
+		decode_block(r, c + halfBlock4x4, splitSize);
+		decode_block(r + halfBlock4x4, c + halfBlock4x4, splitSize);
+	}
+	else if (partition == PARTITION_HORZ_4)
+	{
+		decode_block(r + quarterBlock4x4 * 0, c, subSize);
+		decode_block(r + quarterBlock4x4 * 1, c, subSize);
+		decode_block(r + quarterBlock4x4 * 2, c, subSize) ;
+		if (r + quarterBlock4x4 * 3 < MiRows)
+			decode_block(r + quarterBlock4x4 * 3, c, subSize);
+	}
+	else
+	{
+		decode_block(r, c + quarterBlock4x4 * 0, subSize);
+		decode_block(r, c + quarterBlock4x4 * 1, subSize);
+		decode_block(r, c + quarterBlock4x4 * 2, subSize); 
+		if (c + quarterBlock4x4 * 3 < MiCols)
+			decode_block(r, c + quarterBlock4x4 * 3, subSize);
+	}
+}
+int frame::decode_block(){
 
 
 
+
+
+
+}
