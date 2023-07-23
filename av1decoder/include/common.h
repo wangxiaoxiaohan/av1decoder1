@@ -154,6 +154,9 @@ enum tristate{
 #define BR_CDF_SIZE 4
 #define SIG_COEF_CONTEXTS_EOB 4 
 
+
+#define EC_PROB_SHIFT 6
+#define EC_MIN_PROB 4
 enum em_interpolation_filters{
 	EIGHTTAP = 0,
 	EIGHTTAP_SMOOTH = 1,

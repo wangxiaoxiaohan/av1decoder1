@@ -2170,4 +2170,34 @@ static uint16_t Default_Coeff_Br_Cdf[COEFF_CDF_Q_CTXS][TX_SIZES][PLANE_TYPES][LE
        {8192, 16384, 24576, 32768, 0},
        {8192, 16384, 24576, 32768, 0}}}}};
 
+
+
+typedef struct SymbolContext{
+  int numBits;
+  int buf;
+  int paddedBuf;
+  int SymbolValue;
+  int SymbolRange;
+  int SymbolMaxBits;
+
+  int isUpdate;
+}SymbolContext;
+
+class cdf{
+public:
+  cdf(){}
+	~cdf(){}
+  void initSymbol(SymbolContext *sbCtx,bitSt *bs,int sz);
+  int decodeSymbol(SymbolContext *sbCtx,bitSt *bs,uint16_t *cdfArray,int N);
+	static cdf& Instance() {
+		static cdf m_pInstance;
+		return m_pInstance;
+ 
+	}
+
+private:
+
+};
+
+
 #endif

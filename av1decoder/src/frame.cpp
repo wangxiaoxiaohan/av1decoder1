@@ -1128,9 +1128,10 @@ int frame::decodeFrame(int sz, bitSt *bs, AV1DecodeContext *av1ctx){
 		t_data.MiColEnd = frameHdr->tile_info.MiColStarts[ tileCol + 1 ];
 	//	注意这个!!!! spec中有用，但是用到那个地方在 dav1d中，和libaom中又都没有用
 		int CurrentQIndex = frameHdr->quantization_params.base_q_idx;
+		//之所以 每个tile 进行一次 init_symbol 是因为tile内的所有语法元素和数据都是算术编码的，而tile层之上会有非算术编码的语法元素。
 		//init_symbol( tileSize );
-		decode_tile( );
-		//exit_symbol( );
+		decode_tile();
+		//exit_symbol();
 	}
 	if ( tg_end == NumTiles - 1 ) {
 		if ( !frameHdr->disable_frame_end_update_cdf ) {
@@ -1160,12 +1161,12 @@ int frame::decode_tile( bitSt *bs, TileData *t_data,AV1DecodeContext *av1ctx){
 	int sbSize4 = Num_4x4_Blocks_Wide[ sbSize ];
 
 	for (int  r = t_data->MiRowStart; r < t_data->MiRowEnd; r += sbSize4 ) {
-		//clear_left_context( )......
+		//clear_left_context( )......！！！
 		for (int  c =t_data->MiColStart; c < t_data->MiColEnd; c += sbSize4 ) {
 			t_data->ReadDeltas = frameHdr->delta_q_params.delta_q_present;
-			//clear_cdef( r, c );...........
-			//clear_block_decoded_flags( r, c, sbSize4 );..........
-			//read_lr( r, c, sbSize );............
+			//clear_cdef( r, c );...........！！！！
+			//clear_block_decoded_flags( r, c, sbSize4 );..........！！！
+			//read_lr( r, c, sbSize );............！！！
 			decode_partition( bs ,r, c, sbSize ,av1ctx);
 		}
 	}
