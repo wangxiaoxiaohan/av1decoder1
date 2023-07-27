@@ -301,11 +301,11 @@ typedef struct TileData{
 	uint8_t ReadDeltas;
 
 }TileData;
-typedef struct BlockData{
+typedef struct PartitionData{
 	uint8_t AvailU;
 	uint8_t AvailL;
 
-}BlockData;
+}PartitionData;
 typedef struct AV1Frame{
 	sizeInfo *si;
 	frameHeader *fh;

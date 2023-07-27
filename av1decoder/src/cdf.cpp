@@ -2,7 +2,7 @@
 #include "common.h"
 #include "bitstream.h"
 
-void cdf::initSymbol(SymbolContext *sbCtx,bitSt *bs,int sz){
+void Symbol::initSymbol(SymbolContext *sbCtx,bitSt *bs,int sz){
     sbCtx->numBits = Min( sz * 8, 15);
     sbCtx->buf = readBits(bs,sbCtx->numBits); //????
     sbCtx->paddedBuf  = ( sbCtx->buf << (15 - sbCtx->numBits) );
@@ -10,13 +10,16 @@ void cdf::initSymbol(SymbolContext *sbCtx,bitSt *bs,int sz){
     sbCtx->SymbolRange = 1 << 15;
     sbCtx->SymbolMaxBits = 8 * sz - 15;
 }
-int cdf::decodeSymbol(SymbolContext *sbCtx,bitSt *bs,uint16_t *cdfArray,int N){
+int Symbol::decodeSymbol(SymbolContext *sbCtx,bitSt *bs,uint16_t *cdfArray,int N){
 
     int cur = sbCtx->SymbolRange;
     int symbol = -1;
     int prev;
     int f;
-    //解码单个语法元素或者数据，在这个过程中，SymbolValue和SymbolRange已经锁定，只是根据 cdf 数组来查到底是哪个值
+    //解码单个语法元素或者数据，在这个过程中，
+    //SymbolValue和SymbolRange是上次解码的时候已经定下来的输入值
+    //SymbolValue是待解码的符号，也就是源数据，SymbolRange是算术编码的范围
+    //在loop中根据 cdf 数组来查到底是哪个值
     do {
         symbol++; //逐个尝试
         prev = cur;
@@ -26,18 +29,22 @@ int cdf::decodeSymbol(SymbolContext *sbCtx,bitSt *bs,uint16_t *cdfArray,int N){
     } while ( sbCtx->SymbolValue < cur );
     //更新算术编码的范围 和 输入符号，这只是部分过程，在renormalized过程还要继续更新，
     //  比如sbCtx->SymbolRange = prev - cur; 这个操作，你会发现SymbolRange会变得很小，在renormalized过程
-    //会进行放大(左移)操作，SymbolValue也是同理，只不过SymbolValue本身就是是从码流中读出来的待解码的值，
+    //会进行放大(左移)操作，
+    //这解答了以前对于算术编码的一个疑问，如果区间一直划分，岂不是
+     //单单表示区间范围的值就会越来越长，解决办法是每次解码一个符号就进行扩展，放大区间
+    //SymbolValue也是同理，只不过SymbolValue本身就是是从码流中读出来的待解码的值，
     //后面对他进行的操作也是用新读进来的若干位填满15位
-    sbCtx->SymbolRange = prev - cur;
+    sbCtx->SymbolRange = prev - cur; //这里的时候 ，SymbolRange就已经更新为SymbolValue 所在那个小区域了
+                                      
     sbCtx->SymbolValue = sbCtx->SymbolValue - cur; //这里是为什么？为什么不是直接丢掉若干位？还是说编码器端也是这样做的
-                                                   //所以默认这样做？             
+                                                   //所以默认这样做？    
+
+
+
 //renormalized 这个过程会继续读入码流满15位，以便为后续的解码做准备
-    int bits = 15 - FloorLog2( sbCtx->SymbolRange );//这解答了以前对于算术编码的一个疑问，如果区间一直划分，岂不是
-                                                    //单单表示区间范围的值就会越来越长，解决办法是每次解码一个符号
-    sbCtx->SymbolRange <<= bits;                   //就进行扩展，放大区间
-   
-    sbCtx->numBits = Min( bits, Max(0, sbCtx->SymbolMaxBits) );
-    int newData =  readBits(bs,sbCtx->numBits);
+    int bits = 15 - FloorLog2( sbCtx->SymbolRange ); //需要继续读进来的数据位数
+    sbCtx->numBits = Min( bits, Max(0, sbCtx->SymbolMaxBits) ); //修正需要读取位数
+    int newData =  readBits(bs,sbCtx->numBits); //读取，接下来几步将新读进来的数据和之前剩下的组合起来，凑满15位
     int paddedData = newData << ( bits - sbCtx->numBits );
     sbCtx->SymbolValue = paddedData ^ ( ( ( sbCtx->SymbolValue + 1 ) << bits ) - 1 );
     sbCtx->SymbolMaxBits -= bits;

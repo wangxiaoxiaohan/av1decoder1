@@ -2183,14 +2183,14 @@ typedef struct SymbolContext{
   int isUpdate;
 }SymbolContext;
 
-class cdf{
+class Symbol{
 public:
-  cdf(){}
-	~cdf(){}
+  Symbol(){}
+	~Symbol(){}
   void initSymbol(SymbolContext *sbCtx,bitSt *bs,int sz);
   int decodeSymbol(SymbolContext *sbCtx,bitSt *bs,uint16_t *cdfArray,int N);
-	static cdf& Instance() {
-		static cdf m_pInstance;
+	static Symbol& Instance() {
+		static Symbol m_pInstance;
 		return m_pInstance;
  
 	}

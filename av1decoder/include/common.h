@@ -345,6 +345,22 @@ const static int8_t  Num_4x4_Blocks_Wide[ BLOCK_SIZES ] = {
 1, 1, 2, 2, 2, 4, 4, 4, 8, 8, 8,
 16, 16, 16, 32, 32, 1, 4, 2, 8, 4, 16
 };
+const static int8_t Num_4x4_Blocks_High[ BLOCK_SIZES ] = {
+1, 2, 1, 2, 4, 2, 4, 8, 4, 8, 16,
+8, 16, 32, 16, 32, 4, 1, 8, 2, 16, 4
+};
+
+const static int8_t Mi_Width_Log2[ BLOCK_SIZES ] = {
+0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3,
+4, 4, 4, 5, 5, 0, 2, 1, 3, 2, 4
+};
+
+const static int8_t Mi_Height_Log2[ BLOCK_SIZES ] = {
+0, 1, 0, 1, 2, 1, 2, 3, 2, 3, 4,
+3, 4, 5, 4, 5, 2, 0, 3, 1, 4, 2
+;}
+
+
 
 int inline tile_log2(int  blkSize, int target){
 	int k;

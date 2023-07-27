@@ -1118,7 +1118,7 @@ int frame::decodeFrame(int sz, bitSt *bs, AV1DecodeContext *av1ctx){
 			tileSize = sz;
 		} else {
 			//tile_size_minus_1 le(TileSizeBytes);
-			int tileSize = readle(frameHdr->tile_info.TileSizeBytes) + 1;
+			int tileSize = readle(bs,frameHdr->tile_info.TileSizeBytes) + 1;
 			sz -= tileSize + frameHdr->tile_info.TileSizeBytes;
 		}
 		TileData t_data;
@@ -1130,7 +1130,9 @@ int frame::decodeFrame(int sz, bitSt *bs, AV1DecodeContext *av1ctx){
 		int CurrentQIndex = frameHdr->quantization_params.base_q_idx;
 		//之所以 每个tile 进行一次 init_symbol 是因为tile内的所有语法元素和数据都是算术编码的，而tile层之上会有非算术编码的语法元素。
 		//init_symbol( tileSize );
-		decode_tile();
+		SymbolContext symCtx;
+		Symbol::Instance().initSymbol(&symCtx,bs,sz);
+		decode_tile(&symCtx,bs,&t_data,av1ctx);
 		//exit_symbol();
 	}
 	if ( tg_end == NumTiles - 1 ) {
@@ -1142,7 +1144,7 @@ int frame::decodeFrame(int sz, bitSt *bs, AV1DecodeContext *av1ctx){
 	}
 
 }
-int frame::decode_tile( bitSt *bs, TileData *t_data,AV1DecodeContext *av1ctx){
+int frame::decode_tile(SymbolContext *sbCtx,bitSt *bs, TileData *t_data,AV1DecodeContext *av1ctx){
 	frameHeader *frameHdr = av1ctx->frameHdr;
 	sequenceHeader *seqHdr = av1ctx->seqHdr;
 
@@ -1162,26 +1164,27 @@ int frame::decode_tile( bitSt *bs, TileData *t_data,AV1DecodeContext *av1ctx){
 
 	for (int  r = t_data->MiRowStart; r < t_data->MiRowEnd; r += sbSize4 ) {
 		//clear_left_context( )......！！！
-		for (int  c =t_data->MiColStart; c < t_data->MiColEnd; c += sbSize4 ) {
+		for (int  c = t_data->MiColStart; c < t_data->MiColEnd; c += sbSize4 ) {
 			t_data->ReadDeltas = frameHdr->delta_q_params.delta_q_present;
 			//clear_cdef( r, c );...........！！！！
 			//clear_block_decoded_flags( r, c, sbSize4 );..........！！！
 			//read_lr( r, c, sbSize );............！！！
-			decode_partition( bs ,r, c, sbSize ,av1ctx);
+			PartitionData b_data;
+			decode_partition(sbCtx, bs , t_data,&b_data,r, c, sbSize ,av1ctx);
 		}
 	}
 
 }
 
-int frame::decode_partition(bitSt *bs,TileData *t_data,BlockData *b_data,int r,int c,int bSize, AV1DecodeContext *av1ctx)
+int frame::decode_partition(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,PartitionData *p_data,int r,int c,int bSize, AV1DecodeContext *av1ctx)
 {
 	frameHeader *frameHdr = av1ctx->frameHdr;
 	sequenceHeader *seqHdr = av1ctx->seqHdr;
 
 	if (r >= frameHdr->MiRows || c >= frameHdr->MiCols)
 		return 0;
-	b_data->AvailU = is_inside(r - 1, c,t_data->MiColStart,t_data->MiColEnd,t_data->MiRowStart,t_data->MiRowEnd);
-	b_data->AvailL = is_inside(r, c - 1,t_data->MiColStart,t_data->MiColEnd,t_data->MiRowStart,t_data->MiRowEnd);
+	p_data->AvailU = is_inside(r - 1, c,t_data->MiColStart,t_data->MiColEnd,t_data->MiRowStart,t_data->MiRowEnd);
+	p_data->AvailL = is_inside(r, c - 1,t_data->MiColStart,t_data->MiColEnd,t_data->MiRowStart,t_data->MiRowEnd);
 	int num4x4 = Num_4x4_Blocks_Wide[bSize] ;
 	int halfBlock4x4 = num4x4 >> 1 ;
 	int quarterBlock4x4 = halfBlock4x4 >> 1 ;
@@ -1189,13 +1192,21 @@ int frame::decode_partition(bitSt *bs,TileData *t_data,BlockData *b_data,int r,i
 	int hasCols = (c + halfBlock4x4) < frameHdr->MiCols ;
 
 	int partition;
+	Symbol sb;
 	if (bSize < BLOCK_8X8)
 	{
 		partition = PARTITION_NONE;
 	}
 	else if (hasRows && hasCols)
 	{
-		partition S()
+		 //根据上边和左边的块来推出需要使用的cdf， 为什么MiSizes 还未初始化这里就在使用？
+		int bsl = Mi_Width_Log2[ bSize ];
+		int above = p_data->AvailU && ( Mi_Width_Log2[ MiSizes[ r - 1 ][ c ] ] < bsl );
+		int left = p_data->AvailL && ( Mi_Height_Log2[ MiSizes[ r ][ c - 1 ] ] < bsl );
+		int ctx = left * 2 + above;
+
+		uint16_t **cdf;
+		partition = sb.decodeSymbol(sbCtx,bs,cdf[ctx],sizeof(cdf[ctx]));
 	}
 	else if (hasCols)
 	{
