@@ -32,7 +32,8 @@ public:
 	int decode_tile(SymbolContext *sbCtx, bitSt *bs,TileData *t_data,AV1DecodeContext *av1ctx);
 	int decode_partition(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,PartitionData *p_data,int r,int c,int sbSize, AV1DecodeContext *av1ctx);
 	int decodeFrame(int sz, bitSt *bs, AV1DecodeContext *av1ctx);
-	int decode_block();
+	int decode_block(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
+							PartitionData *p_data,int r,int c,int subSize, AV1DecodeContext *av1ctx);
 
 	static frame& Instance() {
 		static frame m_pInstance;

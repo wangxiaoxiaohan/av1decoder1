@@ -1333,81 +1333,100 @@ int frame::decode_partition(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
 	}
 }
 
-int frame::decode_block(){
+int frame::decode_block(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
+							PartitionData *p_data,int r,int c,int subSize, AV1DecodeContext *av1ctx)
+{
+	frameHeader *frameHdr = av1ctx->frameHdr;
+	sequenceHeader *seqHdr = av1ctx->seqHdr;
 
-	MiRow = r
-	MiCol = c
-	MiSize = subSize
-	bw4 = Num_4x4_Blocks_Wide[subSize] bh4 = Num_4x4_Blocks_High[subSize] 	
-	if (bh4 == 1 && subsampling_y && (MiRow & 1) == 0)
-				HasChroma = 0 else if (bw4 == 1 && subsampling_x && (MiCol & 1) == 0)
-				HasChroma = 0 else HasChroma = NumPlanes > 1 AvailU = is_inside(r - 1, c)
-				AvailL = is_inside(r, c - 1)
-				AvailUChroma = AvailU
-				AvailLChroma = AvailL 
+	int MiRow = r;
+	int MiCol = c;
+	int MiSize = subSize;
+	int bw4 = Num_4x4_Blocks_Wide[subSize];
+	int bh4 = Num_4x4_Blocks_High[subSize];	
+	int HasChroma;
+	if (bh4 == 1 && seqHdr->color_config.subsampling_y && (MiRow & 1) == 0)
+		HasChroma = 0 ;
+	else if (bw4 == 1 && seqHdr->color_config.subsampling_x && (MiCol & 1) == 0)
+		HasChroma = 0 ;
+	else 
+		HasChroma = seqHdr->color_config.NumPlanes > 1;
+	int AvailU = is_inside(r - 1, c,t_data->MiColStart,t_data->MiColEnd,t_data->MiRowStart,t_data->MiRowEnd);
+	int AvailL = is_inside(r, c - 1,t_data->MiColStart,t_data->MiColEnd,t_data->MiRowStart,t_data->MiRowEnd);
+	int AvailUChroma = AvailU;
+	int AvailLChroma = AvailL;
 	if (HasChroma)
 	{
-		if (subsampling_y && bh4 == 1)
-			AvailUChroma = is_inside(r - 2, c)
-		if (subsampling_x && bw4 == 1)
-			AvailLChroma = is_inside(r, c - 2)
+		if (seqHdr->color_config.subsampling_y && bh4 == 1)
+			AvailUChroma = is_inside(r - 2, c,t_data->MiColStart,t_data->MiColEnd,t_data->MiRowStart,t_data->MiRowEnd);
+		if (seqHdr->color_config.subsampling_x && bw4 == 1)
+			AvailLChroma = is_inside(r, c - 2,t_data->MiColStart,t_data->MiColEnd,t_data->MiRowStart,t_data->MiRowEnd);
 	}else {
-		AvailUChroma = 0 
-		AvailLChroma = 0
+		AvailUChroma = 0;
+		AvailLChroma = 0;
 	}
-	mode_info()
-	palette_tokens()
-	read_block_tx_size() 	
+	BlockData b_data;
+	mode_info();
+	palette_tokens();
+	read_block_tx_size();	
 	if (skip)
-		reset_block_context(bw4, bh4)
-	isCompound = RefFrame[1] > INTRA_FRAME
-	for (y = 0; y < bh4; y++)
+		reset_block_context(bw4, bh4);
+	isCompound = RefFrame[1] > INTRA_FRAME;
+	for (int y = 0; y < bh4; y++)
 	{
-		for (x = 0; x < bw4; x++)
+		for (int x = 0; x < bw4; x++)
 		{
-			YModes[r + y][c + x] = YMode 
+			YModes[r + y][c + x] = YMode ;
 			if (RefFrame[0] == INTRA_FRAME && HasChroma)
-				UVModes[r + y][c + x] = UVMode 
+				UVModes[r + y][c + x] = UVMode ;
 			for (refList = 0; refList < 2; refList++)
-				RefFrames[r + y][c + x][refList] = RefFrame[refList] 
+				RefFrames[r + y][c + x][refList] = RefFrame[refList] ;
 			if (is_inter)
 			{
 					if (!use_intrabc)
 					{
-						CompGroupIdxs[r + y][c + x] = comp_group_idx
-						CompoundIdxs[r + y][c + x] = compound_idx
+						CompGroupIdxs[r + y][c + x] = comp_group_idx;
+						CompoundIdxs[r + y][c + x] = compound_idx;
 					}
 					for (dir = 0; dir < 2; dir++)
 					{
-						InterpFilters[r + y][c + x][dir] = interp_filter[dir]
+						InterpFilters[r + y][c + x][dir] = interp_filter[dir];
 					}
 					for (refList = 0; refList < 1 + isCompound; refList++)
 					{
-						Mvs[r + y][c + x][refList] = Mv[refList]
+						Mvs[r + y][c + x][refList] = Mv[refList];
 					}
 			}
 		}
 	}
-	compute_prediction()
-	residual() 
-	for (y = 0; y < bh4; y++)
+	compute_prediction();
+	residual() ;
+	for (int y = 0; y < bh4; y++)
 	{
-		for (x = 0; x < bw4; x++)
+		for (int x = 0; x < bw4; x++)
 		{
-			IsInters[r + y][c + x] = is_inter
-			SkipModes[r + y][c + x] = skip_mode
-			Skips[r + y][c + x] = skip
-			TxSizes[r + y][c + x] = TxSize
-			MiSizes[r + y][c + x] = MiSize
-			SegmentIds[r + y][c + x] = segment_id
-			PaletteSizes[0][r + y][c + x] = PaletteSizeY
-			PaletteSizes[1][r + y][c + x] = PaletteSizeUV 
-			for (i = 0; i < PaletteSizeY; i++)
-				PaletteColors[0][r + y][c + x][i] = palette_colors_y[i] 
-			for (i = 0; i < PaletteSizeUV; i++)
-				PaletteColors[1][r + y][c + x][i] = palette_colors_u[i] 
-			for (i = 0; i < FRAME_LF_COUNT; i++)
-				DeltaLFs[r + y][c + x][i] = DeltaLF[i]
+			IsInters[r + y][c + x] = is_inter;
+			SkipModes[r + y][c + x] = skip_mode;
+			Skips[r + y][c + x] = skip;
+			TxSizes[r + y][c + x] = TxSize;
+			MiSizes[r + y][c + x] = MiSize;
+			SegmentIds[r + y][c + x] = segment_id;
+			PaletteSizes[0][r + y][c + x] = PaletteSizeY;
+			PaletteSizes[1][r + y][c + x] = PaletteSizeUV ;
+			for (int i = 0; i < PaletteSizeY; i++)
+				PaletteColors[0][r + y][c + x][i] = palette_colors_y[i] ;
+			for (int i = 0; i < PaletteSizeUV; i++);
+				PaletteColors[1][r + y][c + x][i] = palette_colors_u[i] ;
+			for (int i = 0; i < FRAME_LF_COUNT; i++)
+				DeltaLFs[r + y][c + x][i] = DeltaLF[i];
 		}
 	}
+}
+int frame::mode_info(){
+	if ( FrameIsIntra )
+		intra_frame_mode_info( )
+	else
+		inter_frame_mode_info( )
+
+
 }

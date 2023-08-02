@@ -307,6 +307,11 @@ typedef struct PartitionData{
 	uint8_t **MiSizes;
 
 }PartitionData;
+typedef struct BlockData{
+
+	uint8_t skip;
+	
+}BlockData;
 typedef struct AV1Frame{
 	sizeInfo *si;
 	frameHeader *fh;
