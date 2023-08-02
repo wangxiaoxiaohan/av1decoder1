@@ -7,6 +7,7 @@ set(SRC_LIST
     ./src/obu.cpp
     ./src/frame.cpp
     ./src/segmentation.cpp
+    ./src/cdf.cpp
 	)
 set (EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 add_executable(av1decoder ${SRC_LIST})

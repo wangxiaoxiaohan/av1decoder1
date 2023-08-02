@@ -303,14 +303,14 @@ int obu::parseObuInfo(FILE* fp,int fileOffset,uint8_t *buf,int sz,AV1DecodeConte
 
 // read obu payload from file
 
-
+	printf("obu_header.obu_type %d\n",obu_header.obu_type);
 	printf("obu_size  %d\n",obu_size);
 
 	uint8_t obubuffer[obu_size];
 	fread(obubuffer,obu_size,1,fp);
 	initBitStream(&bs,obubuffer);
 
-	printf("obu_header.obu_type %d\n",obu_header.obu_type);
+	
 	switch(obu_header.obu_type){
 		case OBU_SEQUENCE_HEADER:
 			if(!ctx->seqHdr){
@@ -323,7 +323,7 @@ int obu::parseObuInfo(FILE* fp,int fileOffset,uint8_t *buf,int sz,AV1DecodeConte
 			break;
 		case OBU_FRAME:	//frame obu = frame header obu + tile group obu
 		case OBU_FRAME_HEADER:
-			if(ctx->SeenFrameHeader = 1){
+			if(ctx->SeenFrameHeader == 1){
 				//copy frame header...
 				//may no need to do anything... frameheader store in context;
 				break;

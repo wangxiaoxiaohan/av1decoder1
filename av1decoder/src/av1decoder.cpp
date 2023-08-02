@@ -14,6 +14,7 @@ void initContext(AV1DecodeContext **ctx){
 
 	c->frameHdr =  fh;
 	c->seqHdr = sh;
+	c->SeenFrameHeader = 0;
 	*ctx = c;
 	
 }

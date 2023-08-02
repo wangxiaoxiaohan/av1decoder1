@@ -1,6 +1,6 @@
 #ifndef _CDF_
 #define _CDF_
-#include "common.h"
+#include "bitstream.h"
 static uint16_t Default_Intra_Frame_Y_Mode_Cdf[INTRA_MODE_CONTEXTS][INTRA_MODE_CONTEXTS][INTRA_MODES + 1] = {
     {{15588, 17027, 19338, 20218, 20682, 21110, 21825, 23244,
       24189, 28165, 29093, 30466, 32768, 0},

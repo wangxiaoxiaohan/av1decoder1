@@ -145,7 +145,7 @@ typedef struct frameHeader{
 	uint32_t delta_frame_id[REFS_PER_FRAME];//delta_frame_id_minus_1 + 1;
 	uint32_t expectedFrameId[REFS_PER_FRAME];
 	//uint8_t found_ref[REFS_PER_FRAME]; 后面的码流中并不需要，所以不加在结构体中了
-	uint16_t MiCols,MiRows;
+	uint16_t MiCols,MiRows; //帧中 4*4的块的数目
 	uint8_t allow_high_precision_mv;
 	uint8_t is_filter_switchable;
 	uint8_t	interpolation_filter;
@@ -304,6 +304,7 @@ typedef struct TileData{
 typedef struct PartitionData{
 	uint8_t AvailU;
 	uint8_t AvailL;
+	uint8_t **MiSizes;
 
 }PartitionData;
 typedef struct AV1Frame{

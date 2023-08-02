@@ -1,6 +1,5 @@
 #include "frame.h"
 #include "segmentation.h"
-#include "cdf.h"
 #include <string.h>
 
 int frame::parseFrameHeader(int sz, bitSt *bs, AV1DecodeContext *av1ctx, sequenceHeader *seqHdr, obuHeader *obuheader, frameHeader *out)
@@ -1176,23 +1175,47 @@ int frame::decode_tile(SymbolContext *sbCtx,bitSt *bs, TileData *t_data,AV1Decod
 
 }
 
-int frame::decode_partition(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,PartitionData *p_data,int r,int c,int bSize, AV1DecodeContext *av1ctx)
+int frame::decode_partition(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
+							PartitionData *p_data,int r,int c,int bSize, AV1DecodeContext *av1ctx)
 {
 	frameHeader *frameHdr = av1ctx->frameHdr;
 	sequenceHeader *seqHdr = av1ctx->seqHdr;
 
 	if (r >= frameHdr->MiRows || c >= frameHdr->MiCols)
 		return 0;
+	//是否有效，通过判断是否在帧内
 	p_data->AvailU = is_inside(r - 1, c,t_data->MiColStart,t_data->MiColEnd,t_data->MiRowStart,t_data->MiRowEnd);
 	p_data->AvailL = is_inside(r, c - 1,t_data->MiColStart,t_data->MiColEnd,t_data->MiRowStart,t_data->MiRowEnd);
+	//当前块4*4数目
 	int num4x4 = Num_4x4_Blocks_Wide[bSize] ;
+	//
 	int halfBlock4x4 = num4x4 >> 1 ;
 	int quarterBlock4x4 = halfBlock4x4 >> 1 ;
+	//当前块是否还有数据
 	int hasRows = (r + halfBlock4x4) < frameHdr->MiRows;
 	int hasCols = (c + halfBlock4x4) < frameHdr->MiCols ;
 
-	int partition;
-	Symbol sb;
+	int partition,split_or_horz,split_or_vert;
+	Symbol sb = Symbol::Instance();
+
+	uint16_t *partitionCdf;
+	int bsl = Mi_Width_Log2[ bSize ];
+	int above = p_data->AvailU && ( Mi_Width_Log2[ p_data->MiSizes[ r - 1 ][ c ] ] < bsl );
+	int left = p_data->AvailL && ( Mi_Height_Log2[ p_data->MiSizes[ r ][ c - 1 ] ] < bsl );
+	int ctx = left * 2 + above;
+
+	if(bsl == 1)
+		partitionCdf = Default_Partition_W8_Cdf[ctx];
+	else if(bsl == 2)
+		partitionCdf = Default_Partition_W16_Cdf[ctx];
+	else if(bsl == 3)
+		partitionCdf = Default_Partition_W32_Cdf[ctx];
+	else if(bsl == 4)
+		partitionCdf = Default_Partition_W64_Cdf[ctx];
+	else if(bsl == 5)
+		partitionCdf = Default_Partition_W128_Cdf[ctx];
+
+
 	if (bSize < BLOCK_8X8)
 	{
 		partition = PARTITION_NONE;
@@ -1200,100 +1223,191 @@ int frame::decode_partition(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,Part
 	else if (hasRows && hasCols)
 	{
 		 //根据上边和左边的块来推出需要使用的cdf， 为什么MiSizes 还未初始化这里就在使用？
-		int bsl = Mi_Width_Log2[ bSize ];
-		int above = p_data->AvailU && ( Mi_Width_Log2[ MiSizes[ r - 1 ][ c ] ] < bsl );
-		int left = p_data->AvailL && ( Mi_Height_Log2[ MiSizes[ r ][ c - 1 ] ] < bsl );
-		int ctx = left * 2 + above;
+		 //在最左上角的时候AvailU AvailL都是0，自然  p_data->AvailU && 后面的就不会调了，就没有问题
 
-		uint16_t **cdf;
-		partition = sb.decodeSymbol(sbCtx,bs,cdf[ctx],sizeof(cdf[ctx]));
+		partition = sb.decodeSymbol(sbCtx,bs,partitionCdf,sizeof(partitionCdf));
 	}
 	else if (hasCols)
 	{
-		split_or_horz S()
-		partition = split_or_horz ? PARTITION_SPLIT : PARTITION_HORZ
+		int psum = ( partitionCdf[ PARTITION_VERT ] - partitionCdf[ PARTITION_VERT - 1 ] +
+		partitionCdf[ PARTITION_SPLIT ] - partitionCdf[ PARTITION_SPLIT - 1 ] +
+		partitionCdf[ PARTITION_HORZ_A ] - partitionCdf[ PARTITION_HORZ_A - 1 ] +
+		partitionCdf[ PARTITION_VERT_A ] - partitionCdf[ PARTITION_VERT_A - 1 ] +
+		partitionCdf[ PARTITION_VERT_B ] - partitionCdf[ PARTITION_VERT_B - 1 ] );
+		if ( bSize != BLOCK_128X128 )
+		psum += partitionCdf[ PARTITION_VERT_4 ] - partitionCdf[ PARTITION_VERT_4 - 1 ];
+		uint16_t cdf[3];
+		cdf[0] = ( 1 << 15 ) - psum;
+		cdf[1] = 1 << 15;
+		cdf[2] = 0;
+
+
+		split_or_horz = sb.decodeSymbol(sbCtx,bs,cdf,3);
+		partition = split_or_horz ? PARTITION_SPLIT : PARTITION_HORZ;
 	}
 	else if (hasRows)
 	{
-		split_or_vert S()
-			partition = split_or_vert ? PARTITION_SPLIT : PARTITION_VERT
+		int psum = ( partitionCdf[ PARTITION_VERT ] - partitionCdf[ PARTITION_VERT - 1 ] +
+		partitionCdf[ PARTITION_SPLIT ] - partitionCdf[ PARTITION_SPLIT - 1 ] +
+		partitionCdf[ PARTITION_HORZ_A ] - partitionCdf[ PARTITION_HORZ_A - 1 ] +
+		partitionCdf[ PARTITION_VERT_A ] - partitionCdf[ PARTITION_VERT_A - 1 ] +
+		partitionCdf[ PARTITION_VERT_B ] - partitionCdf[ PARTITION_VERT_B - 1 ] );
+		if ( bSize != BLOCK_128X128 )
+		psum += partitionCdf[ PARTITION_VERT_4 ] - partitionCdf[ PARTITION_VERT_4 - 1 ];
+		uint16_t cdf[3];
+		cdf[0] = ( 1 << 15 ) - psum;
+		cdf[1] = 1 << 15;
+		cdf[2] = 0;
+		split_or_vert = sb.decodeSymbol(sbCtx,bs,cdf,3);
+		partition = split_or_vert ? PARTITION_SPLIT : PARTITION_VERT;
 	}
 	else
 	{
-		partition = PARTITION_SPLIT
+		partition = PARTITION_SPLIT;
 	}
-	subSize = Partition_Subsize[partition][bSize];
-	splitSize = Partition_Subsize[PARTITION_SPLIT][bSize] ;
+	int subSize = Partition_Subsize[partition][bSize];
+	int splitSize = Partition_Subsize[PARTITION_SPLIT][bSize] ;
 	
 	if (partition == PARTITION_NONE)
 	{
-		decode_block(r, c, subSize);
+		//decode_block(r, c, subSize);
 	}
 	else if (partition == PARTITION_HORZ)
 	{
-		decode_block(r, c, subSize);
-		if (hasRows)
-			decode_block(r + halfBlock4x4, c, subSize);
+		//decode_block(r, c, subSize);
+		//if (hasRows)
+			//decode_block(r + halfBlock4x4, c, subSize);
 	}
 	else if (partition == PARTITION_VERT)
 	{
-		decode_block(r, c, subSize)
-		if (hasCols)
-			decode_block(r, c + halfBlock4x4, subSize);
+		//decode_block(r, c, subSize);
+		//if (hasCols)
+			//decode_block(r, c + halfBlock4x4, subSize);
 	}
 	else if (partition == PARTITION_SPLIT)
 	{
-		decode_partition(r, c, subSize);
-		decode_partition(r, c + halfBlock4x4, subSize);
-		decode_partition(r + halfBlock4x4, c, subSize);
-		decode_partition(r + halfBlock4x4, c + halfBlock4x4, subSize);
+		decode_partition(sbCtx,bs,t_data,p_data, r, c, subSize,av1ctx);
+		decode_partition(sbCtx,bs,t_data,p_data,r, c + halfBlock4x4, subSize,av1ctx);
+		decode_partition(sbCtx,bs,t_data,p_data,r + halfBlock4x4, c, subSize,av1ctx);
+		decode_partition(sbCtx,bs,t_data,p_data,r + halfBlock4x4, c + halfBlock4x4, subSize,av1ctx);
 	}
 	else if (partition == PARTITION_HORZ_A)
 	{
-		decode_block(r, c, splitSize);
-		decode_block(r, c + halfBlock4x4, splitSize);
-		decode_block(r + halfBlock4x4, c, subSize);
+		//decode_block(r, c, splitSize);
+		//decode_block(r, c + halfBlock4x4, splitSize);
+		//decode_block(r + halfBlock4x4, c, subSize);
 	}
 	else if (partition == PARTITION_HORZ_B)
 	{
-		decode_block(r, c, subSize);
-		decode_block(r + halfBlock4x4, c, splitSize);
-		decode_block(r + halfBlock4x4, c + halfBlock4x4, splitSize);
+		//decode_block(r, c, subSize);
+		//decode_block(r + halfBlock4x4, c, splitSize);
+		//decode_block(r + halfBlock4x4, c + halfBlock4x4, splitSize);
 	}
 	else if (partition == PARTITION_VERT_A)
 	{
-		decode_block(r, c, splitSize);
-		decode_block(r + halfBlock4x4, c, splitSize);
-		decode_block(r, c + halfBlock4x4, subSize);
+		//decode_block(r, c, splitSize);
+		//decode_block(r + halfBlock4x4, c, splitSize);
+		//decode_block(r, c + halfBlock4x4, subSize);
 	}
 	else if (partition == PARTITION_VERT_B)
 	{
-		decode_block(r, c, subSize);
-		decode_block(r, c + halfBlock4x4, splitSize);
-		decode_block(r + halfBlock4x4, c + halfBlock4x4, splitSize);
+		//decode_block(r, c, subSize);
+		//decode_block(r, c + halfBlock4x4, splitSize);
+		//decode_block(r + halfBlock4x4, c + halfBlock4x4, splitSize);
 	}
 	else if (partition == PARTITION_HORZ_4)
 	{
-		decode_block(r + quarterBlock4x4 * 0, c, subSize);
-		decode_block(r + quarterBlock4x4 * 1, c, subSize);
-		decode_block(r + quarterBlock4x4 * 2, c, subSize) ;
-		if (r + quarterBlock4x4 * 3 < MiRows)
-			decode_block(r + quarterBlock4x4 * 3, c, subSize);
+		//decode_block(r + quarterBlock4x4 * 0, c, subSize);
+		//decode_block(r + quarterBlock4x4 * 1, c, subSize);
+		//decode_block(r + quarterBlock4x4 * 2, c, subSize) ;
+		//if (r + quarterBlock4x4 * 3 < frameHdr->MiRows)
+			//decode_block(r + quarterBlock4x4 * 3, c, subSize);
 	}
 	else
 	{
-		decode_block(r, c + quarterBlock4x4 * 0, subSize);
-		decode_block(r, c + quarterBlock4x4 * 1, subSize);
-		decode_block(r, c + quarterBlock4x4 * 2, subSize); 
-		if (c + quarterBlock4x4 * 3 < MiCols)
-			decode_block(r, c + quarterBlock4x4 * 3, subSize);
+		//decode_block(r, c + quarterBlock4x4 * 0, subSize);
+		//decode_block(r, c + quarterBlock4x4 * 1, subSize);
+		//decode_block(r, c + quarterBlock4x4 * 2, subSize); 
+		//if (c + quarterBlock4x4 * 3 < frameHdr->MiCols)
+			//decode_block(r, c + quarterBlock4x4 * 3, subSize);
 	}
 }
+
 int frame::decode_block(){
 
-
-
-
-
-
+	MiRow = r
+	MiCol = c
+	MiSize = subSize
+	bw4 = Num_4x4_Blocks_Wide[subSize] bh4 = Num_4x4_Blocks_High[subSize] 	
+	if (bh4 == 1 && subsampling_y && (MiRow & 1) == 0)
+				HasChroma = 0 else if (bw4 == 1 && subsampling_x && (MiCol & 1) == 0)
+				HasChroma = 0 else HasChroma = NumPlanes > 1 AvailU = is_inside(r - 1, c)
+				AvailL = is_inside(r, c - 1)
+				AvailUChroma = AvailU
+				AvailLChroma = AvailL 
+	if (HasChroma)
+	{
+		if (subsampling_y && bh4 == 1)
+			AvailUChroma = is_inside(r - 2, c)
+		if (subsampling_x && bw4 == 1)
+			AvailLChroma = is_inside(r, c - 2)
+	}else {
+		AvailUChroma = 0 
+		AvailLChroma = 0
+	}
+	mode_info()
+	palette_tokens()
+	read_block_tx_size() 	
+	if (skip)
+		reset_block_context(bw4, bh4)
+	isCompound = RefFrame[1] > INTRA_FRAME
+	for (y = 0; y < bh4; y++)
+	{
+		for (x = 0; x < bw4; x++)
+		{
+			YModes[r + y][c + x] = YMode 
+			if (RefFrame[0] == INTRA_FRAME && HasChroma)
+				UVModes[r + y][c + x] = UVMode 
+			for (refList = 0; refList < 2; refList++)
+				RefFrames[r + y][c + x][refList] = RefFrame[refList] 
+			if (is_inter)
+			{
+					if (!use_intrabc)
+					{
+						CompGroupIdxs[r + y][c + x] = comp_group_idx
+						CompoundIdxs[r + y][c + x] = compound_idx
+					}
+					for (dir = 0; dir < 2; dir++)
+					{
+						InterpFilters[r + y][c + x][dir] = interp_filter[dir]
+					}
+					for (refList = 0; refList < 1 + isCompound; refList++)
+					{
+						Mvs[r + y][c + x][refList] = Mv[refList]
+					}
+			}
+		}
+	}
+	compute_prediction()
+	residual() 
+	for (y = 0; y < bh4; y++)
+	{
+		for (x = 0; x < bw4; x++)
+		{
+			IsInters[r + y][c + x] = is_inter
+			SkipModes[r + y][c + x] = skip_mode
+			Skips[r + y][c + x] = skip
+			TxSizes[r + y][c + x] = TxSize
+			MiSizes[r + y][c + x] = MiSize
+			SegmentIds[r + y][c + x] = segment_id
+			PaletteSizes[0][r + y][c + x] = PaletteSizeY
+			PaletteSizes[1][r + y][c + x] = PaletteSizeUV 
+			for (i = 0; i < PaletteSizeY; i++)
+				PaletteColors[0][r + y][c + x][i] = palette_colors_y[i] 
+			for (i = 0; i < PaletteSizeUV; i++)
+				PaletteColors[1][r + y][c + x][i] = palette_colors_u[i] 
+			for (i = 0; i < FRAME_LF_COUNT; i++)
+				DeltaLFs[r + y][c + x][i] = DeltaLF[i]
+		}
+	}
 }
