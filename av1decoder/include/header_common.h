@@ -305,11 +305,30 @@ typedef struct PartitionData{
 	uint8_t AvailU;
 	uint8_t AvailL;
 	uint8_t **MiSizes;
-
+	uint8_t **SegmentIds;
+	uint8_t **IsInters;
+	uint8_t **SkipModes;
+	uint8_t **Skips;
+	uint8_t **TxSizes;
+	uint8_t **PaletteSizes[2];
+	uint8_t **PaletteColors[2];
+	uint8_t **DeltaLFs[4];
 }PartitionData;
 typedef struct BlockData{
-
 	uint8_t skip;
+	uint8_t MiRow;
+	uint8_t MiCol;
+	uint8_t MiSize;
+	uint8_t AvailU;
+	uint8_t AvailL;
+	uint8_t AvailUChroma;
+	uint8_t AvailLChroma;
+	uint8_t prevUL;
+	uint8_t prevU;
+	uint8_t prevL;
+	uint8_t segment_id;
+	uint8_t pred;
+	uint8_t Lossless;
 	
 }BlockData;
 typedef struct AV1Frame{

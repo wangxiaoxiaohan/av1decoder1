@@ -1270,19 +1270,19 @@ int frame::decode_partition(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
 	
 	if (partition == PARTITION_NONE)
 	{
-		//decode_block(r, c, subSize);
+		decode_block(r, c, subSize);
 	}
 	else if (partition == PARTITION_HORZ)
 	{
-		//decode_block(r, c, subSize);
-		//if (hasRows)
-			//decode_block(r + halfBlock4x4, c, subSize);
+		decode_block(r, c, subSize);
+		if (hasRows)
+			decode_block(r + halfBlock4x4, c, subSize);
 	}
 	else if (partition == PARTITION_VERT)
 	{
-		//decode_block(r, c, subSize);
-		//if (hasCols)
-			//decode_block(r, c + halfBlock4x4, subSize);
+		decode_block(r, c, subSize);
+		if (hasCols)
+			decode_block(r, c + halfBlock4x4, subSize);
 	}
 	else if (partition == PARTITION_SPLIT)
 	{
@@ -1293,43 +1293,43 @@ int frame::decode_partition(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
 	}
 	else if (partition == PARTITION_HORZ_A)
 	{
-		//decode_block(r, c, splitSize);
-		//decode_block(r, c + halfBlock4x4, splitSize);
-		//decode_block(r + halfBlock4x4, c, subSize);
+		decode_block(r, c, splitSize);
+		decode_block(r, c + halfBlock4x4, splitSize);
+		decode_block(r + halfBlock4x4, c, subSize);
 	}
 	else if (partition == PARTITION_HORZ_B)
 	{
-		//decode_block(r, c, subSize);
-		//decode_block(r + halfBlock4x4, c, splitSize);
-		//decode_block(r + halfBlock4x4, c + halfBlock4x4, splitSize);
+		decode_block(r, c, subSize);
+		decode_block(r + halfBlock4x4, c, splitSize);
+		decode_block(r + halfBlock4x4, c + halfBlock4x4, splitSize);
 	}
 	else if (partition == PARTITION_VERT_A)
 	{
-		//decode_block(r, c, splitSize);
-		//decode_block(r + halfBlock4x4, c, splitSize);
-		//decode_block(r, c + halfBlock4x4, subSize);
+		decode_block(r, c, splitSize);
+		decode_block(r + halfBlock4x4, c, splitSize);
+		decode_block(r, c + halfBlock4x4, subSize);
 	}
 	else if (partition == PARTITION_VERT_B)
 	{
-		//decode_block(r, c, subSize);
-		//decode_block(r, c + halfBlock4x4, splitSize);
-		//decode_block(r + halfBlock4x4, c + halfBlock4x4, splitSize);
+		decode_block(r, c, subSize);
+		decode_block(r, c + halfBlock4x4, splitSize);
+		decode_block(r + halfBlock4x4, c + halfBlock4x4, splitSize);
 	}
 	else if (partition == PARTITION_HORZ_4)
 	{
-		//decode_block(r + quarterBlock4x4 * 0, c, subSize);
-		//decode_block(r + quarterBlock4x4 * 1, c, subSize);
-		//decode_block(r + quarterBlock4x4 * 2, c, subSize) ;
-		//if (r + quarterBlock4x4 * 3 < frameHdr->MiRows)
-			//decode_block(r + quarterBlock4x4 * 3, c, subSize);
+		decode_block(r + quarterBlock4x4 * 0, c, subSize);
+		decode_block(r + quarterBlock4x4 * 1, c, subSize);
+		decode_block(r + quarterBlock4x4 * 2, c, subSize) ;
+		if (r + quarterBlock4x4 * 3 < frameHdr->MiRows)
+			decode_block(r + quarterBlock4x4 * 3, c, subSize);
 	}
 	else
 	{
-		//decode_block(r, c + quarterBlock4x4 * 0, subSize);
-		//decode_block(r, c + quarterBlock4x4 * 1, subSize);
-		//decode_block(r, c + quarterBlock4x4 * 2, subSize); 
-		//if (c + quarterBlock4x4 * 3 < frameHdr->MiCols)
-			//decode_block(r, c + quarterBlock4x4 * 3, subSize);
+		decode_block(r, c + quarterBlock4x4 * 0, subSize);
+		decode_block(r, c + quarterBlock4x4 * 1, subSize);
+		decode_block(r, c + quarterBlock4x4 * 2, subSize); 
+		if (c + quarterBlock4x4 * 3 < frameHdr->MiCols)
+			decode_block(r, c + quarterBlock4x4 * 3, subSize);
 	}
 }
 
@@ -1339,37 +1339,39 @@ int frame::decode_block(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
 	frameHeader *frameHdr = av1ctx->frameHdr;
 	sequenceHeader *seqHdr = av1ctx->seqHdr;
 
-	int MiRow = r;
-	int MiCol = c;
-	int MiSize = subSize;
+	BlockData b_data;
+
+	b_data.MiRow = r;
+	b_data.MiCol = c;
+	b_data.MiSize = subSize;
 	int bw4 = Num_4x4_Blocks_Wide[subSize];
 	int bh4 = Num_4x4_Blocks_High[subSize];	
 	int HasChroma;
-	if (bh4 == 1 && seqHdr->color_config.subsampling_y && (MiRow & 1) == 0)
+	if (bh4 == 1 && seqHdr->color_config.subsampling_y && (b_data.MiRow & 1) == 0)
 		HasChroma = 0 ;
-	else if (bw4 == 1 && seqHdr->color_config.subsampling_x && (MiCol & 1) == 0)
+	else if (bw4 == 1 && seqHdr->color_config.subsampling_x && (b_data.MiCol & 1) == 0)
 		HasChroma = 0 ;
 	else 
 		HasChroma = seqHdr->color_config.NumPlanes > 1;
-	int AvailU = is_inside(r - 1, c,t_data->MiColStart,t_data->MiColEnd,t_data->MiRowStart,t_data->MiRowEnd);
-	int AvailL = is_inside(r, c - 1,t_data->MiColStart,t_data->MiColEnd,t_data->MiRowStart,t_data->MiRowEnd);
-	int AvailUChroma = AvailU;
-	int AvailLChroma = AvailL;
+	b_data.AvailU = is_inside(r - 1, c,t_data->MiColStart,t_data->MiColEnd,t_data->MiRowStart,t_data->MiRowEnd);
+	b_data.AvailL = is_inside(r, c - 1,t_data->MiColStart,t_data->MiColEnd,t_data->MiRowStart,t_data->MiRowEnd);
+	b_data.AvailUChroma = b_data.AvailU;
+	b_data.AvailLChroma = b_data.AvailL;
 	if (HasChroma)
 	{
 		if (seqHdr->color_config.subsampling_y && bh4 == 1)
-			AvailUChroma = is_inside(r - 2, c,t_data->MiColStart,t_data->MiColEnd,t_data->MiRowStart,t_data->MiRowEnd);
+			b_data.AvailUChroma = is_inside(r - 2, c,t_data->MiColStart,t_data->MiColEnd,t_data->MiRowStart,t_data->MiRowEnd);
 		if (seqHdr->color_config.subsampling_x && bw4 == 1)
-			AvailLChroma = is_inside(r, c - 2,t_data->MiColStart,t_data->MiColEnd,t_data->MiRowStart,t_data->MiRowEnd);
+			b_data.AvailLChroma = is_inside(r, c - 2,t_data->MiColStart,t_data->MiColEnd,t_data->MiRowStart,t_data->MiRowEnd);
 	}else {
-		AvailUChroma = 0;
-		AvailLChroma = 0;
+		b_data.AvailUChroma = 0;
+		b_data.AvailLChroma = 0;
 	}
-	BlockData b_data;
-	mode_info();
+
+	mode_info(&b_data,av1ctx);
 	palette_tokens();
 	read_block_tx_size();	
-	if (skip)
+	if (b_data.skip)
 		reset_block_context(bw4, bh4);
 	isCompound = RefFrame[1] > INTRA_FRAME;
 	for (int y = 0; y < bh4; y++)
@@ -1379,7 +1381,7 @@ int frame::decode_block(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
 			YModes[r + y][c + x] = YMode ;
 			if (RefFrame[0] == INTRA_FRAME && HasChroma)
 				UVModes[r + y][c + x] = UVMode ;
-			for (refList = 0; refList < 2; refList++)
+			for (int refList = 0; refList < 2; refList++)
 				RefFrames[r + y][c + x][refList] = RefFrame[refList] ;
 			if (is_inter)
 			{
@@ -1388,11 +1390,11 @@ int frame::decode_block(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
 						CompGroupIdxs[r + y][c + x] = comp_group_idx;
 						CompoundIdxs[r + y][c + x] = compound_idx;
 					}
-					for (dir = 0; dir < 2; dir++)
+					for (int dir = 0; dir < 2; dir++)
 					{
 						InterpFilters[r + y][c + x][dir] = interp_filter[dir];
 					}
-					for (refList = 0; refList < 1 + isCompound; refList++)
+					for (int refList = 0; refList < 1 + isCompound; refList++)
 					{
 						Mvs[r + y][c + x][refList] = Mv[refList];
 					}
@@ -1422,11 +1424,144 @@ int frame::decode_block(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
 		}
 	}
 }
-int frame::mode_info(){
-	if ( FrameIsIntra )
-		intra_frame_mode_info( )
+int frame::mode_info(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
+							PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1ctx){
+	frameHeader *frameHdr = av1ctx->frameHdr;
+	if ( frameHdr->FrameIsIntra ) 
+		intra_frame_mode_info(b_data,av1ctx);
 	else
-		inter_frame_mode_info( )
+		inter_frame_mode_info(b_data,av1ctx);
+
+}
+int frame::intra_frame_mode_info(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
+							PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1ctx ){
+	frameHeader *frameHdr = av1ctx->frameHdr;
+	sequenceHeader *seqHdr = av1ctx->seqHdr;
+	b_data->skip = 0 ;
+	if (frameHdr->segmentation_params.SegIdPreSkip){
+		//intra_segment_id();
+		if ( frameHdr->segmentation_params.segmentation_enabled )
+			read_segment_id();
+		else
+			b_data->segment_id = 0;
+		b_data->Lossless = frameHdr->segmentation_params.LosslessArray[ b_data->segment_id ];
+
+	}
+	skip_mode = 0 ;
+	read_skip() 
+	if (!SegIdPreSkip)
+		intra_segment_id()
+	read_cdef()
+	read_delta_qindex()
+	read_delta_lf()
+	ReadDeltas = 0 
+	RefFrame[0] = INTRA_FRAME
+	RefFrame[1] = NONE 
+	if (allow_intrabc)
+	{
+		use_intrabc S()
+	}
+	else
+	{
+		use_intrabc = 0
+	}
+	if (use_intrabc)
+	{
+		is_inter = 1 
+		YMode = DC_PRED
+		motion_mode = SIMPLE
+		compound_type = COMPOUND_AVERAGE
+		PaletteSizeY = 0 
+		PaletteSizeUV = 0 
+		interp_filter[0] = BILINEAR
+		interp_filter[1] = BILINEAR
+		find_mv_stack(0)
+		assign_mv(0)
+	}
+	else
+	{
+		is_inter = 0 
+		intra_frame_y_mode S()
+		YMode = intra_frame_y_mode
+		intra_angle_info_y() 
+		if (HasChroma)
+		{
+			uv_mode S()
+			UVMode = uv_mode 
+			if (UVMode == UV_CFL_PRED){
+				read_cfl_alphas()
+			} 
+			intra_angle_info_uv()
+		}
+		PaletteSizeY = 0 
+		PaletteSizeUV = 0 
+		if (MiSize >= BLOCK_8X8 &&
+			Block_Width[MiSize] <= 64 &&
+			Block_Height[MiSize] <= 64 &&
+			allow_screen_content_tools){
+				palette_mode_info()
+			} 
+			filter_intra_mode_info()
+	}
+	
+}
+int frame::inter_frame_mode_info(AV1DecodeContext *av1ctx ){
 
 
+}
+int frame::read_segment_id(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
+							PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1ctx){
+	frameHeader *frameHdr = av1ctx->frameHdr;
+	if (b_data->AvailU && b_data->AvailL)
+		b_data->prevUL = SegmentIds[b_data->MiRow - 1][b_data->MiCol - 1];
+	else 
+		b_data->prevUL = -1 ;
+	if (b_data->AvailU)
+		b_data->prevU = SegmentIds[b_data->MiRow - 1][b_data->MiCol] ;
+	else
+		b_data->prevU = -1 ;
+	if (b_data->AvailL)
+		b_data->prevL = SegmentIds[b_data->MiRow][b_data->MiCol - 1] ;
+	else 
+		b_data->prevL = -1 ;
+	if (b_data->prevU == -1)
+		b_data->pred = (b_data->prevL == -1) ? 0 : b_data->prevL ;
+	else if (b_data->prevL == -1) 
+		b_data->pred = b_data->prevU ;
+	else 
+		b_data->pred = (b_data->prevUL == b_data->prevU) ? b_data->prevU : b_data->prevL; 
+	if (b_data->skip)
+	{
+		b_data->segment_id = b_data->pred;
+	}
+	else
+	{
+		segment_id S() 
+		if (!ref) 
+			return diff 
+		if (ref >= (max - 1)) 
+			return max - diff - 1 
+		if (2 * ref < max)
+		{
+			if (diff <= 2 * ref)
+			{
+				if (diff & 1)
+					return ref + ((diff + 1) >> 1);
+				else 
+					return ref - (diff >> 1);
+			}
+			return diff;
+		}
+		else
+		{
+			if (diff <= 2 * (max - ref - 1))
+			{
+				if (diff & 1)
+					return ref + ((diff + 1) >> 1) ;
+				else 
+					return ref - (diff >> 1);
+			}
+			return max - (diff + 1);
+		}
+	}
 }
