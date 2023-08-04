@@ -1437,6 +1437,7 @@ int frame::intra_frame_mode_info(SymbolContext *sbCtx,bitSt *bs,TileData *t_data
 							PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1ctx ){
 	frameHeader *frameHdr = av1ctx->frameHdr;
 	sequenceHeader *seqHdr = av1ctx->seqHdr;
+	Symbol sb = Symbol::Instance();
 	b_data->skip = 0 ;
 	if (frameHdr->segmentation_params.SegIdPreSkip){
 		//intra_segment_id();
@@ -1448,9 +1449,29 @@ int frame::intra_frame_mode_info(SymbolContext *sbCtx,bitSt *bs,TileData *t_data
 
 	}
 	skip_mode = 0 ;
-	read_skip() 
-	if (!SegIdPreSkip)
-		intra_segment_id()
+	//read_skip() 
+	if ( frameHdr->segmentation_params.SegIdPreSkip && seg_feature_active( SEG_LVL_SKIP ) ) {
+		b_data->skip = 1;
+	} else {
+		ctx = 0;
+		if ( b_data.AvailU )
+			ctx += p_data->Skips[ b_data->MiRow - 1 ][ b_data->MiCol ];
+		if ( b_data.AvailL )
+			ctx += p_data->Skips[ b_data->MiRow ][ b_data->MiCol - 1 ];
+		b_data->skip =  sb.decodeSymbol(sbCtx,bs,Default_Skip_Mode_Cdf,sizeof(Default_Skip_Mode_Cdf));//S()
+	}
+
+
+	if (!frameHdr->segmentation_params.SegIdPreSkip){
+		//intra_segment_id()
+		if ( frameHdr->segmentation_params.segmentation_enabled )
+			read_segment_id();
+		else
+			b_data->segment_id = 0;
+		b_data->Lossless = frameHdr->segmentation_params.LosslessArray[ b_data->segment_id ];
+
+	}
+		
 	read_cdef()
 	read_delta_qindex()
 	read_delta_lf()
