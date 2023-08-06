@@ -2170,7 +2170,114 @@ static uint16_t Default_Coeff_Br_Cdf[COEFF_CDF_Q_CTXS][TX_SIZES][PLANE_TYPES][LE
        {8192, 16384, 24576, 32768, 0},
        {8192, 16384, 24576, 32768, 0}}}}};
 
+typedef struct CDFArrays{
+  uint16_t Intra_Frame_Y_Mode[INTRA_MODE_CONTEXTS][INTRA_MODE_CONTEXTS][INTRA_MODES + 1] ;
+  uint16_t Y_Mode[BLOCK_SIZE_GROUPS][INTRA_MODES + 1];
+  uint16_t Uv_Mode_Cfl_Not_Allowed[INTRA_MODES][UV_INTRA_MODES_CFL_NOT_ALLOWED + 1] ;
+  uint16_t Uv_Mode_Cfl_Allowed[INTRA_MODES][UV_INTRA_MODES_CFL_ALLOWED + 1];
+  uint16_t Angle_Delta[DIRECTIONAL_MODES][(2 * MAX_ANGLE_DELTA + 1) + 1];
+  uint16_t Intrabc[2 + 1];
+  uint16_t Partition_W8[PARTITION_CONTEXTS][5] ;
 
+  uint16_t Partition_W16[PARTITION_CONTEXTS][11] ;
+  uint16_t Partition_W32[PARTITION_CONTEXTS][11] ;
+  uint16_t Partition_W64[PARTITION_CONTEXTS][11] ;
+  uint16_t Partition_W128[PARTITION_CONTEXTS][9];
+  uint16_t Tx_8x8[TX_SIZE_CONTEXTS][MAX_TX_DEPTH + 1];
+  uint16_t Tx_16x16[TX_SIZE_CONTEXTS][MAX_TX_DEPTH + 2];
+  uint16_t Tx_32x32[TX_SIZE_CONTEXTS][MAX_TX_DEPTH + 2] ;
+  uint16_t Tx_64x64[TX_SIZE_CONTEXTS][MAX_TX_DEPTH + 2] ;
+  uint16_t Txfm_Split[TXFM_PARTITION_CONTEXTS][3] ;
+  uint16_t Filter_Intra_Mode[6] ;
+  uint16_t Filter_Intra[BLOCK_SIZES][3];
+  uint16_t Segment_Id[SEGMENT_ID_CONTEXTS][MAX_SEGMENTS + 1];
+  uint16_t Segment_Id_Predicted[SEGMENT_ID_PREDICTED_CONTEXTS][3] ;
+  uint16_t Mv_Class0_Hp[3] ;
+  uint16_t Mv_Hp[3] ;
+  uint16_t Mv_Sign[3] ;
+  uint16_t Mv_Bit[MV_OFFSET_BITS][3] ;
+  uint16_t Mv_Class0_Bit[3] ;
+  uint16_t New_Mv[NEW_MV_CONTEXTS][3] ;
+  uint16_t Zero_Mv[ZERO_MV_CONTEXTS][3];
+  uint16_t Ref_Mv[REF_MV_CONTEXTS][3] ;
+  uint16_t Drl_Mode[DRL_MODE_CONTEXTS][3] ;
+  uint16_t Is_Inter[IS_INTER_CONTEXTS][3];
+  uint16_t Comp_Mode[COMP_INTER_CONTEXTS][3] ;
+  uint16_t Skip_Mode[SKIP_MODE_CONTEXTS][3] ;
+  uint16_t Skip[SKIP_CONTEXTS][3] ;
+  uint16_t Comp_Ref[REF_CONTEXTS][FWD_REFS - 1][3];
+  uint16_t Comp_Bwd_Ref[REF_CONTEXTS][BWD_REFS - 1][3];
+  uint16_t Single_Ref[REF_CONTEXTS][SINGLE_REFS - 1][3] ;
+  uint16_t Compound_Mode[COMPOUND_MODE_CONTEXTS][COMPOUND_MODES + 1];
+  uint16_t Interp_Filter[INTERP_FILTER_CONTEXTS][INTERP_FILTERS + 1] ;
+  uint16_t Motion_Mode[BLOCK_SIZES][MOTION_MODES + 1] ;
+
+  uint16_t Mv_Joint[MV_JOINTS + 1] ;
+  uint16_t Mv_Class[2][MV_CLASSES + 1] ;
+  uint16_t Mv_Class0_Fr[2][CLASS0_SIZE][MV_JOINTS + 1] ;
+  uint16_t Mv_Fr[2][MV_JOINTS + 1] ;
+  uint16_t Palette_Y_Size[PALETTE_BLOCK_SIZE_CONTEXTS][PALETTE_SIZES + 1];
+  uint16_t Palette_Uv_Size[PALETTE_BLOCK_SIZE_CONTEXTS][PALETTE_SIZES + 1] ;
+
+  uint16_t Palette_Size_2_Y_Color[PALETTE_COLOR_CONTEXTS][3] ;
+  uint16_t Palette_Size_3_Y_Color[PALETTE_COLOR_CONTEXTS][4];
+  uint16_t Palette_Size_4_Y_Color[PALETTE_COLOR_CONTEXTS][5];
+  uint16_t Palette_Size_5_Y_Color[PALETTE_COLOR_CONTEXTS][6] ;
+  uint16_t Palette_Size_6_Y_Color[PALETTE_COLOR_CONTEXTS][7] ;
+  uint16_t Palette_Size_7_Y_Color[PALETTE_COLOR_CONTEXTS][8] ;
+  uint16_t Palette_Size_8_Y_Color[PALETTE_COLOR_CONTEXTS][9] ;
+
+  uint16_t Palette_Size_2_Uv_Color[PALETTE_COLOR_CONTEXTS][3] ;
+  uint16_t Palette_Size_3_Uv_Color[PALETTE_COLOR_CONTEXTS][4];
+  uint16_t Palette_Size_4_Uv_Color[PALETTE_COLOR_CONTEXTS][5] ;
+  uint16_t Palette_Size_5_Uv_Color[PALETTE_COLOR_CONTEXTS][6] ;
+  uint16_t Palette_Size_6_Uv_Color[PALETTE_COLOR_CONTEXTS][7] ;
+  uint16_t Palette_Size_7_Uv_Color[PALETTE_COLOR_CONTEXTS][8] ;
+  uint16_t Palette_Size_8_Uv_Color[PALETTE_COLOR_CONTEXTS][9] ;
+  uint16_t Palette_Y_Mode[PALETTE_BLOCK_SIZE_CONTEXTS][PALETTE_Y_MODE_CONTEXTS][3] ;
+  uint16_t Palette_Uv_Mode[PALETTE_UV_MODE_CONTEXTS][3] ;
+  uint16_t Delta_Q[DELTA_Q_SMALL + 2] ;
+  uint16_t Delta_Lf[DELTA_LF_SMALL + 2];
+  uint16_t Delta_Lf_Muti[FRAME_LF_COUNT][DELTA_LF_SMALL + 2];
+  uint16_t Intra_Tx_Type_Set1[2][INTRA_MODES][8] ;
+  uint16_t Intra_Tx_Type_Set2[3][INTRA_MODES][6];
+  uint16_t Inter_Tx_Type_Set1[2][17] ;
+  uint16_t Inter_Tx_Type_Set2[13];
+  uint16_t Inter_Tx_Type_Set3[4][3];
+  uint16_t Compound_Idx[COMPOUND_IDX_CONTEXTS][3];
+  uint16_t Comp_Group_Idx[COMP_GROUP_IDX_CONTEXTS][3];
+  uint16_t Compound_Type[BLOCK_SIZES][COMPOUND_TYPES + 1];
+  uint16_t Inter_Intra[BLOCK_SIZE_GROUPS - 1][3] ;
+  uint16_t Inter_Intra_Mode[BLOCK_SIZE_GROUPS - 1][INTERINTRA_MODES + 1] ;
+  uint16_t Wedge_Index[BLOCK_SIZES][16 + 1];
+  uint16_t Wedge_Inter_Intra[BLOCK_SIZES][3];
+
+  uint16_t Use_Obmc[BLOCK_SIZES][3];
+  uint16_t Comp_Ref_Type[COMP_REF_TYPE_CONTEXTS][3];
+  uint16_t Uni_Comp_Ref[REF_CONTEXTS][UNIDIR_COMP_REFS - 1][3];
+
+  uint16_t Cfl_Sign[CFL_JOINT_SIGNS + 1];
+  uint16_t Cfl_Alpha[CFL_ALPHA_CONTEXTS][CFL_ALPHABET_SIZE + 1];
+  uint16_t Use_Wiener[2 + 1];
+  uint16_t Use_Sgrproj[2 + 1];
+  uint16_t Restoration_Type[RESTORE_SWITCHABLE + 1];
+  uint16_t Txb_Skip[COEFF_CDF_Q_CTXS][TX_SIZES][TXB_SKIP_CONTEXTS][3];
+  uint16_t Eob_Pt_16[COEFF_CDF_Q_CTXS][PLANE_TYPES][2][6];
+
+  uint16_t Eob_Pt_16[COEFF_CDF_Q_CTXS][PLANE_TYPES][2][6];
+  uint16_t Eob_Pt_32[COEFF_CDF_Q_CTXS][PLANE_TYPES][2][7];
+  uint16_t Eob_Pt_64[COEFF_CDF_Q_CTXS][PLANE_TYPES][2][8];
+  uint16_t Eob_Pt_128[COEFF_CDF_Q_CTXS][PLANE_TYPES][2][9];
+  uint16_t Eob_Pt_256[COEFF_CDF_Q_CTXS][PLANE_TYPES][2][10];
+  uint16_t Eob_Pt_512[COEFF_CDF_Q_CTXS][PLANE_TYPES][11];
+  uint16_t Eob_Pt_1024[COEFF_CDF_Q_CTXS][PLANE_TYPES][12];
+  uint16_t Eob_Extra[COEFF_CDF_Q_CTXS][TX_SIZES][PLANE_TYPES][EOB_COEF_CONTEXTS][3];
+  uint16_t Dc_Sign[COEFF_CDF_Q_CTXS][PLANE_TYPES][DC_SIGN_CONTEXTS][3];
+  uint16_t Coeff_Base_Eob[COEFF_CDF_Q_CTXS][TX_SIZES][PLANE_TYPES][SIG_COEF_CONTEXTS_EOB][4];
+  uint16_t Coeff_Base[COEFF_CDF_Q_CTXS][TX_SIZES][PLANE_TYPES][SIG_COEF_CONTEXTS][5];
+  uint16_t Coeff_Br[COEFF_CDF_Q_CTXS][TX_SIZES][PLANE_TYPES][LEVEL_CONTEXTS][BR_CDF_SIZE + 1];
+                           
+};
 
 typedef struct SymbolContext{
   int numBits;
@@ -2188,6 +2295,8 @@ public:
   Symbol(){}
 	~Symbol(){}
   void initSymbol(SymbolContext *sbCtx,bitSt *bs,int sz);
+  int read_literal(SymbolContext *sbCtx,bitSt *bs,int n);
+  int decodeSymbolBool(SymbolContext *sbCtx,bitSt *bs); 
   int decodeSymbol(SymbolContext *sbCtx,bitSt *bs,uint16_t *cdfArray,int N);
 	static Symbol& Instance() {
 		static Symbol m_pInstance;

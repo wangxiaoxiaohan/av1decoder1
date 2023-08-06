@@ -19,9 +19,13 @@ public:
     segmentation(){}
 	~segmentation(){}
 
-	static int get_qindex(int ignoreDeltaQ, int segmentId,frameHeader *frameHdr);
-	int seg_feature_active(int feature);
-	static int seg_feature_active_idx(int idx, int feature,frameHeader *frameHdr);
+	int get_qindex(int ignoreDeltaQ, int segmentId,frameHeader *frameHdr);
+	int seg_feature_active(int segment_id,int feature,frameHeader *frameHdr);
+	int seg_feature_active_idx(int idx, int feature,frameHeader *frameHdr);
+	static segmentation& Instance() {
+		static segmentation m_pInstance;
+		return m_pInstance;
+	}
 private:
 
 };

@@ -10,6 +10,22 @@ void Symbol::initSymbol(SymbolContext *sbCtx,bitSt *bs,int sz){
     sbCtx->SymbolRange = 1 << 15;
     sbCtx->SymbolMaxBits = 8 * sz - 15;
 }
+int Symbol::read_literal(SymbolContext *sbCtx,bitSt *bs,int n){
+
+    int x = 0;
+    for (int  i = 0 ; i < n; i++ ) {
+        x = 2 * x + decodeSymbolBool( sbCtx,bs);
+    }
+    return x;
+}
+int Symbol::decodeSymbolBool(SymbolContext *sbCtx,bitSt *bs){
+    uint16_t cdf[3];
+    cdf[ 0 ] = 1 << 14;
+    cdf[ 1 ] = 1 << 15;
+    cdf[ 2 ] = 0;
+    return decodeSymbol(sbCtx,bs,cdf,3);
+
+}
 int Symbol::decodeSymbol(SymbolContext *sbCtx,bitSt *bs,uint16_t *cdfArray,int N){
 
     int cur = sbCtx->SymbolRange;

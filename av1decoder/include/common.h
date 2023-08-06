@@ -159,6 +159,11 @@ enum tristate{
 
 #define EC_PROB_SHIFT 6
 #define EC_MIN_PROB 4
+
+#define MI_SIZE 4
+
+#define INTRABC_DELAY_PIXELS 256 
+
 enum em_interpolation_filters{
 	EIGHTTAP = 0,
 	EIGHTTAP_SMOOTH = 1,
@@ -236,7 +241,8 @@ enum em_frame_type{
 	SWITCH_FRAME = 3
 };
 enum em_ref_frame_type{
-	INTRA_FRAME,
+	NONE  = -1,
+	INTRA_FRAME = 0,
 	LAST_FRAME,
 	LAST2_FRAME,
 	LAST3_FRAME,
@@ -306,8 +312,69 @@ enum em_partition{
 	PARTITION_HORZ_4,
 	PARTITION_VERT_4
 };
-
-
+enum em_intra_frame_y_mode{
+	DC_PRED = 0,
+	V_PRED,
+	H_PRED,
+	D45_PRED,
+	D135_PRED,
+	D113_PRED,
+	D157_PRED,
+	D203_PRED,
+	D67_PRED,
+	SMOOTH_PRED,
+	SMOOTH_V_PRED,
+	SMOOTH_H_PRED,
+	PAETH_PRED
+};
+enum em_motion_mode{
+	SIMPLE = 0,
+	OBMC,
+	LOCALWARP
+};
+enum em_compound_type{
+	COMPOUND_WEDGE = 0,
+	COMPOUND_DIFFWTD,
+	COMPOUND_AVERAGE,
+	COMPOUND_INTRA,
+	COMPOUND_DISTANCE
+};
+enum em_ymode{
+	NEARESTMV = 14,
+	NEARMV,
+	GLOBALMV,
+	NEWMV,
+	NEAREST_NEARESTMV,
+	NEAR_NEARMV,
+	NEAREST_NEWMV,
+	NEW_NEARESTMV,
+	NEAR_NEWMV,
+	NEW_NEARMV,
+	GLOBAL_GLOBALMV,
+	NEW_NEWMV
+};
+enum em_mv_joint{
+	MV_JOINT_ZERO = 0,
+	MV_JOINT_HNZVZ ,
+	MV_JOINT_HZVNZ ,
+	MV_JOINT_HNZVNZ
+};
+enum em_uv_mode{
+	DC_PRED = 0,
+	V_PRED,
+	H_PRED,
+	D45_PRED,
+	D135_PRED,
+	D113_PRED,
+	D157_PRED,
+	D203_PRED,
+	D67_PRED,
+	SMOOTH_PRED,
+	SMOOTH_V_PRED,
+	SMOOTH_H_PRED,
+	PAETH_PRED,
+	UV_CFL_PRED
+};
 
 const static uint8_t Remap_Lr_Type[4] = {
 	RESTORE_NONE,RESTORE_SWITCHABLE,RESTORE_WIENER,RESTORE_SGRPROJ
@@ -361,6 +428,10 @@ const static int8_t Mi_Height_Log2[ BLOCK_SIZES ] = {
 0, 1, 0, 1, 2, 1, 2, 3, 2, 3, 4,
 3, 4, 5, 4, 5, 2, 0, 3, 1, 4, 2
 };
+const static int8_t Intra_Mode_Context[ INTRA_MODES ] = {
+0, 1, 2, 3, 4, 4, 4, 4, 3, 0, 1, 2, 0
+};
+
 const static int8_t Partition_Subsize[10][BLOCK_SIZES] = {
 	{BLOCK_4X4,
 	 BLOCK_INVALID, BLOCK_INVALID, BLOCK_8X8,
@@ -477,6 +548,40 @@ int inline is_inside(int candidateR,int  candidateC ,int colStart, int colEnd,in
 	candidateC < colEnd &&
 	candidateR >= rowStart &&
 	candidateR < rowEnd );
+}
+int inline neg_deinterleave(int diff,int ref,int max)
+{
+	if (!ref)
+		return diff ;
+	if (ref >= (max - 1)) 
+		return max - diff - 1 ;
+	if (2 * ref < max)
+		{
+			if (diff <= 2 * ref)
+			{
+				if (diff & 1)
+					return ref + ((diff + 1) >> 1);
+				else return 
+					ref - (diff >> 1);
+			}
+			return diff;
+		}
+	else
+	{
+		if (diff <= 2 * (max - ref - 1))
+		{
+			if (diff & 1)
+				return ref + ((diff + 1) >> 1);
+			 else return 
+			 	ref - (diff >> 1);
+		}
+		return max - (diff + 1);
+	}
+}
+int inline get_plane_residual_size( int subsize, int plane ,int subsampling_x,int subsampling_y){ 
+	int subx = plane > 0 ? subsampling_x : 0;
+	int suby = plane > 0 ? subsampling_y : 0;
+	return Subsampled_Size[ subsize ][ subx ][ suby ];
 }
 
 #endif

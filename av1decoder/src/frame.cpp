@@ -327,7 +327,7 @@ int frame::parseFrameHeader(int sz, bitSt *bs, AV1DecodeContext *av1ctx, sequenc
 	int segmentId;
 	for (segmentId = 0; segmentId < MAX_SEGMENTS; segmentId++)
 	{
-		int qindex = segmentation::get_qindex(1, segmentId,out);
+		int qindex = segmentation::Instance().get_qindex(1, segmentId,out);
 		out->segmentation_params.LosslessArray[segmentId] = qindex == 0 && out->quantization_params.DeltaQYDc == 0 &&
 								   out->quantization_params.DeltaQUAc == 0 && out->quantization_params.DeltaQUDc == 0 &&
 								   out->quantization_params.DeltaQVAc == 0 && out->quantization_params.DeltaQVDc == 0;
@@ -1205,15 +1205,15 @@ int frame::decode_partition(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
 	int ctx = left * 2 + above;
 
 	if(bsl == 1)
-		partitionCdf = Default_Partition_W8_Cdf[ctx];
+		partitionCdf = av1ctx->cdfCtx->Partition_W8[ctx];
 	else if(bsl == 2)
-		partitionCdf = Default_Partition_W16_Cdf[ctx];
+		partitionCdf = av1ctx->cdfCtx->Partition_W16[ctx];
 	else if(bsl == 3)
-		partitionCdf = Default_Partition_W32_Cdf[ctx];
+		partitionCdf = av1ctx->cdfCtx->Partition_W32[ctx];
 	else if(bsl == 4)
-		partitionCdf = Default_Partition_W64_Cdf[ctx];
+		partitionCdf = av1ctx->cdfCtx->Partition_W64[ctx];
 	else if(bsl == 5)
-		partitionCdf = Default_Partition_W128_Cdf[ctx];
+		partitionCdf = av1ctx->cdfCtx->Partition_W128[ctx];
 
 
 	if (bSize < BLOCK_8X8)
@@ -1225,7 +1225,7 @@ int frame::decode_partition(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
 		 //根据上边和左边的块来推出需要使用的cdf， 为什么MiSizes 还未初始化这里就在使用？
 		 //在最左上角的时候AvailU AvailL都是0，自然  p_data->AvailU && 后面的就不会调了，就没有问题
 
-		partition = sb.decodeSymbol(sbCtx,bs,partitionCdf,sizeof(partitionCdf));
+		partition = sb.decodeSymbol(sbCtx,bs,partitionCdf,sizeof(partitionCdf)/sizeof(uint16_t));
 	}
 	else if (hasCols)
 	{
@@ -1346,18 +1346,17 @@ int frame::decode_block(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
 	b_data.MiSize = subSize;
 	int bw4 = Num_4x4_Blocks_Wide[subSize];
 	int bh4 = Num_4x4_Blocks_High[subSize];	
-	int HasChroma;
 	if (bh4 == 1 && seqHdr->color_config.subsampling_y && (b_data.MiRow & 1) == 0)
-		HasChroma = 0 ;
+		b_data.HasChroma = 0 ;
 	else if (bw4 == 1 && seqHdr->color_config.subsampling_x && (b_data.MiCol & 1) == 0)
-		HasChroma = 0 ;
+		b_data.HasChroma = 0 ;
 	else 
-		HasChroma = seqHdr->color_config.NumPlanes > 1;
+		b_data.HasChroma = seqHdr->color_config.NumPlanes > 1;
 	b_data.AvailU = is_inside(r - 1, c,t_data->MiColStart,t_data->MiColEnd,t_data->MiRowStart,t_data->MiRowEnd);
 	b_data.AvailL = is_inside(r, c - 1,t_data->MiColStart,t_data->MiColEnd,t_data->MiRowStart,t_data->MiRowEnd);
 	b_data.AvailUChroma = b_data.AvailU;
 	b_data.AvailLChroma = b_data.AvailL;
-	if (HasChroma)
+	if (b_data.HasChroma)
 	{
 		if (seqHdr->color_config.subsampling_y && bh4 == 1)
 			b_data.AvailUChroma = is_inside(r - 2, c,t_data->MiColStart,t_data->MiColEnd,t_data->MiRowStart,t_data->MiRowEnd);
@@ -1442,87 +1441,108 @@ int frame::intra_frame_mode_info(SymbolContext *sbCtx,bitSt *bs,TileData *t_data
 	if (frameHdr->segmentation_params.SegIdPreSkip){
 		//intra_segment_id();
 		if ( frameHdr->segmentation_params.segmentation_enabled )
-			read_segment_id();
+			read_segment_id(sbCtx,bs,t_data,p_data,b_data,av1ctx);
 		else
 			b_data->segment_id = 0;
 		b_data->Lossless = frameHdr->segmentation_params.LosslessArray[ b_data->segment_id ];
 
 	}
-	skip_mode = 0 ;
+	b_data->skip_mode = 0 ;
 	//read_skip() 
-	if ( frameHdr->segmentation_params.SegIdPreSkip && seg_feature_active( SEG_LVL_SKIP ) ) {
+	if ( frameHdr->segmentation_params.SegIdPreSkip &&
+		 segmentation::Instance().seg_feature_active( b_data->segment_id,SEG_LVL_SKIP, frameHdr) ) 
+	{
 		b_data->skip = 1;
 	} else {
-		ctx = 0;
-		if ( b_data.AvailU )
+		int ctx = 0;
+		if ( b_data->AvailU )
 			ctx += p_data->Skips[ b_data->MiRow - 1 ][ b_data->MiCol ];
-		if ( b_data.AvailL )
+		if ( b_data->AvailL )
 			ctx += p_data->Skips[ b_data->MiRow ][ b_data->MiCol - 1 ];
-		b_data->skip =  sb.decodeSymbol(sbCtx,bs,Default_Skip_Mode_Cdf,sizeof(Default_Skip_Mode_Cdf));//S()
+
+		b_data->skip =  sb.decodeSymbol(sbCtx,bs,av1ctx->cdfCtx->Segment_Id[ctx],MAX_SEGMENTS + 1);//S()
 	}
 
 
 	if (!frameHdr->segmentation_params.SegIdPreSkip){
 		//intra_segment_id()
 		if ( frameHdr->segmentation_params.segmentation_enabled )
-			read_segment_id();
+			read_segment_id(sbCtx,bs,t_data,p_data,b_data,av1ctx);
 		else
 			b_data->segment_id = 0;
 		b_data->Lossless = frameHdr->segmentation_params.LosslessArray[ b_data->segment_id ];
 
 	}
 		
-	read_cdef()
-	read_delta_qindex()
-	read_delta_lf()
-	ReadDeltas = 0 
-	RefFrame[0] = INTRA_FRAME
-	RefFrame[1] = NONE 
-	if (allow_intrabc)
+	read_cdef(sbCtx,bs,t_data,p_data,b_data,av1ctx);
+	read_delta_qindex(sbCtx,bs,t_data,p_data,b_data,av1ctx);
+	read_delta_lf(sbCtx,bs,t_data,p_data,b_data,av1ctx);
+	t_data->ReadDeltas = 0 ;
+	b_data->RefFrame[0] = INTRA_FRAME;
+	b_data->RefFrame[1] = NONE ;
+
+	if (frameHdr->allow_intrabc)
 	{
-		use_intrabc S()
+		b_data->use_intrabc =  sb.decodeSymbol(sbCtx,bs,av1ctx->cdfCtx->Intrabc,3);// S()
 	}
 	else
 	{
-		use_intrabc = 0
+		b_data->use_intrabc = 0;
 	}
-	if (use_intrabc)
+	if (b_data->use_intrabc)
 	{
-		is_inter = 1 
-		YMode = DC_PRED
-		motion_mode = SIMPLE
-		compound_type = COMPOUND_AVERAGE
-		PaletteSizeY = 0 
-		PaletteSizeUV = 0 
-		interp_filter[0] = BILINEAR
-		interp_filter[1] = BILINEAR
-		find_mv_stack(0)
-		assign_mv(0)
+		b_data->is_inter = 1 ;
+		b_data->YMode = DC_PRED;
+		b_data->motion_mode = SIMPLE;
+		b_data->compound_type = COMPOUND_AVERAGE;
+		b_data->PaletteSizeY = 0 ;
+		b_data->PaletteSizeUV = 0 ;
+		b_data->interp_filter[0] = BILINEAR;
+		b_data->interp_filter[1] = BILINEAR;
+		//find_mv_stack(0);!!!!!!!!!!!!!!!!!
+		assign_mv(0);
 	}
 	else
 	{
-		is_inter = 0 
-		intra_frame_y_mode S()
-		YMode = intra_frame_y_mode
-		intra_angle_info_y() 
-		if (HasChroma)
+		b_data->is_inter = 0 ;
+	//	intra_frame_y_mode ;//S()
+		int abovemode = Intra_Mode_Context[ b_data->AvailU ? p_data->YModes[ b_data->MiRow - 1 ][ b_data->MiCol ] : DC_PRED ];
+		int leftmode = Intra_Mode_Context[ b_data->AvailL ? p_data->YModes[ b_data->MiRow ][ b_data->MiCol - 1] : DC_PRED ];
+		b_data->YMode = sb.decodeSymbol(sbCtx,bs,av1ctx->cdfCtx->Intra_Frame_Y_Mode[abovemode][leftmode],INTRA_MODES + );
+		intra_angle_info_y() ;
+		if (b_data->HasChroma)
 		{
-			uv_mode S()
-			UVMode = uv_mode 
-			if (UVMode == UV_CFL_PRED){
-				read_cfl_alphas()
+	
+
+			uint16_t *uv_mode_cdf;
+			if(b_data->Lossless && 
+					BLOCK_4X4 == get_plane_residual_size( b_data->MiSize, 1 ,seqHdr->color_config.subsampling_x,seqHdr->color_config.subsampling_y)){
+					uv_mode_cdf = av1ctx->cdfCtx->Uv_Mode_Cfl_Allowed[b_data->YMode];
+			// Block_Width[ x ] is defined to be equal to 4 * Num_4x4_Blocks_Wide[ x ].
+			//Block_Height[ x ] is defined to be equal to 4 * Num_4x4_Blocks_High[ x ].
+			}else if(!b_data->Lossless && Max( 4 * Num_4x4_Blocks_Wide[ b_data->MiSize ], 4 * Num_4x4_Blocks_High[ b_data->MiSize ] ) <= 32){
+					uv_mode_cdf = av1ctx->cdfCtx->Uv_Mode_Cfl_Allowed[b_data->YMode];
+
+			}else{
+					uv_mode_cdf = av1ctx->cdfCtx->Uv_Mode_Cfl_Not_Allowed[b_data->YMode];
+
+			}
+			//uv_mode ;//S()
+			b_data->UVMode = sb.decodeSymbol(sbCtx,bs,uv_mode_cdf,sizeof(uv_mode_cdf)/sizeof(uint16_t));
+			if (b_data->UVMode == UV_CFL_PRED){
+				read_cfl_alphas();
 			} 
-			intra_angle_info_uv()
+			intra_angle_info_uv();
 		}
-		PaletteSizeY = 0 
-		PaletteSizeUV = 0 
-		if (MiSize >= BLOCK_8X8 &&
-			Block_Width[MiSize] <= 64 &&
-			Block_Height[MiSize] <= 64 &&
-			allow_screen_content_tools){
-				palette_mode_info()
+		b_data->PaletteSizeY = 0 ;
+		b_data->PaletteSizeUV = 0 ;
+		if (b_data->MiSize >= BLOCK_8X8 &&
+			4 * Num_4x4_Blocks_Wide[b_data->MiSize] <= 64 &&
+			4 * Num_4x4_Blocks_High[b_data->MiSize] <= 64 &&
+			frameHdr->allow_screen_content_tools){
+				palette_mode_info();
 			} 
-			filter_intra_mode_info()
+			filter_intra_mode_info();
 	}
 	
 }
@@ -1533,56 +1553,257 @@ int frame::inter_frame_mode_info(AV1DecodeContext *av1ctx ){
 int frame::read_segment_id(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
 							PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1ctx){
 	frameHeader *frameHdr = av1ctx->frameHdr;
+	Symbol sb = Symbol::Instance();
 	if (b_data->AvailU && b_data->AvailL)
-		b_data->prevUL = SegmentIds[b_data->MiRow - 1][b_data->MiCol - 1];
+		b_data->prevUL = p_data->SegmentIds[b_data->MiRow - 1][b_data->MiCol - 1];
 	else 
 		b_data->prevUL = -1 ;
 	if (b_data->AvailU)
-		b_data->prevU = SegmentIds[b_data->MiRow - 1][b_data->MiCol] ;
+		b_data->prevU = p_data->SegmentIds[b_data->MiRow - 1][b_data->MiCol] ;
 	else
 		b_data->prevU = -1 ;
 	if (b_data->AvailL)
-		b_data->prevL = SegmentIds[b_data->MiRow][b_data->MiCol - 1] ;
+		b_data->prevL = p_data->SegmentIds[b_data->MiRow][b_data->MiCol - 1] ;
 	else 
 		b_data->prevL = -1 ;
+
 	if (b_data->prevU == -1)
 		b_data->pred = (b_data->prevL == -1) ? 0 : b_data->prevL ;
 	else if (b_data->prevL == -1) 
 		b_data->pred = b_data->prevU ;
 	else 
 		b_data->pred = (b_data->prevUL == b_data->prevU) ? b_data->prevU : b_data->prevL; 
+
 	if (b_data->skip)
 	{
 		b_data->segment_id = b_data->pred;
 	}
 	else
 	{
-		segment_id S() 
-		if (!ref) 
-			return diff 
-		if (ref >= (max - 1)) 
-			return max - diff - 1 
-		if (2 * ref < max)
+		int ctx;
+		if ( b_data->prevUL < 0 )
+			ctx = 0;
+		else if ( (b_data->prevUL == b_data->prevU) && (b_data->prevUL == b_data->prevL) )
+			ctx = 2;
+		else if ( (b_data->prevUL == b_data->prevU) || (b_data->prevUL == b_data->prevL) || (b_data->prevU == b_data->prevL) )
+			ctx = 1;
+		else
+			ctx = 0;
+		b_data->segment_id = sb.decodeSymbol(sbCtx,bs,av1ctx->cdfCtx->Skip_Mode[ctx],3);//S() 
+		neg_deinterleave( b_data->segment_id, b_data->pred,
+						frameHdr->segmentation_params.LastActiveSegId + 1);
+	}
+}
+int frame::read_cdef(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
+							PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1ctx){
+	frameHeader *frameHdr = av1ctx->frameHdr;
+	sequenceHeader *seqHdr = av1ctx->seqHdr;
+	Symbol sb = Symbol::Instance();
+	if (b_data->skip || frameHdr->CodedLossless || !seqHdr->enable_cdef || frameHdr->allow_intrabc)
+	{
+		return;
+	}
+	int cdefSize4 = Num_4x4_Blocks_Wide[BLOCK_64X64] ;
+	int cdefMask4 = ~(cdefSize4 - 1);
+	int r = b_data->MiRow &cdefMask4;
+	int c = b_data->MiCol & cdefMask4 ;
+	if (t_data->cdef_idx[r][c] == -1)
+	{
+		t_data->cdef_idx[r][c] = sb.read_literal(sbCtx,bs,frameHdr->cdef_params.cdef_bits); //L(cdef_bits)
+		int w4 = Num_4x4_Blocks_Wide[b_data->MiSize] ;
+		int h4 = Num_4x4_Blocks_High[b_data->MiSize] ;
+		for (int i = r; i < r + h4; i += cdefSize4)
 		{
-			if (diff <= 2 * ref)
+			for (int j = c; j < c + w4; j += cdefSize4)
 			{
-				if (diff & 1)
-					return ref + ((diff + 1) >> 1);
-				else 
-					return ref - (diff >> 1);
+				t_data->cdef_idx[i][j] = t_data->cdef_idx[r][c];
 			}
-			return diff;
+		}
+	}
+}
+int frame::read_delta_qindex(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
+							PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1ctx)
+{
+	frameHeader *frameHdr = av1ctx->frameHdr;
+	sequenceHeader *seqHdr = av1ctx->seqHdr;
+	Symbol sb = Symbol::Instance();
+	int sbSize = seqHdr->use_128x128_superblock ? BLOCK_128X128 : BLOCK_64X64 ;
+	if (b_data->MiSize == sbSize && b_data->skip) 
+		return ;
+	if (t_data->ReadDeltas)
+	{
+		b_data->delta_q_abs =  sb.decodeSymbol(sbCtx,bs,av1ctx->cdfCtx->Delta_Q,DELTA_Q_SMALL + 2);//S() 
+		if (b_data->delta_q_abs == DELTA_Q_SMALL)
+		{
+			b_data->delta_q_rem_bits = sb.read_literal(sbCtx,bs,3);//L(3)
+			b_data->delta_q_rem_bits++ ;
+			b_data->delta_q_abs_bits = sb.read_literal(sbCtx,bs,b_data->delta_q_rem_bits);//L(delta_q_rem_bits)
+			b_data->delta_q_abs = b_data->delta_q_abs_bits + (1 << b_data->delta_q_rem_bits) + 1;
+		}
+		if (b_data->delta_q_abs)
+		{
+			b_data->delta_q_sign_bit = sb.read_literal(sbCtx,bs,1);//L(1)
+			int reducedDeltaQIndex = b_data->delta_q_sign_bit ? -b_data->delta_q_abs : b_data->delta_q_abs ;
+			t_data->CurrentQIndex = Clip3(1, 255, t_data->CurrentQIndex + (reducedDeltaQIndex << frameHdr->delta_q_params.delta_q_res));
+		}
+	}
+}
+int frame::read_delta_lf(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
+							PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1ctx)
+{
+	frameHeader *frameHdr = av1ctx->frameHdr;
+	sequenceHeader *seqHdr = av1ctx->seqHdr;
+	Symbol sb = Symbol::Instance();
+	int sbSize = seqHdr->use_128x128_superblock ? BLOCK_128X128 : BLOCK_64X64;
+
+	if ( b_data->MiSize == sbSize && b_data->skip )
+		return ;
+	if (t_data->ReadDeltas && frameHdr->delta_lf_params.delta_lf_present)
+
+	{
+		int frameLfCount = 1 ;
+		if (frameHdr->delta_lf_params.delta_lf_multi)
+		{
+			frameLfCount = (seqHdr->color_config.NumPlanes > 1) ? FRAME_LF_COUNT : (FRAME_LF_COUNT - 2);
+		}
+		for (int i = 0; i < frameLfCount; i++)
+		{
+			//这里的逻辑是delta_lf_multi 为1  则各个frameLf的 delta_lf_abs都不一样，他们都有自己的 symbol ctx
+			//初始化的时候，他们都是从 Default_Delta_Lf_Cdf拷贝而来的，是一样的，如果需要update，则后面则是单独update了
+			//就有可能不一样，所以要做区分
+			if(frameHdr->delta_lf_params.delta_lf_multi)
+				b_data->delta_lf_abs =  sb.decodeSymbol(sbCtx,bs,av1ctx->cdfCtx->Delta_Lf_Muti[i],DELTA_LF_SMALL + 2); //S() 
+			else
+				b_data->delta_lf_abs =  sb.decodeSymbol(sbCtx,bs,av1ctx->cdfCtx->Delta_Lf,DELTA_LF_SMALL + 2); //S() 
+
+			int deltaLfAbs;
+			if (b_data->delta_lf_abs == DELTA_LF_SMALL)
+			{
+				
+				b_data->delta_lf_rem_bits = sb.read_literal(sbCtx,bs,3); //L(3)
+				b_data->delta_lf_abs_bits = sb.read_literal(sbCtx,bs,b_data->delta_lf_rem_bits + 1); //L(n)
+				deltaLfAbs = b_data->delta_lf_abs_bits + (1 << b_data->delta_lf_rem_bits) + 1;
+			}
+			else
+			{
+				deltaLfAbs = b_data->delta_lf_abs;
+			}
+			if (deltaLfAbs)
+			{
+				b_data->delta_lf_sign_bit = sb.read_literal(sbCtx,bs,1); //L(1)
+				int reducedDeltaLfLevel = b_data->delta_lf_sign_bit ? -deltaLfAbs : deltaLfAbs;
+				b_data->DeltaLF[i] = Clip3(-MAX_LOOP_FILTER, MAX_LOOP_FILTER, b_data->DeltaLF[i] + (reducedDeltaLfLevel << frameHdr->delta_lf_params.delta_lf_res));
+			}
+		}
+	}
+}
+int frame::assign_mv(int isCompound,SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
+							PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1ctx)
+{
+	frameHeader *frameHdr = av1ctx->frameHdr;
+	sequenceHeader *seqHdr = av1ctx->seqHdr;
+	Symbol sb = Symbol::Instance();
+	int compMode;
+	for (int i = 0; i < 1 + isCompound; i++)
+	{
+		if (b_data->use_intrabc)
+		{
+			compMode = NEWMV;
 		}
 		else
 		{
-			if (diff <= 2 * (max - ref - 1))
-			{
-				if (diff & 1)
-					return ref + ((diff + 1) >> 1) ;
-				else 
-					return ref - (diff >> 1);
+			//compMode = get_mode(i);
+
+			if ( i == 0 ) {
+				if ( b_data->YMode < NEAREST_NEARESTMV )
+					compMode = b_data->YMode;
+				else if ( b_data->YMode == NEW_NEWMV || b_data->YMode == NEW_NEARESTMV || b_data->YMode == NEW_NEARMV )
+					compMode = NEWMV;
+				else if ( b_data->YMode == NEAREST_NEARESTMV || b_data->YMode == NEAREST_NEWMV )
+					compMode = NEARESTMV;
+				else if ( b_data->YMode == NEAR_NEARMV || b_data->YMode == NEAR_NEWMV )
+					compMode = NEARMV;
+				else
+					compMode = GLOBALMV;
+			} else {
+				if ( b_data->YMode == NEW_NEWMV || b_data->YMode == NEAREST_NEWMV || b_data->YMode == NEAR_NEWMV )
+					compMode = NEWMV;
+
+				else if ( b_data->YMode == NEAREST_NEARESTMV || b_data->YMode == NEW_NEARESTMV )
+					compMode = NEARESTMV;
+				else if ( b_data->YMode == NEAR_NEARMV || b_data->YMode == NEW_NEARMV )
+					compMode = NEARMV;
+				else
+					compMode = GLOBALMV;
 			}
-			return max - (diff + 1);
+		}
+		uint8_t PredMv[2][2];
+
+		if (b_data->use_intrabc)
+		{
+
+			//PredMv[0] = b_data->RefStackMv[0][0];
+			 memcpy(PredMv[0], b_data->RefStackMv[0][0], sizeof(PredMv[0]));
+			if (PredMv[0][0] == 0 && PredMv[0][1] == 0)
+			{
+				//PredMv[0] = b_data->RefStackMv[1][0];
+				memcpy(PredMv[0], b_data->RefStackMv[1][0], sizeof(PredMv[0]));
+			}
+			if (PredMv[0][0] == 0 && PredMv[0][1] == 0)
+			{
+				int sbSize = seqHdr->use_128x128_superblock ? BLOCK_128X128 : BLOCK_64X64 ;
+				int sbSize4 = Num_4x4_Blocks_High[sbSize] ;
+				if (b_data->MiRow - sbSize4 < t_data->MiRowStart)
+				{
+						PredMv[0][0] = 0 ;
+						PredMv[0][1] = -(sbSize4 * MI_SIZE + INTRABC_DELAY_PIXELS) * 8;
+				}
+				else
+				{
+						PredMv[0][0] = -(sbSize4 * MI_SIZE * 8);
+						PredMv[0][1] = 0;
+				}
+			}
+		}
+		else if (compMode == GLOBALMV)
+		{
+
+			//PredMv[i] = b_data->GlobalMvs[i];
+			memcpy(PredMv[i], b_data->GlobalMvs[i], sizeof(PredMv[0]));
+		}
+		else
+		{
+			int pos = (compMode == NEARESTMV) ? 0 : b_data->RefMvIdx ;
+			if (compMode == NEWMV && b_data->NumMvFound <= 1) 
+				pos = 0 ;
+			//PredMv[i] = b_data->RefStackMv[pos][i];
+			memcpy(PredMv[i], b_data->RefStackMv[pos][i], sizeof(PredMv[i]));
+		}
+		uint8_t diffMv[2];
+		if (compMode == NEWMV)
+		{
+			diffMv[ 0 ] = 0;
+			diffMv[ 1 ] = 0;
+			int MvCtx;
+			if ( b_data->use_intrabc ) {
+				MvCtx = MV_INTRABC_CONTEXT;
+			} else {
+				MvCtx = 0;
+			}
+			//???????????
+			b_data->mv_joint = sb.decodeSymbol(sbCtx,bs,av1ctx->cdfCtx->Mv_Joint,DELTA_LF_SMALL + 2);//S()
+			if ( b_data->mv_joint == MV_JOINT_HZVNZ || b_data->mv_joint == MV_JOINT_HNZVNZ )
+				diffMv[ 0 ] = read_mv_component( 0 );
+			if ( b_data->mv_joint == MV_JOINT_HNZVZ || b_data->mv_joint == MV_JOINT_HNZVNZ )
+				diffMv[ 1 ] = read_mv_component( 1 );
+			b_data->Mv[ i ][ 0 ] = PredMv[ i ][ 0 ] + diffMv[ 0 ];
+			b_data->Mv[ i ][ 1 ] = PredMv[ i ][ 1 ] + diffMv[ 1 ];
+
+		}
+		else
+		{
+			//b_data->Mv[i] = PredMv[i];
+			memcpy(b_data->Mv[i], PredMv[i], sizeof(b_data->Mv[i]));
 		}
 	}
 }

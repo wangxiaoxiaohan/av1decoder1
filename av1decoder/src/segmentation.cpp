@@ -25,3 +25,7 @@ int segmentation::seg_feature_active_idx(int idx, int feature,frameHeader *frame
 	return frameHdr->segmentation_params.segmentation_enabled && frameHdr->segmentation_params.FeatureEnabled[ idx ][ feature ];
 }
 
+int segmentation::seg_feature_active(int segment_id,int feature,frameHeader *frameHdr){
+	return seg_feature_active_idx( segment_id, feature,frameHdr);
+
+}

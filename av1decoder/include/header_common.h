@@ -295,15 +295,23 @@ typedef struct TileData{
 	uint16_t MiColStart;
 	uint16_t MiColEnd;
 
-	uint8_t DeltaLF[FRAME_LF_COUNT];
 	uint8_t RefSgrXqd[3][2];
 	uint8_t RefLrWiener[3][2][3];
 	uint8_t ReadDeltas;
+	uint8_t CurrentQIndex;
+	uint8_t **cdef_idx;
 
 }TileData;
 typedef struct PartitionData{
 	uint8_t AvailU;
 	uint8_t AvailL;
+	uint8_t **YModes;
+	uint8_t **UVModes;
+	uint8_t **RefFrames[2];
+	uint8_t **CompGroupIdxs;
+	uint8_t **CompoundIdxs;
+	uint8_t **InterpFilters[2];
+	uint8_t Mvs[2][2][2];
 	uint8_t **MiSizes;
 	uint8_t **SegmentIds;
 	uint8_t **IsInters;
@@ -315,7 +323,9 @@ typedef struct PartitionData{
 	uint8_t **DeltaLFs[4];
 }PartitionData;
 typedef struct BlockData{
+	uint8_t HasChroma;
 	uint8_t skip;
+	uint8_t skip_mode;
 	uint8_t MiRow;
 	uint8_t MiCol;
 	uint8_t MiSize;
@@ -329,6 +339,32 @@ typedef struct BlockData{
 	uint8_t segment_id;
 	uint8_t pred;
 	uint8_t Lossless;
+	uint8_t delta_q_abs;
+	uint8_t delta_q_rem_bits;
+	uint8_t delta_q_abs_bits;
+	uint8_t delta_q_sign_bit;
+
+	uint8_t delta_lf_abs;
+	uint8_t delta_lf_rem_bits;
+	uint8_t delta_lf_abs_bits;
+	uint8_t delta_lf_sign_bit;
+	uint8_t DeltaLF[4];
+	uint8_t RefFrame[2];
+	uint8_t use_intrabc;
+	uint8_t is_inter;
+	uint8_t YMode;
+	uint8_t UVMode;
+	uint8_t motion_mode;
+	uint8_t compound_type;
+	uint8_t PaletteSizeY;
+	uint8_t PaletteSizeUV;
+	uint8_t interp_filter[2];
+	uint8_t Mv[2][2];
+	uint8_t RefStackMv[2][2][2]; //consturct by find_mv_stack
+	uint8_t GlobalMvs[2][2];
+	uint8_t RefMvIdx;
+	uint8_t NumMvFound;
+	uint8_t mv_joint;
 	
 }BlockData;
 typedef struct AV1Frame{
@@ -345,6 +381,9 @@ typedef struct AV1DecodeContext{
 	frameHeader *frameHdr;
 	sequenceHeader *seqHdr;
 	uint8_t SeenFrameHeader;
+    CDFArrays *cdfCtx;
+
 }AV1DecodeContext;
+
 
 #endif
