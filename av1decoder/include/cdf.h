@@ -2192,11 +2192,11 @@ typedef struct CDFArrays{
   uint16_t Filter_Intra[BLOCK_SIZES][3];
   uint16_t Segment_Id[SEGMENT_ID_CONTEXTS][MAX_SEGMENTS + 1];
   uint16_t Segment_Id_Predicted[SEGMENT_ID_PREDICTED_CONTEXTS][3] ;
-  uint16_t Mv_Class0_Hp[3] ;
-  uint16_t Mv_Hp[3] ;
-  uint16_t Mv_Sign[3] ;
-  uint16_t Mv_Bit[MV_OFFSET_BITS][3] ;
-  uint16_t Mv_Class0_Bit[3] ;
+  uint16_t Mv_Class0_Hp[3][2] ;
+  uint16_t Mv_Hp[3][2] ;
+  uint16_t Mv_Sign[3][2] ;
+  uint16_t Mv_Bit[MV_OFFSET_BITS][3][2] ;
+  uint16_t Mv_Class0_Bit[3][2] ;
   uint16_t New_Mv[NEW_MV_CONTEXTS][3] ;
   uint16_t Zero_Mv[ZERO_MV_CONTEXTS][3];
   uint16_t Ref_Mv[REF_MV_CONTEXTS][3] ;
@@ -2212,10 +2212,10 @@ typedef struct CDFArrays{
   uint16_t Interp_Filter[INTERP_FILTER_CONTEXTS][INTERP_FILTERS + 1] ;
   uint16_t Motion_Mode[BLOCK_SIZES][MOTION_MODES + 1] ;
 
-  uint16_t Mv_Joint[MV_JOINTS + 1] ;
-  uint16_t Mv_Class[2][MV_CLASSES + 1] ;
-  uint16_t Mv_Class0_Fr[2][CLASS0_SIZE][MV_JOINTS + 1] ;
-  uint16_t Mv_Fr[2][MV_JOINTS + 1] ;
+  uint16_t Mv_Joint[MV_JOINTS + 1][2] ;
+  uint16_t Mv_Class[2][MV_CLASSES + 1][2] ;
+  uint16_t Mv_Class0_Fr[2][CLASS0_SIZE][MV_JOINTS + 1][2] ;
+  uint16_t Mv_Fr[2][MV_JOINTS + 1][2] ;
   uint16_t Palette_Y_Size[PALETTE_BLOCK_SIZE_CONTEXTS][PALETTE_SIZES + 1];
   uint16_t Palette_Uv_Size[PALETTE_BLOCK_SIZE_CONTEXTS][PALETTE_SIZES + 1] ;
 

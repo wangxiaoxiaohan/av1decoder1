@@ -1791,7 +1791,7 @@ int frame::assign_mv(int isCompound,SymbolContext *sbCtx,bitSt *bs,TileData *t_d
 				MvCtx = 0;
 			}
 			//???????????
-			b_data->mv_joint = sb.decodeSymbol(sbCtx,bs,av1ctx->cdfCtx->Mv_Joint,DELTA_LF_SMALL + 2);//S()
+			b_data->mv_joint = sb.decodeSymbol(sbCtx,bs,av1ctx->cdfCtx->Mv_Joint[MvCtx],DELTA_LF_SMALL + 2);//S()
 			if ( b_data->mv_joint == MV_JOINT_HZVNZ || b_data->mv_joint == MV_JOINT_HNZVNZ )
 				diffMv[ 0 ] = read_mv_component( 0 );
 			if ( b_data->mv_joint == MV_JOINT_HNZVZ || b_data->mv_joint == MV_JOINT_HNZVNZ )
