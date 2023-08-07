@@ -1427,9 +1427,9 @@ int frame::mode_info(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
 							PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1ctx){
 	frameHeader *frameHdr = av1ctx->frameHdr;
 	if ( frameHdr->FrameIsIntra ) 
-		intra_frame_mode_info(b_data,av1ctx);
+		intra_frame_mode_info(sbCtx,bs,t_data,p_data,b_data,av1ctx );
 	else
-		inter_frame_mode_info(b_data,av1ctx);
+		inter_frame_mode_info(sbCtx,bs,t_data,p_data,b_data,av1ctx);
 
 }
 int frame::intra_frame_mode_info(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
@@ -1546,7 +1546,8 @@ int frame::intra_frame_mode_info(SymbolContext *sbCtx,bitSt *bs,TileData *t_data
 	}
 	
 }
-int frame::inter_frame_mode_info(AV1DecodeContext *av1ctx ){
+int frame::inter_frame_mode_info(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
+							PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1ctx ){
 
 
 }
@@ -1791,7 +1792,7 @@ int frame::assign_mv(int isCompound,SymbolContext *sbCtx,bitSt *bs,TileData *t_d
 				MvCtx = 0;
 			}
 			//???????????
-			b_data->mv_joint = sb.decodeSymbol(sbCtx,bs,av1ctx->cdfCtx->Mv_Joint,DELTA_LF_SMALL + 2);//S()
+			b_data->mv_joint = sb.decodeSymbol(sbCtx,bs,av1ctx->cdfCtx->Mv_Joint[MvCtx],DELTA_LF_SMALL + 2);//S()
 			if ( b_data->mv_joint == MV_JOINT_HZVNZ || b_data->mv_joint == MV_JOINT_HNZVNZ )
 				diffMv[ 0 ] = read_mv_component( 0 );
 			if ( b_data->mv_joint == MV_JOINT_HNZVZ || b_data->mv_joint == MV_JOINT_HNZVNZ )
@@ -1804,6 +1805,70 @@ int frame::assign_mv(int isCompound,SymbolContext *sbCtx,bitSt *bs,TileData *t_d
 		{
 			//b_data->Mv[i] = PredMv[i];
 			memcpy(b_data->Mv[i], PredMv[i], sizeof(b_data->Mv[i]));
+		}
+	}
+}
+int frame::read_mv_component(int MvCtx,int comp,SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
+							PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1ctx)
+{
+	frameHeader *frameHdr = av1ctx->frameHdr;
+	sequenceHeader *seqHdr = av1ctx->seqHdr;
+	Symbol sb = Symbol::Instance();
+
+	b_data->mv_sign = sb.decodeSymbol(sbCtx,bs,av1ctx->cdfCtx->Mv_Sign[MvCtx][comp],3);//S()
+	b_data->mv_class = sb.decodeSymbol(sbCtx,bs,av1ctx->cdfCtx->Mv_Class[MvCtx][comp],MV_CLASSES + 1);//S() 
+	int mag;
+	if (b_data->mv_class == MV_CLASS_0)
+	{
+		b_data->mv_class0_bit = sb.decodeSymbol(sbCtx,bs,av1ctx->cdfCtx->Mv_Class0_Bit[MvCtx][comp],3);//S() 
+		if (frameHdr->force_integer_mv)
+			b_data->mv_class0_fr = 3 ;
+		else
+			b_data->mv_class0_fr =  sb.decodeSymbol(sbCtx,bs,av1ctx->cdfCtx->Mv_Class0_Fr[MvCtx][comp][b_data->mv_class0_bit],5);//S()
+		if (frameHdr->allow_high_precision_mv)
+			b_data->mv_class0_hp = sb.decodeSymbol(sbCtx,bs,av1ctx->cdfCtx->Mv_Class0_Hp[MvCtx][comp],3);//S() 
+		else 
+			b_data->mv_class0_hp = 1; 
+		mag = ((b_data->mv_class0_bit << 3) | (b_data->mv_class0_fr << 1) | b_data->mv_class0_hp) + 1;
+	}
+	else
+	{
+		int d = 0 ;
+		for (int i = 0; i < b_data->mv_class; i++){
+			b_data->mv_bit = sb.decodeSymbol(sbCtx,bs,av1ctx->cdfCtx->Mv_Bit[MvCtx][comp][i],3);
+			d |= b_data->mv_bit << i;
+		}
+			
+		mag = CLASS0_SIZE << (b_data->mv_class + 2) ;
+		if (frameHdr->force_integer_mv) 
+			b_data->mv_fr = 3 ;
+		else 
+			b_data->mv_fr = sb.decodeSymbol(sbCtx,bs,av1ctx->cdfCtx->Mv_Fr[MvCtx][comp],3); //S()
+		if (frameHdr->allow_high_precision_mv) 
+			b_data->mv_hp = sb.decodeSymbol(sbCtx,bs,av1ctx->cdfCtx->Mv_Hp[MvCtx][comp],3); //S() 
+		else 
+			b_data->mv_hp = 1 ;
+		mag += ((d << 3) | (b_data->mv_fr << 1) | b_data->mv_hp) + 1;
+	}
+	return b_data->mv_sign ? -mag : mag;
+}
+int frame::intra_angle_info_y() {
+	AngleDeltaY = 0;
+	if ( MiSize >= BLOCK_8X8 ) {
+		if ( is_directional_mode( YMode ) ) {
+		angle_delta_y;// S()
+		AngleDeltaY = angle_delta_y - MAX_ANGLE_DELTA;
+		}
+	}
+}
+
+
+int frame::intra_angle_info_uv(){
+	AngleDeltaUV = 0;
+	if ( MiSize >= BLOCK_8X8 ) {
+		if ( is_directional_mode( UVMode ) ) {
+		angle_delta_uv; //S()
+		AngleDeltaUV = angle_delta_uv - MAX_ANGLE_DELTA;
 		}
 	}
 }

@@ -375,7 +375,19 @@ enum em_uv_mode{
 	PAETH_PRED,
 	UV_CFL_PRED
 };
-
+enum em_mv_class {
+	MV_CLASS_0 = 0,
+	MV_CLASS_1,
+	MV_CLASS_2,
+	MV_CLASS_3,
+	MV_CLASS_4,
+	MV_CLASS_5,
+	MV_CLASS_6,
+	MV_CLASS_7,
+	MV_CLASS_8,
+	MV_CLASS_9,
+	MV_CLASS_10
+};
 const static uint8_t Remap_Lr_Type[4] = {
 	RESTORE_NONE,RESTORE_SWITCHABLE,RESTORE_WIENER,RESTORE_SGRPROJ
 };
