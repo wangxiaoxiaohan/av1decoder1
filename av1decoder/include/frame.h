@@ -53,7 +53,9 @@ public:
 							PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1ctx);
 	int read_mv_component(int MvCtx,int comp,SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
 							PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1ctx);
-
+	int intra_angle_info_y(SymbolContext *sbCtx,bitSt *bs,BlockData *b_data,AV1DecodeContext *av1ctx);
+	int intra_angle_info_uv(SymbolContext *sbCtx,bitSt *bs,BlockData *b_data,AV1DecodeContext *av1ctx);
+	int read_cfl_alphas(SymbolContext *sbCtx,bitSt *bs,BlockData *b_data,AV1DecodeContext *av1ctx);
 	static frame& Instance() {
 		static frame m_pInstance;
 		return m_pInstance;
