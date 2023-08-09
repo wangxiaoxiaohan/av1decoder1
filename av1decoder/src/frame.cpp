@@ -1908,7 +1908,7 @@ int frame::read_cfl_alphas(SymbolContext *sbCtx,bitSt *bs,BlockData *b_data,AV1D
 		b_data->CflAlphaV = 0;
 	}
 }
-palette_mode_info()
+int frame::palette_mode_info()
 {
 	Type
 		bsizeCtx = Mi_Width_Log2[MiSize] + Mi_Height_Log2[MiSize] - 2;
