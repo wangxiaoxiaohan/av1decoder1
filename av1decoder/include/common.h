@@ -388,6 +388,15 @@ enum em_mv_class {
 	MV_CLASS_9,
 	MV_CLASS_10
 };
+
+enum em_signU {
+	CFL_SIGN_ZERO = 0,
+	CFL_SIGN_NEG,
+	CFL_SIGN_POS,
+};
+
+
+
 const static uint8_t Remap_Lr_Type[4] = {
 	RESTORE_NONE,RESTORE_SWITCHABLE,RESTORE_WIENER,RESTORE_SGRPROJ
 };
@@ -594,6 +603,12 @@ int inline get_plane_residual_size( int subsize, int plane ,int subsampling_x,in
 	int subx = plane > 0 ? subsampling_x : 0;
 	int suby = plane > 0 ? subsampling_y : 0;
 	return Subsampled_Size[ subsize ][ subx ][ suby ];
+}
+int inline is_directional_mode(int mode ) { 
+	if ( ( mode >= V_PRED ) && ( mode <= D67_PRED ) ) {
+		return 1;
+	}
+	return 0;
 }
 
 #endif

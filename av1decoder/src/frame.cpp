@@ -1500,7 +1500,7 @@ int frame::intra_frame_mode_info(SymbolContext *sbCtx,bitSt *bs,TileData *t_data
 		b_data->interp_filter[0] = BILINEAR;
 		b_data->interp_filter[1] = BILINEAR;
 		//find_mv_stack(0);!!!!!!!!!!!!!!!!!
-		assign_mv(0);
+		assign_mv(0, sbCtx,bs,t_data,p_data,b_data,av1ctx );
 	}
 	else
 	{
@@ -1509,7 +1509,7 @@ int frame::intra_frame_mode_info(SymbolContext *sbCtx,bitSt *bs,TileData *t_data
 		int abovemode = Intra_Mode_Context[ b_data->AvailU ? p_data->YModes[ b_data->MiRow - 1 ][ b_data->MiCol ] : DC_PRED ];
 		int leftmode = Intra_Mode_Context[ b_data->AvailL ? p_data->YModes[ b_data->MiRow ][ b_data->MiCol - 1] : DC_PRED ];
 		b_data->YMode = sb.decodeSymbol(sbCtx,bs,av1ctx->cdfCtx->Intra_Frame_Y_Mode[abovemode][leftmode],INTRA_MODES + );
-		intra_angle_info_y() ;
+		intra_angle_info_y( sbCtx,bs,b_data,av1ctx) ;
 		if (b_data->HasChroma)
 		{
 	
@@ -1530,9 +1530,9 @@ int frame::intra_frame_mode_info(SymbolContext *sbCtx,bitSt *bs,TileData *t_data
 			//uv_mode ;//S()
 			b_data->UVMode = sb.decodeSymbol(sbCtx,bs,uv_mode_cdf,sizeof(uv_mode_cdf)/sizeof(uint16_t));
 			if (b_data->UVMode == UV_CFL_PRED){
-				read_cfl_alphas();
+				read_cfl_alphas( sbCtx,bs,b_data,av1ctx);
 			} 
-			intra_angle_info_uv();
+			intra_angle_info_uv(sbCtx,bs,b_data,av1ctx);
 		}
 		b_data->PaletteSizeY = 0 ;
 		b_data->PaletteSizeUV = 0 ;
@@ -1852,23 +1852,195 @@ int frame::read_mv_component(int MvCtx,int comp,SymbolContext *sbCtx,bitSt *bs,T
 	}
 	return b_data->mv_sign ? -mag : mag;
 }
-int frame::intra_angle_info_y() {
-	AngleDeltaY = 0;
-	if ( MiSize >= BLOCK_8X8 ) {
-		if ( is_directional_mode( YMode ) ) {
-		angle_delta_y;// S()
-		AngleDeltaY = angle_delta_y - MAX_ANGLE_DELTA;
+int frame::intra_angle_info_y(SymbolContext *sbCtx,bitSt *bs,BlockData *b_data,AV1DecodeContext *av1ctx) {
+	Symbol sb = Symbol::Instance();
+	b_data->AngleDeltaY = 0;
+	if ( b_data->MiSize >= BLOCK_8X8 ) {
+		if ( is_directional_mode( b_data->YMode ) ) {
+			b_data->angle_delta_y = sb.decodeSymbol(sbCtx,bs,av1ctx->cdfCtx->Angle_Delta[b_data->YMode - V_PRED],(2 * MAX_ANGLE_DELTA + 1) + 1);// S()
+			b_data->AngleDeltaY = b_data->angle_delta_y - MAX_ANGLE_DELTA;
 		}
 	}
 }
 
 
-int frame::intra_angle_info_uv(){
-	AngleDeltaUV = 0;
-	if ( MiSize >= BLOCK_8X8 ) {
-		if ( is_directional_mode( UVMode ) ) {
-		angle_delta_uv; //S()
-		AngleDeltaUV = angle_delta_uv - MAX_ANGLE_DELTA;
+int frame::intra_angle_info_uv(SymbolContext *sbCtx,bitSt *bs,BlockData *b_data,AV1DecodeContext *av1ctx){
+	Symbol sb = Symbol::Instance();
+	b_data->AngleDeltaUV = 0;
+	if ( b_data->MiSize >= BLOCK_8X8 ) {
+		if ( is_directional_mode( b_data->UVMode ) ) {
+			b_data->angle_delta_uv = sb.decodeSymbol(sbCtx,bs,av1ctx->cdfCtx->Angle_Delta[b_data->UVMode - V_PRED],(2 * MAX_ANGLE_DELTA + 1) + 1); //S()
+			b_data->AngleDeltaUV = b_data->angle_delta_uv - MAX_ANGLE_DELTA;
+		}
+	}
+}
+int frame::read_cfl_alphas(SymbolContext *sbCtx,bitSt *bs,BlockData *b_data,AV1DecodeContext *av1ctx)
+{
+	Symbol sb = Symbol::Instance();
+	int cfl_alpha_signs = sb.decodeSymbol(sbCtx,bs,av1ctx->cdfCtx->Cfl_Sign,CFL_JOINT_SIGNS + 1); // S()
+	b_data->signU = (cfl_alpha_signs + 1) / 3;
+	b_data->signV = (cfl_alpha_signs + 1) % 3;
+	if (b_data->signU != CFL_SIGN_ZERO)
+	{
+		//cfl_alpha_u; // S()
+		int ctx = (b_data->signU - 1) * 3 + b_data->signV;
+
+		b_data->CflAlphaU = 1 + sb.decodeSymbol(sbCtx,bs,av1ctx->cdfCtx->Cfl_Alpha[ctx],CFL_ALPHABET_SIZE + 1);
+		if (b_data->signU == CFL_SIGN_NEG)
+			b_data->CflAlphaU = -b_data->CflAlphaU;
+	}
+	else
+	{
+		b_data->CflAlphaU = 0;
+	}
+	if (b_data->signV != CFL_SIGN_ZERO)
+	{
+	//	cfl_alpha_v; // S()
+		int ctx = (b_data->signV - 1) * 3 + b_data->signU;
+
+		b_data->CflAlphaV = 1 + sb.decodeSymbol(sbCtx,bs,av1ctx->cdfCtx->Cfl_Alpha[ctx],CFL_ALPHABET_SIZE + 1);
+
+		if (b_data->signV == CFL_SIGN_NEG)
+			b_data->CflAlphaV = -b_data->CflAlphaV;
+	}
+	else
+	{
+		b_data->CflAlphaV = 0;
+	}
+}
+palette_mode_info()
+{
+	Type
+		bsizeCtx = Mi_Width_Log2[MiSize] + Mi_Height_Log2[MiSize] - 2;
+	if (YMode == DC_PRED)
+	{
+		has_palette_y; // S()
+		if (has_palette_y)
+		{
+			palette_size_y_minus_2; // S()
+			PaletteSizeY = palette_size_y_minus_2 + 2;
+			cacheN = get_palette_cache(0);
+			idx = 0;
+			for (i = 0; i < cacheN && idx < PaletteSizeY; i++)
+			{
+				use_palette_color_cache_y; // L(1)
+				if (use_palette_color_cache_y)
+				{
+						palette_colors_y[idx] = PaletteCache[i;] idx++;
+				}
+			}
+			if (idx < PaletteSizeY)
+			{
+				palette_colors_y[idx]; // L(BitDepth)
+				idx++;
+			}
+			if (idx < PaletteSizeY)
+			{
+				minBits = BitDepth - 3;
+				palette_num_extra_bits_y;
+				L(2)
+				paletteBits = minBits + palette_num_extra_bits_y;
+			}
+			while (idx < PaletteSizeY)
+			{
+				palette_delta_y; // L(paletteBits)
+				palette_delta_y++;
+				palette_colors_y[idx] = ;
+				Clip1(palette_colors_y[idx - 1] + ;
+					  palette_delta_y)
+					range = (1 << BitDepth) - palette_colors_y[idx] - 1 paletteBits = Min(paletteBits, CeilLog2(range))
+								idx++
+			}
+			sort(palette_colors_y, 0, PaletteSizeY - 1)
+		}
+	}
+	if (HasChroma && UVMode == DC_PRED)
+	{
+		has_palette_uv; // S()
+		if (has_palette_uv)
+		{
+			palette_size_uv_minus_2; // S()
+			PaletteSizeUV = palette_size_uv_minus_2 + 2;
+			cacheN = get_palette_cache(1)
+				idx = 0;
+			for (i = 0; i < cacheN && idx < PaletteSizeUV; i++)
+			{
+				use_palette_color_cache_u; // L(1)
+				if (use_palette_color_cache_u)
+				{
+						palette_colors_u[idx] = PaletteCache[i];
+						idx++;
+				}
+			}
+			if (idx < PaletteSizeUV)
+			{
+				palette_colors_u[idx]; // L(BitDepth)
+				idx++
+			}
+			if (idx < PaletteSizeUV)
+			{
+				minBits = BitDepth - 3;
+				palette_num_extra_bits_u; // L(2)
+				paletteBits = minBits + palette_num_extra_bits_u;
+			}
+			while (idx < PaletteSizeUV)
+			{
+				palette_delta_u; // L(paletteBits)
+				palette_colors_u[idx] = Clip1(palette_colors_u[idx - 1] + palette_delta_u);
+				range = (1 << BitDepth) - palette_colors_u[idx];
+				paletteBits = Min(paletteBits, CeilLog2(range));
+				idx++;
+			}
+			sort(palette_colors_u, 0, PaletteSizeUV - 1);
+			delta_encode_palette_colors_v; // L(1)
+			if (delta_encode_palette_colors_v)
+			{
+				minBits = BitDepth - 4;
+				maxVal = 1 << BitDepth;
+				palette_num_extra_bits_v; // L(2)
+				paletteBits = minBits + palette_num_extra_bits_v
+											palette_colors_v[0]; // L(BitDepth)
+				for (idx = 1; idx < PaletteSizeUV; idx++)
+				{
+						palette_delta_v; // L(paletteBits)
+						if (palette_delta_v)
+						{
+						palette_delta_sign_bit_v; // L(1)
+						if (palette_delta_sign_bit_v)
+						{
+							palette_delta_v = -palette_delta_v;
+						}
+						}
+						val = palette_colors_v[idx - 1] + palette_delta_v;
+						if (val < 0)
+						val += maxVal;
+						if (val >= maxVal)
+						val -= maxVal;
+
+						palette_colors_v[idx] = Clip1(val);
+				}
+			}
+			else
+			{
+				for (idx = 0; idx < PaletteSizeUV; idx++)
+				{
+						palette_colors_v[idx]; // L(BitDepth)
+				}
+			}
+		}
+	}
+}
+filter_intra_mode_info()
+{
+		use_filter_intra = 0;
+	if (enable_filter_intra &&
+		YMode == DC_PRED && PaletteSizeY == 0 &&
+		Max(Block_Width[MiSize], Block_Height[MiSize]) <= 32)
+	{
+		use_filter_intra; // S()
+		if (use_filter_intra)
+		{
+			filter_intra_mode; // S()
 		}
 	}
 }
