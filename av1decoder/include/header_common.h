@@ -319,7 +319,7 @@ typedef struct PartitionData{
 	uint8_t **Skips;
 	uint8_t **TxSizes;
 	uint8_t **PaletteSizes[2];
-	uint8_t **PaletteColors[2];
+	uint8_t ***PaletteColors[2];
 	uint8_t **DeltaLFs[4];
 }PartitionData;
 typedef struct BlockData{
@@ -389,6 +389,8 @@ typedef struct BlockData{
 	uint8_t *palette_colors_y;
 	uint8_t PaletteSizeUV;
 	uint8_t *palette_colors_u;
+	uint8_t *palette_colors_v;
+	uint8_t *PaletteCache;
 
 	uint8_t use_filter_intra;
 	uint8_t filter_intra_mode;

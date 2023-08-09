@@ -552,6 +552,9 @@ int inline Max(int a,int b){
 int inline Clip3(int a,int b,int c){
 	return (c < a || c > b) ? ((c < a) ? a :b) : c;
 }
+int inline Clip1(int x,int BitDepth){
+	return Clip3(0,1 << BitDepth,x);
+}
 int inline Round2(int x,int n){
 	return 0;
 }
@@ -564,6 +567,20 @@ int inline FloorLog2(int x){
 	}
 	return s - 1;
 }
+int inline CeilLog2(int x)
+{
+	if (x < 2)
+		return 0;
+	int i = 1;
+	int p = 2;
+	while (p < x)
+	{
+		i++;
+		p = p << 1;
+	}
+	return i;
+}
+
 int inline is_inside(int candidateR,int  candidateC ,int colStart, int colEnd,int rowStart, int rowEnd) { 
 	return ( candidateC >= colStart &&
 	candidateC < colEnd &&
@@ -610,6 +627,9 @@ int inline is_directional_mode(int mode ) {
 	}
 	return 0;
 }
+int inline av1sort(int *array,int min ,int max){
 
+	
+}
 #endif
 

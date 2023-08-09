@@ -1546,10 +1546,39 @@ int frame::intra_frame_mode_info(SymbolContext *sbCtx,bitSt *bs,TileData *t_data
 	}
 	
 }
-int frame::inter_frame_mode_info(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
-							PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1ctx ){
+int frame::inter_frame_mode_info(SymbolContext *sbCtx, bitSt *bs, TileData *t_data,
+								 PartitionData *p_data, BlockData *b_data, AV1DecodeContext *av1ctx)
+{
 
+	use_intrabc = 0;
+	LeftRefFrame[0] = AvailL ? RefFrames[MiRow][MiCol - 1][0] : INTRA_FRAME;
+	AboveRefFrame[0] = AvailU ? RefFrames[MiRow - 1][MiCol][0] : INTRA_FRAME;
+	LeftRefFrame[1] = AvailL ? RefFrames[MiRow][MiCol - 1][1] : NONE;
+	AboveRefFrame[1] = AvailU ? RefFrames[MiRow - 1][MiCol][1] : NONE;
+	LeftIntra = LeftRefFrame[0] <= INTRA_FRAME;
+	AboveIntra = AboveRefFrame[0] <= INTRA_FRAME;
+	LeftSingle = LeftRefFrame[1] <= INTRA_FRAME;
+	AboveSingle = AboveRefFrame[1] <= INTRA_FRAME;
+	skip = 0;
+	inter_segment_id(1);
+	read_skip_mode();
+	if (skip_mode)
+			skip = 1;
+	else
+			read_skip();
 
+	if (!SegIdPreSkip)
+			inter_segment_id(0)
+				Lossless = LosslessArray[segment_id];
+	read_cdef();
+	read_delta_qindex();
+	read_delta_lf();
+	ReadDeltas = 0;
+	read_is_inter();
+	if (is_inter)
+			inter_block_mode_info();
+	else
+			intra_block_mode_info();
 }
 int frame::read_segment_id(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
 							PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1ctx){
@@ -1908,7 +1937,8 @@ int frame::read_cfl_alphas(SymbolContext *sbCtx,bitSt *bs,BlockData *b_data,AV1D
 		b_data->CflAlphaV = 0;
 	}
 }
-int frame::palette_mode_info(SymbolContext *sbCtx,bitSt *bs,BlockData *b_data,AV1DecodeContext *av1ctx)
+int frame::palette_mode_info(SymbolContext *sbCtx,bitSt *bs,PartitionData *p_data,
+							BlockData *b_data,AV1DecodeContext *av1ctx)
 {
 	Symbol sb = Symbol::Instance();
 	frameHeader *frameHdr = av1ctx->frameHdr;
@@ -1920,48 +1950,48 @@ int frame::palette_mode_info(SymbolContext *sbCtx,bitSt *bs,BlockData *b_data,AV
 	{
 		
 		int ctx = 0;
-		if ( b_data->AvailU && PaletteSizes[ 0 ][ b_data->MiRow - 1 ][ b_data->MiCol ] > 0 )
+		if ( b_data->AvailU && p_data->PaletteSizes[ 0 ][ b_data->MiRow - 1 ][ b_data->MiCol ] > 0 )
 			ctx += 1;
-		if ( b_data->AvailL && PaletteSizes[ 0 ][ b_data->MiRow ][ b_data->MiCol - 1 ] > 0 )
+		if ( b_data->AvailL && p_data->PaletteSizes[ 0 ][ b_data->MiRow ][ b_data->MiCol - 1 ] > 0 )
 			ctx += 1;
 		//has_palette_y; // S()
 		if (sb.decodeSymbol(sbCtx,bs,av1ctx->cdfCtx->Palette_Y_Mode[bsizeCtx][ctx],3))
 		{
 		//	palette_size_y_minus_2; // S()
 			b_data->PaletteSizeY = sb.decodeSymbol(sbCtx,bs,av1ctx->cdfCtx->Palette_Y_Size[bsizeCtx],PALETTE_SIZES + 1) + 2;
-			int cacheN = get_palette_cache(0,b_data);
+			int cacheN = get_palette_cache(0,p_data,b_data);
 			int idx = 0;
 			for (int i = 0; i < cacheN && idx < b_data->PaletteSizeY; i++)
 			{
 				//use_palette_color_cache_y; // L(1)
-				if (sb.read_literal(sbCtx,1))
+				if (sb.read_literal(sbCtx,bs,1))
 				{
-						palette_colors_y[idx] = PaletteCache[i]; 
+						b_data->palette_colors_y[idx] = b_data->PaletteCache[i]; 
 						idx++;
 				}
 			}
 			if (idx < b_data->PaletteSizeY)
 			{
-				palette_colors_y[idx] = sb.read_literal(sbCtx,BitDepth); // L(BitDepth)
+				b_data->palette_colors_y[idx] = sb.read_literal(sbCtx,bs,BitDepth); // L(BitDepth)
 				idx++;
 			}
 			if (idx < b_data->PaletteSizeY)
 			{
 				int minBits = BitDepth - 3;
 				//palette_num_extra_bits_y; //L(2)
-				paletteBits = minBits + sb.read_literal(sbCtx,2);
+				paletteBits = minBits + sb.read_literal(sbCtx,bs,2);
 			}
 			while (idx < b_data->PaletteSizeY)
 			{
-				int palette_delta_y = sb.read_literal(sbCtx,paletteBits); // L(paletteBits)
+				int palette_delta_y = sb.read_literal(sbCtx,bs,paletteBits); // L(paletteBits)
 				palette_delta_y++;
-				palette_colors_y[idx] = Clip1(palette_colors_y[idx - 1] + palette_delta_y);
-				int range = (1 << BitDepth) - palette_colors_y[idx] - 1 ;
+				b_data->palette_colors_y[idx] = Clip1(b_data->palette_colors_y[idx - 1] + palette_delta_y,seqHdr->color_config.BitDepth);
+				int range = (1 << BitDepth) - b_data->palette_colors_y[idx] - 1 ;
 				paletteBits = Min(paletteBits, CeilLog2(range));
 				idx++;
 			}
 			//!!!!
-			sort(palette_colors_y, 0, b_data->PaletteSizeY - 1);
+			av1sort((int *)b_data->palette_colors_y, 0, b_data->PaletteSizeY - 1);
 		}
 	}
 	if (b_data->HasChroma && b_data->UVMode == DC_PRED)
@@ -1972,70 +2002,70 @@ int frame::palette_mode_info(SymbolContext *sbCtx,bitSt *bs,BlockData *b_data,AV
 		{
 			//palette_size_uv_minus_2; // S()
 			b_data->PaletteSizeUV = sb.decodeSymbol(sbCtx,bs,av1ctx->cdfCtx->Palette_Uv_Size[bsizeCtx],PALETTE_SIZES + 1) + 2;
-			int cacheN = get_palette_cache(1,b_data);
+			int cacheN = get_palette_cache(1,p_data, b_data);
 			int idx = 0;
 			for (int i = 0; i < cacheN && idx < b_data->PaletteSizeUV; i++)
 			{
 				//use_palette_color_cache_u; // L(1)
-				if (sb.read_literal(sbCtx,1))
+				if (sb.read_literal(sbCtx,bs,1))
 				{
-						palette_colors_u[idx] = PaletteCache[i];
+						b_data->palette_colors_u[idx] = b_data->PaletteCache[i];
 						idx++;
 				}
 			}
 			if (idx < b_data->PaletteSizeUV)
 			{
-				palette_colors_u[idx]; // L(BitDepth)
-				idx++
+				b_data->palette_colors_u[idx]; // L(BitDepth)
+				idx++;
 			}
 			if (idx < b_data->PaletteSizeUV)
 			{
 				int minBits = BitDepth - 3;
 				//palette_num_extra_bits_u; // L(2)
-				paletteBits = minBits + sb.read_literal(sbCtx,2);
+				paletteBits = minBits + sb.read_literal(sbCtx,bs,2);
 			}
 			while (idx < b_data->PaletteSizeUV)
 			{
 				//palette_delta_u; // L(paletteBits)
-				b_data->palette_colors_u[idx] = Clip1(b_data->palette_colors_u[idx - 1] + sb.read_literal(sbCtx,paletteBits));
+				b_data->palette_colors_u[idx] = Clip1(b_data->palette_colors_u[idx - 1] + sb.read_literal(sbCtx,bs,paletteBits),seqHdr->color_config.BitDepth);
 				int range = (1 << BitDepth) - b_data->palette_colors_u[idx];
 				paletteBits = Min(paletteBits, CeilLog2(range));
 				idx++;
 			}
-			sort(palette_colors_u, 0, PaletteSizeUV - 1);
+			av1sort((int *)b_data->palette_colors_u, 0, b_data->PaletteSizeUV - 1);
 			//delta_encode_palette_colors_v; // L(1)
-			if (sb.read_literal(sbCtx,1))
+			if (sb.read_literal(sbCtx,bs,1))
 			{
 				int minBits = BitDepth - 4;
 				int maxVal = 1 << BitDepth;
 				//palette_num_extra_bits_v; // L(2)
-				paletteBits = minBits + sb.read_literal(sbCtx,2);
-				palette_colors_v[0] = sb.read_literal(sbCtx,BitDepth); // L(BitDepth)
+				paletteBits = minBits + sb.read_literal(sbCtx,bs,2);
+				b_data->palette_colors_v[0] = sb.read_literal(sbCtx,bs,BitDepth); // L(BitDepth)
 				for (idx = 1; idx < b_data->PaletteSizeUV; idx++)
 				{
-					int palette_delta_v = sb.read_literal(sbCtx,paletteBits); // L(paletteBits)
+					int palette_delta_v = sb.read_literal(sbCtx,bs,paletteBits); // L(paletteBits)
 					if (palette_delta_v)
 					{
 						//palette_delta_sign_bit_v; // L(1)
-						if (sb.read_literal(sbCtx,1))
+						if (sb.read_literal(sbCtx,bs,1))
 						{
 							palette_delta_v = -palette_delta_v;
 						}
 					}
-					int val = palette_colors_v[idx - 1] + palette_delta_v;
+					int val = b_data->palette_colors_v[idx - 1] + palette_delta_v;
 					if (val < 0)
 					val += maxVal;
 					if (val >= maxVal)
 					val -= maxVal;
 
-					palette_colors_v[idx] = Clip1(val);
+					b_data->palette_colors_v[idx] = Clip1(val,seqHdr->color_config.BitDepth);
 				}
 			}
 			else
 			{
 				for (idx = 0; idx < b_data->PaletteSizeUV; idx++)
 				{
-						palette_colors_v[idx] = sb.read_literal(sbCtx,BitDepth); // L(BitDepth)
+						b_data->palette_colors_v[idx] = sb.read_literal(sbCtx,bs,BitDepth); // L(BitDepth)
 				}
 			}
 		}
@@ -2049,7 +2079,7 @@ int frame::filter_intra_mode_info(SymbolContext *sbCtx,bitSt *bs,BlockData *b_da
 	b_data->use_filter_intra = 0;
 	if (seqHdr->enable_filter_intra &&
 		b_data->YMode == DC_PRED && b_data->PaletteSizeY == 0 &&
-		Max(Block_Width[b_data->MiSize], Block_Height[b_data->MiSize]) <= 32)
+		Max(4 * Num_4x4_Blocks_Wide[b_data->MiSize], 4 * Num_4x4_Blocks_High[b_data->MiSize]) <= 32)
 	{
 		b_data->use_filter_intra = sb.decodeSymbol(sbCtx,bs,av1ctx->cdfCtx->Filter_Intra[b_data->MiSize],3); // S()
 		if (b_data->use_filter_intra)
@@ -2058,37 +2088,37 @@ int frame::filter_intra_mode_info(SymbolContext *sbCtx,bitSt *bs,BlockData *b_da
 		}
 	}
 }
-int frame::get_palette_cache(int plane,BlockData *b_data)
+int frame::get_palette_cache(int plane,PartitionData *p_data,BlockData *b_data)
 {
 	int aboveN = 0 ;
 	if ((b_data->MiRow * MI_SIZE) % 64){
-		aboveN = PaletteSizes[plane][b_data->MiRow - 1][b_data->MiCol];
+		aboveN = p_data->PaletteSizes[plane][b_data->MiRow - 1][b_data->MiCol];
 	} 
 	int leftN = 0 ;
 	if (b_data->AvailL){
-		leftN = PaletteSizes[plane][b_data->MiRow][b_data->MiCol - 1];
+		leftN = p_data->PaletteSizes[plane][b_data->MiRow][b_data->MiCol - 1];
 	} 
 	int aboveIdx = 0 ;
 	int leftIdx = 0 ;
 	int n = 0 ;
 	while (aboveIdx < aboveN && leftIdx < leftN)
 	{
-		int aboveC = PaletteColors[plane][b_data->MiRow - 1][b_data->MiCol][aboveIdx] ;
-		int leftC = PaletteColors[plane][b_data->MiRow][b_data->MiCol - 1][leftIdx] ;
+		int aboveC = p_data->PaletteColors[plane][b_data->MiRow - 1][b_data->MiCol][aboveIdx] ;
+		int leftC = p_data->PaletteColors[plane][b_data->MiRow][b_data->MiCol - 1][leftIdx] ;
 		if (leftC < aboveC)
 		{
-			if (n == 0 || leftC != PaletteCache[n - 1])
+			if (n == 0 || leftC != b_data->PaletteCache[n - 1])
 			{
-				PaletteCache[n] = leftC;
+				b_data->PaletteCache[n] = leftC;
 					n++;
 			}
 			leftIdx++;
 		}
 		else
 		{
-			if (n == 0 || aboveC != PaletteCache[n - 1])
+			if (n == 0 || aboveC != b_data->PaletteCache[n - 1])
 			{
-				PaletteCache[n] = aboveC;
+				b_data->PaletteCache[n] = aboveC;
 					n++;
 			}
 			aboveIdx++ ;
@@ -2100,21 +2130,21 @@ int frame::get_palette_cache(int plane,BlockData *b_data)
 	}
 	while (aboveIdx < aboveN)
 	{
-		int val = PaletteColors[plane][b_data->MiRow - 1][b_data->MiCol][aboveIdx] ;
+		int val = p_data->PaletteColors[plane][b_data->MiRow - 1][b_data->MiCol][aboveIdx] ;
 		aboveIdx++ ;
-		if (n == 0 || val != PaletteCache[n - 1])
+		if (n == 0 || val != b_data->PaletteCache[n - 1])
 		{
-			PaletteCache[n] = val;
+			b_data->PaletteCache[n] = val;
 				n++;
 		}
 	}
 	while (leftIdx < leftN)
 	{
-		int val = PaletteColors[plane][b_data->MiRow][b_data->MiCol - 1][leftIdx];
+		int val = p_data->PaletteColors[plane][b_data->MiRow][b_data->MiCol - 1][leftIdx];
 		leftIdx++ ;
-		if (n == 0 || val != PaletteCache[n - 1])
+		if (n == 0 || val != b_data->PaletteCache[n - 1])
 		{
-			PaletteCache[n] = val;
+			b_data->PaletteCache[n] = val;
 				n++;
 		}
 	}

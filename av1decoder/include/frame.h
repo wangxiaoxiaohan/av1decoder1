@@ -56,6 +56,11 @@ public:
 	int intra_angle_info_y(SymbolContext *sbCtx,bitSt *bs,BlockData *b_data,AV1DecodeContext *av1ctx);
 	int intra_angle_info_uv(SymbolContext *sbCtx,bitSt *bs,BlockData *b_data,AV1DecodeContext *av1ctx);
 	int read_cfl_alphas(SymbolContext *sbCtx,bitSt *bs,BlockData *b_data,AV1DecodeContext *av1ctx);
+
+	int palette_mode_info(SymbolContext *sbCtx,bitSt *bs,PartitionData *p_data,
+							BlockData *b_data,AV1DecodeContext *av1ctx);
+	int filter_intra_mode_info(SymbolContext *sbCtx,bitSt *bs,BlockData *b_data,AV1DecodeContext *av1ctx);
+	int get_palette_cache(int plane,PartitionData *p_data,BlockData *b_data);
 	static frame& Instance() {
 		static frame m_pInstance;
 		return m_pInstance;
