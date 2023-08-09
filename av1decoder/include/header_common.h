@@ -384,6 +384,14 @@ typedef struct BlockData{
 	uint8_t signV;
 	uint8_t CflAlphaU;
 	uint8_t CflAlphaV;
+
+	uint8_t PaletteSizeY;
+	uint8_t *palette_colors_y;
+	uint8_t PaletteSizeUV;
+	uint8_t *palette_colors_u;
+
+	uint8_t use_filter_intra;
+	uint8_t filter_intra_mode;
 }BlockData;
 typedef struct AV1Frame{
 	sizeInfo *si;
