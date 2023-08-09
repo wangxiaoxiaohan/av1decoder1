@@ -365,7 +365,15 @@ typedef struct BlockData{
 	uint8_t RefMvIdx;
 	uint8_t NumMvFound;
 	uint8_t mv_joint;
-	
+	uint8_t mv_sign;
+	uint8_t mv_class;
+	uint8_t mv_class0_bit;
+	uint8_t mv_class0_fr;
+	uint8_t mv_class0_hp;
+	uint8_t mv_class0_hp;
+	uint8_t mv_fr;
+	uint8_t mv_hp;
+	uint8_t mv_bit;
 }BlockData;
 typedef struct AV1Frame{
 	sizeInfo *si;

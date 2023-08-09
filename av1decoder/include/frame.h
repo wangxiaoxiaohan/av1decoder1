@@ -35,6 +35,25 @@ public:
 	int decode_block(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
 							PartitionData *p_data,int r,int c,int subSize, AV1DecodeContext *av1ctx);
 
+	int mode_info(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
+							PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1ctx);
+	int intra_frame_mode_info(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
+							PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1ctx );
+	int inter_frame_mode_info(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
+							PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1ctx);
+	int read_segment_id(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
+							PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1ctx);
+	int read_cdef(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
+							PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1ctx);
+	int read_delta_qindex(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
+							PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1ctx);
+	int read_delta_lf(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
+							PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1ctx);
+	int assign_mv(int isCompound,SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
+							PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1ctx);
+	int read_mv_component(int MvCtx,int comp,SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
+							PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1ctx);
+
 	static frame& Instance() {
 		static frame m_pInstance;
 		return m_pInstance;
