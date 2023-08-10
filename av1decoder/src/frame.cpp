@@ -1508,7 +1508,7 @@ int frame::intra_frame_mode_info(SymbolContext *sbCtx,bitSt *bs,TileData *t_data
 	//	intra_frame_y_mode ;//S()
 		int abovemode = Intra_Mode_Context[ b_data->AvailU ? p_data->YModes[ b_data->MiRow - 1 ][ b_data->MiCol ] : DC_PRED ];
 		int leftmode = Intra_Mode_Context[ b_data->AvailL ? p_data->YModes[ b_data->MiRow ][ b_data->MiCol - 1] : DC_PRED ];
-		b_data->YMode = sb.decodeSymbol(sbCtx,bs,av1ctx->cdfCtx->Intra_Frame_Y_Mode[abovemode][leftmode],INTRA_MODES + );
+		b_data->YMode = sb.decodeSymbol(sbCtx,bs,av1ctx->cdfCtx->Intra_Frame_Y_Mode[abovemode][leftmode],INTRA_MODES + 1);
 		intra_angle_info_y( sbCtx,bs,b_data,av1ctx) ;
 		if (b_data->HasChroma)
 		{
@@ -1560,25 +1560,43 @@ int frame::inter_frame_mode_info(SymbolContext *sbCtx, bitSt *bs, TileData *t_da
 	int LeftSingle = b_data->LeftRefFrame[1] <= INTRA_FRAME;
 	int AboveSingle = b_data->AboveRefFrame[1] <= INTRA_FRAME;
 	b_data->skip = 0;
-	inter_segment_id(1);
+	inter_segment_id(1,sbCtx,bs, t_data, p_data,b_data,av1ctx);
 	read_skip_mode();
-	if (skip_mode)
-			skip = 1;
+	if (b_data->skip_mode)
+			b_data->skip = 1;
 	else
 			read_skip();
 
-	if (!SegIdPreSkip)
-		inter_segment_id(0)
-	Lossless = LosslessArray[segment_id];
-	read_cdef();
-	read_delta_qindex();
-	read_delta_lf();
-	ReadDeltas = 0;
-	read_is_inter();
-	if (is_inter)
-			inter_block_mode_info();
+	if (!frameHdr->segmentation_params.SegIdPreSkip)
+		inter_segment_id(0,sbCtx,bs, t_data, p_data,b_data,av1ctx);
+	b_data->Lossless = frameHdr->segmentation_params.LosslessArray[b_data->segment_id];
+	read_cdef(sbCtx,bs, t_data, p_data,b_data,av1ctx);
+	read_delta_qindex(sbCtx,bs, t_data, p_data,b_data,av1ctx);
+	read_delta_lf(sbCtx,bs, t_data, p_data,b_data,av1ctx);
+	t_data->ReadDeltas = 0;
+	//read_is_inter();
+	if ( b_data->skip_mode ) {
+		b_data->is_inter = 1;
+	} else if ( seg_feature_active ( SEG_LVL_REF_FRAME ) ) {
+		b_data->is_inter = frameHdr->segmentation_params.FeatureData[ b_data->segment_id ][ SEG_LVL_REF_FRAME ] != INTRA_FRAME;
+	} else if ( seg_feature_active ( SEG_LVL_GLOBALMV ) ) {
+		b_data->is_inter = 1;
+	} else {
+		int ctx;
+		if ( b_data->AvailU && b_data->AvailL )
+			ctx = (LeftIntra && AboveIntra) ? 3 : LeftIntra || AboveIntra;
+		else if ( b_data->AvailU || b_data->AvailL )
+			ctx = 2 * (b_data->AvailU ? AboveIntra : LeftIntra);
+		else
+			ctx = 0;
+
+		b_data->is_inter = sb.decodeSymbol(sbCtx,bs,av1ctx->cdfCtx->Is_Inter[ctx],3);//S()
+	}
+
+	if (b_data->is_inter)
+		inter_block_mode_info(sbCtx,bs, t_data, p_data,b_data,av1ctx);
 	else
-			intra_block_mode_info();
+		intra_block_mode_info(sbCtx,bs, t_data, p_data,b_data,av1ctx);
 }
 int frame::read_segment_id(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
 							PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1ctx){
@@ -1698,9 +1716,6 @@ int frame::read_delta_lf(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
 		}
 		for (int i = 0; i < frameLfCount; i++)
 		{
-			//这里的逻辑是delta_lf_multi 为1  则各个frameLf的 delta_lf_abs都不一样，他们都有自己的 symbol ctx
-			//初始化的时候，他们都是从 Default_Delta_Lf_Cdf拷贝而来的，是一样的，如果需要update，则后面则是单独update了
-			//就有可能不一样，所以要做区分
 			if(frameHdr->delta_lf_params.delta_lf_multi)
 				b_data->delta_lf_abs =  sb.decodeSymbol(sbCtx,bs,av1ctx->cdfCtx->Delta_Lf_Muti[i],DELTA_LF_SMALL + 2); //S() 
 			else
@@ -2185,7 +2200,7 @@ inter_segment_id(int preSkip,SymbolContext *sbCtx, bitSt *bs, TileData *t_data,
 					for (int i = 0; i < Num_4x4_Blocks_High[b_data->MiSize]; i++)
 						LeftSegPredContext[b_data->MiRow + i] = b_data->seg_id_predicted;
 					read_segment_id( sbCtx, bs, t_data,p_data, b_data, av1ctx);
-					return
+					return;
 				}
 			}
 			if (frameHdr->segmentation_params.segmentation_temporal_update == 1)
@@ -2215,4 +2230,133 @@ inter_segment_id(int preSkip,SymbolContext *sbCtx, bitSt *bs, TileData *t_data,
 	{
 		b_data->segment_id = 0;
 	}
+}
+inter_block_mode_info()
+{
+	PaletteSizeY = 0;
+	PaletteSizeUV = 0;
+	read_ref_frames();
+	isCompound = RefFrame[1] > INTRA_FRAME;
+	find_mv_stack(isCompound) ;
+	if (skip_mode)
+	{
+		YMode = NEAREST_NEARESTMV;
+	}
+	else if (seg_feature_active(SEG_LVL_SKIP) ||
+			 seg_feature_active(SEG_LVL_GLOBALMV))
+	{
+		YMode = GLOBALMV;
+	}
+	else if (isCompound)
+	{
+		compound_mode; //S()
+		YMode = NEAREST_NEARESTMV + compound_mode;
+	}
+	else
+	{
+		new_mv; //S()
+		if (new_mv == 0)
+		{
+			YMode = NEWMV;
+		}
+		else
+		{
+			zero_mv; //S()
+			if (zero_mv == 0)
+			{
+				YMode = GLOBALMV;
+			}
+			else
+			{
+				ref_mv; //S()
+				YMode = (ref_mv == 0) ? NEARESTMV : NEARMV;
+			}
+		}
+	}
+	RefMvIdx = 0;
+	if (YMode == NEWMV || YMode == NEW_NEWMV)
+	{
+		for (idx = 0; idx < 2; idx++)
+		{
+
+			if (NumMvFound > idx + 1)
+			{
+				drl_mode; // S()
+				if (drl_mode == 0)
+				{
+					RefMvIdx = idx;
+					break;
+				}
+				RefMvIdx = idx + 1;
+			}
+		}
+	}
+	else if (has_nearmv())
+	{
+		RefMvIdx = 1;
+		for (idx = 1; idx < 3; idx++)
+		{
+			if (NumMvFound > idx + 1)
+			{
+				drl_mode; // S()
+				if (drl_mode == 0)
+				{
+					RefMvIdx = idx;
+					break;
+				}
+				RefMvIdx = idx + 1;
+			}
+		}
+	}
+	assign_mv(isCompound);
+	read_interintra_mode(isCompound);
+	read_motion_mode(isCompound);
+	read_compound_type(isCompound);
+	if (interpolation_filter == SWITCHABLE)
+	{
+		for (dir = 0; dir < (enable_dual_filter ? 2 : 1); dir++)
+		{
+			if (needs_interp_filter())
+			{
+				interp_filter[dir]; // S()
+			}
+			else
+			{
+				interp_filter[dir] = EIGHTTAP;
+			}
+		}
+		if (!enable_dual_filter)
+			interp_filter[1] = interp_filter[0];
+	}
+	else
+	{
+		for (dir = 0; dir < 2; dir++)
+			interp_filter[dir] = interpolation_filter;
+	}
+}
+intra_block_mode_info()
+{
+	RefFrame[0] = INTRA_FRAME;
+	RefFrame[1] = NONE;
+	y_mode; //S()
+	YMode = y_mode;
+	intra_angle_info_y();
+	if (HasChroma)
+	{
+		uv_mode; //S()
+		UVMode = uv_mode;
+		if (UVMode == UV_CFL_PRED)
+		{
+			read_cfl_alphas();
+		}
+		intra_angle_info_uv();
+	}
+	PaletteSizeY = 0;
+	PaletteSizeUV = 0;
+	if (MiSize >= BLOCK_8X8 &&
+		Block_Width[MiSize] <= 64 &&
+		Block_Height[MiSize] <= 64 &&
+		allow_screen_content_tools)
+		palette_mode_info();
+	filter_intra_mode_info();
 }
