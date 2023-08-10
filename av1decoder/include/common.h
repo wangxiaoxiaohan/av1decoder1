@@ -439,6 +439,10 @@ const static int8_t Num_4x4_Blocks_High[ BLOCK_SIZES ] = {
 1, 2, 1, 2, 4, 2, 4, 8, 4, 8, 16,
 8, 16, 32, 16, 32, 4, 1, 8, 2, 16, 4
 };
+const static int8_t Size_Group[ BLOCK_SIZES ] = {
+0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3,
+3, 3, 3, 3, 3, 0, 0, 1, 1, 2, 2
+};
 
 const static int8_t Mi_Width_Log2[ BLOCK_SIZES ] = {
 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3,

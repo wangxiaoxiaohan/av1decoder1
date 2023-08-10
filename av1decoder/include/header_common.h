@@ -139,8 +139,7 @@ typedef struct frameHeader{
 	uint8_t allow_intrabc;
 	uint8_t frame_refs_short_signaling;
 	uint8_t	last_frame_idx;
-	uint8_t	gold_frame_idx
-;
+	uint8_t	gold_frame_idx;
 	uint8_t ref_frame_idx[REFS_PER_FRAME];
 	uint32_t delta_frame_id[REFS_PER_FRAME];//delta_frame_id_minus_1 + 1;
 	uint32_t expectedFrameId[REFS_PER_FRAME];
@@ -398,7 +397,8 @@ typedef struct BlockData{
 	uint8_t LeftRefFrame[2];
 	uint8_t AboveRefFrame[2];
 	uint8_t seg_id_predicted;
-
+	uint8_t compound_mode;
+	uint8_t RefMvIdx;
 }BlockData;
 typedef struct AV1Frame{
 	sizeInfo *si;

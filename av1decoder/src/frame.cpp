@@ -2165,7 +2165,7 @@ int frame::get_palette_cache(int plane,PartitionData *p_data,BlockData *b_data)
 	}
 	return n;
 }
-inter_segment_id(int preSkip,SymbolContext *sbCtx, bitSt *bs, TileData *t_data,
+int frame::inter_segment_id(int preSkip,SymbolContext *sbCtx, bitSt *bs, TileData *t_data,
 								 PartitionData *p_data, BlockData *b_data, AV1DecodeContext *av1ctx)
 {
 	Symbol sb = Symbol::Instance();
@@ -2231,80 +2231,86 @@ inter_segment_id(int preSkip,SymbolContext *sbCtx, bitSt *bs, TileData *t_data,
 		b_data->segment_id = 0;
 	}
 }
-inter_block_mode_info()
+int frame::inter_block_mode_info(SymbolContext *sbCtx, bitSt *bs, TileData *t_data,
+								 PartitionData *p_data, BlockData *b_data, AV1DecodeContext *av1ctx)
 {
-	PaletteSizeY = 0;
-	PaletteSizeUV = 0;
+	Symbol sb = Symbol::Instance();
+	frameHeader *frameHdr = av1ctx->frameHdr;
+	sequenceHeader *seqHdr = av1ctx->seqHdr;
+	b_data->PaletteSizeY = 0;
+	b_data->PaletteSizeUV = 0;
 	read_ref_frames();
-	isCompound = RefFrame[1] > INTRA_FRAME;
+	int isCompound = RefFrame[1] > INTRA_FRAME;
 	find_mv_stack(isCompound) ;
-	if (skip_mode)
+	if (b_data->skip_mode)
 	{
-		YMode = NEAREST_NEARESTMV;
+		b_data->YMode = NEAREST_NEARESTMV;
 	}
 	else if (seg_feature_active(SEG_LVL_SKIP) ||
 			 seg_feature_active(SEG_LVL_GLOBALMV))
 	{
-		YMode = GLOBALMV;
+		b_data->YMode = GLOBALMV;
 	}
 	else if (isCompound)
 	{
-		compound_mode; //S()
-		YMode = NEAREST_NEARESTMV + compound_mode;
+		int ctx = ctx = Compound_Mode_Ctx_Map[ RefMvContext >> 1 ][ Min(NewMvContext, COMP_NEWMV_CTXS - 1) ];
+		b_data->compound_mode = 
+			sb.decodeSymbol(sbCtx,bs,av1ctx->cdfCtx->Compound_Mode[ctx],COMPOUND_MODES + 1); //S()
+		b_data->YMode = NEAREST_NEARESTMV + b_data->compound_mode;
 	}
 	else
 	{
-		new_mv; //S()
-		if (new_mv == 0)
+		//new_mv; //S()
+		if (sb.decodeSymbol(sbCtx,bs,av1ctx->cdfCtx->New_Mv[NewMvContext],3); == 0)
 		{
-			YMode = NEWMV;
+			b_data->YMode = NEWMV;
 		}
 		else
 		{
-			zero_mv; //S()
-			if (zero_mv == 0)
+			//zero_mv; //S()
+			if (sb.decodeSymbol(sbCtx,bs,av1ctx->cdfCtx->Zero_Mv[ZeroMvContext],3 ) == 0)
 			{
-				YMode = GLOBALMV;
+				b_data->YMode = GLOBALMV;
 			}
 			else
 			{
-				ref_mv; //S()
-				YMode = (ref_mv == 0) ? NEARESTMV : NEARMV;
+				//ref_mv; //S()
+				b_data->YMode = (sb.decodeSymbol(sbCtx,bs,av1ctx->cdfCtx->Ref_Mv[RefMvContext],3 ) == 0) ? NEARESTMV : NEARMV;
 			}
 		}
 	}
-	RefMvIdx = 0;
-	if (YMode == NEWMV || YMode == NEW_NEWMV)
+	b_data->RefMvIdx = 0;
+	if (b_data->YMode == NEWMV || b_data->YMode == NEW_NEWMV)
 	{
-		for (idx = 0; idx < 2; idx++)
+		for (int idx = 0; idx < 2; idx++)
 		{
 
 			if (NumMvFound > idx + 1)
 			{
-				drl_mode; // S()
-				if (drl_mode == 0)
+				//drl_mode; // S()
+				if (sb.decodeSymbol(sbCtx,bs,av1ctx->cdfCtx->Drl_Mode[DrlCtxStack[idx]],3 ) == 0)
 				{
-					RefMvIdx = idx;
+					b_data->RefMvIdx = idx;
 					break;
 				}
-				RefMvIdx = idx + 1;
+				b_data->RefMvIdx = idx + 1;
 			}
 		}
 	}
 	else if (has_nearmv())
 	{
-		RefMvIdx = 1;
-		for (idx = 1; idx < 3; idx++)
+		b_data->RefMvIdx = 1;
+		for (int idx = 1; idx < 3; idx++)
 		{
 			if (NumMvFound > idx + 1)
 			{
-				drl_mode; // S()
-				if (drl_mode == 0)
+				//drl_mode; // S()
+				if (sb.decodeSymbol(sbCtx,bs,av1ctx->cdfCtx->Drl_Mode[DrlCtxStack[idx]],3 ) == 0)
 				{
-					RefMvIdx = idx;
+					b_data->RefMvIdx = idx;
 					break;
 				}
-				RefMvIdx = idx + 1;
+				b_data->RefMvIdx = idx + 1;
 			}
 		}
 	}
@@ -2312,51 +2318,202 @@ inter_block_mode_info()
 	read_interintra_mode(isCompound);
 	read_motion_mode(isCompound);
 	read_compound_type(isCompound);
-	if (interpolation_filter == SWITCHABLE)
+	if (frameHdr->iinterpolation_filter == SWITCHABLE)
 	{
-		for (dir = 0; dir < (enable_dual_filter ? 2 : 1); dir++)
+		for (int dir = 0; dir < (seqHdr->enable_dual_filter ? 2 : 1); dir++)
 		{
 			if (needs_interp_filter())
 			{
-				interp_filter[dir]; // S()
+				b_data->interp_filter[dir]; // S()
 			}
 			else
 			{
-				interp_filter[dir] = EIGHTTAP;
+				b_data->interp_filter[dir] = EIGHTTAP;
 			}
 		}
-		if (!enable_dual_filter)
-			interp_filter[1] = interp_filter[0];
+		if (!seqHdr->enable_dual_filter)
+			b_data->interp_filter[1] = b_data->interp_filter[0];
 	}
 	else
 	{
-		for (dir = 0; dir < 2; dir++)
-			interp_filter[dir] = interpolation_filter;
+		for (int dir = 0; dir < 2; dir++)
+			b_data->interp_filter[dir] = frameHdr->interpolation_filter;
 	}
 }
-intra_block_mode_info()
+int frame::intra_block_mode_info(SymbolContext *sbCtx, bitSt *bs, TileData *t_data,
+								 PartitionData *p_data, BlockData *b_data, AV1DecodeContext *av1ctx)
 {
-	RefFrame[0] = INTRA_FRAME;
-	RefFrame[1] = NONE;
-	y_mode; //S()
-	YMode = y_mode;
+	Symbol sb = Symbol::Instance();
+	frameHeader *frameHdr = av1ctx->frameHdr;
+	sequenceHeader *seqHdr = av1ctx->seqHdr;
+
+	b_data->RefFrame[0] = INTRA_FRAME;
+	b_data->RefFrame[1] = NONE;
+	//y_mode; //S()
+	b_data->YMode = sb.decodeSymbol(sbCtx,bs,av1ctx->cdfCtx->Y_Mode[Size_Group[b_data->MiSize ]],INTRA_MODES + 1);
 	intra_angle_info_y();
-	if (HasChroma)
+	if (b_data->HasChroma)
 	{
-		uv_mode; //S()
-		UVMode = uv_mode;
-		if (UVMode == UV_CFL_PRED)
+		//uv_mode; //S()
+		uint16_t *uv_mode_cdf;
+		if(b_data->Lossless && 
+				BLOCK_4X4 == get_plane_residual_size( b_data->MiSize, 1 ,seqHdr->color_config.subsampling_x,seqHdr->color_config.subsampling_y)){
+				uv_mode_cdf = av1ctx->cdfCtx->Uv_Mode_Cfl_Allowed[b_data->YMode];
+		// Block_Width[ x ] is defined to be equal to 4 * Num_4x4_Blocks_Wide[ x ].
+		//Block_Height[ x ] is defined to be equal to 4 * Num_4x4_Blocks_High[ x ].
+		}else if(!b_data->Lossless && Max( 4 * Num_4x4_Blocks_Wide[ b_data->MiSize ], 4 * Num_4x4_Blocks_High[ b_data->MiSize ] ) <= 32){
+				uv_mode_cdf = av1ctx->cdfCtx->Uv_Mode_Cfl_Allowed[b_data->YMode];
+
+		}else{
+				uv_mode_cdf = av1ctx->cdfCtx->Uv_Mode_Cfl_Not_Allowed[b_data->YMode];
+
+		}
+		//uv_mode ;//S()
+		b_data->UVMode = sb.decodeSymbol(sbCtx,bs,uv_mode_cdf,sizeof(uv_mode_cdf)/sizeof(uint16_t));
+
+		if (b_data->UVMode == UV_CFL_PRED)
 		{
 			read_cfl_alphas();
 		}
 		intra_angle_info_uv();
 	}
-	PaletteSizeY = 0;
-	PaletteSizeUV = 0;
-	if (MiSize >= BLOCK_8X8 &&
-		Block_Width[MiSize] <= 64 &&
-		Block_Height[MiSize] <= 64 &&
-		allow_screen_content_tools)
+	b_data->PaletteSizeY = 0;
+	b_data->PaletteSizeUV = 0;
+	if (b_data->MiSize >= BLOCK_8X8 &&
+		4 * Num_4x4_Blocks_Wide[b_data->MiSize] <= 64 &&
+		4 * Num_4x4_Blocks_Wide[b_data->MiSize] <= 64 &&
+		frameHdr->allow_screen_content_tools)
 		palette_mode_info();
 	filter_intra_mode_info();
+}
+read_interintra_mode(isCompound)
+{
+	if (!skip_mode && enable_interintra_compound && !isCompound &&
+		MiSize >= BLOCK_8X8 && MiSize <= BLOCK_32X32)
+	{
+		interintra; // S()
+		if (interintra)
+		{
+			interintra_mode; //S()
+			RefFrame[1] = INTRA_FRAME;
+			AngleDeltaY = 0;
+			AngleDeltaUV = 0;
+			use_filter_intra = 0;
+			wedge_interintra; //S()
+			if (wedge_interintra)
+			{
+				wedge_index; //S()
+				wedge_sign = 0;
+			}
+		}
+	}
+	else
+	{
+		interintra = 0;
+	}
+}
+read_motion_mode(isCompound)
+{
+	if (skip_mode)
+	{
+		motion_mode = SIMPLE;
+		return;
+	}
+	if (!is_motion_mode_switchable)
+	{
+		motion_mode = SIMPLE;
+		return;
+	}
+	if (Min(Block_Width[MiSize],
+			Block_Height[MiSize]) < 8)
+	{
+		motion_mode = SIMPLE;
+		return;
+	}
+	if (!force_integer_mv &&
+		(YMode == GLOBALMV || YMode == GLOBAL_GLOBALMV))
+	{
+		if (GmType[RefFrame[0]] > TRANSLATION)
+		{
+			motion_mode = SIMPLE;
+			return;
+		}
+	}
+	if (isCompound || RefFrame[1] == INTRA_FRAME || !has_overlappable_candidates())
+	{
+		motion_mode = SIMPLE;
+		return;
+	}
+	find_warp_samples();
+	if (force_integer_mv || NumSamples == 0 ||
+		!allow_warped_motion || is_scaled(RefFrame[0]))
+	{
+		use_obmc; // S()
+		motion_mode = use_obmc ? OBMC : SIMPLE;
+	}
+	else
+	{
+		motion_mode; //S()
+	}
+}
+read_compound_type(isCompound)
+{
+	comp_group_idx = 0;
+	compound_idx = 1;
+	if (skip_mode)
+	{
+		compound_type = COMPOUND_AVERAGE;
+		return;
+	}
+	if (isCompound)
+	{
+		n = Wedge_Bits[MiSize];
+		if (enable_masked_compound)
+		{
+			comp_group_idx; // S()
+		}
+		if (comp_group_idx == 0)
+		{
+			if (enable_jnt_comp)
+			{
+				compound_idx; // S()
+				compound_type = compound_idx ? COMPOUND_AVERAGE : COMPOUND_DISTANCE;
+			}
+			else
+			{
+				compound_type = COMPOUND_AVERAGE;
+			}
+		}
+		else
+		{
+			if (n == 0)
+			{
+				compound_type = COMPOUND_DIFFWTD;
+			}
+			else
+			{
+				compound_type; // S()
+			}
+		}
+		if (compound_type == COMPOUND_WEDGE)
+		{
+			wedge_index; // S()
+			wedge_sign;	 // L(1)
+		}
+		else if (compound_type == COMPOUND_DIFFWTD)
+		{
+			mask_type; // L(1)
+		}
+	}
+	else
+	{
+		if (interintra)
+		{
+			compound_type = wedge_interintra ? COMPOUND_WEDGE : COMPOUND_INTRA;
+		}
+		else
+		{
+			compound_type = COMPOUND_AVERAGE;
+		}
+	}
 }
