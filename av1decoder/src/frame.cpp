@@ -1550,16 +1550,16 @@ int frame::inter_frame_mode_info(SymbolContext *sbCtx, bitSt *bs, TileData *t_da
 								 PartitionData *p_data, BlockData *b_data, AV1DecodeContext *av1ctx)
 {
 
-	use_intrabc = 0;
-	LeftRefFrame[0] = AvailL ? RefFrames[MiRow][MiCol - 1][0] : INTRA_FRAME;
-	AboveRefFrame[0] = AvailU ? RefFrames[MiRow - 1][MiCol][0] : INTRA_FRAME;
-	LeftRefFrame[1] = AvailL ? RefFrames[MiRow][MiCol - 1][1] : NONE;
-	AboveRefFrame[1] = AvailU ? RefFrames[MiRow - 1][MiCol][1] : NONE;
-	LeftIntra = LeftRefFrame[0] <= INTRA_FRAME;
-	AboveIntra = AboveRefFrame[0] <= INTRA_FRAME;
-	LeftSingle = LeftRefFrame[1] <= INTRA_FRAME;
-	AboveSingle = AboveRefFrame[1] <= INTRA_FRAME;
-	skip = 0;
+	int use_intrabc = 0;
+	b_data->LeftRefFrame[0] = b_data->AvailL ? p_data->RefFrames[b_data->MiRow][b_data->MiCol - 1][0] : INTRA_FRAME;
+	b_data->AboveRefFrame[0] = b_data->AvailU ? p_data->RefFrames[b_data->MiRow - 1][b_data->MiCol][0] : INTRA_FRAME;
+	b_data->LeftRefFrame[1] = b_data->AvailL ? p_data->RefFrames[b_data->MiRow][b_data->MiCol - 1][1] : NONE;
+	b_data->AboveRefFrame[1] = b_data->AvailU ? p_data->RefFrames[b_data->MiRow - 1][b_data->MiCol][1] : NONE;
+	int LeftIntra = b_data->LeftRefFrame[0] <= INTRA_FRAME;
+	int AboveIntra = b_data->AboveRefFrame[0] <= INTRA_FRAME;
+	int LeftSingle = b_data->LeftRefFrame[1] <= INTRA_FRAME;
+	int AboveSingle = b_data->AboveRefFrame[1] <= INTRA_FRAME;
+	b_data->skip = 0;
 	inter_segment_id(1);
 	read_skip_mode();
 	if (skip_mode)
@@ -1568,8 +1568,8 @@ int frame::inter_frame_mode_info(SymbolContext *sbCtx, bitSt *bs, TileData *t_da
 			read_skip();
 
 	if (!SegIdPreSkip)
-			inter_segment_id(0)
-				Lossless = LosslessArray[segment_id];
+		inter_segment_id(0)
+	Lossless = LosslessArray[segment_id];
 	read_cdef();
 	read_delta_qindex();
 	read_delta_lf();
@@ -2149,4 +2149,70 @@ int frame::get_palette_cache(int plane,PartitionData *p_data,BlockData *b_data)
 		}
 	}
 	return n;
+}
+inter_segment_id(int preSkip,SymbolContext *sbCtx, bitSt *bs, TileData *t_data,
+								 PartitionData *p_data, BlockData *b_data, AV1DecodeContext *av1ctx)
+{
+	Symbol sb = Symbol::Instance();
+	frameHeader *frameHdr = av1ctx->frameHdr;
+	sequenceHeader *seqHdr = av1ctx->seqHdr;
+	if (seqHdr->segmentation_enabled)
+	{
+		//predictedSegmentId = get_segment_id();
+		int bw4 = Num_4x4_Blocks_Wide[ b_data->MiSize ];
+		int bh4 = Num_4x4_Blocks_High[ b_data->MiSize ];
+		int xMis = Min( b_data->MiCols - b_data->MiCol, bw4 );
+		int yMis = Min( b_data->MiRows - b_data->MiRow, bh4 );
+		int predictedSegmentId = 7;
+		for (int y = 0; y < yMis; y++ )
+			for (int  x = 0; x < xMis; x++ )
+				predictedSegmentId = Min( predictedSegmentId, PrevSegmentIds[ b_data->MiRow + y ][b_data->MiCol + x ] );
+
+		if (frameHdr->segmentation_params.segmentation_update_map)
+		{
+			if (preSkip && !frameHdr->segmentation_params.SegIdPreSkip)
+			{
+				b_data->segment_id = 0;
+				return;
+			}
+			if (!preSkip)
+			{
+				if b_data->skip)
+				{
+					b_data->seg_id_predicted = 0;
+					for (int i = 0; i < Num_4x4_Blocks_Wide[b_data->MiSize]; i++)
+						AboveSegPredContext[b_data->MiCol + i] = b_data->seg_id_predicted;
+					for (int i = 0; i < Num_4x4_Blocks_High[b_data->MiSize]; i++)
+						LeftSegPredContext[b_data->MiRow + i] = b_data->seg_id_predicted;
+					read_segment_id( sbCtx, bs, t_data,p_data, b_data, av1ctx);
+					return
+				}
+			}
+			if (frameHdr->segmentation_params.segmentation_temporal_update == 1)
+			{
+				int ctx = LeftSegPredContext[ b_data->MiRow ] + AboveSegPredContext[ b_data->MiCol ];
+				b_data->seg_id_predicted = sb.decodeSymbol(sbCtx,bs,av1ctx->cdfCtx->Segment_Id_Predicted,3); //S()
+				if (b_data->seg_id_predicted)
+					b_data->segment_id = predictedSegmentId;
+				else
+					read_segment_id(sbCtx, bs, t_data,p_data, b_data, av1ctx);
+				for (int i = 0; i < Num_4x4_Blocks_Wide[b_data->MiSize]; i++)
+					AboveSegPredContext[b_data->MiCol + i] = b_data->seg_id_predicted;
+				for (int i = 0; i < Num_4x4_Blocks_High[b_data->MiSize]; i++)
+					LeftSegPredContext[b_data->MiRow + i] = b_data->seg_id_predicted;
+			}
+			else
+			{
+				read_segment_id(sbCtx, bs, t_data,p_data, b_data, av1ctx);
+			}
+		}
+		else
+		{
+			b_data->segment_id = predictedSegmentId;
+		}
+	}
+	else
+	{
+		b_data->segment_id = 0;
+	}
 }

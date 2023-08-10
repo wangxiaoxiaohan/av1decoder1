@@ -394,6 +394,11 @@ typedef struct BlockData{
 
 	uint8_t use_filter_intra;
 	uint8_t filter_intra_mode;
+
+	uint8_t LeftRefFrame[2];
+	uint8_t AboveRefFrame[2];
+	uint8_t seg_id_predicted;
+
 }BlockData;
 typedef struct AV1Frame{
 	sizeInfo *si;
