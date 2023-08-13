@@ -164,6 +164,8 @@ enum tristate{
 
 #define INTRABC_DELAY_PIXELS 256 
 
+#define MAX_REF_MV_STACK_SIZE 8
+
 enum em_interpolation_filters{
 	EIGHTTAP = 0,
 	EIGHTTAP_SMOOTH = 1,
@@ -560,9 +562,13 @@ int inline Clip1(int x,int BitDepth){
 	return Clip3(0,1 << BitDepth,x);
 }
 int inline Round2(int x,int n){
-	return 0;
+	if ( n == 0 )
+		return x;
+	return ( x + ( 1 << (n - 1) ) ) >> n;
 }
-
+int inline Round2Signed(int x,int n){
+	return x >= 0 ? (Round2(x,n)):-(Round2(-x,n));
+}
 int inline FloorLog2(int x){	
 	int s = 0;
 	while ( x != 0 ) {
@@ -584,6 +590,9 @@ int inline CeilLog2(int x)
 	}
 	return i;
 }
+#define Abs(x) \
+if(x >= 0) x;\
+else -x ;
 
 int inline is_inside(int candidateR,int  candidateC ,int colStart, int colEnd,int rowStart, int rowEnd) { 
 	return ( candidateC >= colStart &&

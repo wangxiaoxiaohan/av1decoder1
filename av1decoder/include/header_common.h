@@ -358,11 +358,19 @@ typedef struct BlockData{
 	uint8_t PaletteSizeY;
 	uint8_t PaletteSizeUV;
 	uint8_t interp_filter[2];
+
+
+
+	uint8_t RefMvIdx;
 	uint8_t Mv[2][2];
-	uint8_t RefStackMv[2][2][2]; //consturct by find_mv_stack
+	uint8_t RefStackMv[8][2][2]; //consturct by find_mv_stack
 	uint8_t GlobalMvs[2][2];
 	uint8_t RefMvIdx;
 	uint8_t NumMvFound;
+	uint8_t NewMvCount;
+	uint8_t FoundMatch;
+	uint8_t foundAboveMatch;
+	uint8_t foundLeftMatch;
 	uint8_t mv_joint;
 	uint8_t mv_sign;
 	uint8_t mv_class;
@@ -398,7 +406,11 @@ typedef struct BlockData{
 	uint8_t AboveRefFrame[2];
 	uint8_t seg_id_predicted;
 	uint8_t compound_mode;
-	uint8_t RefMvIdx;
+
+
+
+
+
 }BlockData;
 typedef struct AV1Frame{
 	sizeInfo *si;

@@ -1561,7 +1561,7 @@ int frame::inter_frame_mode_info(SymbolContext *sbCtx, bitSt *bs, TileData *t_da
 	int AboveSingle = b_data->AboveRefFrame[1] <= INTRA_FRAME;
 	b_data->skip = 0;
 	inter_segment_id(1,sbCtx,bs, t_data, p_data,b_data,av1ctx);
-	read_skip_mode();
+	read_s78kip_mode();
 	if (b_data->skip_mode)
 			b_data->skip = 1;
 	else
@@ -2241,7 +2241,7 @@ int frame::inter_block_mode_info(SymbolContext *sbCtx, bitSt *bs, TileData *t_da
 	b_data->PaletteSizeUV = 0;
 	read_ref_frames();
 	int isCompound = RefFrame[1] > INTRA_FRAME;
-	find_mv_stack(isCompound) ;
+	//find_mv_stack(isCompound) ;
 	if (b_data->skip_mode)
 	{
 		b_data->YMode = NEAREST_NEARESTMV;
@@ -2386,7 +2386,7 @@ int frame::intra_block_mode_info(SymbolContext *sbCtx, bitSt *bs, TileData *t_da
 		palette_mode_info();
 	filter_intra_mode_info();
 }
-read_interintra_mode(isCompound)
+int frame::read_interintra_mode(int isCompound)
 {
 	if (!skip_mode && enable_interintra_compound && !isCompound &&
 		MiSize >= BLOCK_8X8 && MiSize <= BLOCK_32X32)
@@ -2412,7 +2412,7 @@ read_interintra_mode(isCompound)
 		interintra = 0;
 	}
 }
-read_motion_mode(isCompound)
+int frame::read_motion_mode(int isCompound)
 {
 	if (skip_mode)
 	{
@@ -2456,7 +2456,7 @@ read_motion_mode(isCompound)
 		motion_mode; //S()
 	}
 }
-read_compound_type(isCompound)
+int frame::read_compound_type(int isCompound)
 {
 	comp_group_idx = 0;
 	compound_idx = 1;
@@ -2517,3 +2517,172 @@ read_compound_type(isCompound)
 		}
 	}
 }
+
+/*  find mv stack start ...*/
+int frame::find_mv_stack(int isCompound,SymbolContext *sbCtx, bitSt *bs, TileData *t_data,
+								 PartitionData *p_data, BlockData *b_data, AV1DecodeContext *av1ctx){
+	b_data->NumMvFound = 0;
+	b_data->NewMvCount = 0;
+	setup_global_mv(0,b_data->GlobalMvs[0],b_data,av1ctx);
+	setup_global_mv(1,b_data->GlobalMvs[1],b_data,av1ctx);
+	b_data->FoundMatch = 0;
+	scan_row();
+	b_data->foundAboveMatch = b_data->FoundMatch ;
+	b_data->FoundMatch = 0;
+	scan_col();
+	b_data->foundLeftMatch = b_data->FoundMatch ;
+	b_data->FoundMatch = 0;
+
+	int bh4 = Num_4x4_Blocks_High[ b_data->MiSize ];
+	int bw4 = Num_4x4_Blocks_Wide[ b_data->MiSize ];
+	if(Max( bw4, bh4 ) <= 16){
+		scan_point();
+	}
+
+	if(FoundMatch == 1){
+		foundAboveMatch = 1;
+	}
+	CloseMatches = foundAboveMatch + foundLeftMatch;
+	numNearest = NumMvFound;
+	numNew = NewMvCount;
+	if(numNearest > 0){
+		for(int idx = 0 ;idx < numNearest - 1;idx ++ ){
+				WeightStack[ idx ] += REF_CAT_LEVEL
+		}
+	}
+}
+//7.10.2.1
+int frame::setup_global_mv(int refList,int *mv,
+								int BlockData b_data,AV1DecodeContext *av1Ctx)
+{
+	int ref,typ;
+	ref = b_data->RefFrame[ refList ];
+	frameHeader *frameHdr = av1Ctx->frameHdr;
+	if (ref == INTRA_FRAME || typ == IDENTITY)
+	{
+		mv[0] = 0;
+		mv[1] = 0;
+	}
+	else if (typ == TRANSLATION)
+	{
+		mv[0] = frameHdr->global_motion_params.gm_params[ref][0] >> (WARPEDMODEL_PREC_BITS - 3);
+		mv[1] = frameHdr->global_motion_params.gm_params[ref][1] >> (WARPEDMODEL_PREC_BITS - 3);
+	}
+	else
+	{
+		int x = b_data->MiCol * MI_SIZE + 4 * Num_4x4_Blocks_Wide[ b_data->MiSize ] / 2 - 1;
+		int y = b_data->MiRow * MI_SIZE + 4 * Num_4x4_Blocks_High[ b_data->MiSize ] / 2 - 1;
+		int xc = (frameHdr->global_motion_params.gm_params[ref][2] - (1 << WARPEDMODEL_PREC_BITS)) * x +
+			 frameHdr->global_motion_params.gm_params[ref][3] * y +
+			 frameHdr->global_motion_params.gm_params[ref][0];
+		int yc = frameHdr->global_motion_params.gm_params[ref][4] * x +
+			 (frameHdr->global_motion_params.gm_params[ref][5] - (1 << WARPEDMODEL_PREC_BITS)) * y +
+			 frameHdr->global_motion_params.gm_params[ref][1];
+		if (frameHdr->allow_high_precision_mv)
+		{
+			mv[0] = Round2Signed(yc, WARPEDMODEL_PREC_BITS - 3);
+			mv[1] = Round2Signed(xc, WARPEDMODEL_PREC_BITS - 3);
+		}
+		else
+		{
+			mv[0] = Round2Signed(yc, WARPEDMODEL_PREC_BITS - 2) * 2;
+			mv[1] = Round2Signed(xc, WARPEDMODEL_PREC_BITS - 2) * 2;
+		}
+	}
+	lower_mv_precision(mv);
+}
+int frame::lower_mv_precision(int force_integer_mv,int *candMv,int idx){
+
+	if ( force_integer_mv ) {
+		int a = Abs( candMv[ idx ] );
+		int aInt = (a + 3) >> 3;
+		if ( candMv[ idx ] > 0 )
+			candMv[ idx ] = aInt << 3;
+		else
+			candMv[ idx ] = -( aInt << 3 );
+	} else {
+	if ( candMv[ idx ] & 1 ) {
+		if ( candMv[ idx ] > 0 )
+			candMv[ idx ]--;
+		else
+			candMv[ idx ]++;
+	}
+	}
+
+}
+int frame::scan_row(int deltaRow,int isCompound){
+	if(Abs(deltaRow) > 1){
+		deltaRow += MiRow & 1;
+		deltaCol = 1 - (MiCol & 1);
+	}
+	i = 0 
+	while (i < end4)
+	{
+		mvRow = MiRow + deltaRow;
+		mvCol = MiCol + deltaCol + i;
+		if (!is_inside(mvRow, mvCol))
+		break;
+		len = Min(bw4, Num_4x4_Blocks_Wide[MiSizes[mvRow][mvCol]]);
+		if (Abs(deltaRow) > 1)
+		len = Max(2, len);
+		if (useStep16)
+		len = Max(4, len);
+		weight = len * 2;
+		add_ref_mv_candidate(mvRow, mvCol, isCompound, weight);
+		i += len;
+	}
+}
+int frame::scan_col(int deltaCol,int isCompound){
+	if(Abs(deltaRow) > 1){	
+		deltaRow = 1 - (MiRow & 1);
+		deltaCol += MiCol & 1
+	};
+	i = 0
+	while ( i < end4 ) {
+		mvRow = MiRow + deltaRow + i;
+		mvCol = MiCol + deltaCol;
+		if ( !is_inside(mvRow,mvCol) )
+			break;
+		len = Min(bh4, Num_4x4_Blocks_High[ MiSizes[ mvRow ][ mvCol ] ])
+		if ( Abs(deltaCol) > 1 )
+			len = Max(2, len);
+		if ( useStep16 )
+			len = Max(4, len);
+		weight = len * 2;
+		add_ref_mv_candidate( mvRow, mvCol, isCompound, weight );
+		i += len;
+	}
+
+}
+int frame::add_ref_mv_candidate(){
+	if(IsInters[ mvRow ][ mvCol ] == 0){
+
+		return;
+	}
+	if(isCompound == 0){
+		for(int candList = 0 ;candList < 2; candList ++){
+			if(RefFrames[ mvRow ][ mvCol ][ candList ] == RefFrame[ 0 ]){
+				search_stack(mvRow, mvCol, weight, candList);
+
+			}
+		}
+	}else{
+		if(RefFrames[ mvRow ][ mvCol ][ 0 ] == RefFrame[ 0 ] &&
+		 RefFrames[ mvRow ][ mvCol ][ 1 ]  == RefFrame[ 1 ]){
+			Compound_search_stack(mvRow, mvCol, weight);
+		 }
+	}
+}
+int frame::search_stack(){
+
+
+}
+int frame::compound_search_stack(){
+
+
+}
+int frame::scan_point(int deltaRow,int deltaCol,int isCompound){
+
+
+}
+/*  find mv stack end ...*/
