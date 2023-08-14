@@ -2536,20 +2536,67 @@ int frame::find_mv_stack(int isCompound,SymbolContext *sbCtx, bitSt *bs, TileDat
 	int bh4 = Num_4x4_Blocks_High[ b_data->MiSize ];
 	int bw4 = Num_4x4_Blocks_Wide[ b_data->MiSize ];
 	if(Max( bw4, bh4 ) <= 16){
-		scan_point();
+		scan_point(-1,bw4,isCompound);
 	}
 
 	if(FoundMatch == 1){
-		foundAboveMatch = 1;
+		b_data->foundAboveMatch = 1;
 	}
-	CloseMatches = foundAboveMatch + foundLeftMatch;
-	numNearest = NumMvFound;
-	numNew = NewMvCount;
+	CloseMatches = b_data->foundAboveMatch + b_data->foundLeftMatch;
+	numNearest = b_data->NumMvFound;
+	numNew = b_data->NewMvCount;
 	if(numNearest > 0){
 		for(int idx = 0 ;idx < numNearest - 1;idx ++ ){
-				WeightStack[ idx ] += REF_CAT_LEVEL
+				WeightStack[ idx ] += REF_CAT_LEVEL;
 		}
 	}
+	b_data->ZeroMvContext = 0;
+	if(use_ref_frame_mvs == 1){
+
+		temporal_scan(isCompound);
+	}
+	scan_point(-1,-1,isCompound);
+	if(FoundMatch == 1){
+		b_data->foundAboveMatch = 1;
+	}
+	
+	FoundMatch =0;
+	scan_row(-3,isCompound);
+	if(FoundMatch == 1){
+		b_data->foundAboveMatch = 1;
+	}
+	FoundMatch =0;
+
+	scan_col(-3,isCompound);
+	if(FoundMatch == 1){
+		b_data->foundLeftMatch = 1;
+	}
+	FoundMatch = 0;
+
+
+	if(bh4 > 1){
+		scan_row(-5,isCompound);
+
+	}
+	if(FoundMatch == 1){
+		b_data->foundAboveMatch = 1;
+	}
+	FoundMatch = 0;
+	if(bw4 > 1){
+		scan_col(-5,isCompound);
+	}
+	if(FoundMatch == 1){
+		b_data->foundLeftMatch = 1;
+	}
+	TotalMatches = foundAboveMatch + foundLeftMatch;
+
+	Sorting(0,numNearest,isCompound);
+	Sorting(numNearest,NumMvFound,isCompound);
+	if(NumMvFound < 2){
+		extra_search(isCompound);
+	}
+	context_and_clamping(isCompound,numNew);
+
 }
 //7.10.2.1
 int frame::setup_global_mv(int refList,int *mv,
@@ -2615,7 +2662,7 @@ int frame::scan_row(int deltaRow,int isCompound){
 		deltaRow += MiRow & 1;
 		deltaCol = 1 - (MiCol & 1);
 	}
-	i = 0 
+	i = 0 ;
 	while (i < end4)
 	{
 		mvRow = MiRow + deltaRow;
@@ -2637,7 +2684,7 @@ int frame::scan_col(int deltaCol,int isCompound){
 		deltaRow = 1 - (MiRow & 1);
 		deltaCol += MiCol & 1
 	};
-	i = 0
+	i = 0;
 	while ( i < end4 ) {
 		mvRow = MiRow + deltaRow + i;
 		mvCol = MiCol + deltaCol;
@@ -2681,8 +2728,24 @@ int frame::compound_search_stack(){
 
 
 }
+//7.10.2.4
 int frame::scan_point(int deltaRow,int deltaCol,int isCompound){
 
+
+}
+int frame::temporal_scan(int isCompound){
+
+
+}
+int frame::Sorting(int start,int end ,int isCompound){
+
+
+}
+int frame::extra_search(int isCompound){
+
+
+}
+int frame::context_and_clamping(int isCompound,int numNew){
 
 }
 /*  find mv stack end ...*/
