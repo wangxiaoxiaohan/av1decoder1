@@ -2521,16 +2521,22 @@ int frame::read_compound_type(int isCompound)
 /*  find mv stack start ...*/
 int frame::find_mv_stack(int isCompound,SymbolContext *sbCtx, bitSt *bs, TileData *t_data,
 								 PartitionData *p_data, BlockData *b_data, AV1DecodeContext *av1ctx){
+
+	frameHeader *frameHdr = av1ctx->frameHdr;
+	sequenceHeader *seqHdr = av1ctx->seqHdr;
+									
 	b_data->NumMvFound = 0;
 	b_data->NewMvCount = 0;
 	setup_global_mv(0,b_data->GlobalMvs[0],b_data,av1ctx);
 	setup_global_mv(1,b_data->GlobalMvs[1],b_data,av1ctx);
 	b_data->FoundMatch = 0;
-	scan_row();
-	b_data->foundAboveMatch = b_data->FoundMatch ;
+	scan_row(-1,isCompound,p_data,b_data);
+	int foundAboveMatch,foundLeftMatch;
+
+	foundAboveMatch = b_data->FoundMatch ;
 	b_data->FoundMatch = 0;
-	scan_col();
-	b_data->foundLeftMatch = b_data->FoundMatch ;
+	scan_col(-1,isCompound);
+	foundLeftMatch = b_data->FoundMatch ;
 	b_data->FoundMatch = 0;
 
 	int bh4 = Num_4x4_Blocks_High[ b_data->MiSize ];
@@ -2539,60 +2545,61 @@ int frame::find_mv_stack(int isCompound,SymbolContext *sbCtx, bitSt *bs, TileDat
 		scan_point(-1,bw4,isCompound);
 	}
 
-	if(FoundMatch == 1){
-		b_data->foundAboveMatch = 1;
+	if(b_data->FoundMatch == 1){
+		foundAboveMatch = 1;
 	}
-	CloseMatches = b_data->foundAboveMatch + b_data->foundLeftMatch;
-	numNearest = b_data->NumMvFound;
-	numNew = b_data->NewMvCount;
+	b_data->CloseMatches = foundAboveMatch + foundLeftMatch;
+	int numNearest = b_data->NumMvFound;
+	int numNew = b_data->NewMvCount;
 	if(numNearest > 0){
 		for(int idx = 0 ;idx < numNearest - 1;idx ++ ){
 				WeightStack[ idx ] += REF_CAT_LEVEL;
 		}
 	}
 	b_data->ZeroMvContext = 0;
-	if(use_ref_frame_mvs == 1){
+	if(frameHdr->use_ref_frame_mvs == 1){
 
 		temporal_scan(isCompound);
 	}
 	scan_point(-1,-1,isCompound);
-	if(FoundMatch == 1){
-		b_data->foundAboveMatch = 1;
+	if(b_data->FoundMatch == 1){
+		foundAboveMatch = 1;
 	}
-	
-	FoundMatch =0;
-	scan_row(-3,isCompound);
-	if(FoundMatch == 1){
-		b_data->foundAboveMatch = 1;
+
+	b_data->FoundMatch =0;
+	scan_row(-3,isCompound,p_data,b_data);
+	if(b_data->FoundMatch == 1){
+		foundAboveMatch = 1;
 	}
-	FoundMatch =0;
+	b_data->FoundMatch =0;
 
 	scan_col(-3,isCompound);
-	if(FoundMatch == 1){
-		b_data->foundLeftMatch = 1;
+	if(b_data->FoundMatch == 1){
+		foundLeftMatch = 1;
 	}
-	FoundMatch = 0;
+	b_data->FoundMatch = 0;
 
 
 	if(bh4 > 1){
 		scan_row(-5,isCompound);
+	}
+	if(b_data->FoundMatch == 1){
+		foundAboveMatch = 1;
+	}
+	b_data->FoundMatch = 0;
 
-	}
-	if(FoundMatch == 1){
-		b_data->foundAboveMatch = 1;
-	}
-	FoundMatch = 0;
 	if(bw4 > 1){
 		scan_col(-5,isCompound);
 	}
-	if(FoundMatch == 1){
-		b_data->foundLeftMatch = 1;
+	if(b_data->FoundMatch == 1){
+		foundLeftMatch = 1;
 	}
-	TotalMatches = foundAboveMatch + foundLeftMatch;
+
+	b_data->TotalMatches = foundAboveMatch + foundLeftMatch;
 
 	Sorting(0,numNearest,isCompound);
-	Sorting(numNearest,NumMvFound,isCompound);
-	if(NumMvFound < 2){
+	Sorting(numNearest,b_data->NumMvFound,isCompound);
+	if(b_data->NumMvFound < 2){
 		extra_search(isCompound);
 	}
 	context_and_clamping(isCompound,numNew);
@@ -2657,59 +2664,71 @@ int frame::lower_mv_precision(int force_integer_mv,int *candMv,int idx){
 	}
 
 }
-int frame::scan_row(int deltaRow,int isCompound){
+int frame::scan_row(int deltaRow,int isCompound,
+				TileData t_data,PartitionData p_data,BlockData *b_data,AV1DecodeContext *av1Ctx){
+	int deltaCol = 0;
 	if(Abs(deltaRow) > 1){
-		deltaRow += MiRow & 1;
-		deltaCol = 1 - (MiCol & 1);
+		deltaRow += b_data->MiRow & 1;
+		deltaCol = 1 - (b_data->MiCol & 1);
 	}
-	i = 0 ;
+	int i = 0 ;
+	int bw4 = Num_4x4_Blocks_Wide[ b_data->MiSize ];
+	int end4 = Min( Min( bw4,p_data->MiCols - b_data->MiCol ), 16 );
 	while (i < end4)
 	{
-		mvRow = MiRow + deltaRow;
-		mvCol = MiCol + deltaCol + i;
-		if (!is_inside(mvRow, mvCol))
-		break;
-		len = Min(bw4, Num_4x4_Blocks_Wide[MiSizes[mvRow][mvCol]]);
+		int mvRow = b_data->MiRow + deltaRow;
+		int mvCol = b_data->MiCol + deltaCol + i;
+		if (!is_inside(mvRow, mvCol,t_data->MiColStart,t_data->MiColEnd,t_data->MiRowStart,t_data->MiRowEnd))
+			break;
+		int len = Min(bw4, Num_4x4_Blocks_Wide[p_data->MiSizes[mvRow][mvCol]]);
 		if (Abs(deltaRow) > 1)
 		len = Max(2, len);
+		int useStep16 = bw4 >= 16;
 		if (useStep16)
-		len = Max(4, len);
-		weight = len * 2;
-		add_ref_mv_candidate(mvRow, mvCol, isCompound, weight);
+			len = Max(4, len);
+		int weight = len * 2;
+		add_ref_mv_candidate(mvRow, mvCol, isCompound, weight,t_data,p_data,b_data);
 		i += len;
 	}
 }
-int frame::scan_col(int deltaCol,int isCompound){
+int frame::scan_col(int deltaCol,int isCompound,
+			TileData t_data,PartitionData p_data,BlockData *b_data,AV1DecodeContext *av1Ctx){
+	int deltaRow = 0;
 	if(Abs(deltaRow) > 1){	
-		deltaRow = 1 - (MiRow & 1);
-		deltaCol += MiCol & 1
-	};
-	i = 0;
+		deltaRow = 1 - (b_data->MiRow & 1);
+		deltaCol += b_data->MiCol & 1
+	}
+	int i = 0;
+	int bh4 = Num_4x4_Blocks_High[ b_data->MiSize ];
+	int end4 = Min( Min( bh4,p_data->MiRows - b_data->MiRow ), 16 );
+
 	while ( i < end4 ) {
-		mvRow = MiRow + deltaRow + i;
-		mvCol = MiCol + deltaCol;
-		if ( !is_inside(mvRow,mvCol) )
+		int mvRow = b_data->MiRow + deltaRow + i;
+		int mvCol = b_data->MiCol + deltaCol;
+		if ( !is_inside(mvRow,mvCol,t_data->MiColStart,t_data->MiColEnd,t_data->MiRowStart,t_data->MiRowEnd) )
 			break;
-		len = Min(bh4, Num_4x4_Blocks_High[ MiSizes[ mvRow ][ mvCol ] ])
+		int len = Min(bh4, Num_4x4_Blocks_High[ p_data->MiSizes[ mvRow ][ mvCol ] ]);
 		if ( Abs(deltaCol) > 1 )
 			len = Max(2, len);
+		int useStep16 = bh4 >= 16;
 		if ( useStep16 )
 			len = Max(4, len);
-		weight = len * 2;
-		add_ref_mv_candidate( mvRow, mvCol, isCompound, weight );
+		int weight = len * 2;
+		add_ref_mv_candidate( mvRow, mvCol, isCompound, weight,t_data,p_data,b_data);
 		i += len;
 	}
 
 }
-int frame::add_ref_mv_candidate(){
+//This process examines the candidate to find matching reference frames.
+int frame::add_ref_mv_candidate(int mvRow,int  mvCol,int  isCompound,int weight,
+								TileData t_data,PartitionData p_data,BlockData *b_data,AV1DecodeContext *av1Ctx){
 	if(IsInters[ mvRow ][ mvCol ] == 0){
-
 		return;
 	}
 	if(isCompound == 0){
 		for(int candList = 0 ;candList < 2; candList ++){
 			if(RefFrames[ mvRow ][ mvCol ][ candList ] == RefFrame[ 0 ]){
-				search_stack(mvRow, mvCol, weight, candList);
+				search_stack(mvRow, mvCol, candList,weight,t_data,p_data,b_data);
 
 			}
 		}
@@ -2720,11 +2739,57 @@ int frame::add_ref_mv_candidate(){
 		 }
 	}
 }
-int frame::search_stack(){
+//This process searches the stack for an exact match with a candidate motion vector. If present, the weight of the candidate
+//motion vector is added to the weight of its counterpart in the stack, otherwise the process adds a motion vector to the
+//stack.
+
+int frame::search_stack(int mvRow,int mvCol,int candList,int weight,
+						TileData t_data,PartitionData p_data,BlockData *b_data,AV1DecodeContext *av1Ctx){
+	int candMode = p_data->YModes[ mvRow ][ mvCol ];
+	int candSize = p_data->MiSizes[ mvRow ][ mvCol ];
+	int candMode;
+	int candMv[2];
+	int large =  Min( Block_Width[ candSize ],Block_Height[ candSize ] ) >= 8;
+	if(( candMode == GLOBALMV && candMode == GLOBAL_GLOBALMV) && 
+				( GmType[ RefFrame[ 0 ] ] > TRANSLATION )  && ( large == 1 ))
+	{
+		candMv = b_data->GlobalMvs[ 0 ];
+	}else{	
+		candMv = p_data->Mvs[ mvRow ][ mvCol ][ candList ];
+	}
+	lower_precision(candMv,av1Ctx);
+	if(candMode == NEWMV ||
+			candMode == NEW_NEWMV ||
+			candMode == NEAR_NEWMV ||
+			candMode == NEW_NEARMV ||
+			candMode == NEAREST_NEWMV ||
+			candMode == NEW_NEARESTMV)
+	{
+		b_data->NewMvCount += 1;
+	}
+	b_data->FoundMatch = 1;
 
 
+	for (int idx = 0; idx < b_data->NumMvFound; idx++) {
+		if (is_equal(candMv, RefStackMv[idx][0])) {
+			WeightStack[idx] += weight;
+		}else{
+			if( b_data->NumMvFound < MAX_REF_MV_STACK_SIZE){
+				RefStackMv[ b_data->NumMvFound][0] = candMv;
+				WeightStack[ b_data->NumMvFound] = weight;
+				 b_data->NumMvFound++;
+			}
+
+		}
+	}
 }
-int frame::compound_search_stack(){
+//This process searches the stack for an exact match with a candidate pair of motion vectors. If present, the weight of the
+//candidate pair of motion vectors is added to the weight of its counterpart in the stack, otherwise the process adds the
+//motion vectors to the stack.
+int frame::compound_search_stack(int  mvRow ,int  mvCol,int weight){
+	int candMvs[2][2] = Mvs[ mvRow ][ mvCol ];
+	candMode = YModes[ mvRow ][ mvCol ];
+	candSize =MiSizes[ mvRow ][ mvCol ];
 
 
 }
@@ -2733,6 +2798,7 @@ int frame::scan_point(int deltaRow,int deltaCol,int isCompound){
 
 
 }
+//This process scans the motion vectors in a previous frame looking for candidates which use the same reference frame.
 int frame::temporal_scan(int isCompound){
 
 
@@ -2747,5 +2813,33 @@ int frame::extra_search(int isCompound){
 }
 int frame::context_and_clamping(int isCompound,int numNew){
 
+}
+int frame::lower_precision(int *candMv,AV1DecodeContext *av1Ctx)
+{
+	frameHeader *frameHdr = av1Ctx->frameHdr;
+	if(frameHdr->allow_high_precision_mv == 1)
+		return 0;
+	for (int i = 0; i < 2; i++)
+	{
+		if (frameHdr->force_integer_mv)
+		{
+			int a = Abs(candMv[i]);
+			int aInt = (a + 3) >> 3;
+			if (candMv[i] > 0)
+				candMv[ i ] = aInt << 3;
+			else
+				candMv[i] = -(aInt << 3);
+		}
+		else
+		{
+			if (candMv[i] & 1)
+			{
+				if (candMv[i] > 0)
+					candMv[i]--;
+				else
+					candMv[i]++;
+			}
+		}
+	}
 }
 /*  find mv stack end ...*/

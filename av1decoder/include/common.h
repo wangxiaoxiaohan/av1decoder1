@@ -165,6 +165,7 @@ enum tristate{
 #define INTRABC_DELAY_PIXELS 256 
 
 #define MAX_REF_MV_STACK_SIZE 8
+#define REF_CAT_LEVEL 640 
 
 enum em_interpolation_filters{
 	EIGHTTAP = 0,
@@ -590,9 +591,6 @@ int inline CeilLog2(int x)
 	}
 	return i;
 }
-#define Abs(x) \
-if(x >= 0) x;\
-else -x ;
 
 int inline is_inside(int candidateR,int  candidateC ,int colStart, int colEnd,int rowStart, int rowEnd) { 
 	return ( candidateC >= colStart &&

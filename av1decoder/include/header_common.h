@@ -310,7 +310,7 @@ typedef struct PartitionData{
 	uint8_t **CompGroupIdxs;
 	uint8_t **CompoundIdxs;
 	uint8_t **InterpFilters[2];
-	uint8_t Mvs[2][2][2];
+	uint8_t ***Mvs[2];
 	uint8_t **MiSizes;
 	uint8_t **SegmentIds;
 	uint8_t **IsInters;
@@ -369,8 +369,8 @@ typedef struct BlockData{
 	uint8_t NumMvFound;
 	uint8_t NewMvCount;
 	uint8_t FoundMatch;
-	uint8_t foundAboveMatch;
-	uint8_t foundLeftMatch;
+	uint8_t TotalMatches;
+	uint8_t CloseMatches;
 	uint8_t mv_joint;
 	uint8_t mv_sign;
 	uint8_t mv_class;
