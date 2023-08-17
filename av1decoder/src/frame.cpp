@@ -2655,12 +2655,12 @@ int frame::lower_mv_precision(int force_integer_mv,int *candMv,int idx){
 		else
 			candMv[ idx ] = -( aInt << 3 );
 	} else {
-	if ( candMv[ idx ] & 1 ) {
-		if ( candMv[ idx ] > 0 )
-			candMv[ idx ]--;
-		else
-			candMv[ idx ]++;
-	}
+		if ( candMv[ idx ] & 1 ) {
+			if ( candMv[ idx ] > 0 )
+				candMv[ idx ]--;
+			else
+				candMv[ idx ]++;
+		}
 	}
 
 }
@@ -2782,26 +2782,189 @@ int frame::search_stack(int mvRow,int mvCol,int candList,int weight,
 
 		}
 	}
+
 }
 //This process searches the stack for an exact match with a candidate pair of motion vectors. If present, the weight of the
 //candidate pair of motion vectors is added to the weight of its counterpart in the stack, otherwise the process adds the
 //motion vectors to the stack.
-int frame::compound_search_stack(int  mvRow ,int  mvCol,int weight){
+int frame::compound_search_stack(int  mvRow ,int  mvCol,int weight,
+				TileData t_data,PartitionData p_data,BlockData *b_data,AV1DecodeContext *av1Ctx){
+	frameHeader *frameHdr = av1Ctx->frameHdr;
 	int candMvs[2][2] = Mvs[ mvRow ][ mvCol ];
-	candMode = YModes[ mvRow ][ mvCol ];
-	candSize =MiSizes[ mvRow ][ mvCol ];
+	int candMode = p_data->AboveRefFrame[ mvRow ][ mvCol ];
+	int candSize = p_data->MiSizes[ mvRow ][ mvCol ];
+	if(candMode == GLOBAL_GLOBALMV){
+		for(int refList = 0 ; refList < 2; refList ++){
+			if(frameHdr->global_motion_params.GmType[ RefFrame[ refList ] ] > TRANSLATION)
+			  candMvs[ refList ] = GlobalMvs[ refList ];
+		}
 
+	}
+	for(int i = 0 ; i < 2; i ++){
+		lower_precision(candMvs[i],av1Ctx);
+	}
+	b_data->FoundMatch = 1;
+	for(int idx =0 ;idx < b_data->NumMvFound ;idx ++){
+		if(is_equal(candMvs[ 0 ],RefStackMv[ idx ][ 0 ]) &&
+			is_equal(candMvs[ 1 ],RefStackMv[ idx ][ 1 ])){
+				WeightStack[ idx ] += weight;
 
+		}else{
+			if(b_data->NumMvFound < MAX_REF_MV_STACK_SIZE){
+				for(int i = 0 ; i < 2 ; i++)
+					RefStackMv[ b_data->NumMvFound ][ i ] = candMvs[ i ] ;
+				WeightStack[ b_data->NumMvFound ] = weight;
+				b_data->NumMvFound += 1;
+
+			}
+
+		}
+	}
+	if(candMode == NEWMV ||
+			candMode == NEW_NEWMV ||
+			candMode == NEAR_NEWMV ||
+			candMode == NEW_NEARMV ||
+			candMode == NEAREST_NEWMV ||
+			candMode == NEW_NEARESTMV)
+	{
+		b_data->NewMvCount += 1;
+	}
 }
 //7.10.2.4
 int frame::scan_point(int deltaRow,int deltaCol,int isCompound){
-
-
+	int mvRow = MiRow + deltaRow;
+	int mvCol = MiCol + deltaCol;
+	int weight = 4;
+	if((is_inside( mvRow, mvCol ) == 1) && RefFrames[ mvRow ][ mvCol ][ 0 ] != 0xff/*RefFrames[ mvRow ][ mvCol ][ 0 ] has been written*/ )
+		add_ref_mv_candidate(mvRow,mvCol,isCompound,weight);
 }
 //This process scans the motion vectors in a previous frame looking for candidates which use the same reference frame.
-int frame::temporal_scan(int isCompound){
+int frame::temporal_scan(int isCompound,BlockData *b_data)
+{
+	int bw4 = Num_4x4_Blocks_Wide[b_data->MiSize];
+	int bh4 = Num_4x4_Blocks_High[b_data->MiSize];
+	int stepW4 = (bw4 >= 16) ? 4 : 2;
+	int stepH4 = (bh4 >= 16) ? 4 : 2;
+	//scans the locations within the block
+	for (int deltaRow = 0; deltaRow < Min(bh4, 16); deltaRow += stepH4)
+	{
+		for (int deltaCol = 0; deltaCol < Min(bw4, 16); deltaCol += stepW4)
+		{
+			add_tpl_ref_mv(deltaRow, deltaCol, isCompound);
+		}
+	}
+	const uint8_t tplSamplePos[3][2] = {
+		{ bh4, -2 }, { bh4, bw4 }, { bh4 - 2, bw4 }
+	};
 
+	// then scans positions around the block (but still within the same superblock)
+	int allowExtension = ((bh4 >= Num_4x4_Blocks_High[BLOCK_8X8]) &&
+					  (bh4 < Num_4x4_Blocks_High[BLOCK_64X64]) &&
+					  (bw4 >= Num_4x4_Blocks_Wide[BLOCK_8X8]) &&
+					  (bw4 < Num_4x4_Blocks_Wide[BLOCK_64X64])) ;
+	if (allowExtension)
+	{
+		for (int i = 0; i < 3; i++)
+		{
+			int deltaRow = tplSamplePos[i][0];
+			int deltaCol = tplSamplePos[i][1];
+			if (check_sb_border(b_data->MiRow , b_data->MiCol,deltaRow, deltaCol))
+			{
+				add_tpl_ref_mv(deltaRow, deltaCol, isCompound);
+			}
+		}
+	}
+}
 
+//7.10.2.6
+//This process looks up a motion vector from the motion field and adds it into the stack.
+int frame::add_tpl_ref_mv(int deltaRow, int deltaCol, int isCompound,BlockData *b_data)
+{
+	int mvRow = (b_data->MiRow + deltaRow) | 1;
+	int mvCol = (b_data->MiCol + deltaCol) | 1;
+	if (is_inside(mvRow, mvCol) == 0)
+		return 0;
+	int x8 = mvCol >> 1;
+	int y8 = mvRow >> 1;
+
+	if (deltaRow == 0 && deltaCol == 0)
+	{
+		b_data->ZeroMvContext = 1;
+	}
+	if (!isCompound)
+	{
+		int candMv[2] = MotionFieldMvs[RefFrame[0]][y8][x8];
+		if (candMv[0] == -1 << 15)
+			return;
+		lower_mv_precision(candMv);
+		if (deltaRow == 0 && deltaCol == 0)
+		{
+			if (Abs(candMv[0] - GlobalMvs[0][0]) >= 16 ||
+				Abs(candMv[1] - GlobalMvs[0][1]) >= 16)
+				b_data->ZeroMvContext = 1;
+			else
+				b_data->ZeroMvContext = 0;
+		}
+		int idx;
+		for (idx = 0; idx < b_data->NumMvFound; idx++)
+		{
+			if (candMv[0] == RefStackMv[idx][0][0] &&
+				candMv[1] == RefStackMv[idx][0][1])
+
+				break;
+		}
+		if (idx < b_data->NumMvFound)
+		{
+			WeightStack[idx] += 2;
+		}
+		else if (b_data->NumMvFound < MAX_REF_MV_STACK_SIZE)
+		{
+			RefStackMv[b_data->NumMvFound][0] = candMv;
+			WeightStack[b_data->NumMvFound] = 2;
+			b_data->NumMvFound += 1;
+		}
+	}
+	else
+	{
+		int candMv0[2] = MotionFieldMvs[RefFrame[0]][y8][x8];
+		if (candMv0[0] == -1 << 15)
+			return;
+		int candMv1[2] = MotionFieldMvs[RefFrame[1]][y8][x8];
+		if (candMv1[0] == -1 << 15)
+			return;
+		lower_mv_precision(candMv0);
+		lower_mv_precision(candMv1);
+		if (deltaRow == 0 && deltaCol == 0)
+		{
+			if (Abs(candMv0[0] - GlobalMvs[0][0]) >= 16 ||
+				Abs(candMv0[1] - GlobalMvs[0][1]) >= 16 ||
+				Abs(candMv1[0] - GlobalMvs[1][0]) >= 16 ||
+				Abs(candMv1[1] - GlobalMvs[1][1]) >= 16)
+				b_data->ZeroMvContext = 1;
+			else
+				b_data->ZeroMvContext = 0;
+		}
+		int idx;
+		for (idx = 0; idx < b_data->NumMvFound; idx++)
+		{
+			if (candMv0[0] == RefStackMv[idx][0][0] &&
+				candMv0[1] == RefStackMv[idx][0][1] &&
+				candMv1[0] == RefStackMv[idx][1][0] &&
+				candMv1[1] == RefStackMv[idx][1][1])
+				break;
+		}
+		if (idx <b_data-> NumMvFound)
+		{
+			WeightStack[idx] += 2;
+		}
+		else if (b_data->NumMvFound < MAX_REF_MV_STACK_SIZE)
+		{
+			RefStackMv[b_data->NumMvFound][0] = candMv0;
+			RefStackMv[b_data->NumMvFound][1] = candMv1;
+			WeightStack[b_data->NumMvFound] = 2;
+			b_data->NumMvFound += 1;
+		}
+	}
 }
 int frame::Sorting(int start,int end ,int isCompound){
 

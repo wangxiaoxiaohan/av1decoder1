@@ -642,5 +642,12 @@ int inline av1sort(int *array,int min ,int max){
 
 	
 }
+//checks that the position is within the same 64x64 block
+int inlie check_sb_border(int MiRow ,int MiCol,int deltaRow, int deltaCol ) {
+	row = (MiRow & 15) + deltaRow;
+	col = (MiCol & 15) + deltaCol;
+	return ( row >= 0 && row < 16 && col >= 0 && col < 16 );
+}
+
 #endif
 

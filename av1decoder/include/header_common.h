@@ -381,6 +381,7 @@ typedef struct BlockData{
 	uint8_t mv_fr;
 	uint8_t mv_hp;
 	uint8_t mv_bit;
+	uint8_t ZeroMvContext;
 
 	uint8_t AngleDeltaY;
 	uint8_t AngleDeltaUV;
