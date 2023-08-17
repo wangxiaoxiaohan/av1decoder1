@@ -2645,24 +2645,27 @@ int frame::setup_global_mv(int refList,int *mv,
 	}
 	lower_mv_precision(mv);
 }
-int frame::lower_mv_precision(int force_integer_mv,int *candMv,int idx){
+int frame::lower_mv_precision(int force_integer_mv,int *candMv){
 
-	if ( force_integer_mv ) {
-		int a = Abs( candMv[ idx ] );
-		int aInt = (a + 3) >> 3;
-		if ( candMv[ idx ] > 0 )
-			candMv[ idx ] = aInt << 3;
-		else
-			candMv[ idx ] = -( aInt << 3 );
-	} else {
-		if ( candMv[ idx ] & 1 ) {
+	if(low_high_precision_mv == 1)
+		return;
+	for(int idx =0 ; idx < 2 ;idx ++){	
+		if ( force_integer_mv ) {
+			int a = Abs( candMv[ idx ] );
+			int aInt = (a + 3) >> 3;
 			if ( candMv[ idx ] > 0 )
-				candMv[ idx ]--;
+				candMv[ idx ] = aInt << 3;
 			else
-				candMv[ idx ]++;
+				candMv[ idx ] = -( aInt << 3 );
+		} else {
+			if ( candMv[ idx ] & 1 ) {
+				if ( candMv[ idx ] > 0 )
+					candMv[ idx ]--;
+				else
+					candMv[ idx ]++;
+			}
 		}
 	}
-
 }
 int frame::scan_row(int deltaRow,int isCompound,
 				TileData t_data,PartitionData p_data,BlockData *b_data,AV1DecodeContext *av1Ctx){
@@ -2728,14 +2731,14 @@ int frame::add_ref_mv_candidate(int mvRow,int  mvCol,int  isCompound,int weight,
 	if(isCompound == 0){
 		for(int candList = 0 ;candList < 2; candList ++){
 			if(RefFrames[ mvRow ][ mvCol ][ candList ] == RefFrame[ 0 ]){
-				search_stack(mvRow, mvCol, candList,weight,t_data,p_data,b_data);
+				search_stack(mvRow, mvCol, candList,weight,t_data, p_data, b_data,av1Ctx);
 
 			}
 		}
 	}else{
 		if(RefFrames[ mvRow ][ mvCol ][ 0 ] == RefFrame[ 0 ] &&
 		 RefFrames[ mvRow ][ mvCol ][ 1 ]  == RefFrame[ 1 ]){
-			Compound_search_stack(mvRow, mvCol, weight);
+			Compound_search_stack(mvRow, mvCol, weight,t_data, p_data, b_data,av1Ctx);
 		 }
 	}
 }
@@ -2831,12 +2834,13 @@ int frame::compound_search_stack(int  mvRow ,int  mvCol,int weight,
 	}
 }
 //7.10.2.4
-int frame::scan_point(int deltaRow,int deltaCol,int isCompound){
+int frame::scan_point(int deltaRow,int deltaCol,int isCompound,
+					TileData t_data,PartitionData p_data,BlockData *b_data,AV1DecodeContext *av1Ctx){
 	int mvRow = MiRow + deltaRow;
 	int mvCol = MiCol + deltaCol;
 	int weight = 4;
 	if((is_inside( mvRow, mvCol ) == 1) && RefFrames[ mvRow ][ mvCol ][ 0 ] != 0xff/*RefFrames[ mvRow ][ mvCol ][ 0 ] has been written*/ )
-		add_ref_mv_candidate(mvRow,mvCol,isCompound,weight);
+		add_ref_mv_candidate(mvRow,mvCol,isCompound,weight,t_data, p_data, b_data,av1Ctx);
 }
 //This process scans the motion vectors in a previous frame looking for candidates which use the same reference frame.
 int frame::temporal_scan(int isCompound,BlockData *b_data)
@@ -2966,6 +2970,7 @@ int frame::add_tpl_ref_mv(int deltaRow, int deltaCol, int isCompound,BlockData *
 		}
 	}
 }
+// performs a stable sort of part of the stack of motion vectors according to the corresponding weight.
 int frame::Sorting(int start,int end ,int isCompound){
 
 
