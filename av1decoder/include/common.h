@@ -434,33 +434,40 @@ const static int8_t Subsampled_Size[ BLOCK_SIZES ][ 2 ][ 2 ] = {
 { {BLOCK_16X64, BLOCK_16X32}, {BLOCK_INVALID, BLOCK_8X32} },
 { {BLOCK_64X16, BLOCK_INVALID}, {BLOCK_32X16, BLOCK_32X8} },
 };
-const static int8_t  Num_4x4_Blocks_Wide[ BLOCK_SIZES ] = {
+const static uint8_t  Num_4x4_Blocks_Wide[ BLOCK_SIZES ] = {
 1, 1, 2, 2, 2, 4, 4, 4, 8, 8, 8,
 16, 16, 16, 32, 32, 1, 4, 2, 8, 4, 16
 };
-const static int8_t Num_4x4_Blocks_High[ BLOCK_SIZES ] = {
+const static uint8_t Num_4x4_Blocks_High[ BLOCK_SIZES ] = {
 1, 2, 1, 2, 4, 2, 4, 8, 4, 8, 16,
 8, 16, 32, 16, 32, 4, 1, 8, 2, 16, 4
 };
-const static int8_t Size_Group[ BLOCK_SIZES ] = {
+const static uint8_t Size_Group[ BLOCK_SIZES ] = {
 0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3,
 3, 3, 3, 3, 3, 0, 0, 1, 1, 2, 2
 };
 
-const static int8_t Mi_Width_Log2[ BLOCK_SIZES ] = {
+const static uint8_t Mi_Width_Log2[ BLOCK_SIZES ] = {
 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3,
 4, 4, 4, 5, 5, 0, 2, 1, 3, 2, 4
 };
 
-const static int8_t Mi_Height_Log2[ BLOCK_SIZES ] = {
+const static uint8_t Mi_Height_Log2[ BLOCK_SIZES ] = {
 0, 1, 0, 1, 2, 1, 2, 3, 2, 3, 4,
 3, 4, 5, 4, 5, 2, 0, 3, 1, 4, 2
 };
-const static int8_t Intra_Mode_Context[ INTRA_MODES ] = {
+const static uint8_t Intra_Mode_Context[ INTRA_MODES ] = {
 0, 1, 2, 3, 4, 4, 4, 4, 3, 0, 1, 2, 0
 };
-
-const static int8_t Partition_Subsize[10][BLOCK_SIZES] = {
+const static uint8_t Ref_Frame_List[ REFS_PER_FRAME - 2 ] = {
+LAST2_FRAME, LAST3_FRAME, BWDREF_FRAME, ALTREF2_FRAME, ALTREF_FRAME
+};
+const static uint16_t Div_Mult[32] = {
+0, 16384, 8192, 5461, 4096, 3276, 2730, 2340, 2048, 1820, 1638,
+1489, 1365, 1260, 1170, 1092, 1024, 963, 910, 862, 819, 780,
+744, 712, 682, 655, 630, 606, 585, 564, 546, 528
+};
+const static uint8_t Partition_Subsize[10][BLOCK_SIZES] = {
 	{BLOCK_4X4,
 	 BLOCK_INVALID, BLOCK_INVALID, BLOCK_8X8,
 	 BLOCK_INVALID, BLOCK_INVALID, BLOCK_16X16,
@@ -643,11 +650,32 @@ int inline av1sort(int *array,int min ,int max){
 	
 }
 //checks that the position is within the same 64x64 block
-int inlie check_sb_border(int MiRow ,int MiCol,int deltaRow, int deltaCol ) {
-	row = (MiRow & 15) + deltaRow;
-	col = (MiCol & 15) + deltaCol;
+int inline check_sb_border(int MiRow ,int MiCol,int deltaRow, int deltaCol ) {
+	int row = (MiRow & 15) + deltaRow;
+	int col = (MiCol & 15) + deltaCol;
 	return ( row >= 0 && row < 16 && col >= 0 && col < 16 );
 }
-
+int inline project(int *posValid, int *v8, int delta, int dstSign, int max8,int maxOff8)
+{
+	int base8 = (*v8 >> 3) << 3;
+	int offset8;
+	if (delta >= 0)
+	{
+		offset8 = delta >> (3 + 1 + MI_SIZE_LOG2);
+	}
+	else
+	{
+		offset8 = -((-delta) >> (3 + 1 + MI_SIZE_LOG2));
+	}
+	*v8 += dstSign * offset8;
+	 if (*v8 < 0 ||
+		*v8 >= max8 ||
+		*v8 < base8 - maxOff8 ||
+		*v8 >= base8 + 8 + maxOff8)
+	{
+		*posValid = 0;
+	}
+	return *v8;
+}
 #endif
 

@@ -2517,8 +2517,220 @@ int frame::read_compound_type(int isCompound)
 		}
 	}
 }
+//7.8
+int frame::set_frame_refs(){
+	for (int i = 0; i < REFS_PER_FRAME; i++ )
+		ref_frame_idx[ i ] = -1
+	ref_frame_idx[ LAST_FRAME - LAST_FRAME ] = last_frame_idx;
+	ref_frame_idx[ GOLDEN_FRAME - LAST_FRAME ] = gold_frame_idx;
 
-/*  find mv stack start ...*/
+	int usedFrame[REFS_PER_FRAME];
+	for ( i = 0; i < NUM_REF_FRAMES; i++ )
+		usedFrame[ i ] = 0;
+	usedFrame[ last_frame_idx ] = 1;
+	usedFrame[ gold_frame_idx ] = 1;
+	int  curFrameHint = 1 << (OrderHintBits - 1);
+	for ( i = 0; i < NUM_REF_FRAMES; i++ )
+		shiftedOrderHints[ i ] = curFrameHint + get_relative_dist( RefOrderHint[ i ], OrderHint );
+
+	int lastOrderHint = shiftedOrderHints[last_frame_idx ];
+	//It is a requirement of bitstream conformance that lastOrderHint is strictly less than curFrameHint
+	if(!(lastOrderHint < curFrameHint)){
+		//如果不满足，该做什么？？ spec只是说需要确认。。。
+		//直接退出当前流程？？
+	}
+
+	int goldOrderHint = shiftedOrderHints[ gold_frame_idx ];
+	if(!(goldOrderHint < curFrameHint) ){
+		//如果不满足，该做什么？？
+	}
+// ALTREF_FRAME reference is set to be a backward reference to the frame with highest output order 
+//ALTREF_FRAME参考帧被设置为输出顺序最高的帧的后向参考帧
+	//find_latest_backward()
+	int ref = -1;
+	int latestOrderHint = INT_MIN;
+	for (int  i = 0; i < NUM_REF_FRAMES; i++ ) {
+		int hint = shiftedOrderHints[ i ];
+		if ( !usedFrame[ i ] &&
+			hint >= curFrameHint &&
+		( ref < 0 || hint >= latestOrderHint ) ) {
+			ref = i;
+			latestOrderHint = hint;
+		}
+	}
+	if ( ref >= 0 ) {
+		ref_frame_idx[ ALTREF_FRAME - LAST_FRAME ] = ref;
+		usedFrame[ ref ] = 1;
+	}
+
+//BWDREF_FRAME reference is set to be a backward reference to the closest frame
+//BWDREF_FRAME参考帧被设置为最近帧的后向参考帧
+	ref = -1;
+	int earliestOrderHint = INT_MIN;
+	for (int i = 0; i < NUM_REF_FRAMES; i++ ) {
+		int hint = shiftedOrderHints[ i ];
+		if ( !usedFrame[ i ] &&
+		hint >= curFrameHint &&
+		( ref < 0 || hint < earliestOrderHint ) ) {
+			ref = i;
+			earliestOrderHint = hint;
+		}
+	}
+	if ( ref >= 0 ) {
+		ref_frame_idx[ BWDREF_FRAME - LAST_FRAME ] = ref;
+		usedFrame[ ref ] = 1;
+	}
+//ALTREF2_FRAME reference is set to the next closest backward reference
+//ALTREF2_FRAME参考帧被设置为次近的后向参考帧。
+	ref = -1;
+	earliestOrderHint = INT_MIN;
+	for (int i = 0; i < NUM_REF_FRAMES; i++ ) {
+		int hint = shiftedOrderHints[ i ];
+		if ( !usedFrame[ i ] &&
+		hint >= curFrameHint &&
+		( ref < 0 || hint < earliestOrderHint ) ) {
+			ref = i;
+			earliestOrderHint = hint;
+		}
+	}
+	if ( ref >= 0 ) {
+		ref_frame_idx[ ALTREF2_FRAME - LAST_FRAME ] = ref;
+		usedFrame[ ref ] = 1;
+	}
+
+ //remaining references are set to be forward references in anti-chronological order
+ //剩余的参考帧被设置为按反时间顺序的前向参考帧
+	for ( i = 0; i < REFS_PER_FRAME - 2; i++ ) {
+		int refFrame = Ref_Frame_List[ i ];
+		if ( ref_frame_idx[ refFrame - LAST_FRAME ] < 0 ) {
+			ref = -1;
+			latestOrderHint = INT_MIN;
+			for (int  i = 0; i < NUM_REF_FRAMES; i++ ) {
+				int hint = shiftedOrderHints[ i ];
+				if ( !usedFrame[ i ] &&
+				hint < curFrameHint &&
+				( ref < 0 || hint >= latestOrderHint ) ) {
+					ref = i;
+					latestOrderHint = hint;
+				}
+			}
+
+
+		if ( ref >= 0 ) {
+			ref_frame_idx[ refFrame - LAST_FRAME ] = ref;
+			usedFrame[ ref ] = 1;
+		}
+		}
+	}
+//Finally, any remaining references are set to the reference frame with smallest output order
+//最后，剩余的参考帧被设置为输出顺序最小的参考帧
+	ref = -1;
+	earliestOrderHint = = INT_MIN;
+	for (int i = 0; i < NUM_REF_FRAMES; i++ ) {
+		int hint = shiftedOrderHints[ i ];
+		if ( ref < 0 || hint < earliestOrderHint ) {
+			ref = i;
+			earliestOrderHint = hint;
+		}
+	}
+	for (int i = 0; i < REFS_PER_FRAME; i++ ) {
+		if ( ref_frame_idx[ i ] < 0 ) {
+			ref_frame_idx[ i ] = ref;
+		}
+	}
+
+}
+//7.9
+int frame::motion_field_estimation(){
+	int w8 = MiCols >> 1;
+	int h8 = MiRows >> 1;
+//As the linear projection can create a field with holes, the motion fields are initialized to an invalid motion vector of -32768,-32768
+	for (int  ref = LAST_FRAME; ref <= ALTREF_FRAME; ref++ )
+		for (int  y = 0; y < h8 ; y++ )
+			for (int  x = 0; x < w8; x++ )
+				for (int  j = 0; j < 2; j++ )
+				MotionFieldMvs[ ref ][ y ][ x ][ j ] = -1 << 15;
+
+	int lastIdx = ref_frame_idx[ 0 ];
+	int curGoldOrderHint = OrderHints[ GOLDEN_FRAME ];
+	int lastAltOrderHint = SavedOrderHints[ lastIdx ][ ALTREF_FRAME ];
+	int useLast =  (lastAltOrderHint != curGoldOrderHint );
+	if(useLast == 1){
+
+
+	}
+
+}
+//The process projects the motion vectors from a whole reference frame and stores the results in MotionFieldMvs.
+//The process outputs a single boolean value representing whether the source frame was valid for this operation. If the
+//output is zero, no modification is made to MotionFieldMvs
+int frame::motion_filed_project(int src,int dstSign){
+	int srcIdx = ref_frame_idx[src - LAST_FRAME];
+	int w8 = MiCols >> 1;
+	int h8 = MiRows >> 1;
+
+	if (RefMiRows[srcIdx] != MiRows || RefMiCols[srcIdx] != MiCols || RefFrameType[srcIdx] == INTRA_ONLY_FRAME || RefFrameType[srcIdx] == KEY_FRAME) {
+		// Exit the process with output set to 0
+		// ...
+		return 0;
+	}
+	for (int y8 = 0; y8 < h8; y8++) {
+		for (int x8 = 0; x8 < w8; x8++) {
+			int row = 2 * y8 + 1; 
+			int col = 2 * x8 + 1;
+			int srcRef = SavedRefFrames[srcIdx][row][col];
+			
+			if (srcRef > INTRA_FRAME) {
+				int refToCur = get_relative_dist(OrderHints[src], OrderHint);
+				int refOffset = get_relative_dist(OrderHints[src], SavedOrderHints[srcIdx][srcRef]);
+				int posValid = (Abs(refToCur) <= MAX_FRAME_DISTANCE) &&
+							(Abs(refOffset) <= MAX_FRAME_DISTANCE) &&
+							(refOffset > 0);
+				
+				if (posValid) {
+					int mv = SavedMvs[srcIdx][row][col];
+					int projMv = get_mv_projection(mv, refToCur * dstSign, refOffset);
+					posValid = get_block_position(x8, y8, dstSign, projMv);
+					
+					if (posValid) {
+						for (int dst = LAST_FRAME; dst <= ALTREF_FRAME; dst++) {
+							int refToDst = get_relative_dist(OrderHint, OrderHints[dst]);
+							projMv = get_mv_projection(mv, refToDst, refOffset);
+							MotionFieldMvs[dst][PosY8][PosX8] = projMv;
+						}
+					}
+				}
+			}
+		}
+	}
+}
+//This process starts with a motion vector mv from a previous frame. This motion vector gives the displacement expected
+//when moving a certain number of frames (given by the variable denominator). In order to use the motion vector for
+//predictions using a different reference frame, the length of the motion vector must be scaled
+int frame::get_mv_projection(int *projMv, int *mv,int numerator,int denominator){
+
+	int clippedDenominator = Min(MAX_FRAME_DISTANCE, denominator);
+	int clippedNumerator = Clip3(-MAX_FRAME_DISTANCE, MAX_FRAME_DISTANCE, numerator);
+
+
+	for (int i = 0; i < 2; i++) {
+		int scaled = Round2Signed(mv[i] * clippedNumerator * Div_Mult[clippedDenominator], 14);
+		projMv[i] = scaled;
+	}
+}
+//process returns a flag posValid that indicates if the position should be used
+int frame::get_block_position(int *PosX8,int *PosY8, int x8, int y8, int dstSign, int *projMv ){
+
+	int posValid = 1;
+
+	*PosY8 = project(&posValid,&y8, projMv[ 0 ], dstSign, MiRows >> 1, MAX_OFFSET_HEIGHT);
+	*PosX8 = project(&posValid,&x8, projMv[ 1 ], dstSign, MiCols >> 1, MAX_OFFSET_WIDTH);
+
+	return posValid;
+}
+
+//7.10
+/*  find mv stack  and about start...*/
 int frame::find_mv_stack(int isCompound,SymbolContext *sbCtx, bitSt *bs, TileData *t_data,
 								 PartitionData *p_data, BlockData *b_data, AV1DecodeContext *av1ctx){
 
