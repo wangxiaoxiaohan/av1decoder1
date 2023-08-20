@@ -409,7 +409,7 @@ typedef struct BlockData{
 	uint8_t compound_mode;
 
 
-
+	uint8_t *DrlCtxStack;
 
 
 }BlockData;

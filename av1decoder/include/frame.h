@@ -61,6 +61,12 @@ public:
 							BlockData *b_data,AV1DecodeContext *av1ctx);
 	int filter_intra_mode_info(SymbolContext *sbCtx,bitSt *bs,BlockData *b_data,AV1DecodeContext *av1ctx);
 	int get_palette_cache(int plane,PartitionData *p_data,BlockData *b_data);
+
+
+
+
+
+	
 	static frame& Instance() {
 		static frame m_pInstance;
 		return m_pInstance;

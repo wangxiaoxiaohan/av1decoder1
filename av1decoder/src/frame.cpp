@@ -1561,7 +1561,7 @@ int frame::inter_frame_mode_info(SymbolContext *sbCtx, bitSt *bs, TileData *t_da
 	int AboveSingle = b_data->AboveRefFrame[1] <= INTRA_FRAME;
 	b_data->skip = 0;
 	inter_segment_id(1,sbCtx,bs, t_data, p_data,b_data,av1ctx);
-	read_s78kip_mode();
+	read_skip_mode();
 	if (b_data->skip_mode)
 			b_data->skip = 1;
 	else
@@ -2517,20 +2517,262 @@ int frame::read_compound_type(int isCompound)
 		}
 	}
 }
+
+int frame::palette_tokens()
+{
+	blockHeight = Block_Height[MiSize];
+	blockWidth = Block_Width[MiSize];
+	onscreenHeight = Min(blockHeight, (MiRows - MiRow) * MI_SIZE);
+	onscreenWidth = Min(blockWidth, (MiCols - MiCol) * MI_SIZE);
+	if (PaletteSizeY)
+	{
+		color_index_map_y; // NS(PaletteSizeY)
+		ColorMapY[0][0] = color_index_map_y;
+		for (i = 1; i < onscreenHeight + onscreenWidth - 1; i++)
+		{
+			for (j = Min(i, onscreenWidth - 1);
+				 j >= Max(0, i - onscreenHeight + 1); j--)
+			{
+				get_palette_color_context(ColorMapY, (i - j), j, PaletteSizeY);
+				palette_color_idx_y; // S()
+				ColorMapY[i - j][j] = ColorOrder[palette_color_idx_y];
+			}
+		}
+		for (i = 0; i < onscreenHeight; i++)
+		{
+			for (j = onscreenWidth; j < blockWidth; j++)
+			{
+				ColorMapY[i][j] = ColorMapY[i][onscreenWidth - 1];
+			}
+		}
+		for (i = onscreenHeight; i < blockHeight; i++)
+		{
+			for (j = 0; j < blockWidth; j++)
+			{
+				ColorMapY[i][j] = ColorMapY[onscreenHeight - 1][j];
+			}
+		}
+	}
+	if (PaletteSizeUV)
+	{
+		color_index_map_uv; // NS(PaletteSizeUV)
+		ColorMapUV[0][0] = color_index_map_uv;
+		blockHeight = blockHeight >> subsampling_y;
+		blockWidth = blockWidth >> subsampling_x;
+		onscreenHeight = onscreenHeight >> subsampling_y;
+		onscreenWidth = onscreenWidth >> subsampling_x;
+		if (blockWidth < 4)
+		{
+			blockWidth += 2;
+			onscreenWidth += 2;
+		}
+		if (blockHeight < 4)
+		{
+			blockHeight += 2;
+			onscreenHeight += 2;
+		}
+		for (i = 1; i < onscreenHeight + onscreenWidth - 1; i++)
+		{
+			for (j = Min(i, onscreenWidth - 1); j >= Max(0, i - onscreenHeight + 1); j--)
+			{
+				get_palette_color_context(ColorMapUV, (i - j), j, PaletteSizeUV);
+				palette_color_idx_uv; // S()
+				ColorMapUV[i - j][j] = ColorOrder[palette_color_idx_uv];
+			}
+		}
+		for (i = 0; i < onscreenHeight; i++)
+		{
+			for (j = onscreenWidth; j < blockWidth; j++)
+			{
+				ColorMapUV[i][j] = ColorMapUV[i][onscreenWidth - 1];
+			}
+		}
+		for (i = onscreenHeight; i < blockHeight; i++)
+		{
+			for (j = 0; j < blockWidth; j++)
+			{
+				ColorMapUV[i][j] = ColorMapUV[onscreenHeight - 1][j];
+			}
+		}
+	}
+}
+int frame::read_block_tx_size()
+{
+	bw4 = Num_4x4_Blocks_Wide[MiSize];
+	bh4 = Num_4x4_Blocks_High[MiSize];
+	if (TxMode == TX_MODE_SELECT &&
+		MiSize > BLOCK_4X4 && is_inter &&
+		!skip && !Lossless)
+	{
+		maxTxSz = Max_Tx_Size_Rect[MiSize];
+		txW4 = Tx_Width[maxTxSz] / MI_SIZE;
+		txH4 = Tx_Height[maxTxSz] / MI_SIZE;
+		for (row = MiRow; row < MiRow + bh4; row += txH4)
+			for (col = MiCol; col < MiCol + bw4; col += txW4)
+				read_var_tx_size(row, col, maxTxSz, 0);
+	}
+	else
+	{
+		read_tx_size(!skip || !is_inter);
+		for (row = MiRow; row < MiRow + bh4; row++)
+			for (col = MiCol; col < MiCol + bw4; col++)
+				InterTxSizes[row][col] = TxSize;
+	}
+}
+int frame::read_var_tx_size(row, col, txSz, depth)
+{
+	if (row >= MiRows || col >= MiCols)
+		return;
+	if (txSz == TX_4X4 || depth == MAX_VARTX_DEPTH)
+	{
+		txfm_split = 0;
+	}
+	else
+	{
+		txfm_split; // S()
+	}
+	w4 = Tx_Width[txSz] / MI_SIZE;
+	h4 = Tx_Height[txSz] / MI_SIZE;
+	if (txfm_split)
+	{
+		subTxSz = Split_Tx_Size[txSz];
+		stepW = Tx_Width[subTxSz] / MI_SIZE;
+		stepH = Tx_Height[subTxSz] / MI_SIZE;
+		for (i = 0; i < h4; i += stepH)
+			for (j = 0; j < w4; j += stepW)
+				read_var_tx_size(row + i, col + j, subTxSz, depth + 1);
+	}
+	else
+	{
+		for (i = 0; i < h4; i++)
+			for (j = 0; j < w4; j++)
+				InterTxSizes[row + i][col + j] = txSz;
+		TxSize = txSz;
+	}
+}
+int frame::read_tx_size(allowSelect)
+{
+	if (Lossless)
+	{
+		TxSize = TX_4X4;
+		return;
+	}
+	maxRectTxSize = Max_Tx_Size_Rect[MiSize];
+	maxTxDepth = Max_Tx_Depth[MiSize];
+	TxSize = maxRectTxSize;
+	if (MiSize > BLOCK_4X4 && allowSelect && TxMode == TX_MODE_SELECT)
+	{
+		tx_depth; // S()
+		for (i = 0; i < tx_depth; i++)
+			TxSize = Split_Tx_Size[TxSize];
+	}
+}
+
+int frame::reset_block_context(bw4, bh4)
+{
+	for (plane = 0; plane < 1 + 2 * HasChroma; plane++)
+	{
+		subX = (plane > 0) ? subsampling_x : 0;
+		subY = (plane > 0) ? subsampling_y : 0;
+		for (i = MiCol >> subX; i < ((MiCol + bw4) >> subX); i++)
+		{
+			AboveLevelContext[plane][i] = 0;
+			AboveDcContext[plane][i] = 0;
+		}
+		for (i = MiRow >> subY; i < ((MiRow + bh4) >> subY); i++)
+		{
+			LeftLevelContext[plane][i] = 0;
+			LeftDcContext[plane][i] = 0;
+		}
+	}
+}
+int frame::compute_prediction()
+{
+	sbMask = use_128x128_superblock ? 31 : 15;
+	subBlockMiRow = MiRow & sbMask;
+	subBlockMiCol = MiCol & sbMask;
+	for (plane = 0; plane < 1 + HasChroma * 2; plane++)
+	{
+		planeSz = get_plane_residual_size(MiSize, plane);
+		num4x4W = Num_4x4_Blocks_Wide[planeSz];
+		num4x4H = Num_4x4_Blocks_High[planeSz];
+		log2W = MI_SIZE_LOG2 + Mi_Width_Log2[planeSz];
+		log2H = MI_SIZE_LOG2 + Mi_Height_Log2[planeSz];
+		subX = (plane > 0) ? subsampling_x : 0;
+		subY = (plane > 0) ? subsampling_y : 0;
+		baseX = (MiCol >> subX) * MI_SIZE;
+		baseY = (MiRow >> subY) * MI_SIZE;
+		candRow = (MiRow >> subY) << subY;
+		candCol = (MiCol >> subX) << subX;
+		IsInterIntra = (is_inter && RefFrame[1] == INTRA_FRAME);
+		if (IsInterIntra)
+		{
+			if (interintra_mode == II_DC_PRED)
+				mode = DC_PRED;
+			else if (interintra_mode == II_V_PRED)
+				mode = V_PRED;
+			else if (interintra_mode == II_H_PRED)
+				mode = H_PRED;
+			else
+				mode = SMOOTH_PRED;
+			predict_intra(plane, baseX, baseY,
+						  plane == 0 ? AvailL : AvailLChroma,
+						  plane == 0 ? AvailU : AvailUChroma,
+						  BlockDecoded[plane]
+									  [(subBlockMiRow >> subY) - 1]
+									  [(subBlockMiCol >> subX) + num4x4W],
+						  BlockDecoded[plane]
+									  [(subBlockMiRow >> subY) + num4x4H]
+									  [(subBlockMiCol >> subX) - 1],
+						  mode,
+						  log2W, log2H);
+		}
+		if (is_inter)
+		{
+			predW = Block_Width[MiSize] >> subX;
+			predH = Block_Height[MiSize] >> subY;
+			someUseIntra = 0;
+			for (r = 0; r < (num4x4H << subY); r++)
+				for (c = 0; c < (num4x4W << subX); c++)
+					if (RefFrames[candRow + r][candCol + c][0] == INTRA_FRAME)
+					someUseIntra = 1;
+			if (someUseIntra)
+			{
+				predW = num4x4W * 4;
+				predH = num4x4H * 4;
+				candRow = MiRow;
+				candCol = MiCol;
+			}
+			r = 0;
+			for (y = 0; y < num4x4H * 4; y += predH)
+			{
+				c = 0;
+				for (x = 0; x < num4x4W * 4; x += predW)
+				{
+					predict_inter(plane, baseX + x, baseY + y,
+								  predW, predH,
+								  candRow + r, candCol + c);
+					c++;
+				}
+				r++;
+			}
+		}
+	}
+}
 //7.8
 int frame::set_frame_refs(){
 	for (int i = 0; i < REFS_PER_FRAME; i++ )
-		ref_frame_idx[ i ] = -1
+		ref_frame_idx[ i ] = -1;
 	ref_frame_idx[ LAST_FRAME - LAST_FRAME ] = last_frame_idx;
 	ref_frame_idx[ GOLDEN_FRAME - LAST_FRAME ] = gold_frame_idx;
 
 	int usedFrame[REFS_PER_FRAME];
-	for ( i = 0; i < NUM_REF_FRAMES; i++ )
+	for (int i = 0; i < NUM_REF_FRAMES; i++ )
 		usedFrame[ i ] = 0;
 	usedFrame[ last_frame_idx ] = 1;
 	usedFrame[ gold_frame_idx ] = 1;
 	int  curFrameHint = 1 << (OrderHintBits - 1);
-	for ( i = 0; i < NUM_REF_FRAMES; i++ )
+	for (int  i = 0; i < NUM_REF_FRAMES; i++ )
 		shiftedOrderHints[ i ] = curFrameHint + get_relative_dist( RefOrderHint[ i ], OrderHint );
 
 	int lastOrderHint = shiftedOrderHints[last_frame_idx ];
@@ -3184,15 +3426,252 @@ int frame::add_tpl_ref_mv(int deltaRow, int deltaCol, int isCompound,BlockData *
 }
 // performs a stable sort of part of the stack of motion vectors according to the corresponding weight.
 int frame::Sorting(int start,int end ,int isCompound){
-
-
+    while (end > start) {
+        int newEnd = start;
+        for (int idx = start + 1; idx < end; idx++) {
+            if (WeightStack[idx - 1] < WeightStack[idx]) {
+                swap_stack(idx - 1, idx, isCompound, RefStackMv, WeightStack);
+                newEnd = idx;
+            }
+        }
+        end = newEnd;
+    }
 }
-int frame::extra_search(int isCompound){
-
-
+void frame::swap_stack(int i, int j, int isCompound, int RefStackMv[][2][2], int WeightStack[]) {
+    int temp = WeightStack[i];
+    WeightStack[i] = WeightStack[j];
+    WeightStack[j] = temp;
+    
+    for (int list = 0; list < 1 + isCompound; list++) {
+        for (int comp = 0; comp < 2; comp++) {
+            temp = RefStackMv[i][list][comp];
+            RefStackMv[i][list][comp] = RefStackMv[j][list][comp];
+            RefStackMv[j][list][comp] = temp;
+        }
+    }
 }
-int frame::context_and_clamping(int isCompound,int numNew){
+//This process adds additional motion vectors to RefStackMv until it has 2 choices of motion vector by first searching the
+//left and above neighbors for partially matching candidates, and second adding global motion candidates
+int frame::extra_search(int isCompound)
+{
+	int RefIdCountp[2];
+	int RefDiffCount[2];
 
+	for (int list = 0; list < 2; list++)
+	{
+		RefIdCount[list] = 0;
+		RefDiffCount[list] = 0;
+	}
+	int w4 = Min(16, Num_4x4_Blocks_Wide[MiSize]);
+	int h4 = Min(16, Num_4x4_Blocks_High[MiSize]);
+	int w4 = Min(w4, MiCols - MiCol);
+	int h4 = Min(h4, MiRows - MiRow);
+	int num4x4 = Min(w4, h4);
+	//The first pass searches the row above, the second searches the column to the left.
+	for (int pass = 0; pass < 2; pass++)
+	{
+		int idx = 0;
+		while (idx < num4x4 && NumMvFound < 2)
+		{
+			int mvRow;
+			int mvCol;
+			if (pass == 0)
+			{
+				mvRow = MiRow - 1;
+				mvCol = MiCol + idx;
+			}
+			else
+			{
+				mvRow = MiRow + idx;
+				mvCol = MiCol - 1;
+			}
+			if (!is_inside(mvRow, mvCol))
+				break;
+			add_extra_mv_candidate(mvRow, mvCol, isCompound);
+			if (pass == 0)
+			{
+				idx += Num_4x4_Blocks_Wide[MiSizes[mvRow][mvCol]];
+			}
+			else
+			{
+				idx += Num_4x4_Blocks_High[MiSizes[mvRow][mvCol]];
+			}
+		}
+	}
+	if (isCompound == 1)
+	{
+		for (int list = 0; list < 2; list++)
+		{
+			int compCount = 0;
+			for (int idx = 0; idx < RefIdCount[list]; idx++)
+			{
+				combinedMvs[compCount][list] = RefIdMvs[list][idx];
+				compCount++;
+			}
+			for (int idx = 0; idx < RefDiffCount[list] && compCount < 2; idx++)
+			{
+				combinedMvs[compCount][list] = RefDiffMvs[list][idx];
+				compCount++;
+			}
+			while (compCount < 2)
+			{
+				combinedMvs[compCount][list] = GlobalMvs[list];
+				compCount++;
+			}
+		}
+		if (NumMvFound == 1)
+		{
+			if (combinedMvs[0][0] == RefStackMv[0][0] &&
+				combinedMvs[0][1] == RefStackMv[0][1])
+			{
+				RefStackMv[NumMvFound][0] = combinedMvs[1][0];
+				RefStackMv[NumMvFound][1] = combinedMvs[1][1];
+			}
+			else
+			{
+				RefStackMv[NumMvFound][0] = combinedMvs[0][0];
+				RefStackMv[NumMvFound][1] = combinedMvs[0][1];
+			}
+			WeightStack[NumMvFound] = 2;
+			NumMvFound++;
+		}
+		else
+		{
+			for (int idx = 0; idx < 2; idx++)
+			{
+				RefStackMv[NumMvFound][0] = combinedMvs[idx][0];
+				RefStackMv[NumMvFound][1] = combinedMvs[idx][1];
+				WeightStack[NumMvFound] = 2;
+				NumMvFound++;
+			}
+		}
+	}
+	else
+	{
+		for (int idx = NumMvFound; idx < 2; idx++)
+		{
+			RefStackMv[idx][0] = GlobalMvs[0];
+		}
+	}
+}
+//This process may modify the contents of the global variables RefIdMvs, RefIdCount, RefDiffMvs, RefDiffCount,
+//RefStackMv, WeightStack, and NumMvFound.
+int frame::add_extra_mv_candidate(int mvRow, int mvCol, int isCompound)
+{
+	if (isCompound)
+	{
+		for (int candList = 0; candList < 2; candList++)
+		{
+			int candRef = RefFrames[mvRow][mvCol][candList];
+			if (candRef > INTRA_FRAME)
+			{
+				for (int list = 0; list < 2; list++)
+				{
+					int candMv = Mvs[mvRow][mvCol][candList];
+					if (candRef == RefFrame[list] && RefIdCount[list] < 2)
+					{
+						RefIdMvs[list][RefIdCount[list]] = candMv;
+						RefIdCount[list]++;
+					}
+					else if (RefDiffCount[list] < 2)
+					{
+						if (RefFrameSignBias[candRef] != RefFrameSignBias[RefFrame[list]])
+						{
+							candMv[0] *= -1;
+							candMv[1] *= -1;
+						}
+						RefDiffMvs[list][RefDiffCount[list]] = candMv;
+						RefDiffCount[list]++;
+					}
+				}
+			}
+		}
+	}
+	else
+	{
+		for (int candList = 0; candList < 2; candList++)
+		{
+			int candRef = RefFrames[mvRow][mvCol][candList];
+			if (candRef > INTRA_FRAME)
+			{
+				int candMv = Mvs[mvRow][mvCol][candList];
+				if (RefFrameSignBias[candRef] != RefFrameSignBias[RefFrame[0]])
+				{
+					candMv[0] *= -1;
+					candMv[1] *= -1;
+				}
+				for (int idx = 0; idx < NumMvFound; idx++)
+				{
+					if (candMv == RefStackMv[idx][0])
+						break;
+				}
+				if (int idx == NumMvFound)
+				{
+					RefStackMv[idx][0] = candMv;
+					WeightStack[idx] = 2;
+					NumMvFound++;
+				}
+			}
+		}
+	}
+}
+//This process computes contexts to be used when decoding syntax elements, and clamps the candidates in RefStackMv
+int frame::context_and_clamping(int isCompound, int numNew)
+{
+	int bw = 4 * Num_4x4_Blocks_Wide[MiSize];
+	int bh = 4 * Num_4x4_Blocks_High[MiSize];
+	int numLists = isCompound ? 2 : 1;
+	for (int idx = 0; idx < NumMvFound; idx++)
+	{
+		int z = 0;
+		if (idx + 1 < NumMvFound)
+		{
+			int w0 = WeightStack[idx];
+			int w1 = WeightStack[idx + 1];
+			if (w0 >= REF_CAT_LEVEL)
+			{
+				if (w1 < REF_CAT_LEVEL)
+				{
+					z = 1;
+				}
+			}
+			else
+			{
+				z = 2;
+			}
+		}
+		DrlCtxStack[idx] = z;
+	}
+	for (int list = 0; list < numLists; list++ ) {
+		for (int idx = 0; idx < NumMvFound ; idx++ ) {
+			int refMv[2] = RefStackMv[ idx ][ list ];
+			refMv[ 0 ] = clamp_mv_row( refMv[ 0 ], MV_BORDER + bh * 8);
+			refMv[ 1 ] = clamp_mv_col( refMv[ 1 ], MV_BORDER + bw * 8);
+			RefStackMv[ idx ][ list ] = refMv;
+		}
+	}	
+	if ( CloseMatches == 0 ) {
+		NewMvContext = Min( TotalMatches, 1 ); // 0,1
+		RefMvContext = TotalMatches;
+	} else if ( CloseMatches == 1 ) {
+		NewMvContext = 3 - Min( numNew, 1 ); // 2,3
+		RefMvContext = 2 + TotalMatches;
+	} else {
+		NewMvContext = 5 - Min( numNew, 1 ); // 4,5
+		RefMvContext = 5;
+	}
+}
+int frame::clamp_mv_row( mvec, border ) { 
+	int bh4 = Num_4x4_Blocks_High[ MiSize ];
+	int mbToTopEdge = -((MiRow * MI_SIZE) * 8);
+	int mbToBottomEdge = ((MiRows - bh4 - MiRow) * MI_SIZE) * 8;
+	return Clip3( mbToTopEdge - border, mbToBottomEdge + border, mvec );
+}
+int frame::clamp_mv_col( mvec, border ) { 
+	int bw4 = Num_4x4_Blocks_Wide[ MiSize ];
+	int mbToLeftEdge = -((MiCol * MI_SIZE) * 8);
+	int mbToRightEdge = ((MiCols - bw4 - MiCol) * MI_SIZE) * 8;
+	return Clip3( mbToLeftEdge - border, mbToRightEdge + border, mvec );
 }
 int frame::lower_precision(int *candMv,AV1DecodeContext *av1Ctx)
 {
