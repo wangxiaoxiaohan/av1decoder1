@@ -677,5 +677,12 @@ int inline project(int *posValid, int *v8, int delta, int dstSign, int max8,int 
 	}
 	return *v8;
 }
+int inline find_tx_size( int w,int  h ) {
+	for (int txSz = 0; txSz < TX_SIZES_ALL; txSz++ )
+		if ( Tx_Width[ txSz ] == w && Tx_Height[ txSz ] == h )
+			break;
+	return txSz;
+}
+
 #endif
 

@@ -3701,4 +3701,348 @@ int frame::lower_precision(int *candMv,AV1DecodeContext *av1Ctx)
 		}
 	}
 }
+residual()
+{
+	sbMask = use_128x128_superblock ? 31 : 15;
+	widthChunks = Max(1, Block_Width[MiSize] >> 6)
+		heightChunks = Max(1, Block_Height[MiSize] >> 6)
+			miSizeChunk = (widthChunks > 1 || heightChunks > 1) ? BLOCK_64X64 : MiSize;
+	for (chunkY = 0; chunkY < heightChunks; chunkY++)
+	{
+		for (chunkX = 0; chunkX < widthChunks; chunkX++)
+		{
+			miRowChunk = MiRow + (chunkY << 4);
+			miColChunk = MiCol + (chunkX << 4);
+			subBlockMiRow = miRowChunk & sbMask;
+			subBlockMiCol = miColChunk & sbMask;
+			for (plane = 0; plane < 1 + HasChroma * 2; plane++)
+			{
+				txSz = Lossless ? TX_4X4 : get_tx_size(plane, TxSize);
+				stepX = Tx_Width[txSz] >> 2;
+				stepY = Tx_Height[txSz] >> 2;
+				planeSz = get_plane_residual_size(miSizeChunk, plane);
+				num4x4W = Num_4x4_Blocks_Wide[planeSz];
+				num4x4H = Num_4x4_Blocks_High[planeSz];
+				subX = (plane > 0) ? subsampling_x : 0;
+				subY = (plane > 0) ? subsampling_y : 0;
+				baseX = (miColChunk >> subX) * MI_SIZE;
+				baseY = (miRowChunk >> subY) * MI_SIZE;
+				if (is_inter && !Lossless && !plane)
+				{
+					transform_tree(baseX, baseY, num4x4W * 4, num4x4H * 4);
+				}
+				else
+				{
+					baseXBlock = (MiCol >> subX) * MI_SIZE;
+					baseYBlock = (MiRow >> subY) * MI_SIZE;
+					for (y = 0; y < num4x4H; y += stepY)
+						for (x = 0; x < num4x4W; x += stepX)
+							transform_block(plane, baseXBlock, baseYBlock, txSz,
+											x + ((chunkX << 4) >> subX),
+											y + ((chunkY << 4) >> subY));
+				}
+			}
+		}
+	}
+}
+transform_tree(startX, startY, w, h)
+{
+	maxX = MiCols * MI_SIZE;
+	maxY = MiRows * MI_SIZE;
+	if (startX >= maxX || startY >= maxY)
+	{
+		return;
+	}
+	row = startY >> MI_SIZE_LOG2;
+	col = startX >> MI_SIZE_LOG2;
+	lumaTxSz = InterTxSizes[row][col];
+	lumaW = Tx_Width[lumaTxSz];
+	lumaH = Tx_Height[lumaTxSz];
+	if (w <= lumaW && h <= lumaH)
+	{
+		txSz = find_tx_size(w, h);
+		transform_block(0, startX, startY, txSz, 0, 0);
+	}
+	else
+	{
+		if (w > h)
+		{
+			transform_tree(startX, startY, w / 2, h);
+			transform_tree(startX + w / 2, startY, w / 2, h);
+		}
+		else if (w < h)
+		{
+			transform_tree(startX, startY, w, h / 2);
+			transform_tree(startX, startY + h / 2, w, h / 2);
+		}
+		else
+		{
+			transform_tree(startX, startY, w / 2, h / 2);
+			transform_tree(startX + w / 2, startY, w / 2, h / 2);
+			transform_tree(startX, startY + h / 2, w / 2, h / 2);
+			transform_tree(startX + w / 2, startY + h / 2, w / 2, h / 2);
+		}
+	}
+}
+transform_block(plane, baseX, baseY, txSz, x, y)
+{
+	startX = baseX + 4 * x;
+	startY = baseY + 4 * y;
+	subX = (plane > 0) ? subsampling_x : 0;
+	subY = (plane > 0) ? subsampling_y : 0;
+	row = (startY << subY) >> MI_SIZE_LOG2;
+	col = (startX << subX) >> MI_SIZE_LOG2;
+	sbMask = use_128x128_superblock ? 31 : 15;
+	subBlockMiRow = row & sbMask;
+	subBlockMiCol = col & sbMask;
+	stepX = Tx_Width[txSz] >> MI_SIZE_LOG2;
+	stepY = Tx_Height[txSz] >> MI_SIZE_LOG2;
+	maxX = (MiCols * MI_SIZE) >> subX;
+	maxY = (MiRows * MI_SIZE) >> subY;
+	if (startX >= maxX || startY >= maxY)
+	{
+		return;
+	}
+	if (!is_inter)
+	{
+		if (((plane == 0) && PaletteSizeY) ||
+			((plane != 0) && PaletteSizeUV))
+		{
+			predict_palette(plane, startX, startY, x, y, txSz);
+		}
+		else
+		{
+			isCfl = (plane > 0 && UVMode == UV_CFL_PRED);
+			if (plane == 0)
+			{
+				mode = YMode;
+			}
+			else
+			{
+				mode = (isCfl) ? DC_PRED : UVMode;
+			}
+			log2W = Tx_Width_Log2[txSz] log2H = Tx_Height_Log2[txSz] ;
+			predict_intra(plane, startX, startY,
+						(plane == 0 ? AvailL : AvailLChroma) || x > 0,
+						(plane == 0 ? AvailU : AvailUChroma) || y > 0,
+						BlockDecoded[plane][(subBlockMiRow >> subY) - 1][(subBlockMiCol >> subX) + stepX],
+						BlockDecoded[plane][(subBlockMiRow >> subY) + stepY][(subBlockMiCol >> subX) - 1],
+						mode,
+						log2W, log2H);
+			if (isCfl)
+			{
+				predict_chroma_from_luma(plane, startX, startY, txSz);
+			}
+		}
+		if (plane == 0)
+		{
+			MaxLumaW = startX + stepX * 4;
+			MaxLumaH = startY + stepY * 4;
+		}
+	}
+	if (!skip)
+	{
+		eob = coeffs(plane, startX, startY, txSz);
+		if (eob > 0)
+			reconstruct(plane, startX, startY, txSz);
+	}
+	for (i = 0; i < stepY; i++)
+	{
+		for (j = 0; j < stepX; j++)
+		{
+			LoopfilterTxSizes[plane]
+							 [(row >> subY) + i]
+							 [(col >> subX) + j] = txSz;
+			BlockDecoded[plane]
+						[(subBlockMiRow >> subY) + i]
+						[(subBlockMiCol >> subX) + j] = 1;
+		}
+	}
+}
+coeffs(plane, startX, startY, txSz)
+{
+	x4 = startX >> 2;
+	y4 = startY >> 2;
+	w4 = Tx_Width[txSz] >> 2;
+	h4 = Tx_Height[txSz] >> 2;
+	txSzCtx = (Tx_Size_Sqr[txSz] + Tx_Size_Sqr_Up[txSz] + 1) >> 1;
+	ptype = plane > 0;
+	segEob = (txSz == TX_16X64 || txSz == TX_64X16) ? 512 : Min(1024, Tx_Width[txSz] * Tx_Height[txSz]);
+	for (c = 0; c < segEob; c++)
+		Quant[c] = 0;
+	for (i = 0; i < 64; i++)
+		for (j = 0; j < 64; j++)
+			Dequant[i][j] = 0;
+	eob = 0;
+	culLevel = 0;
+	dcCategory = 0;
+	all_zero; // S()
+	if (all_zero)
+	{
+		c = 0;
+		if (plane == 0)
+		{
+			for (i = 0; i < w4; i++)
+			{
+				for (j = 0; j < h4; j++)
+				{
+					TxTypes[y4 + j][x4 + i] = DCT_DCT;
+				}
+			}
+		}
+	}
+	else
+	{
+		if (plane == 0)
+			transform_type(x4, y4, txSz);
+		PlaneTxType = compute_tx_type(plane, txSz, x4, y4);
+		scan = get_scan(txSz);
+		eobMultisize = Min(Tx_Width_Log2[txSz], 5) + Min(Tx_Height_Log2[txSz], 5) - 4;
+		if (eobMultisize == 0)
+		{
+			eob_pt_16; // S()
+			eobPt = eob_pt_16 + 1;
+		}
+		else if (eobMultisize == 1)
+		{
+			eob_pt_32; // S()
+			eobPt = eob_pt_32 + 1;
+		}
+		else if (eobMultisize == 2)
+		{
+			eob_pt_64; // S()
+			eobPt = eob_pt_64 + 1;
+		}
+		else if (eobMultisize == 3)
+		{
+			eob_pt_128; // S()
+			eobPt = eob_pt_128 + 1;
+		}
+		else if (eobMultisize == 4)
+		{
+			eob_pt_256; // S()
+			eobPt = eob_pt_256 + 1;
+		}
+		else if (eobMultisize == 5)
+		{
+			eob_pt_512; // S()
+			eobPt = eob_pt_512 + 1;
+		}
+		else
+		{
+			eob_pt_1024; // S()
+			eobPt = eob_pt_1024 + 1;
+		}
+		eob = (eobPt < 2) ? eobPt : ((1 << (eobPt - 2)) + 1);
+		eobShift = Max(-1, eobPt - 3);
+		if (eobShift >= 0)
+		{
+			eob_extra; // S()
+			if (eob_extra)
+			{
+				eob += (1 << eobShift);
+			}
+			for (i = 1; i < Max(0, eobPt - 2); i++)
+			{
+				eobShift = Max(0, eobPt - 2) - 1 - i;
+				eob_extra_bit; // L(1)
+				if (eob_extra_bit)
+				{
+					eob += (1 << eobShift);
+				}
+			}
+		}
+		for (c = eob - 1; c >= 0; c--)
+		{
+			pos = scan[c];
+			if (c == (eob - 1))
+			{
+				coeff_base_eob; // S()
+				level = coeff_base_eob + 1;
+			}
+			else
+			{
+				coeff_base; // S()
+				level = coeff_base;
+			}
+			if (level > NUM_BASE_LEVELS)
+			{
+				for (idx = 0;
+					 idx < COEFF_BASE_RANGE / (BR_CDF_SIZE - 1);
+					 idx++)
+				{
+					coeff_br; // S()
+					level += coeff_br;
+					if (coeff_br < (BR_CDF_SIZE - 1))
+						break;
+				}
+			}
+			Quant[pos] = level;
+		}
+		for (c = 0; c < eob; c++)
+		{
+			pos = scan[c];
+			if (Quant[pos] != 0)
+			{
+				if (c == 0)
+				{
+					dc_sign; // S()
+					sign = dc_sign;
+				}
+				else
+				{
+					sign_bit; // L(1)
+					sign = sign_bit;
+				}
+			}
+			else
+			{
+				sign = 0;
+			}
+			if (Quant[pos] >
+				(NUM_BASE_LEVELS + COEFF_BASE_RANGE))
+			{
+				length = 0;
+				do
+				{
+					length++;
+					golomb_length_bit; // L(1)
+				} while (!golomb_length_bit)
+					x = 1;
+				for (i = length - 2; i >= 0; i--)
+				{
+					golomb_data_bit; // L(1)
+					x = (x << 1) | golomb_data_bit;
+				}
+				Quant[pos] = x + COEFF_BASE_RANGE + NUM_BASE_LEVELS;
+			}
+			if (pos == 0 && Quant[pos] > 0)
+			{
+				dcCategory = sign ? 1 : 2;
+			}
+			Quant[pos] = Quant[pos] & 0xFFFFF;
+			culLevel += Quant[pos];
+			if (sign)
+				Quant[pos] = -Quant[pos];
+		}
+		culLevel = Min(63, culLevel);
+	}
+	for (i = 0; i < w4; i++)
+	{
+		AboveLevelContext[plane][x4 + i] = culLevel;
+		AboveDcContext[plane][x4 + i] = dcCategory;
+	}
+	for (i = 0; i < h4; i++)
+	{
+		LeftLevelContext[plane][y4 + i] = culLevel;
+		LeftDcContext[plane][y4 + i] = dcCategory;
+	}
+	return eob;
+}
 /*  find mv stack end ...*/
+find_tx_size( w, h ) {
+	for ( txSz = 0; txSz < TX_SIZES_ALL; txSz++ )
+		if ( Tx_Width[ txSz ] == w && Tx_Height[ txSz ] == h )
+			break;
+	return txSz;
+}

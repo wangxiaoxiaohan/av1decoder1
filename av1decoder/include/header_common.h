@@ -347,7 +347,6 @@ typedef struct BlockData{
 	uint8_t delta_lf_rem_bits;
 	uint8_t delta_lf_abs_bits;
 	uint8_t delta_lf_sign_bit;
-	uint8_t DeltaLF[4];
 	uint8_t RefFrame[2];
 	uint8_t use_intrabc;
 	uint8_t is_inter;
@@ -429,6 +428,7 @@ typedef struct AV1DecodeContext{
 	uint8_t SeenFrameHeader;
     CDFArrays *cdfCtx;
 	uint16_t ***MotionFieldMvs[2]; 
+	uint8_t DeltaLF[4];
 
 }AV1DecodeContext;
 
