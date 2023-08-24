@@ -62,7 +62,8 @@ public:
 	int filter_intra_mode_info(SymbolContext *sbCtx,bitSt *bs,BlockData *b_data,AV1DecodeContext *av1ctx);
 	int get_palette_cache(int plane,PartitionData *p_data,BlockData *b_data);
 
-
+	int inter_segment_id(int preSkip,SymbolContext *sbCtx, bitSt *bs, TileData *t_data,
+								 PartitionData *p_data, BlockData *b_data, AV1DecodeContext *av1ctx);
 
 
 

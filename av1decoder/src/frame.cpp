@@ -1149,7 +1149,7 @@ int frame::decode_tile(SymbolContext *sbCtx,bitSt *bs, TileData *t_data,AV1Decod
 
 	//clear_above_context( ).....
 	for (int i = 0; i < FRAME_LF_COUNT; i++ )
-		t_data->DeltaLF[ i ] = 0;
+		av1ctx->DeltaLF[ i ] = 0;
 	for (int plane = 0; plane < seqHdr->color_config.NumPlanes; plane++ ) {
 		for (int pass = 0; pass < 2; pass++ ) {
 			t_data->RefSgrXqd[ plane ][ pass ] = Sgrproj_Xqd_Mid[ pass ];
@@ -1367,7 +1367,7 @@ int frame::decode_block(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
 		b_data.AvailLChroma = 0;
 	}
 
-	mode_info(&b_data,av1ctx);
+	mode_info(sbCtx,bs,t_data,p_data,&b_data,av1ctx);
 	palette_tokens();
 	read_block_tx_size();	
 	if (b_data.skip)
@@ -1540,7 +1540,7 @@ int frame::intra_frame_mode_info(SymbolContext *sbCtx,bitSt *bs,TileData *t_data
 			4 * Num_4x4_Blocks_Wide[b_data->MiSize] <= 64 &&
 			4 * Num_4x4_Blocks_High[b_data->MiSize] <= 64 &&
 			frameHdr->allow_screen_content_tools){
-				palette_mode_info(sbCtx,bs,b_data,av1ctx);
+				palette_mode_info(sbCtx,bs,p_data,b_data,av1ctx);
 			} 
 			filter_intra_mode_info(sbCtx,bs,b_data,av1ctx);
 	}
@@ -1549,7 +1549,8 @@ int frame::intra_frame_mode_info(SymbolContext *sbCtx,bitSt *bs,TileData *t_data
 int frame::inter_frame_mode_info(SymbolContext *sbCtx, bitSt *bs, TileData *t_data,
 								 PartitionData *p_data, BlockData *b_data, AV1DecodeContext *av1ctx)
 {
-
+	frameHeader *frameHdr = av1ctx->frameHdr;
+	Symbol sb = Symbol::Instance();
 	int use_intrabc = 0;
 	b_data->LeftRefFrame[0] = b_data->AvailL ? p_data->RefFrames[b_data->MiRow][b_data->MiCol - 1][0] : INTRA_FRAME;
 	b_data->AboveRefFrame[0] = b_data->AvailU ? p_data->RefFrames[b_data->MiRow - 1][b_data->MiCol][0] : INTRA_FRAME;
@@ -1561,11 +1562,36 @@ int frame::inter_frame_mode_info(SymbolContext *sbCtx, bitSt *bs, TileData *t_da
 	int AboveSingle = b_data->AboveRefFrame[1] <= INTRA_FRAME;
 	b_data->skip = 0;
 	inter_segment_id(1,sbCtx,bs, t_data, p_data,b_data,av1ctx);
-	read_skip_mode();
+	//read_skip_mode();
+	if ( segmentation::Instance().seg_feature_active( b_data->segment_id,SEG_LVL_SKIP,frameHdr ) ||
+	segmentation::Instance().seg_feature_active( b_data->segment_id,SEG_LVL_REF_FRAME ,frameHdr) ||
+	segmentation::Instance().seg_feature_active( b_data->segment_id,SEG_LVL_GLOBALMV ,frameHdr) ||
+	!frameHdr->skip_mode_present ||
+	4 * Num_4x4_Blocks_Wide[ b_data->MiSize ] < 8 ||
+	4 * Num_4x4_Blocks_High[ b_data->MiSize ] < 8 ) {
+		b_data->skip_mode = 0;
+	} else {
+		b_data->skip_mode = sb.decodeSymbol(sbCtx,bs,av1ctx->cdfCtx->Is_Inter[ctx],3);// S()
+	}
+
 	if (b_data->skip_mode)
 			b_data->skip = 1;
-	else
-			read_skip();
+	else{
+		//read_skip();
+		if ( frameHdr->segmentation_params.SegIdPreSkip && 
+			segmentation::Instance().seg_feature_active(  b_data->segment_id,SEG_LVL_SKIP,frameHdr) ) {
+			b_data->skip = 1;
+		} else {
+			int ctx = 0;
+			if ( b_data->AvailU )
+				ctx += p_data->Skips[ b_data->MiRow - 1 ][ b_data->MiCol ];
+			if ( b_data->AvailL )
+				ctx += p_data->Skips[ b_data->MiRow ][ b_data->MiCol - 1 ];
+
+			b_data->skip =  sb.decodeSymbol(sbCtx,bs,av1ctx->cdfCtx->Segment_Id[ctx],MAX_SEGMENTS + 1);
+		}
+
+	}
 
 	if (!frameHdr->segmentation_params.SegIdPreSkip)
 		inter_segment_id(0,sbCtx,bs, t_data, p_data,b_data,av1ctx);
@@ -1577,9 +1603,9 @@ int frame::inter_frame_mode_info(SymbolContext *sbCtx, bitSt *bs, TileData *t_da
 	//read_is_inter();
 	if ( b_data->skip_mode ) {
 		b_data->is_inter = 1;
-	} else if ( seg_feature_active ( SEG_LVL_REF_FRAME ) ) {
+	} else if ( segmentation::Instance().seg_feature_active ( b_data->segment_id ,SEG_LVL_REF_FRAME,frameHdr) ) {
 		b_data->is_inter = frameHdr->segmentation_params.FeatureData[ b_data->segment_id ][ SEG_LVL_REF_FRAME ] != INTRA_FRAME;
-	} else if ( seg_feature_active ( SEG_LVL_GLOBALMV ) ) {
+	} else if ( segmentation::Instance().seg_feature_active (b_data->segment_id ,SEG_LVL_GLOBALMV,frameHdr ) ) {
 		b_data->is_inter = 1;
 	} else {
 		int ctx;
@@ -1737,7 +1763,7 @@ int frame::read_delta_lf(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
 			{
 				b_data->delta_lf_sign_bit = sb.read_literal(sbCtx,bs,1); //L(1)
 				int reducedDeltaLfLevel = b_data->delta_lf_sign_bit ? -deltaLfAbs : deltaLfAbs;
-				b_data->DeltaLF[i] = Clip3(-MAX_LOOP_FILTER, MAX_LOOP_FILTER, b_data->DeltaLF[i] + (reducedDeltaLfLevel << frameHdr->delta_lf_params.delta_lf_res));
+				av1ctx->DeltaLF[i] = Clip3(-MAX_LOOP_FILTER, MAX_LOOP_FILTER, av1ctx->DeltaLF[i] + (reducedDeltaLfLevel << frameHdr->delta_lf_params.delta_lf_res));
 			}
 		}
 	}
@@ -2171,13 +2197,13 @@ int frame::inter_segment_id(int preSkip,SymbolContext *sbCtx, bitSt *bs, TileDat
 	Symbol sb = Symbol::Instance();
 	frameHeader *frameHdr = av1ctx->frameHdr;
 	sequenceHeader *seqHdr = av1ctx->seqHdr;
-	if (seqHdr->segmentation_enabled)
+	if (frameHdr->segmentation_params.segmentation_enabled)
 	{
 		//predictedSegmentId = get_segment_id();
 		int bw4 = Num_4x4_Blocks_Wide[ b_data->MiSize ];
 		int bh4 = Num_4x4_Blocks_High[ b_data->MiSize ];
-		int xMis = Min( b_data->MiCols - b_data->MiCol, bw4 );
-		int yMis = Min( b_data->MiRows - b_data->MiRow, bh4 );
+		int xMis = Min( frameHdr->MiCols - b_data->MiCol, bw4 );
+		int yMis = Min( frameHdr->MiRows - b_data->MiRow, bh4 );
 		int predictedSegmentId = 7;
 		for (int y = 0; y < yMis; y++ )
 			for (int  x = 0; x < xMis; x++ )
@@ -2192,7 +2218,7 @@ int frame::inter_segment_id(int preSkip,SymbolContext *sbCtx, bitSt *bs, TileDat
 			}
 			if (!preSkip)
 			{
-				if b_data->skip)
+				if(b_data->skip)
 				{
 					b_data->seg_id_predicted = 0;
 					for (int i = 0; i < Num_4x4_Blocks_Wide[b_data->MiSize]; i++)
@@ -2246,8 +2272,8 @@ int frame::inter_block_mode_info(SymbolContext *sbCtx, bitSt *bs, TileData *t_da
 	{
 		b_data->YMode = NEAREST_NEARESTMV;
 	}
-	else if (seg_feature_active(SEG_LVL_SKIP) ||
-			 seg_feature_active(SEG_LVL_GLOBALMV))
+	else if (segmentation::Instance().seg_feature_active(SEG_LVL_SKIP) ||
+			 segmentation::Instance().seg_feature_active(SEG_LVL_GLOBALMV))
 	{
 		b_data->YMode = GLOBALMV;
 	}
