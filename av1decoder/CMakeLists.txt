@@ -8,6 +8,7 @@ set(SRC_LIST
     ./src/frame.cpp
     ./src/segmentation.cpp
     ./src/cdf.cpp
+    ./src/decode.cpp
 	)
 set (EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 add_executable(av1decoder ${SRC_LIST})

@@ -2218,6 +2218,7 @@ typedef struct CDFArrays{
   uint16_t Mv_Class[2][2][MV_CLASSES + 1] ;
   uint16_t Mv_Class0_Fr[2][2][CLASS0_SIZE][MV_JOINTS + 1] ;
   uint16_t Mv_Fr[2][2][MV_JOINTS + 1] ;
+
   uint16_t Palette_Y_Size[PALETTE_BLOCK_SIZE_CONTEXTS][PALETTE_SIZES + 1];
   uint16_t Palette_Uv_Size[PALETTE_BLOCK_SIZE_CONTEXTS][PALETTE_SIZES + 1] ;
 
@@ -2263,21 +2264,21 @@ typedef struct CDFArrays{
   uint16_t Use_Wiener[2 + 1];
   uint16_t Use_Sgrproj[2 + 1];
   uint16_t Restoration_Type[RESTORE_SWITCHABLE + 1];
-  uint16_t Txb_Skip[COEFF_CDF_Q_CTXS][TX_SIZES][TXB_SKIP_CONTEXTS][3];
-  uint16_t Eob_Pt_16[COEFF_CDF_Q_CTXS][PLANE_TYPES][2][6];
 
-  uint16_t Eob_Pt_16[COEFF_CDF_Q_CTXS][PLANE_TYPES][2][6];
-  uint16_t Eob_Pt_32[COEFF_CDF_Q_CTXS][PLANE_TYPES][2][7];
-  uint16_t Eob_Pt_64[COEFF_CDF_Q_CTXS][PLANE_TYPES][2][8];
-  uint16_t Eob_Pt_128[COEFF_CDF_Q_CTXS][PLANE_TYPES][2][9];
-  uint16_t Eob_Pt_256[COEFF_CDF_Q_CTXS][PLANE_TYPES][2][10];
-  uint16_t Eob_Pt_512[COEFF_CDF_Q_CTXS][PLANE_TYPES][11];
-  uint16_t Eob_Pt_1024[COEFF_CDF_Q_CTXS][PLANE_TYPES][12];
-  uint16_t Eob_Extra[COEFF_CDF_Q_CTXS][TX_SIZES][PLANE_TYPES][EOB_COEF_CONTEXTS][3];
-  uint16_t Dc_Sign[COEFF_CDF_Q_CTXS][PLANE_TYPES][DC_SIGN_CONTEXTS][3];
-  uint16_t Coeff_Base_Eob[COEFF_CDF_Q_CTXS][TX_SIZES][PLANE_TYPES][SIG_COEF_CONTEXTS_EOB][4];
-  uint16_t Coeff_Base[COEFF_CDF_Q_CTXS][TX_SIZES][PLANE_TYPES][SIG_COEF_CONTEXTS][5];
-  uint16_t Coeff_Br[COEFF_CDF_Q_CTXS][TX_SIZES][PLANE_TYPES][LEVEL_CONTEXTS][BR_CDF_SIZE + 1];
+//coeff cdfs
+  uint16_t Txb_Skip[TX_SIZES][TXB_SKIP_CONTEXTS][3];
+  uint16_t Eob_Pt_16[PLANE_TYPES][2][6];
+  uint16_t Eob_Pt_32[PLANE_TYPES][2][7];
+  uint16_t Eob_Pt_64[PLANE_TYPES][2][8];
+  uint16_t Eob_Pt_128[PLANE_TYPES][2][9];
+  uint16_t Eob_Pt_256[PLANE_TYPES][2][10];
+  uint16_t Eob_Pt_512[PLANE_TYPES][11];
+  uint16_t Eob_Pt_1024[PLANE_TYPES][12];
+  uint16_t Eob_Extra[TX_SIZES][PLANE_TYPES][EOB_COEF_CONTEXTS][3];
+  uint16_t Dc_Sign[PLANE_TYPES][DC_SIGN_CONTEXTS][3];
+  uint16_t Coeff_Base_Eob[TX_SIZES][PLANE_TYPES][SIG_COEF_CONTEXTS_EOB][4];
+  uint16_t Coeff_Base[TX_SIZES][PLANE_TYPES][SIG_COEF_CONTEXTS][5];
+  uint16_t Coeff_Br[TX_SIZES][PLANE_TYPES][LEVEL_CONTEXTS][BR_CDF_SIZE + 1];
                            
 };
 

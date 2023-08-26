@@ -426,7 +426,7 @@ typedef struct AV1DecodeContext{
 	frameHeader *frameHdr;
 	sequenceHeader *seqHdr;
 	uint8_t SeenFrameHeader;
-    CDFArrays *cdfCtx;
+    CDFArrays cdfCtx;
 	uint16_t ***MotionFieldMvs[2]; 
 	uint8_t DeltaLF[4];
 
