@@ -412,23 +412,31 @@ typedef struct BlockData{
 
 
 }BlockData;
-typedef struct AV1Frame{
-	sizeInfo *si;
-	frameHeader *fh;
-}AV1Frame;
 
+typedef struct FrameContext{
+	sizeInfo si;
+	frameHeader frameHdr;
+	CDFArrays cdf;
+	uint16_t RefMiCols[NUM_REF_FRAMES];
+	uint16_t RefMiRows[NUM_REF_FRAMES];
+	//还有更多参数，7.20
+};
 typedef struct AV1DecodeContext{
-	AV1Frame 	*ref_frames[NUM_REF_FRAMES];
+	FrameContext 	*ref_frames[NUM_REF_FRAMES];
+	FrameContext currentFrame;
 	uint8_t		RefValid[NUM_REF_FRAMES];
+	uint8_t 	RefFrameId[NUM_REF_FRAMES];
 	uint8_t		RefOrderHint[NUM_REF_FRAMES];
+    CDFArrays cdfCtx[NUM_REF_FRAMES];
 
 	uint8_t		OrderHints[REFS_PER_FRAME]; //OrderHints specifies the expected output order for each reference frame.
-	frameHeader *frameHdr;
+	frameHeader *curFrameHdr;
 	sequenceHeader *seqHdr;
 	uint8_t SeenFrameHeader;
-    CDFArrays cdfCtx;
+
 	uint16_t ***MotionFieldMvs[2]; 
-	uint8_t DeltaLF[4];
+	uint8_t DeltaLF[4];	
+	uint8_t *PrevSegmentIds;
 
 }AV1DecodeContext;
 

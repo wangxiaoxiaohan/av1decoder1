@@ -9,8 +9,7 @@ decode::~decode(){
 
 
 }
-int decode::init_non_coeff_cdfs(AV1DecodeContext *av1Ctx){
-    CDFArrays *cdf = &av1Ctx->cdfCtx;
+int decode::init_non_coeff_cdfs(CDFArrays *cdf){
     memcpy(cdf->Intra_Frame_Y_Mode,Default_Intra_Frame_Y_Mode_Cdf,sizeof(Default_Intra_Frame_Y_Mode_Cdf)/sizeof(uint16_t));
     memcpy(cdf->Y_Mode,Default_Y_Mode_Cdf,sizeof(Default_Y_Mode_Cdf)/sizeof(uint16_t));
     memcpy(cdf->Uv_Mode_Cfl_Not_Allowed,Default_Uv_Mode_Cfl_Not_Allowed_Cdf, sizeof(Default_Uv_Mode_Cfl_Not_Allowed_Cdf)/sizeof(uint16_t));
@@ -121,7 +120,84 @@ int decode::init_non_coeff_cdfs(AV1DecodeContext *av1Ctx){
     memcpy(cdf->Restoration_Type,Default_Restoration_Type_Cdf,sizeof(Default_Restoration_Type_Cdf)/sizeof(uint16_t));
 
 }
+//indicates that this frame can be decoded without dependence on previous coded frames
+int decode::setup_past_independence(AV1DecodeContext *av1Ctx){
+	frameHeader *frameHdr = av1Ctx->frameHdr;
+	for(int i = 0 ; i < MAX_SEGMENTS; i++){
+		for(int j = 0 ; j < SEG_LVL_MAX ; j++){
+			frameHdr->segmentation_params.FeatureData[ i ][ j ] = 0;
+			frameHdr->segmentation_params.FeatureEnabled[ i ][ j ] = 0;
+		}
+
+	}
+	for(int row = 0 ; row < frameHdr->MiRows; row++){
+		for(int col = 0 ; col < frameHdr->MiCols ; col++){
+			av1Ctx->PrevSegmentIds[ row ][ col ] = 0;
+		}
+
+	}
+
+	for(int ref = LAST_FRAME ; ref <= ALTREF_FRAME ; ref ++){
+		frameHdr->global_motion_params.GmType[ ref ] = IDENTITY;
+		for(int i = 0 ; i <= 5 ; i++){
+			frameHdr->global_motion_params.PrevGmParams[ ref ][ i ] = ( ( i % 3 == 2 ) ? 1 << WARPEDMODEL_PREC_BITS : 0 ) ;
+		}
+	}
+	frameHdr->loop_filter_params.loop_filter_delta_enabled = 1;
+	frameHdr->loop_filter_params.loop_filter_ref_deltas[ INTRA_FRAME ] = 1;
+	frameHdr->loop_filter_params.loop_filter_ref_deltas[ LAST_FRAME ] = 0;
+	frameHdr->loop_filter_params.loop_filter_ref_deltas[ LAST2_FRAME ] = 0;
+	frameHdr->loop_filter_params.loop_filter_ref_deltas[ LAST3_FRAME ] = 0;
+	frameHdr->loop_filter_params.loop_filter_ref_deltas[ BWDREF_FRAME ] = 0;
+	frameHdr->loop_filter_params.loop_filter_ref_deltas[ GOLDEN_FRAME ] = -1;
+	frameHdr->loop_filter_params.loop_filter_ref_deltas[ ALTREF_FRAME ] = -1;
+	frameHdr->loop_filter_params.loop_filter_ref_deltas[ ALTREF2_FRAME ] = -1;
+	for(int i = 0 ; i <= 1; i++) 
+		frameHdr->loop_filter_params.loop_filter_mode_deltas[ i ] = 0;
+
+
+}
+//从参考帧拷贝cdf到当前framecontext
+int decode::load_cdfs(AV1DecodeContext *av1Ctx,int ctx){
+	memcpy(av1Ctx->currentFrame.cdf,av1Ctx->ref_frames[ctx]->cdf,sizeof(av1Ctx->ref_frames[ctx]->cdf));
+}
+//加载主参考帧的一些参数
+int decode::load_previous(AV1DecodeContext *av1Ctx){
+	int prevFrame = ref_frame_idx[ primary_ref_frame ];
+	frameHdr->global_motion_params.PrevGmParams = SavedGmParams[ prevFrame ];
+	load_loop_filter_params(prevFrame);
+	load_segmentation_params(prevFrame);
+
+}
+int decode::load_loop_filter_params(){
+
+}
+int decode::load_segmentation_params(){
+
+}
+int decode::load_previous_segment_ids(){
+	int prevFrame = ref_frame_idx[ primary_ref_frame ];
+	if(segmentation_enabled){
+		//load参数，这里为什么是save动作？
+		//设置 RefMiCols 和 RefMiRows 的目的是为了在解码过程中保持块大小的一致性，以正确地引用之前帧的数据。
+		RefMiCols[ prevFrame ] = MiCols;
+		RefMiRows[ prevFrame ] = MiRows;
+		for(int row  = 0; row < MiRows  ; row ++ ){
+			for(int col  = 0; col < MiCols  ; col ++ ){
+				PrevSegmentIds[ row ][ col ] = SavedSegmentIds[ prevFrame ][ row ][ col ];
+			}
+		}
+
+	}else{
+		for(int row  = 0; row < MiRows  ; row ++ ){
+			for(int col  = 0; col < MiCols  ; col ++ ){
+				PrevSegmentIds[ row ][ col ] = 0;
+			}
+		}
+	}
+}
 int decode::init_coeff_cdfs(AV1DecodeContext *av1Ctx){
+	frameHeader *frameHdr = av1Ctx->frameHdr;
     CDFArrays *cdf = &av1Ctx->cdfCtx;
     int idx;
     if(frameHdr->quantization_params.base_q_idx == 20){
@@ -148,6 +224,7 @@ int decode::init_coeff_cdfs(AV1DecodeContext *av1Ctx){
     memcpy(cdf->Coeff_Base,Default_Coeff_Base_Cdf[idx],sizeof(Default_Y_Mode_Cdf[idx])/sizeof(uint16_t));
     memcpy(cdf->Coeff_Br,Default_Coeff_Br_Cdf[idx],sizeof(Default_Y_Mode_Cdf[idx])/sizeof(uint16_t));
 }
+
 //7.8
 int decode::set_frame_refs(){
 	for (int i = 0; i < REFS_PER_FRAME; i++ )
