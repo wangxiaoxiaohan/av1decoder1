@@ -301,7 +301,7 @@ int frame::parseFrameHeader(int sz, bitSt *bs, AV1DecodeContext *av1ctx, sequenc
 	{
 		//从主参考帧里面拷贝cdf
 		 load_cdfs( ref_frame_idx[ primary_ref_frame ] );
-		 load_previous( ) 
+		 load_previous( ) ;
 	}
 	if (out->use_ref_frame_mvs == 1)
 	{
@@ -327,7 +327,7 @@ int frame::parseFrameHeader(int sz, bitSt *bs, AV1DecodeContext *av1ctx, sequenc
 	}
 	else
 	{
-		// load_previous_segment_ids( )
+		 load_previous_segment_ids( );
 	}
 	out->CodedLossless = 1;
 	int segmentId;

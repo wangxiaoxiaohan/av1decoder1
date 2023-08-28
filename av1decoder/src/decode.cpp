@@ -159,21 +159,38 @@ int decode::setup_past_independence(AV1DecodeContext *av1Ctx){
 }
 //从参考帧拷贝cdf到当前framecontext
 int decode::load_cdfs(AV1DecodeContext *av1Ctx,int ctx){
-	memcpy(av1Ctx->currentFrame.cdf,av1Ctx->ref_frames[ctx]->cdf,sizeof(av1Ctx->ref_frames[ctx]->cdf));
+	memcpy(&av1Ctx->currentFrame.cdfCtx,&av1Ctx->ref_frames[ctx]->cdfCtx,sizeof(av1Ctx->ref_frames[ctx]->cdfCtx));
 }
 //加载主参考帧的一些参数
 int decode::load_previous(AV1DecodeContext *av1Ctx){
 	int prevFrame = ref_frame_idx[ primary_ref_frame ];
 	frameHdr->global_motion_params.PrevGmParams = SavedGmParams[ prevFrame ];
-	load_loop_filter_params(prevFrame);
-	load_segmentation_params(prevFrame);
+	load_loop_filter_params(av1Ctx,prevFrame);
+	load_segmentation_params(av1Ctx,prevFrame);
 
 }
-int decode::load_loop_filter_params(){
+//the values of loop_filter_ref_deltas[ j ] for j = 0 ..
+//TOTAL_REFS_PER_FRAME-1, and the values of loop_filter_mode_deltas[ j ] for j = 0 .. 1 should be 
+//loaded from an area of memory indexed by i.
 
+int decode::load_loop_filter_params(AV1DecodeContext *av1Ctx,int prevFrame){
+
+	memcpy(av1Ctx->currentFrame.frameHdr.loop_filter_params.loop_filter_ref_deltas,
+		av1Ctx->ref_frames[prevFrame]->frameHdr.loop_filter_params.8,
+		TOTAL_REFS_PER_FRAME * sizeof(uint8_t));
+	memcpy(av1Ctx->currentFrame.frameHdr.loop_filter_params.loop_filter_mode_deltas,
+		av1Ctx->ref_frames[prevFrame]->frameHdr.loop_filter_params.loop_filter_mode_deltas,
+		2 * sizeof(uint8_t));
+
+	
 }
-int decode::load_segmentation_params(){
-
+int decode::load_segmentation_params(AV1DecodeContext *av1Ctx,int prevFrame){
+	memcpy(av1Ctx->currentFrame.frameHdr.segmentation_params.FeatureEnabled,
+		av1Ctx->ref_frames[prevFrame]->frameHdr.segmentation_params.FeatureEnabled,
+		MAX_SEGMENTS * SEG_LVL_MAX * sizeof(uint8_t));
+	memcpy(av1Ctx->currentFrame.frameHdr.segmentation_params.FeatureData,
+		av1Ctx->ref_frames[prevFrame]->frameHdr.segmentation_params.FeatureData,
+		MAX_SEGMENTS * SEG_LVL_MAX * sizeof(int16_t));
 }
 int decode::load_previous_segment_ids(){
 	int prevFrame = ref_frame_idx[ primary_ref_frame ];
@@ -198,7 +215,7 @@ int decode::load_previous_segment_ids(){
 }
 int decode::init_coeff_cdfs(AV1DecodeContext *av1Ctx){
 	frameHeader *frameHdr = av1Ctx->frameHdr;
-    CDFArrays *cdf = &av1Ctx->cdfCtx;
+    CDFArrays *cdf = &av1Ctx->currentFrame.cdfCtx;
     int idx;
     if(frameHdr->quantization_params.base_q_idx == 20){
         idx = 0 ;
