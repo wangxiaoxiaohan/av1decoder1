@@ -66,7 +66,7 @@ public:
 								 PartitionData *p_data, BlockData *b_data, AV1DecodeContext *av1ctx);
 
 
-
+	int mark_ref_frames(AV1DecodeContext *av1Ctx,int  idLen);
 	
 	static frame& Instance() {
 		static frame m_pInstance;

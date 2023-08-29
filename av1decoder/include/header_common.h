@@ -299,6 +299,8 @@ typedef struct TileData{
 	uint8_t ReadDeltas;
 	uint8_t CurrentQIndex;
 	uint8_t **cdef_idx;
+	uint8_t *AboveSegPredContext;
+	uint8_t *LeftSegPredContext;
 
 }TileData;
 typedef struct PartitionData{
@@ -436,7 +438,7 @@ typedef struct AV1DecodeContext{
 
 	uint16_t ***MotionFieldMvs[2]; 
 	uint8_t DeltaLF[4];	
-	uint8_t *PrevSegmentIds;
+	uint8_t **PrevSegmentIds;
 
 }AV1DecodeContext;
 
