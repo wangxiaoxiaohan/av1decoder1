@@ -361,7 +361,7 @@ typedef struct BlockData{
 	uint8_t interp_filter[2];
 
 
-
+/*z这些以后应该放到一个“context”里面*/
 	uint8_t RefMvIdx;
 	uint8_t Mv[2][2];
 	uint8_t RefStackMv[8][2][2]; //consturct by find_mv_stack
@@ -383,6 +383,17 @@ typedef struct BlockData{
 	uint8_t mv_hp;
 	uint8_t mv_bit;
 	uint8_t ZeroMvContext;
+
+	uint8_t AboveSingle;
+	uint8_t LeftSingle;
+	uint8_t AboveIntra;
+	uint8_t LeftIntra;
+
+
+
+
+
+	uint8_t comp_mode;
 
 	uint8_t AngleDeltaY;
 	uint8_t AngleDeltaUV;

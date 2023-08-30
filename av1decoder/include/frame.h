@@ -67,13 +67,15 @@ public:
 
 
 	int mark_ref_frames(AV1DecodeContext *av1Ctx,int  idLen);
-	
+	int read_ref_frames(SymbolContext *sbCtx, bitSt *bs, TileData *t_data,
+								 PartitionData *p_data, BlockData *b_data, AV1DecodeContext *av1ctx);
 	static frame& Instance() {
 		static frame m_pInstance;
 		return m_pInstance;
 	}
 private:
 	Symbol *sb;
+	segmentation *seg_instance;
 
 };
 #endif

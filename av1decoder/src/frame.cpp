@@ -3,6 +3,7 @@
 #include <string.h>
 frame::frame(){
 	sb = &Symbol::Instance();
+	seg_instance = &segmentation::Instance();
 }
 frame::~frame(){
 	
@@ -333,7 +334,7 @@ int frame::parseFrameHeader(int sz, bitSt *bs, AV1DecodeContext *av1ctx, sequenc
 	int segmentId;
 	for (segmentId = 0; segmentId < MAX_SEGMENTS; segmentId++)
 	{
-		int qindex = segmentation::Instance().get_qindex(1, segmentId,out);
+		int qindex = seg_instance->get_qindex(1, segmentId,out);
 		out->segmentation_params.LosslessArray[segmentId] = qindex == 0 && out->quantization_params.DeltaQYDc == 0 &&
 								   out->quantization_params.DeltaQUAc == 0 && out->quantization_params.DeltaQUDc == 0 &&
 								   out->quantization_params.DeltaQVAc == 0 && out->quantization_params.DeltaQVDc == 0;
@@ -1476,7 +1477,7 @@ int frame::intra_frame_mode_info(SymbolContext *sbCtx,bitSt *bs,TileData *t_data
 	b_data->skip_mode = 0 ;
 	//read_skip() 
 	if ( frameHdr->segmentation_params.SegIdPreSkip &&
-		 segmentation::Instance().seg_feature_active( b_data->segment_id,SEG_LVL_SKIP, frameHdr) ) 
+		 seg_instance->seg_feature_active( b_data->segment_id,SEG_LVL_SKIP, frameHdr) ) 
 	{
 		b_data->skip = 1;
 	} else {
@@ -1525,7 +1526,7 @@ int frame::intra_frame_mode_info(SymbolContext *sbCtx,bitSt *bs,TileData *t_data
 		b_data->PaletteSizeUV = 0 ;
 		b_data->interp_filter[0] = BILINEAR;
 		b_data->interp_filter[1] = BILINEAR;
-		//find_mv_stack(0);!!!!!!!!!!!!!!!!!
+		find_mv_stack(0);
 		assign_mv(0, sbCtx,bs,t_data,p_data,b_data,av1ctx );
 	}
 	else
@@ -1581,16 +1582,16 @@ int frame::inter_frame_mode_info(SymbolContext *sbCtx, bitSt *bs, TileData *t_da
 	b_data->AboveRefFrame[0] = b_data->AvailU ? p_data->RefFrames[b_data->MiRow - 1][b_data->MiCol][0] : INTRA_FRAME;
 	b_data->LeftRefFrame[1] = b_data->AvailL ? p_data->RefFrames[b_data->MiRow][b_data->MiCol - 1][1] : NONE;
 	b_data->AboveRefFrame[1] = b_data->AvailU ? p_data->RefFrames[b_data->MiRow - 1][b_data->MiCol][1] : NONE;
-	int LeftIntra = b_data->LeftRefFrame[0] <= INTRA_FRAME;
-	int AboveIntra = b_data->AboveRefFrame[0] <= INTRA_FRAME;
-	int LeftSingle = b_data->LeftRefFrame[1] <= INTRA_FRAME;
-	int AboveSingle = b_data->AboveRefFrame[1] <= INTRA_FRAME;
+	b_data->LeftIntra = b_data->LeftRefFrame[0] <= INTRA_FRAME;
+	b_data->AboveIntra = b_data->AboveRefFrame[0] <= INTRA_FRAME;
+	b_data->LeftSingle = b_data->LeftRefFrame[1] <= INTRA_FRAME;
+	b_data->AboveSingle = b_data->AboveRefFrame[1] <= INTRA_FRAME;
 	b_data->skip = 0;
 	inter_segment_id(1,sbCtx,bs, t_data, p_data,b_data,av1ctx);
 	//read_skip_mode();
-	if ( segmentation::Instance().seg_feature_active( b_data->segment_id,SEG_LVL_SKIP,frameHdr ) ||
-	segmentation::Instance().seg_feature_active( b_data->segment_id,SEG_LVL_REF_FRAME ,frameHdr) ||
-	segmentation::Instance().seg_feature_active( b_data->segment_id,SEG_LVL_GLOBALMV ,frameHdr) ||
+	if ( seg_instance->seg_feature_active( b_data->segment_id,SEG_LVL_SKIP,frameHdr ) ||
+	seg_instance->seg_feature_active( b_data->segment_id,SEG_LVL_REF_FRAME ,frameHdr) ||
+	seg_instance->seg_feature_active( b_data->segment_id,SEG_LVL_GLOBALMV ,frameHdr) ||
 	!frameHdr->skip_mode_present ||
 	4 * Num_4x4_Blocks_Wide[ b_data->MiSize ] < 8 ||
 	4 * Num_4x4_Blocks_High[ b_data->MiSize ] < 8 ) {
@@ -1604,7 +1605,7 @@ int frame::inter_frame_mode_info(SymbolContext *sbCtx, bitSt *bs, TileData *t_da
 	else{
 		//read_skip();
 		if ( frameHdr->segmentation_params.SegIdPreSkip && 
-			segmentation::Instance().seg_feature_active(  b_data->segment_id,SEG_LVL_SKIP,frameHdr) ) {
+			seg_instance->seg_feature_active(  b_data->segment_id,SEG_LVL_SKIP,frameHdr) ) {
 			b_data->skip = 1;
 		} else {
 			int ctx = 0;
@@ -1628,9 +1629,9 @@ int frame::inter_frame_mode_info(SymbolContext *sbCtx, bitSt *bs, TileData *t_da
 	//read_is_inter();
 	if ( b_data->skip_mode ) {
 		b_data->is_inter = 1;
-	} else if ( segmentation::Instance().seg_feature_active ( b_data->segment_id ,SEG_LVL_REF_FRAME,frameHdr) ) {
+	} else if ( seg_instance->seg_feature_active ( b_data->segment_id ,SEG_LVL_REF_FRAME,frameHdr) ) {
 		b_data->is_inter = frameHdr->segmentation_params.FeatureData[ b_data->segment_id ][ SEG_LVL_REF_FRAME ] != INTRA_FRAME;
-	} else if ( segmentation::Instance().seg_feature_active (b_data->segment_id ,SEG_LVL_GLOBALMV,frameHdr ) ) {
+	} else if ( seg_instance->seg_feature_active (b_data->segment_id ,SEG_LVL_GLOBALMV,frameHdr ) ) {
 		b_data->is_inter = 1;
 	} else {
 		int ctx;
@@ -2279,13 +2280,13 @@ int frame::inter_block_mode_info(SymbolContext *sbCtx, bitSt *bs, TileData *t_da
 	b_data->PaletteSizeUV = 0;
 	read_ref_frames();
 	int isCompound = RefFrame[1] > INTRA_FRAME;
-	//find_mv_stack(isCompound) ;
+	find_mv_stack(isCompound) ;
 	if (b_data->skip_mode)
 	{
 		b_data->YMode = NEAREST_NEARESTMV;
 	}
-	else if (segmentation::Instance().seg_feature_active(SEG_LVL_SKIP) ||
-			 segmentation::Instance().seg_feature_active(SEG_LVL_GLOBALMV))
+	else if (seg_instance->seg_feature_active(SEG_LVL_SKIP) ||
+			 seg_instance->seg_feature_active(SEG_LVL_GLOBALMV))
 	{
 		b_data->YMode = GLOBALMV;
 	}
@@ -2554,7 +2555,241 @@ int frame::read_compound_type(int isCompound)
 		}
 	}
 }
+int frame::read_ref_frames(SymbolContext *sbCtx, bitSt *bs, TileData *t_data,
+								 PartitionData *p_data, BlockData *b_data, AV1DecodeContext *av1ctx)
+{
+	frameHeader *frameHdr = av1ctx->curFrameHdr;
+	if (b_data->skip_mode)
+	{
+		b_data->RefFrame[0] = frameHdr->SkipModeFrame[0];
+		b_data->RefFrame[1] = frameHdr->SkipModeFrame[1];
+	}
+	else if (seg_instance->seg_feature_active(b_data->segment_id ,SEG_LVL_REF_FRAME,frameHdr))
+	{
+		b_data->RefFrame[0] = frameHdr->segmentation_params.FeatureData[b_data->segment_id][SEG_LVL_REF_FRAME];
+		b_data->RefFrame[1] = NONE;
+	}
+	else if (seg_instance->seg_feature_active(b_data->segment_id,SEG_LVL_SKIP,frameHdr) ||
+			 seg_instance->seg_feature_active(b_data->segment_id,SEG_LVL_GLOBALMV,frameHdr))
+	{
+		b_data->RefFrame[0] = LAST_FRAME;
+		b_data->RefFrame[1] = NONE;
+	}
+	else
+	{
+		int bw4 = Num_4x4_Blocks_Wide[b_data->MiSize];
+		int bh4 = Num_4x4_Blocks_High[b_data->MiSize];
+		if (frameHdr->reference_select && (Min(bw4, bh4) >= 2)){
+			int ctx;
+			if (b_data->AvailU && b_data->AvailL)
+			{
+				if (b_data->AboveSingle && b_data->LeftSingle)
+					ctx = check_backward(b_data->AboveRefFrame[0]) ^ check_backward(b_data->LeftRefFrame[0]);
+				else if (b_data->AboveSingle)
+					ctx = 2 + (check_backward(b_data->AboveRefFrame[0]) || b_data->AboveIntra);
+				else if (b_data->LeftSingle)
+					ctx = 2 + (check_backward(b_data->LeftRefFrame[0]) || b_data->LeftIntra);
+				else
+					ctx = 4;
+			}
+			else if (b_data->AvailU)
+			{
+				if (b_data->AboveSingle)
+					ctx = check_backward(b_data->AboveRefFrame[0]);
+				else
+					ctx = 3;
+			}
+			else if (b_data->AvailL)
+			{
+				if (b_data->LeftSingle)
+					ctx = check_backward(b_data->LeftRefFrame[0]);
+				else
+					ctx = 3;
+			}
+			else
+			{
+				ctx = 1;
+			}
 
+			b_data->comp_mode = sb->decodeSymbol(sbCtx,bs,av1ctx->currentFrame.cdfCtx.Comp_Mode[ctx],sizeof(av1ctx->currentFrame.cdfCtx.Comp_Mode[ctx])/sizeof(uint16_t)); // S()
+		}else{
+			b_data->comp_mode = SINGLE_REFERENCE;
+		}
+		if (b_data->comp_mode == COMPOUND_REFERENCE)
+		{
+			int ctx;
+			int above0 = b_data->AboveRefFrame[0];
+			int above1 = b_data->AboveRefFrame[1];
+			int left0 = b_data->LeftRefFrame[0];
+			int left1 = b_data->LeftRefFrame[1];
+			int aboveCompInter = b_data->AvailU && !b_data->AboveIntra && !b_data->AboveSingle;
+			int leftCompInter = b_data->AvailL && !b_data->LeftIntra && !b_data->LeftSingle;
+			int aboveUniComp = aboveCompInter && is_samedir_ref_pair(above0, above1);
+			int leftUniComp = leftCompInter && is_samedir_ref_pair(left0, left1);
+			if (b_data->AvailU && !b_data->AboveIntra && b_data->AvailL && !b_data->LeftIntra)
+			{
+				int samedir = is_samedir_ref_pair(above0, left0);
+				if (!aboveCompInter && !leftCompInter)
+				{
+					ctx = 1 + 2 * samedir;
+				}
+				else if (!aboveCompInter)
+				{
+					if (!leftUniComp)
+						ctx = 1;
+					else
+						ctx = 3 + samedir;
+				}
+				else if (!leftCompInter)
+				{
+					if (!aboveUniComp)
+						ctx = 1;
+					else
+						ctx = 3 + samedir;
+				}
+				else
+				{
+					if (!aboveUniComp && !leftUniComp)
+						ctx = 0;
+					else if (!aboveUniComp || !leftUniComp)
+						ctx = 2;
+					else
+						ctx = 3 + ((above0 == BWDREF_FRAME) == (left0 == BWDREF_FRAME));
+				}
+			}
+			else if (b_data->AvailU && b_data->AvailL)
+			{
+				if (aboveCompInter)
+					ctx = 1 + 2 * aboveUniComp;
+				else if (leftCompInter)
+					ctx = 1 + 2 * leftUniComp;
+				else
+					ctx = 2;
+			}
+			else if (aboveCompInter)
+			{
+				ctx = 4 * aboveUniComp;
+			}
+			else if (leftCompInter)
+			{
+				ctx = 4 * leftUniComp;
+			}
+			else
+			{
+				ctx = 2;
+			}
+
+			int comp_ref_type = sb->decodeSymbol(sbCtx,bs,av1ctx->currentFrame.cdfCtx.Comp_Ref_Type[ctx],sizeof(av1ctx->currentFrame.cdfCtx.Comp_Ref_Type[ctx])/sizeof(uint16_t)); // S()
+			if (comp_ref_type == UNIDIR_COMP_REFERENCE)
+			{
+				int fwdCount = count_refs( LAST_FRAME,b_data->AvailU,b_data->AvailL,b_data->AboveRefFrame,b_data->LeftRefFrame);
+				fwdCount += count_refs( LAST2_FRAME,b_data->AvailU,b_data->AvailL,b_data->AboveRefFrame,b_data->LeftRefFrame );
+				fwdCount += count_refs( LAST3_FRAME,b_data->AvailU,b_data->AvailL,b_data->AboveRefFrame,b_data->LeftRefFrame );
+				fwdCount += count_refs( GOLDEN_FRAME,b_data->AvailU,b_data->AvailL,b_data->AboveRefFrame,b_data->LeftRefFrame );
+				int bwdCount = count_refs( BWDREF_FRAME,b_data->AvailU,b_data->AvailL,b_data->AboveRefFrame,b_data->LeftRefFrame );
+				bwdCount += count_refs( ALTREF2_FRAME,b_data->AvailU,b_data->AvailL,b_data->AboveRefFrame,b_data->LeftRefFrame );
+				bwdCount += count_refs( ALTREF_FRAME,b_data->AvailU,b_data->AvailL,b_data->AboveRefFrame,b_data->LeftRefFrame );
+				ctx = ref_count_ctx( fwdCount, bwdCount );
+
+				int uni_comp_ref = sb->decodeSymbol(sbCtx,bs,av1ctx->currentFrame.cdfCtx.Uni_Comp_Ref[ctx][0],sizeof(av1ctx->currentFrame.cdfCtx.Uni_Comp_Ref[ctx][0])/sizeof(uint16_t)); // S()
+				if (uni_comp_ref)
+				{
+					b_data->RefFrame[0] = BWDREF_FRAME;
+					b_data->RefFrame[1] = ALTREF_FRAME;
+				}
+				else
+				{
+					int last2Count = count_refs( LAST2_FRAME ,b_data->AvailU,b_data->AvailL,b_data->AboveRefFrame,b_data->LeftRefFrame);
+					int last3GoldCount = count_refs( LAST3_FRAME ,b_data->AvailU,b_data->AvailL,b_data->AboveRefFrame,b_data->LeftRefFrame) +
+									 count_refs( GOLDEN_FRAME ,b_data->AvailU,b_data->AvailL,b_data->AboveRefFrame,b_data->LeftRefFrame);
+					ctx = ref_count_ctx( last2Count, last3GoldCount );
+
+					int uni_comp_ref_p1 = sb->decodeSymbol(sbCtx,bs,av1ctx->currentFrame.cdfCtx.Uni_Comp_Ref[ctx][1],sizeof(av1ctx->currentFrame.cdfCtx.Uni_Comp_Ref[ctx][1])/sizeof(uint16_t)); // S()
+					if (uni_comp_ref_p1)
+					{
+						int last3Count = count_refs( LAST3_FRAME ,b_data->AvailU,b_data->AvailL,b_data->AboveRefFrame,b_data->LeftRefFrame);
+						int goldCount = count_refs( GOLDEN_FRAME,b_data->AvailU,b_data->AvailL,b_data->AboveRefFrame,b_data->LeftRefFrame );
+						ctx = ref_count_ctx( last3Count, goldCount );
+
+						int uni_comp_ref_p2 = sb->decodeSymbol(sbCtx,bs,av1ctx->currentFrame.cdfCtx.Uni_Comp_Ref[ctx][2],sizeof(av1ctx->currentFrame.cdfCtx.Uni_Comp_Ref[ctx][2])/sizeof(uint16_t)); // S()
+						if (uni_comp_ref_p2)
+						{
+							b_data->RefFrame[0] = LAST_FRAME;
+							b_data->RefFrame[1] = GOLDEN_FRAME;
+						}
+						else
+						{
+							b_data->RefFrame[0] = LAST_FRAME;
+							b_data->RefFrame[1] = LAST3_FRAME;
+						}
+					}
+					else
+					{
+						b_data->RefFrame[0] = LAST_FRAME;
+						b_data->RefFrame[1] = LAST2_FRAME;
+					}
+				}
+			}
+			else
+			{
+				comp_ref; // S()
+				if (comp_ref == 0)
+				{
+					comp_ref_p1; // S()
+					b_data->RefFrame[0] = comp_ref_p1 ? LAST2_FRAME : LAST_FRAME;
+				}
+				else
+				{
+					comp_ref_p2; // S()
+					b_data->RefFrame[0] = comp_ref_p2 ? GOLDEN_FRAME : LAST3_FRAME;
+				}
+				comp_bwdref; /// S()
+				if (comp_bwdref == 0)
+				{
+					comp_bwdref_p1; // S()
+					b_data->RefFrame[1] = comp_bwdref_p1 ? ALTREF2_FRAME : BWDREF_FRAME;
+				}
+				else
+				{
+					b_data->RefFrame[1] = ALTREF_FRAME;
+				}
+			}
+		}
+		else
+		{
+			single_ref_p1; // S()
+			if (single_ref_p1)
+			{
+				single_ref_p2; // S()
+				if (single_ref_p2 == 0)
+				{
+
+					single_ref_p6; // S()
+					b_data->RefFrame[0] = single_ref_p6 ? ALTREF2_FRAME : BWDREF_FRAME;
+				}
+				else
+				{
+					b_data->RefFrame[0] = ALTREF_FRAME;
+				}
+			}
+			else
+			{
+				single_ref_p3; // S()
+				if (single_ref_p3)
+				{
+					single_ref_p5; // S()
+					b_data->RefFrame[0] = single_ref_p5 ? GOLDEN_FRAME : LAST3_FRAME
+				}
+				else
+				{
+					single_ref_p4; // S()
+					b_data->RefFrame[0] = single_ref_p4 ? LAST2_FRAME : LAST_FRAME;
+				}
+			}
+			b_data->RefFrame[1] = NONE;
+		}
+	}
+}
 int frame::palette_tokens()
 {
 	blockHeight = Block_Height[MiSize];

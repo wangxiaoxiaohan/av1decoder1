@@ -167,6 +167,8 @@ enum tristate{
 #define MAX_REF_MV_STACK_SIZE 8
 #define REF_CAT_LEVEL 640 
 
+#define TX_SIZES_ALL 19
+#define MI_SIZE_LOG2
 enum em_interpolation_filters{
 	EIGHTTAP = 0,
 	EIGHTTAP_SMOOTH = 1,
@@ -397,8 +399,14 @@ enum em_signU {
 	CFL_SIGN_NEG,
 	CFL_SIGN_POS,
 };
-
-
+enum em_comp_mode{
+	SINGLE_REFERENCE = 0,
+	COMPOUND_REFERENCE
+} ;
+enum em_comp_ref_type{
+	UNIDIR_COMP_REFERENCE =0, //Both reference frames from the same group
+	BIDIR_COMP_REFERENCE //One from Group 1 and one from Group 2
+};
 
 const static uint8_t Remap_Lr_Type[4] = {
 	RESTORE_NONE,RESTORE_SWITCHABLE,RESTORE_WIENER,RESTORE_SGRPROJ
@@ -549,6 +557,14 @@ const static uint8_t Partition_Subsize[10][BLOCK_SIZES] = {
 	 BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
 	 BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID}};
 
+const static uint8_t Tx_Width[ TX_SIZES_ALL ] = {
+4, 8, 16, 32, 64, 4, 8, 8, 16, 16, 32, 32, 64, 4, 16, 8, 32, 16, 64
+};
+const static uint8_t Tx_Height[ TX_SIZES_ALL ] = {
+4, 8, 16, 32, 64, 8, 4, 16, 8, 32, 16, 64, 32, 16, 4, 32, 8, 64, 16
+};
+
+
 int inline tile_log2(int  blkSize, int target){
 	int k;
 	for (k = 0; (blkSize << k) < target; k++ ) {
@@ -678,11 +694,45 @@ int inline project(int *posValid, int *v8, int delta, int dstSign, int max8,int 
 	return *v8;
 }
 int inline find_tx_size( int w,int  h ) {
-	for (int txSz = 0; txSz < TX_SIZES_ALL; txSz++ )
+	int txSz;
+	for (txSz = 0; txSz < TX_SIZES_ALL; txSz++ )
 		if ( Tx_Width[ txSz ] == w && Tx_Height[ txSz ] == h )
 			break;
 	return txSz;
 }
+int inline check_backward(int refFrame) {
+	return ( ( refFrame >= BWDREF_FRAME ) && ( refFrame <= ALTREF_FRAME ) );
+}
 
+int inline is_samedir_ref_pair(int ref0,int ref1) {
+	return (ref0 >= BWDREF_FRAME) == (ref1 >= BWDREF_FRAME);
+}
+int inline ref_count_ctx(int counts0, int counts1) {
+	if ( counts0 < counts1 )
+		return 0;
+	else if ( counts0 == counts1 )
+		return 1;
+	else
+		return 2;
+}
+int inline count_refs(int frameType,uint8_t AvailU,uint8_t AvailL,uint8_t *AboveRefFrame,uint8_t *LeftRefFrame)
+{
+	int c = 0;
+	if (AvailU)
+	{
+		if (AboveRefFrame[0] == frameType)
+			c++;
+		if (AboveRefFrame[1] == frameType)
+			c++;
+	};
+	if (AvailL)
+	{
+		if (LeftRefFrame[0] == frameType)
+			c++;
+		if (LeftRefFrame[1] == frameType)
+			c++;
+	}
+	return c;
+}
 #endif
 
