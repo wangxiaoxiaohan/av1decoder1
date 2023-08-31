@@ -168,7 +168,8 @@ enum tristate{
 #define REF_CAT_LEVEL 640 
 
 #define TX_SIZES_ALL 19
-#define MI_SIZE_LOG2
+#define MI_SIZE_LOG2 2
+#define COMP_NEWMV_CTXS 5
 enum em_interpolation_filters{
 	EIGHTTAP = 0,
 	EIGHTTAP_SMOOTH = 1,
@@ -563,6 +564,11 @@ const static uint8_t Tx_Width[ TX_SIZES_ALL ] = {
 const static uint8_t Tx_Height[ TX_SIZES_ALL ] = {
 4, 8, 16, 32, 64, 8, 4, 16, 8, 32, 16, 64, 32, 16, 4, 32, 8, 64, 16
 };
+const static uint8_t Compound_Mode_Ctx_Map[ 3 ][ COMP_NEWMV_CTXS ] = {
+{ 0, 1, 1, 1, 1 },
+{ 1, 2, 3, 4, 4 },
+{ 4, 4, 5, 6, 7 }
+};
 
 
 int inline tile_log2(int  blkSize, int target){
@@ -733,6 +739,10 @@ int inline count_refs(int frameType,uint8_t AvailU,uint8_t AvailL,uint8_t *Above
 			c++;
 	}
 	return c;
+}
+int inline has_nearmv(int YMode ) {
+	return (YMode == NEARMV || YMode == NEAR_NEARMV
+	|| YMode == NEAR_NEWMV || YMode == NEW_NEARMV);
 }
 #endif
 

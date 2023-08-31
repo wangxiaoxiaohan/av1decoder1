@@ -389,7 +389,6 @@ typedef struct BlockData{
 	uint8_t compound_mode;
 
 
-	uint8_t *DrlCtxStack;
 
 
 }BlockData;
@@ -453,6 +452,10 @@ typedef struct AV1DecodeContext{
 	uint8_t AngleDeltaUV;
 	uint8_t use_filter_intra;
 	uint8_t wedge_interintra;
+	uint8_t wedge_index;
+	uint8_t wedge_sign;
+
+	uint8_t *DrlCtxStack;
 }AV1DecodeContext;
 
 

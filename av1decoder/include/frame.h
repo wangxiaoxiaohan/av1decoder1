@@ -71,6 +71,20 @@ public:
 	int mark_ref_frames(AV1DecodeContext *av1Ctx,int  idLen);
 	int read_ref_frames(SymbolContext *sbCtx, bitSt *bs, TileData *t_data,
 								 PartitionData *p_data, BlockData *b_data, AV1DecodeContext *av1ctx);
+
+	int inter_block_mode_info(SymbolContext *sbCtx, bitSt *bs, TileData *t_data,
+								 PartitionData *p_data, BlockData *b_data, AV1DecodeContext *av1ctx);
+	int intra_block_mode_info(SymbolContext *sbCtx, bitSt *bs, TileData *t_data,
+								 PartitionData *p_data, BlockData *b_data, AV1DecodeContext *av1ctx);
+	int read_interintra_mode(int isCompound,SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
+							PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1ctx);
+	int read_motion_mode(int isCompound);
+	int read_compound_type(int isCompound);
+	int palette_tokens();
+	int read_block_tx_size();
+	int compute_prediction();
+	int reset_block_context(int bw4, int bh4);
+	int needs_interp_filter(BlockData *b_data);
 	static frame& Instance() {
 		static frame m_pInstance;
 		return m_pInstance;
