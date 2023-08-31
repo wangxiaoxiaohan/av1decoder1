@@ -4,6 +4,7 @@
 frame::frame(){
 	sb = &Symbol::Instance();
 	seg_instance = &segmentation::Instance();
+	decode_instance = &decode::Instance();
 }
 frame::~frame(){
 	
@@ -1423,7 +1424,7 @@ int frame::decode_block(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
 					}
 					for (int refList = 0; refList < 1 + isCompound; refList++)
 					{
-						Mvs[r + y][c + x][refList] = Mv[refList];
+						Mvs[r + y][c + x][refList] = av1ctx->Mv[refList];
 					}
 			}
 		}
@@ -1582,10 +1583,10 @@ int frame::inter_frame_mode_info(SymbolContext *sbCtx, bitSt *bs, TileData *t_da
 	b_data->AboveRefFrame[0] = b_data->AvailU ? p_data->RefFrames[b_data->MiRow - 1][b_data->MiCol][0] : INTRA_FRAME;
 	b_data->LeftRefFrame[1] = b_data->AvailL ? p_data->RefFrames[b_data->MiRow][b_data->MiCol - 1][1] : NONE;
 	b_data->AboveRefFrame[1] = b_data->AvailU ? p_data->RefFrames[b_data->MiRow - 1][b_data->MiCol][1] : NONE;
-	b_data->LeftIntra = b_data->LeftRefFrame[0] <= INTRA_FRAME;
-	b_data->AboveIntra = b_data->AboveRefFrame[0] <= INTRA_FRAME;
-	b_data->LeftSingle = b_data->LeftRefFrame[1] <= INTRA_FRAME;
-	b_data->AboveSingle = b_data->AboveRefFrame[1] <= INTRA_FRAME;
+	av1ctx->LeftIntra = b_data->LeftRefFrame[0] <= INTRA_FRAME;
+	av1ctx->AboveIntra = b_data->AboveRefFrame[0] <= INTRA_FRAME;
+	av1ctx->LeftSingle = b_data->LeftRefFrame[1] <= INTRA_FRAME;
+	av1ctx->AboveSingle = b_data->AboveRefFrame[1] <= INTRA_FRAME;
 	b_data->skip = 0;
 	inter_segment_id(1,sbCtx,bs, t_data, p_data,b_data,av1ctx);
 	//read_skip_mode();
@@ -1835,11 +1836,11 @@ int frame::assign_mv(int isCompound,SymbolContext *sbCtx,bitSt *bs,TileData *t_d
 		{
 
 			//PredMv[0] = b_data->RefStackMv[0][0];
-			 memcpy(PredMv[0], b_data->RefStackMv[0][0], sizeof(PredMv[0]));
+			 memcpy(PredMv[0], av1ctx->RefStackMv[0][0], sizeof(PredMv[0]));
 			if (PredMv[0][0] == 0 && PredMv[0][1] == 0)
 			{
 				//PredMv[0] = b_data->RefStackMv[1][0];
-				memcpy(PredMv[0], b_data->RefStackMv[1][0], sizeof(PredMv[0]));
+				memcpy(PredMv[0], b_data->av1ctx[1][0], sizeof(PredMv[0]));
 			}
 			if (PredMv[0][0] == 0 && PredMv[0][1] == 0)
 			{
@@ -1861,15 +1862,15 @@ int frame::assign_mv(int isCompound,SymbolContext *sbCtx,bitSt *bs,TileData *t_d
 		{
 
 			//PredMv[i] = b_data->GlobalMvs[i];
-			memcpy(PredMv[i], b_data->GlobalMvs[i], sizeof(PredMv[0]));
+			memcpy(PredMv[i], av1ctx->GlobalMvs[i], sizeof(PredMv[0]));
 		}
 		else
 		{
 			int pos = (compMode == NEARESTMV) ? 0 : b_data->RefMvIdx ;
-			if (compMode == NEWMV && b_data->NumMvFound <= 1) 
+			if (compMode == NEWMV && av1ctx->NumMvFound <= 1) 
 				pos = 0 ;
 			//PredMv[i] = b_data->RefStackMv[pos][i];
-			memcpy(PredMv[i], b_data->RefStackMv[pos][i], sizeof(PredMv[i]));
+			memcpy(PredMv[i], av1ctx->RefStackMv[pos][i], sizeof(PredMv[i]));
 		}
 		uint8_t diffMv[2];
 		if (compMode == NEWMV)
@@ -1883,19 +1884,19 @@ int frame::assign_mv(int isCompound,SymbolContext *sbCtx,bitSt *bs,TileData *t_d
 				MvCtx = 0;
 			}
 			//???????????
-			b_data->mv_joint = sb->decodeSymbol(sbCtx,bs,av1ctx->currentFrame.cdfCtx.Mv_Joint[MvCtx],DELTA_LF_SMALL + 2);//S()
-			if ( b_data->mv_joint == MV_JOINT_HZVNZ || b_data->mv_joint == MV_JOINT_HNZVNZ )
+			av1ctx->mv_joint = sb->decodeSymbol(sbCtx,bs,av1ctx->currentFrame.cdfCtx.Mv_Joint[MvCtx],DELTA_LF_SMALL + 2);//S()
+			if ( av1ctx->mv_joint == MV_JOINT_HZVNZ || av1ctx->mv_joint == MV_JOINT_HNZVNZ )
 				diffMv[ 0 ] = read_mv_component(MvCtx, 0,sbCtx,bs,t_data,p_data,b_data,av1ctx );
-			if ( b_data->mv_joint == MV_JOINT_HNZVZ || b_data->mv_joint == MV_JOINT_HNZVNZ )
+			if ( av1ctx->mv_joint == MV_JOINT_HNZVZ || av1ctx->mv_joint == MV_JOINT_HNZVNZ )
 				diffMv[ 1 ] = read_mv_component(MvCtx ,1,sbCtx,bs,t_data,p_data,b_data,av1ctx );
-			b_data->Mv[ i ][ 0 ] = PredMv[ i ][ 0 ] + diffMv[ 0 ];
-			b_data->Mv[ i ][ 1 ] = PredMv[ i ][ 1 ] + diffMv[ 1 ];
+			av1ctx->Mv[ i ][ 0 ] = PredMv[ i ][ 0 ] + diffMv[ 0 ];
+			av1ctx->Mv[ i ][ 1 ] = PredMv[ i ][ 1 ] + diffMv[ 1 ];
 
 		}
 		else
 		{
 			//b_data->Mv[i] = PredMv[i];
-			memcpy(b_data->Mv[i], PredMv[i], sizeof(b_data->Mv[i]));
+			memcpy(av1ctx->Mv[i], PredMv[i], sizeof(av1ctx->Mv[i]));
 		}
 	}
 }
@@ -1905,42 +1906,42 @@ int frame::read_mv_component(int MvCtx,int comp,SymbolContext *sbCtx,bitSt *bs,T
 	frameHeader *frameHdr = av1ctx->curFrameHdr;
 	sequenceHeader *seqHdr = av1ctx->seqHdr;
 
-	b_data->mv_sign = sb->decodeSymbol(sbCtx,bs,av1ctx->currentFrame.cdfCtx.Mv_Sign[MvCtx][comp],3);//S()
-	b_data->mv_class = sb->decodeSymbol(sbCtx,bs,av1ctx->currentFrame.cdfCtx.Mv_Class[MvCtx][comp],MV_CLASSES + 1);//S() 
+	av1ctx->mv_sign = sb->decodeSymbol(sbCtx,bs,av1ctx->currentFrame.cdfCtx.Mv_Sign[MvCtx][comp],3);//S()
+	av1ctx->mv_class = sb->decodeSymbol(sbCtx,bs,av1ctx->currentFrame.cdfCtx.Mv_Class[MvCtx][comp],MV_CLASSES + 1);//S() 
 	int mag;
-	if (b_data->mv_class == MV_CLASS_0)
+	if (av1ctx->mv_class == MV_CLASS_0)
 	{
-		b_data->mv_class0_bit = sb->decodeSymbol(sbCtx,bs,av1ctx->currentFrame.cdfCtx.Mv_Class0_Bit[MvCtx][comp],3);//S() 
+		av1ctx->mv_class0_bit = sb->decodeSymbol(sbCtx,bs,av1ctx->currentFrame.cdfCtx.Mv_Class0_Bit[MvCtx][comp],3);//S() 
 		if (frameHdr->force_integer_mv)
-			b_data->mv_class0_fr = 3 ;
+			av1ctx->mv_class0_fr = 3 ;
 		else
-			b_data->mv_class0_fr =  sb->decodeSymbol(sbCtx,bs,av1ctx->currentFrame.cdfCtx.Mv_Class0_Fr[MvCtx][comp][b_data->mv_class0_bit],5);//S()
+			av1ctx->mv_class0_fr =  sb->decodeSymbol(sbCtx,bs,av1ctx->currentFrame.cdfCtx.Mv_Class0_Fr[MvCtx][comp][av1ctx->mv_class0_bit],5);//S()
 		if (frameHdr->allow_high_precision_mv)
-			b_data->mv_class0_hp = sb->decodeSymbol(sbCtx,bs,av1ctx->currentFrame.cdfCtx.Mv_Class0_Hp[MvCtx][comp],3);//S() 
+			av1ctx->mv_class0_hp = sb->decodeSymbol(sbCtx,bs,av1ctx->currentFrame.cdfCtx.Mv_Class0_Hp[MvCtx][comp],3);//S() 
 		else 
-			b_data->mv_class0_hp = 1; 
-		mag = ((b_data->mv_class0_bit << 3) | (b_data->mv_class0_fr << 1) | b_data->mv_class0_hp) + 1;
+			av1ctx->mv_class0_hp = 1; 
+		mag = ((av1ctx->mv_class0_bit << 3) | (av1ctx->mv_class0_fr << 1) | av1ctx->mv_class0_hp) + 1;
 	}
 	else
 	{
 		int d = 0 ;
-		for (int i = 0; i < b_data->mv_class; i++){
-			b_data->mv_bit = sb->decodeSymbol(sbCtx,bs,av1ctx->currentFrame.cdfCtx.Mv_Bit[MvCtx][comp][i],3);
-			d |= b_data->mv_bit << i;
+		for (int i = 0; i < av1ctx->mv_class; i++){
+			av1ctx->mv_bit = sb->decodeSymbol(sbCtx,bs,av1ctx->currentFrame.cdfCtx.Mv_Bit[MvCtx][comp][i],3);
+			d |= b_data->av1ctx << i;
 		}
 			
-		mag = CLASS0_SIZE << (b_data->mv_class + 2) ;
+		mag = CLASS0_SIZE << (av1ctx->mv_class + 2) ;
 		if (frameHdr->force_integer_mv) 
-			b_data->mv_fr = 3 ;
+			av1ctx->mv_fr = 3 ;
 		else 
-			b_data->mv_fr = sb->decodeSymbol(sbCtx,bs,av1ctx->currentFrame.cdfCtx.Mv_Fr[MvCtx][comp],3); //S()
+			av1ctx->mv_fr = sb->decodeSymbol(sbCtx,bs,av1ctx->currentFrame.cdfCtx.Mv_Fr[MvCtx][comp],3); //S()
 		if (frameHdr->allow_high_precision_mv) 
-			b_data->mv_hp = sb->decodeSymbol(sbCtx,bs,av1ctx->currentFrame.cdfCtx.Mv_Hp[MvCtx][comp],3); //S() 
+			av1ctx->mv_hp = sb->decodeSymbol(sbCtx,bs,av1ctx->currentFrame.cdfCtx.Mv_Hp[MvCtx][comp],3); //S() 
 		else 
-			b_data->mv_hp = 1 ;
-		mag += ((d << 3) | (b_data->mv_fr << 1) | b_data->mv_hp) + 1;
+			av1ctx->mv_hp = 1 ;
+		mag += ((d << 3) | (av1ctx->mv_fr << 1) | av1ctx->mv_hp) + 1;
 	}
-	return b_data->mv_sign ? -mag : mag;
+	return av1ctx->mv_sign ? -mag : mag;
 }
 int frame::intra_angle_info_y(SymbolContext *sbCtx,bitSt *bs,BlockData *b_data,AV1DecodeContext *av1ctx) {
 	b_data->AngleDeltaY = 0;
@@ -2278,9 +2279,9 @@ int frame::inter_block_mode_info(SymbolContext *sbCtx, bitSt *bs, TileData *t_da
 	sequenceHeader *seqHdr = av1ctx->seqHdr;
 	b_data->PaletteSizeY = 0;
 	b_data->PaletteSizeUV = 0;
-	read_ref_frames();
+	read_ref_frames(sbCtx,bs,t_data,p_data,b_data,av1ctx);
 	int isCompound = RefFrame[1] > INTRA_FRAME;
-	find_mv_stack(isCompound) ;
+	decode_instance->find_mv_stack(isCompound,sbCtx,bs,t_data,p_data,b_data,av1ctx);
 	if (b_data->skip_mode)
 	{
 		b_data->YMode = NEAREST_NEARESTMV;
@@ -2292,7 +2293,7 @@ int frame::inter_block_mode_info(SymbolContext *sbCtx, bitSt *bs, TileData *t_da
 	}
 	else if (isCompound)
 	{
-		int ctx = ctx = Compound_Mode_Ctx_Map[ RefMvContext >> 1 ][ Min(NewMvContext, COMP_NEWMV_CTXS - 1) ];
+		int ctx = Compound_Mode_Ctx_Map[ av1ctx->RefMvContext >> 1 ][ Min(av1ctx->NewMvContext, COMP_NEWMV_CTXS - 1) ];
 		b_data->compound_mode = 
 			sb->decodeSymbol(sbCtx,bs,av1ctx->currentFrame.cdfCtx.Compound_Mode[ctx],COMPOUND_MODES + 1); //S()
 		b_data->YMode = NEAREST_NEARESTMV + b_data->compound_mode;
@@ -2300,21 +2301,21 @@ int frame::inter_block_mode_info(SymbolContext *sbCtx, bitSt *bs, TileData *t_da
 	else
 	{
 		//new_mv; //S()
-		if (sb->decodeSymbol(sbCtx,bs,av1ctx->currentFrame.cdfCtx.New_Mv[NewMvContext],3); == 0)
+		if (sb->decodeSymbol(sbCtx,bs,av1ctx->currentFrame.cdfCtx.New_Mv[av1ctx->NewMvContext],3); == 0)
 		{
 			b_data->YMode = NEWMV;
 		}
 		else
 		{
 			//zero_mv; //S()
-			if (sb->decodeSymbol(sbCtx,bs,av1ctx->currentFrame.cdfCtx.Zero_Mv[ZeroMvContext],3 ) == 0)
+			if (sb->decodeSymbol(sbCtx,bs,av1ctx->currentFrame.cdfCtx.Zero_Mv[av1ctx->ZeroMvContext],3 ) == 0)
 			{
 				b_data->YMode = GLOBALMV;
 			}
 			else
 			{
 				//ref_mv; //S()
-				b_data->YMode = (sb->decodeSymbol(sbCtx,bs,av1ctx->currentFrame.cdfCtx.Ref_Mv[RefMvContext],3 ) == 0) ? NEARESTMV : NEARMV;
+				b_data->YMode = (sb->decodeSymbol(sbCtx,bs,av1ctx->currentFrame.cdfCtx.Ref_Mv[av1ctx->RefMvContext],3 ) == 0) ? NEARESTMV : NEARMV;
 			}
 		}
 	}
@@ -2324,7 +2325,7 @@ int frame::inter_block_mode_info(SymbolContext *sbCtx, bitSt *bs, TileData *t_da
 		for (int idx = 0; idx < 2; idx++)
 		{
 
-			if (NumMvFound > idx + 1)
+			if (av1ctx->NumMvFound > idx + 1)
 			{
 				//drl_mode; // S()
 				if (sb->decodeSymbol(sbCtx,bs,av1ctx->currentFrame.cdfCtx.Drl_Mode[DrlCtxStack[idx]],3 ) == 0)
@@ -2341,7 +2342,7 @@ int frame::inter_block_mode_info(SymbolContext *sbCtx, bitSt *bs, TileData *t_da
 		b_data->RefMvIdx = 1;
 		for (int idx = 1; idx < 3; idx++)
 		{
-			if (NumMvFound > idx + 1)
+			if (av1ctx->NumMvFound > idx + 1)
 			{
 				//drl_mode; // S()
 				if (sb->decodeSymbol(sbCtx,bs,av1ctx->currentFrame.cdfCtx.Drl_Mode[DrlCtxStack[idx]],3 ) == 0)
@@ -2353,8 +2354,8 @@ int frame::inter_block_mode_info(SymbolContext *sbCtx, bitSt *bs, TileData *t_da
 			}
 		}
 	}
-	assign_mv(isCompound);
-	read_interintra_mode(isCompound);
+	assign_mv(isCompound,sbCtx,bs,t_data,p_data,b_data,av1ctx);
+	read_interintra_mode(isCompound,sbCtx,bs,t_data,p_data,b_data,av1ctx);
 	read_motion_mode(isCompound);
 	read_compound_type(isCompound);
 	if (frameHdr->iinterpolation_filter == SWITCHABLE)
@@ -2424,21 +2425,25 @@ int frame::intra_block_mode_info(SymbolContext *sbCtx, bitSt *bs, TileData *t_da
 		palette_mode_info();
 	filter_intra_mode_info();
 }
-int frame::read_interintra_mode(int isCompound)
+int frame::read_interintra_mode(int isCompound,SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
+							PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1ctx)
 {
-	if (!skip_mode && enable_interintra_compound && !isCompound &&
-		MiSize >= BLOCK_8X8 && MiSize <= BLOCK_32X32)
+	sequenceHeader *seqHdr = av1ctx->seqHdr;
+	if (!b_data->skip_mode && seqHdr->enable_interintra_compound && !isCompound &&
+		b_data->MiSize >= BLOCK_8X8 && b_data->MiSize <= BLOCK_32X32)
 	{
-		interintra; // S()
-		if (interintra)
+		int ctx = Size_Group[ b_data->MiSize ] - 1;
+
+		av1ctx->interintra = sb->decodeSymbol(sbCtx,bs,av1ctx->currentFrame.cdfCtx.interintra[ctx],sizeof(av1ctx->currentFrame.cdfCtx.interintra[ctx])/sizeof(uint16_t)); // S()
+		if (av1ctx->interintra)
 		{
-			interintra_mode; //S()
-			RefFrame[1] = INTRA_FRAME;
-			AngleDeltaY = 0;
-			AngleDeltaUV = 0;
-			use_filter_intra = 0;
-			wedge_interintra; //S()
-			if (wedge_interintra)
+			av1ctx->interintra_mode = sb->decodeSymbol(sbCtx,bs,av1ctx->currentFrame.cdfCtx.interintra_mode[ctx],sizeof(av1ctx->currentFrame.cdfCtx.interintra_mode[ctx])/sizeof(uint16_t)); //S()
+			b_data->RefFrame[1] = INTRA_FRAME;
+			av1ctx->AngleDeltaY = 0;
+			av1ctx->AngleDeltaUV = 0;
+			av1ctx->use_filter_intra = 0;
+			av1ctx->wedge_interintra = sb->decodeSymbol(sbCtx,bs,av1ctx->currentFrame.cdfCtx.wedge_interintra[b_data->MiSzie],sizeof(av1ctx->currentFrame.cdfCtx.wedge_interintra[b_data->MiSzie])/sizeof(uint16_t)); //S()
+			if (av1ctx->wedge_interintra)
 			{
 				wedge_index; //S()
 				wedge_sign = 0;
@@ -2583,25 +2588,25 @@ int frame::read_ref_frames(SymbolContext *sbCtx, bitSt *bs, TileData *t_data,
 			int ctx;
 			if (b_data->AvailU && b_data->AvailL)
 			{
-				if (b_data->AboveSingle && b_data->LeftSingle)
+				if (av1ctx->AboveSingle && av1ctx->LeftSingle)
 					ctx = check_backward(b_data->AboveRefFrame[0]) ^ check_backward(b_data->LeftRefFrame[0]);
-				else if (b_data->AboveSingle)
-					ctx = 2 + (check_backward(b_data->AboveRefFrame[0]) || b_data->AboveIntra);
-				else if (b_data->LeftSingle)
-					ctx = 2 + (check_backward(b_data->LeftRefFrame[0]) || b_data->LeftIntra);
+				else if (av1ctx->AboveSingle)
+					ctx = 2 + (check_backward(b_data->AboveRefFrame[0]) || av1ctx->AboveIntra);
+				else if (av1ctx->LeftSingle)
+					ctx = 2 + (check_backward(b_data->LeftRefFrame[0]) || av1ctx->LeftIntra);
 				else
 					ctx = 4;
 			}
 			else if (b_data->AvailU)
 			{
-				if (b_data->AboveSingle)
+				if (av1ctx->AboveSingle)
 					ctx = check_backward(b_data->AboveRefFrame[0]);
 				else
 					ctx = 3;
 			}
 			else if (b_data->AvailL)
 			{
-				if (b_data->LeftSingle)
+				if (av1ctx->LeftSingle)
 					ctx = check_backward(b_data->LeftRefFrame[0]);
 				else
 					ctx = 3;
@@ -2622,11 +2627,11 @@ int frame::read_ref_frames(SymbolContext *sbCtx, bitSt *bs, TileData *t_data,
 			int above1 = b_data->AboveRefFrame[1];
 			int left0 = b_data->LeftRefFrame[0];
 			int left1 = b_data->LeftRefFrame[1];
-			int aboveCompInter = b_data->AvailU && !b_data->AboveIntra && !b_data->AboveSingle;
-			int leftCompInter = b_data->AvailL && !b_data->LeftIntra && !b_data->LeftSingle;
+			int aboveCompInter = b_data->AvailU && !av1ctx->AboveIntra && !av1ctx->AboveSingle;
+			int leftCompInter = b_data->AvailL && !av1ctx->LeftIntra && !av1ctx->LeftSingle;
 			int aboveUniComp = aboveCompInter && is_samedir_ref_pair(above0, above1);
 			int leftUniComp = leftCompInter && is_samedir_ref_pair(left0, left1);
-			if (b_data->AvailU && !b_data->AboveIntra && b_data->AvailL && !b_data->LeftIntra)
+			if (b_data->AvailU && !av1ctx->AboveIntra && b_data->AvailL && !av1ctx->LeftIntra)
 			{
 				int samedir = is_samedir_ref_pair(above0, left0);
 				if (!aboveCompInter && !leftCompInter)
@@ -2732,21 +2737,42 @@ int frame::read_ref_frames(SymbolContext *sbCtx, bitSt *bs, TileData *t_data,
 			}
 			else
 			{
-				comp_ref; // S()
+				int last12Count = count_refs( LAST_FRAME,b_data->AvailU,b_data->AvailL,b_data->AboveRefFrame,b_data->LeftRefFrame ) + 
+								count_refs( LAST2_FRAME,b_data->AvailU,b_data->AvailL,b_data->AboveRefFrame,b_data->LeftRefFrame );
+				int last3GoldCount = count_refs( LAST3_FRAME ,b_data->AvailU,b_data->AvailL,b_data->AboveRefFrame,b_data->LeftRefFrame) + 
+								count_refs( GOLDEN_FRAME,b_data->AvailU,b_data->AvailL,b_data->AboveRefFrame,b_data->LeftRefFrame );
+				ctx = ref_count_ctx( last12Count, last3GoldCount );
+
+				int comp_ref = sb->decodeSymbol(sbCtx,bs,av1ctx->currentFrame.cdfCtx.Comp_Ref[ctx][0],sizeof(av1ctx->currentFrame.cdfCtx.Comp_Ref[ctx][0])/sizeof(uint16_t)); // S()
 				if (comp_ref == 0)
 				{
-					comp_ref_p1; // S()
+					int lastCount = count_refs( LAST_FRAME,b_data->AvailU,b_data->AvailL,b_data->AboveRefFrame,b_data->LeftRefFrame );
+					int last2Count = count_refs( LAST2_FRAME,b_data->AvailU,b_data->AvailL,b_data->AboveRefFrame,b_data->LeftRefFrame );
+					ctx = ref_count_ctx( lastCount, last2Count );
+					int comp_ref_p1 = sb->decodeSymbol(sbCtx,bs,av1ctx->currentFrame.cdfCtx.Comp_Ref[ctx][1],sizeof(av1ctx->currentFrame.cdfCtx.Comp_Ref[ctx][1])/sizeof(uint16_t)); // S()
 					b_data->RefFrame[0] = comp_ref_p1 ? LAST2_FRAME : LAST_FRAME;
 				}
 				else
 				{
-					comp_ref_p2; // S()
+					int last3Count = count_refs( LAST3_FRAME,b_data->AvailU,b_data->AvailL,b_data->AboveRefFrame,b_data->LeftRefFrame  );
+					int goldCount = count_refs( GOLDEN_FRAME,b_data->AvailU,b_data->AvailL,b_data->AboveRefFrame,b_data->LeftRefFrame  );
+					ctx = ref_count_ctx( last3Count, goldCount );
+
+					int comp_ref_p2 = sb->decodeSymbol(sbCtx,bs,av1ctx->currentFrame.cdfCtx.Comp_Ref[ctx][2],sizeof(av1ctx->currentFrame.cdfCtx.Comp_Ref[ctx][2])/sizeof(uint16_t)); // S()
 					b_data->RefFrame[0] = comp_ref_p2 ? GOLDEN_FRAME : LAST3_FRAME;
 				}
-				comp_bwdref; /// S()
+
+				int brfarf2Count = count_refs( BWDREF_FRAME ,b_data->AvailU,b_data->AvailL,b_data->AboveRefFrame,b_data->LeftRefFrame) + 
+								count_refs( ALTREF2_FRAME,b_data->AvailU,b_data->AvailL,b_data->AboveRefFrame,b_data->LeftRefFrame );
+				int arfCount = count_refs( ALTREF_FRAME,b_data->AvailU,b_data->AvailL,b_data->AboveRefFrame,b_data->LeftRefFrame );
+				ctx = ref_count_ctx( brfarf2Count, arfCount );
+				int comp_bwdref = sb->decodeSymbol(sbCtx,bs,av1ctx->currentFrame.cdfCtx.Comp_Bwd_Ref[ctx][0],sizeof(av1ctx->currentFrame.cdfCtx.Comp_Bwd_Ref[ctx][0])/sizeof(uint16_t)); /// S()
 				if (comp_bwdref == 0)
 				{
-					comp_bwdref_p1; // S()
+					int brfCount = count_refs( BWDREF_FRAME,b_data->AvailU,b_data->AvailL,b_data->AboveRefFrame,b_data->LeftRefFrame );
+					int arf2Count = count_refs( ALTREF2_FRAME ,b_data->AvailU,b_data->AvailL,b_data->AboveRefFrame,b_data->LeftRefFrame);
+					ctx = ref_count_ctx( brfCount, arf2Count );
+					int comp_bwdref_p1 = sb->decodeSymbol(sbCtx,bs,av1ctx->currentFrame.cdfCtx.Comp_Bwd_Ref[ctx][1],sizeof(av1ctx->currentFrame.cdfCtx.Comp_Bwd_Ref[ctx][1])/sizeof(uint16_t)); // S()
 					b_data->RefFrame[1] = comp_bwdref_p1 ? ALTREF2_FRAME : BWDREF_FRAME;
 				}
 				else
@@ -2757,14 +2783,24 @@ int frame::read_ref_frames(SymbolContext *sbCtx, bitSt *bs, TileData *t_data,
 		}
 		else
 		{
-			single_ref_p1; // S()
+			int ctx;
+			int fwdCount = count_refs( LAST_FRAME ,b_data->AvailU,b_data->AvailL,b_data->AboveRefFrame,b_data->LeftRefFrame);
+			fwdCount += count_refs( LAST2_FRAME ,b_data->AvailU,b_data->AvailL,b_data->AboveRefFrame,b_data->LeftRefFrame);
+			fwdCount += count_refs( LAST3_FRAME ,b_data->AvailU,b_data->AvailL,b_data->AboveRefFrame,b_data->LeftRefFrame);
+			fwdCount += count_refs( GOLDEN_FRAME ,b_data->AvailU,b_data->AvailL,b_data->AboveRefFrame,b_data->LeftRefFrame);
+			int bwdCount = count_refs( BWDREF_FRAME ,b_data->AvailU,b_data->AvailL,b_data->AboveRefFrame,b_data->LeftRefFrame);
+			bwdCount += count_refs( ALTREF2_FRAME ,b_data->AvailU,b_data->AvailL,b_data->AboveRefFrame,b_data->LeftRefFrame);
+			bwdCount += count_refs( ALTREF_FRAME ,b_data->AvailU,b_data->AvailL,b_data->AboveRefFrame,b_data->LeftRefFrame);
+			ctx = ref_count_ctx( fwdCount, bwdCount );
+
+			int single_ref_p1 = sb->decodeSymbol(sbCtx,bs,av1ctx->currentFrame.cdfCtx.Single_Ref[ctx][0],sizeof(av1ctx->currentFrame.cdfCtx.Single_Ref[ctx][0])/sizeof(uint16_t)); // S()
 			if (single_ref_p1)
 			{
-				single_ref_p2; // S()
+				int single_ref_p2 = sb->decodeSymbol(sbCtx,bs,av1ctx->currentFrame.cdfCtx.Single_Ref[ctx][1],sizeof(av1ctx->currentFrame.cdfCtx.Single_Ref[ctx][1])/sizeof(uint16_t)); // S()
 				if (single_ref_p2 == 0)
 				{
 
-					single_ref_p6; // S()
+					int single_ref_p6 = sb->decodeSymbol(sbCtx,bs,av1ctx->currentFrame.cdfCtx.Single_Ref[ctx][5],sizeof(av1ctx->currentFrame.cdfCtx.Single_Ref[ctx][5])/sizeof(uint16_t)); // S()
 					b_data->RefFrame[0] = single_ref_p6 ? ALTREF2_FRAME : BWDREF_FRAME;
 				}
 				else
@@ -2774,15 +2810,15 @@ int frame::read_ref_frames(SymbolContext *sbCtx, bitSt *bs, TileData *t_data,
 			}
 			else
 			{
-				single_ref_p3; // S()
+				int single_ref_p3 = sb->decodeSymbol(sbCtx,bs,av1ctx->currentFrame.cdfCtx.Single_Ref[ctx][2],sizeof(av1ctx->currentFrame.cdfCtx.Single_Ref[ctx][2])/sizeof(uint16_t)); // S()
 				if (single_ref_p3)
 				{
-					single_ref_p5; // S()
-					b_data->RefFrame[0] = single_ref_p5 ? GOLDEN_FRAME : LAST3_FRAME
+					int single_ref_p5 = sb->decodeSymbol(sbCtx,bs,av1ctx->currentFrame.cdfCtx.Single_Ref[ctx][4],sizeof(av1ctx->currentFrame.cdfCtx.Single_Ref[ctx][4])/sizeof(uint16_t)); // S()
+					b_data->RefFrame[0] = single_ref_p5 ? GOLDEN_FRAME : LAST3_FRAME;
 				}
 				else
 				{
-					single_ref_p4; // S()
+					int single_ref_p4 = sb->decodeSymbol(sbCtx,bs,av1ctx->currentFrame.cdfCtx.Single_Ref[ctx][3],sizeof(av1ctx->currentFrame.cdfCtx.Single_Ref[ctx][3])/sizeof(uint16_t)); // S()
 					b_data->RefFrame[0] = single_ref_p4 ? LAST2_FRAME : LAST_FRAME;
 				}
 			}

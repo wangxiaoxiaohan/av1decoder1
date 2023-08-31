@@ -4,6 +4,8 @@
 #include "av1decoder.h"
 #include "obu.h"
 #include "cdf.h"
+#include "decode.h"
+#include "segmentation.h"
 
 class frame{
 public:
@@ -76,6 +78,7 @@ public:
 private:
 	Symbol *sb;
 	segmentation *seg_instance;
+	decode *decode_instance;
 
 };
 #endif

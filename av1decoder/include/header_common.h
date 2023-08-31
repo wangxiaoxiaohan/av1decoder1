@@ -361,38 +361,6 @@ typedef struct BlockData{
 	uint8_t interp_filter[2];
 
 
-/*z这些以后应该放到一个“context”里面*/
-	uint8_t RefMvIdx;
-	uint8_t Mv[2][2];
-	uint8_t RefStackMv[8][2][2]; //consturct by find_mv_stack
-	uint8_t GlobalMvs[2][2];
-	uint8_t RefMvIdx;
-	uint8_t NumMvFound;
-	uint8_t NewMvCount;
-	uint8_t FoundMatch;
-	uint8_t TotalMatches;
-	uint8_t CloseMatches;
-	uint8_t mv_joint;
-	uint8_t mv_sign;
-	uint8_t mv_class;
-	uint8_t mv_class0_bit;
-	uint8_t mv_class0_fr;
-	uint8_t mv_class0_hp;
-	uint8_t mv_class0_hp;
-	uint8_t mv_fr;
-	uint8_t mv_hp;
-	uint8_t mv_bit;
-	uint8_t ZeroMvContext;
-
-	uint8_t AboveSingle;
-	uint8_t LeftSingle;
-	uint8_t AboveIntra;
-	uint8_t LeftIntra;
-
-
-
-
-
 	uint8_t comp_mode;
 
 	uint8_t AngleDeltaY;
@@ -451,6 +419,40 @@ typedef struct AV1DecodeContext{
 	uint8_t DeltaLF[4];	
 	uint8_t **PrevSegmentIds;
 
+//decode ctx variables
+	uint8_t NewMvContext;
+	uint8_t RefMvContext;
+	uint8_t RefMvIdx;
+	uint8_t Mv[2][2];
+	uint8_t RefStackMv[8][2][2]; //consturct by find_mv_stack
+	uint8_t GlobalMvs[2][2];
+	uint8_t NumMvFound;
+	uint8_t NewMvCount;
+	uint8_t FoundMatch;
+	uint8_t TotalMatches;
+	uint8_t CloseMatches;
+	uint8_t mv_joint;
+	uint8_t mv_sign;
+	uint8_t mv_class;
+	uint8_t mv_class0_bit;
+	uint8_t mv_class0_fr;
+	uint8_t mv_class0_hp;
+	uint8_t mv_fr;
+	uint8_t mv_hp;
+	uint8_t mv_bit;
+	uint8_t ZeroMvContext;
+
+	uint8_t AboveSingle;
+	uint8_t LeftSingle;
+	uint8_t AboveIntra;
+	uint8_t LeftIntra;
+
+	uint8_t interintra;
+	uint8_t interintra_mode;
+	uint8_t AngleDeltaY;
+	uint8_t AngleDeltaUV;
+	uint8_t use_filter_intra;
+	uint8_t wedge_interintra;
 }AV1DecodeContext;
 
 

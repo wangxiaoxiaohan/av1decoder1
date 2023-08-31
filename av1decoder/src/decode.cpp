@@ -710,12 +710,12 @@ int decode::search_stack(int mvRow,int mvCol,int candList,int weight,
 	b_data->FoundMatch = 1;
 
 
-	for (int idx = 0; idx < b_data->NumMvFound; idx++) {
-		if (is_equal(candMv, RefStackMv[idx][0])) {
+	for (int idx = 0; idx < av1ctx->NumMvFound; idx++) {
+		if (is_equal(candMv, av1ctx->RefStackMv[idx][0])) {
 			WeightStack[idx] += weight;
 		}else{
 			if( b_data->NumMvFound < MAX_REF_MV_STACK_SIZE){
-				RefStackMv[ b_data->NumMvFound][0] = candMv;
+				av1ctx->RefStackMv[ b_data->NumMvFound][0] = candMv;
 				WeightStack[ b_data->NumMvFound] = weight;
 				 b_data->NumMvFound++;
 			}
@@ -745,14 +745,14 @@ int decode::compound_search_stack(int  mvRow ,int  mvCol,int weight,
 	}
 	b_data->FoundMatch = 1;
 	for(int idx =0 ;idx < b_data->NumMvFound ;idx ++){
-		if(is_equal(candMvs[ 0 ],RefStackMv[ idx ][ 0 ]) &&
-			is_equal(candMvs[ 1 ],RefStackMv[ idx ][ 1 ])){
+		if(is_equal(candMvs[ 0 ],av1ctx->RefStackMv[ idx ][ 0 ]) &&
+			is_equal(candMvs[ 1 ],av1ctx->RefStackMv[ idx ][ 1 ])){
 				WeightStack[ idx ] += weight;
 
 		}else{
 			if(b_data->NumMvFound < MAX_REF_MV_STACK_SIZE){
 				for(int i = 0 ; i < 2 ; i++)
-					RefStackMv[ b_data->NumMvFound ][ i ] = candMvs[ i ] ;
+					av1ctx->RefStackMv[ b_data->NumMvFound ][ i ] = candMvs[ i ] ;
 				WeightStack[ b_data->NumMvFound ] = weight;
 				b_data->NumMvFound += 1;
 
@@ -849,8 +849,8 @@ int decode::add_tpl_ref_mv(int deltaRow, int deltaCol, int isCompound,BlockData 
 		int idx;
 		for (idx = 0; idx < b_data->NumMvFound; idx++)
 		{
-			if (candMv[0] == RefStackMv[idx][0][0] &&
-				candMv[1] == RefStackMv[idx][0][1])
+			if (candMv[0] == av1ctx->RefStackMv[idx][0][0] &&
+				candMv[1] == av1ctx->RefStackMv[idx][0][1])
 
 				break;
 		}
@@ -860,7 +860,7 @@ int decode::add_tpl_ref_mv(int deltaRow, int deltaCol, int isCompound,BlockData 
 		}
 		else if (b_data->NumMvFound < MAX_REF_MV_STACK_SIZE)
 		{
-			RefStackMv[b_data->NumMvFound][0] = candMv;
+			av1ctx->RefStackMv[b_data->NumMvFound][0] = candMv;
 			WeightStack[b_data->NumMvFound] = 2;
 			b_data->NumMvFound += 1;
 		}
@@ -888,10 +888,10 @@ int decode::add_tpl_ref_mv(int deltaRow, int deltaCol, int isCompound,BlockData 
 		int idx;
 		for (idx = 0; idx < b_data->NumMvFound; idx++)
 		{
-			if (candMv0[0] == RefStackMv[idx][0][0] &&
-				candMv0[1] == RefStackMv[idx][0][1] &&
-				candMv1[0] == RefStackMv[idx][1][0] &&
-				candMv1[1] == RefStackMv[idx][1][1])
+			if (candMv0[0] == av1ctx->RefStackMv[idx][0][0] &&
+				candMv0[1] == av1ctx->RefStackMv[idx][0][1] &&
+				candMv1[0] == av1ctx->RefStackMv[idx][1][0] &&
+				candMv1[1] == av1ctx->RefStackMv[idx][1][1])
 				break;
 		}
 		if (idx <b_data-> NumMvFound)
@@ -900,8 +900,8 @@ int decode::add_tpl_ref_mv(int deltaRow, int deltaCol, int isCompound,BlockData 
 		}
 		else if (b_data->NumMvFound < MAX_REF_MV_STACK_SIZE)
 		{
-			RefStackMv[b_data->NumMvFound][0] = candMv0;
-			RefStackMv[b_data->NumMvFound][1] = candMv1;
+			av1ctx->RefStackMv[b_data->NumMvFound][0] = candMv0;
+			av1ctx->RefStackMv[b_data->NumMvFound][1] = candMv1;
 			WeightStack[b_data->NumMvFound] = 2;
 			b_data->NumMvFound += 1;
 		}
@@ -913,7 +913,7 @@ int decode::Sorting(int start,int end ,int isCompound){
         int newEnd = start;
         for (int idx = start + 1; idx < end; idx++) {
             if (WeightStack[idx - 1] < WeightStack[idx]) {
-                swap_stack(idx - 1, idx, isCompound, RefStackMv, WeightStack);
+                swap_stack(idx - 1, idx, isCompound, av1ctx->RefStackMv, WeightStack);
                 newEnd = idx;
             }
         }
@@ -927,9 +927,9 @@ void decode::swap_stack(int i, int j, int isCompound, int RefStackMv[][2][2], in
     
     for (int list = 0; list < 1 + isCompound; list++) {
         for (int comp = 0; comp < 2; comp++) {
-            temp = RefStackMv[i][list][comp];
-            RefStackMv[i][list][comp] = RefStackMv[j][list][comp];
-            RefStackMv[j][list][comp] = temp;
+            temp = av1ctx->RefStackMv[i][list][comp];
+            av1ctx->RefStackMv[i][list][comp] = RefStackMv[j][list][comp];
+            av1ctx->RefStackMv[j][list][comp] = temp;
         }
     }
 }
@@ -1004,16 +1004,16 @@ int decode::extra_search(int isCompound)
 		}
 		if (NumMvFound == 1)
 		{
-			if (combinedMvs[0][0] == RefStackMv[0][0] &&
-				combinedMvs[0][1] == RefStackMv[0][1])
+			if (combinedMvs[0][0] == av1ctx->RefStackMv[0][0] &&
+				combinedMvs[0][1] == av1ctx->RefStackMv[0][1])
 			{
-				RefStackMv[NumMvFound][0] = combinedMvs[1][0];
-				RefStackMv[NumMvFound][1] = combinedMvs[1][1];
+				av1ctx->RefStackMv[NumMvFound][0] = combinedMvs[1][0];
+				av1ctx->RefStackMv[NumMvFound][1] = combinedMvs[1][1];
 			}
 			else
 			{
-				RefStackMv[NumMvFound][0] = combinedMvs[0][0];
-				RefStackMv[NumMvFound][1] = combinedMvs[0][1];
+				av1ctx->RefStackMv[NumMvFound][0] = combinedMvs[0][0];
+				av1ctx->RefStackMv[NumMvFound][1] = combinedMvs[0][1];
 			}
 			WeightStack[NumMvFound] = 2;
 			NumMvFound++;
@@ -1022,8 +1022,8 @@ int decode::extra_search(int isCompound)
 		{
 			for (int idx = 0; idx < 2; idx++)
 			{
-				RefStackMv[NumMvFound][0] = combinedMvs[idx][0];
-				RefStackMv[NumMvFound][1] = combinedMvs[idx][1];
+				av1ctx->RefStackMv[NumMvFound][0] = combinedMvs[idx][0];
+				av1ctx->RefStackMv[NumMvFound][1] = combinedMvs[idx][1];
 				WeightStack[NumMvFound] = 2;
 				NumMvFound++;
 			}
@@ -1033,7 +1033,7 @@ int decode::extra_search(int isCompound)
 	{
 		for (int idx = NumMvFound; idx < 2; idx++)
 		{
-			RefStackMv[idx][0] = GlobalMvs[0];
+			av1ctx->RefStackMv[idx][0] = GlobalMvs[0];
 		}
 	}
 }
@@ -1085,12 +1085,12 @@ int decode::add_extra_mv_candidate(int mvRow, int mvCol, int isCompound)
 				}
 				for (int idx = 0; idx < NumMvFound; idx++)
 				{
-					if (candMv == RefStackMv[idx][0])
+					if (candMv == av1ctx->RefStackMv[idx][0])
 						break;
 				}
 				if (int idx == NumMvFound)
 				{
-					RefStackMv[idx][0] = candMv;
+					av1ctx->RefStackMv[idx][0] = candMv;
 					WeightStack[idx] = 2;
 					NumMvFound++;
 				}
@@ -1127,21 +1127,21 @@ int decode::context_and_clamping(int isCompound, int numNew)
 	}
 	for (int list = 0; list < numLists; list++ ) {
 		for (int idx = 0; idx < NumMvFound ; idx++ ) {
-			int refMv[2] = RefStackMv[ idx ][ list ];
+			int refMv[2] = av1ctx->RefStackMv[ idx ][ list ];
 			refMv[ 0 ] = clamp_mv_row( refMv[ 0 ], MV_BORDER + bh * 8);
 			refMv[ 1 ] = clamp_mv_col( refMv[ 1 ], MV_BORDER + bw * 8);
-			RefStackMv[ idx ][ list ] = refMv;
+			av1ctx->RefStackMv[ idx ][ list ] = refMv;
 		}
 	}	
-	if ( CloseMatches == 0 ) {
-		NewMvContext = Min( TotalMatches, 1 ); // 0,1
-		RefMvContext = TotalMatches;
-	} else if ( CloseMatches == 1 ) {
-		NewMvContext = 3 - Min( numNew, 1 ); // 2,3
-		RefMvContext = 2 + TotalMatches;
+	if ( av1ctx->CloseMatches == 0 ) {
+		av1ctx->NewMvContext = Min( av1ctx->TotalMatches, 1 ); // 0,1
+		av1ctx->RefMvContext = av1ctx->TotalMatches;
+	} else if ( av1ctx->CloseMatches == 1 ) {
+		av1ctx->NewMvContext = 3 - Min( numNew, 1 ); // 2,3
+		av1ctx->RefMvContext = 2 + av1ctx->TotalMatches;
 	} else {
-		NewMvContext = 5 - Min( numNew, 1 ); // 4,5
-		RefMvContext = 5;
+		av1ctx->NewMvContext = 5 - Min( numNew, 1 ); // 4,5
+		av1ctx->RefMvContext = 5;
 	}
 }
 int decode::clamp_mv_row( mvec, border ) { 
