@@ -2485,41 +2485,44 @@ int frame::read_interintra_mode(int isCompound,SymbolContext *sbCtx,bitSt *bs,Ti
 		av1ctx->interintra = 0;
 	}
 }
-int frame::read_motion_mode(int isCompound)
+int frame::read_motion_mode(int isCompound,SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
+							PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1ctx)
 {
-	if (skip_mode)
+	sequenceHeader *seqHdr = av1ctx->seqHdr;
+	frameHeader *frameHdr = av1ctx->curFrameHdr;
+	if (b_data->skip_mode)
 	{
-		motion_mode = SIMPLE;
+		b_data->motion_mode = SIMPLE;
 		return;
 	}
-	if (!is_motion_mode_switchable)
+	if (!frameHdr->is_motion_mode_switchable)
 	{
-		motion_mode = SIMPLE;
+		b_data->motion_mode = SIMPLE;
 		return;
 	}
-	if (Min(Block_Width[MiSize],
-			Block_Height[MiSize]) < 8)
+	if (Min(Block_Width[b_data->MiSize],
+			Block_Height[b_data->MiSize]) < 8)
 	{
-		motion_mode = SIMPLE;
+		b_data->motion_mode = SIMPLE;
 		return;
 	}
-	if (!force_integer_mv &&
-		(YMode == GLOBALMV || YMode == GLOBAL_GLOBALMV))
+	if (!frameHdr->force_integer_mv &&
+		(b_data->YMode == GLOBALMV || b_data->YMode == GLOBAL_GLOBALMV))
 	{
-		if (GmType[RefFrame[0]] > TRANSLATION)
+		if (frameHdr->global_motion_params.GmType[RefFrame[0]] > TRANSLATION)
 		{
-			motion_mode = SIMPLE;
+			b_data->motion_mode = SIMPLE;
 			return;
 		}
 	}
 	if (isCompound || RefFrame[1] == INTRA_FRAME || !has_overlappable_candidates())
 	{
-		motion_mode = SIMPLE;
+		b_data->motion_mode = SIMPLE;
 		return;
 	}
 	find_warp_samples();
-	if (force_integer_mv || NumSamples == 0 ||
-		!allow_warped_motion || is_scaled(RefFrame[0]))
+	if (frameHdr->force_integer_mv || av1ctx->NumSamples == 0 ||
+		!frameHdr->allow_warped_motion || is_scaled(RefFrame[0]))
 	{
 		use_obmc; // S()
 		motion_mode = use_obmc ? OBMC : SIMPLE;

@@ -1523,4 +1523,85 @@ coeffs(plane, startX, startY, txSz)
 	return eob;
 }
 /*  find mv stack end ...*/
+//7.10.4
+//The process examines the neighboring inter predicted blocks and estimates a local warp transformation based on the
+//motion vectors.
+//The process produces a variable NumSamples containing the number of valid candidates found, and an array CandList
+//containing sorted candidates.
+int decode::find_warp_samples(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
+							PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1ctx)
+{
+	frameHeader *frameHdr = av1ctx->curFrameHdr;
+	int doTopLeft = 1;
+	int doTopRight = 1;
+	av1ctx->NumSamples = 0;
+	av1ctx->NumSamplesScanned = 0;
+	int w4 = Num_4x4_Blocks_Wide[ b_data->MiSize ];
+	int h4 = Num_4x4_Blocks_High[ b_data->MiSize ];
+	if (b_data->AvailU)
+	{
+		int srcSize = p_data->MiSizes[b_data->MiRow - 1][b_data->MiCol];
+		int srcW = Num_4x4_Blocks_Wide[srcSize];
+		if (w4 <= srcW)
+		{
+			int colOffset = -(b_data->MiCol & (srcW - 1));
+			if (colOffset < 0)
+				doTopLeft = 0;
+			if (colOffset + srcW > w4)
+				doTopRight = 0;
+			add_sample(-1, 0);
+		}
+		else
+		{
+			int miStep = 0;//???
+			for (int i = 0; i < Min(w4,frameHdr->MiCols - b_data->MiCol); i += miStep)
+			{
+				srcSize = MiSizes[b_data->MiRow - 1][b_data->MiCol + i];
+				srcW = Num_4x4_Blocks_Wide[srcSize];
+				miStep = Min(w4, srcW);
+				add_sample(-1, i);
+			}
+		}
+	}
+	if (b_data->AvailL)
+	{
+		int srcSize = MiSizes[b_data->MiRow][b_data->MiCol - 1];
+		int srcH = Num_4x4_Blocks_High[srcSize];
+		if (h4 <= srcH)
+		{
+			int rowOffset = -(b_data->MiRow & (srcH - 1));
+			if (rowOffset < 0)
+				doTopLeft = 0;
+			add_sample(0, -1);
+		}
+		else
+		{
+			int miStep = 0;//???
+			for (int i = 0; i < Min(h4, frameHdr->MiRows - b_data->MiRow); i += miStep)
+			{
+				srcSize = MiSizes[b_data->MiRow + i][b_data->MiCol - 1];
+				srcH = Num_4x4_Blocks_High[srcSize];
+				miStep = Min(h4, srcH);
+				add_sample(i, -1);
+			}
+		}
+	}
+	if (doTopLeft)
+	{
+		add_sample(-1, -1);
+	}
+	if (doTopRight)
+	{
+		if (Max(w4, h4) <= 16)
+		{
+			add_sample(-1, w4);
+		}
+	}
+	if (av1ctx->NumSamples == 0 && av1ctx->NumSamplesScanned > 0)
+		av1ctx->NumSamples = 1;
+}
+int decode::add_sample(){
 
+
+
+}

@@ -456,6 +456,8 @@ typedef struct AV1DecodeContext{
 	uint8_t wedge_sign;
 
 	uint8_t *DrlCtxStack;
+	uint8_t NumSamples;
+	uint8_t NumSamplesScanned;
 }AV1DecodeContext;
 
 
