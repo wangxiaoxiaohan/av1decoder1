@@ -26,6 +26,16 @@ int Symbol::decodeSymbolBool(SymbolContext *sbCtx,bitSt *bs){
     return decodeSymbol(sbCtx,bs,cdf,3);
 
 }
+int Symbol::readNS(SymbolContext *sbCtx,bitSt *bs,int n ) {
+    int w = FloorLog2(n) + 1;
+    int m = (1 << w) - n;
+    int v = read_literal(sbCtx,bs,w-1); // L(w - 1)
+    if (v < m)
+        return v;
+    int extra_bit = read_literal(sbCtx,bs,1);; // L(1)
+    return (v << 1) - m + extra_bit;
+}
+
 int Symbol::decodeSymbol(SymbolContext *sbCtx,bitSt *bs,uint16_t *cdfArray,int N){
 
     int cur = sbCtx->SymbolRange;

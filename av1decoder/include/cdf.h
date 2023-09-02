@@ -2300,6 +2300,7 @@ public:
   void initSymbol(SymbolContext *sbCtx,bitSt *bs,int sz);
   int read_literal(SymbolContext *sbCtx,bitSt *bs,int n);
   int decodeSymbolBool(SymbolContext *sbCtx,bitSt *bs); 
+  int readNS(SymbolContext *sbCtx,bitSt *bs,int n );
   int decodeSymbol(SymbolContext *sbCtx,bitSt *bs,uint16_t *cdfArray,int N);
 	static Symbol& Instance() {
 		static Symbol m_pInstance;

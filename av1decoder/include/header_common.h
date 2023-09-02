@@ -388,8 +388,13 @@ typedef struct BlockData{
 	uint8_t seg_id_predicted;
 	uint8_t compound_mode;
 
-
-
+	uint8_t comp_group_idx;
+	uint8_t compound_idx;
+	uint8_t mask_type;
+	uint8_t **ColorMapY;
+	uint8_t **ColorMapUV;
+	uint8_t ColorOrder[PALETTE_COLORS];
+	uint8_t ColorContextHash;
 
 }BlockData;
 
@@ -404,9 +409,20 @@ typedef struct FrameContext{
 typedef struct AV1DecodeContext{
 	FrameContext 	*ref_frames[NUM_REF_FRAMES];
 	FrameContext currentFrame;
-	uint8_t		RefValid[NUM_REF_FRAMES];
-	uint8_t 	RefFrameId[NUM_REF_FRAMES];
-	uint8_t		RefOrderHint[NUM_REF_FRAMES];
+	uint8_t	RefValid[NUM_REF_FRAMES];
+	uint8_t RefFrameId[NUM_REF_FRAMES];
+	uint8_t	RefOrderHint[NUM_REF_FRAMES];
+	uint8_t	RefUpscaledWidth[NUM_REF_FRAMES];
+	uint8_t RefFrameHeight[NUM_REF_FRAMES];
+	uint8_t RefFrameHeight[NUM_REF_FRAMES];
+	uint8_t RefRenderWidth[NUM_REF_FRAMES];
+	uint8_t RefRenderHeight[NUM_REF_FRAMES];
+	uint8_t RefMiCols[NUM_REF_FRAMES];
+	uint8_t RefMiRows[NUM_REF_FRAMES];
+	uint8_t RefFrameType[NUM_REF_FRAMES];
+	uint8_t RefSubsamplingX[NUM_REF_FRAMES];
+	uint8_t RefSubsamplingY[NUM_REF_FRAMES];
+	uint8_t RefBitDepth[NUM_REF_FRAMES];
     CDFArrays cdfCtxs[NUM_REF_FRAMES];
 
 	uint8_t		OrderHints[REFS_PER_FRAME]; //OrderHints specifies the expected output order for each reference frame.
@@ -458,6 +474,7 @@ typedef struct AV1DecodeContext{
 	uint8_t *DrlCtxStack;
 	uint8_t NumSamples;
 	uint8_t NumSamplesScanned;
+	
 }AV1DecodeContext;
 
 

@@ -224,11 +224,11 @@ int frame::parseFrameHeader(int sz, bitSt *bs, AV1DecodeContext *av1ctx, sequenc
 				if (found_ref == 1)
 				{
 					// ref_frames
-					out->si.UpscaledWidth = av1ctx->ref_frames[i]->si.UpscaledWidth;
+					out->si.UpscaledWidth = av1ctx->RefUpscaledWidth[out->ref_frame_idx[i]];
 					out->si.FrameWidth = out->si.UpscaledWidth;
-					out->si.FrameHeight = av1ctx->ref_frames[i]->si.FrameHeight;	// RefFrameHeight[ ref_frame_idx[ i ] ]
-					out->si.RenderWidth = av1ctx->ref_frames[i]->si.RenderWidth;	// RefRenderWidth[ ref_frame_idx[ i ] ]
-					out->si.RenderHeight = av1ctx->ref_frames[i]->si.RenderHeight; // RefRenderHeight[ ref_frame_idx[ i ] ]
+					out->si.FrameHeight = av1ctx->RefFrameHeight[out->ref_frame_idx[i]];	// RefFrameHeight[ ref_frame_idx[ i ] ]
+					out->si.RenderWidth = av1ctx->RefRenderWidth[out->ref_frame_idx[i]];	// RefRenderWidth[ ref_frame_idx[ i ] ]
+					out->si.RenderHeight = av1ctx->RefRenderHeight[out->ref_frame_idx[i]]; // RefRenderHeight[ ref_frame_idx[ i ] ]
 					break;
 				}
 			}
@@ -2362,8 +2362,8 @@ int frame::inter_block_mode_info(SymbolContext *sbCtx, bitSt *bs, TileData *t_da
 	}
 	assign_mv(isCompound,sbCtx,bs,t_data,p_data,b_data,av1ctx);
 	read_interintra_mode(isCompound,sbCtx,bs,t_data,p_data,b_data,av1ctx);
-	read_motion_mode(isCompound);
-	read_compound_type(isCompound);
+	read_motion_mode(isCompound,sbCtx,bs,t_data,p_data,b_data,av1ctx);
+	read_compound_type(isCompound,sbCtx,bs,t_data,p_data,b_data,av1ctx);
 	if (frameHdr->interpolation_filter == SWITCHABLE)
 	{
 		for (int dir = 0; dir < (seqHdr->enable_dual_filter ? 2 : 1); dir++)
@@ -2500,8 +2500,8 @@ int frame::read_motion_mode(int isCompound,SymbolContext *sbCtx,bitSt *bs,TileDa
 		b_data->motion_mode = SIMPLE;
 		return;
 	}
-	if (Min(Block_Width[b_data->MiSize],
-			Block_Height[b_data->MiSize]) < 8)
+	if (Min(4 * Num_4x4_Blocks_Wide[b_data->MiSize],
+			4 * Num_4x4_Blocks_High[b_data->MiSize]) < 8)
 	{
 		b_data->motion_mode = SIMPLE;
 		return;
@@ -2509,87 +2509,126 @@ int frame::read_motion_mode(int isCompound,SymbolContext *sbCtx,bitSt *bs,TileDa
 	if (!frameHdr->force_integer_mv &&
 		(b_data->YMode == GLOBALMV || b_data->YMode == GLOBAL_GLOBALMV))
 	{
-		if (frameHdr->global_motion_params.GmType[RefFrame[0]] > TRANSLATION)
+		if (frameHdr->global_motion_params.GmType[b_data->RefFrame[0]] > TRANSLATION)
 		{
 			b_data->motion_mode = SIMPLE;
 			return;
 		}
 	}
-	if (isCompound || RefFrame[1] == INTRA_FRAME || !has_overlappable_candidates())
+	if (isCompound || b_data->RefFrame[1] == INTRA_FRAME || !decode_instance->has_overlappable_candidates(p_data,b_data))
 	{
 		b_data->motion_mode = SIMPLE;
 		return;
 	}
-	find_warp_samples();
+	decode_instance->find_warp_samples(sbCtx,bs,t_data,p_data,b_data,av1ctx);
 	if (frameHdr->force_integer_mv || av1ctx->NumSamples == 0 ||
-		!frameHdr->allow_warped_motion || is_scaled(RefFrame[0]))
+		!frameHdr->allow_warped_motion || is_scaled(b_data->RefFrame[0],frameHdr->ref_frame_idx,av1ctx->RefUpscaledWidth,
+											av1ctx->RefFrameHeight,frameHdr->si.FrameWidth,frameHdr->si.RenderHeight))
 	{
-		use_obmc; // S()
-		motion_mode = use_obmc ? OBMC : SIMPLE;
+		int use_obmc = sb->decodeSymbol(sbCtx,bs,av1ctx->currentFrame.cdfCtx.Use_Obmc[b_data->MiSize],3); // S()
+		b_data->motion_mode = use_obmc ? OBMC : SIMPLE;
 	}
 	else
 	{
-		motion_mode; //S()
+		b_data->motion_mode = sb->decodeSymbol(sbCtx,bs,av1ctx->currentFrame.cdfCtx.Motion_Mode[b_data->MiSize],MOTION_MODES + 1); //S()
 	}
 }
-int frame::read_compound_type(int isCompound)
+int frame::read_compound_type(int isCompound,SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
+							PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1ctx)
 {
-	comp_group_idx = 0;
-	compound_idx = 1;
-	if (skip_mode)
+	sequenceHeader *seqHdr = av1ctx->seqHdr;
+	frameHeader *frameHdr = av1ctx->curFrameHdr;
+	b_data->comp_group_idx = 0;
+	b_data->compound_idx = 1;
+	if (b_data->skip_mode)
 	{
-		compound_type = COMPOUND_AVERAGE;
+		b_data->compound_type = COMPOUND_AVERAGE;
 		return;
 	}
 	if (isCompound)
 	{
-		n = Wedge_Bits[MiSize];
-		if (enable_masked_compound)
+		int n = Wedge_Bits[b_data->MiSize];
+		if (seqHdr->enable_masked_compound)
 		{
-			comp_group_idx; // S()
-		}
-		if (comp_group_idx == 0)
-		{
-			if (enable_jnt_comp)
+			int ctx = 0;
+			if (b_data->AvailU)
 			{
-				compound_idx; // S()
-				compound_type = compound_idx ? COMPOUND_AVERAGE : COMPOUND_DISTANCE;
+				if (!av1ctx->AboveSingle)
+					ctx += p_data->CompGroupIdxs[b_data->MiRow - 1][b_data->MiCol];
+				else if (b_data->AboveRefFrame[0] == ALTREF_FRAME)
+					ctx += 3;
+			}
+			if (b_data->AvailL)
+			{
+				if (!av1ctx->LeftSingle)
+					ctx += p_data->CompGroupIdxs[b_data->MiRow][b_data->MiCol - 1];
+				else if (b_data->LeftRefFrame[0] == ALTREF_FRAME)
+					ctx += 3;
+			}
+			ctx = Min(5, ctx);
+
+			b_data->comp_group_idx = sb->decodeSymbol(sbCtx,bs,av1ctx->currentFrame.cdfCtx.Comp_Group_Idx[ctx],3); // S()
+		}
+		if (b_data->comp_group_idx == 0)
+		{
+			if (seqHdr->enable_jnt_comp)
+			{
+
+				int fwd = Abs(get_relative_dist(seqHdr,av1ctx->OrderHints[b_data->RefFrame[0]], frameHdr->OrderHint));
+				int bck = Abs(get_relative_dist(seqHdr,av1ctx->OrderHints[b_data->RefFrame[1]], frameHdr->OrderHint));
+				int ctx = (fwd == bck) ? 3 : 0;
+				if (b_data->AvailU)
+				{
+					if (!av1ctx->AboveSingle)
+						ctx += p_data->CompoundIdxs[b_data->MiRow - 1][b_data->MiCol];
+					else if (b_data->AboveRefFrame[0] == ALTREF_FRAME)
+						ctx++;
+				}
+				if (b_data->AvailL)
+				{
+					if (!av1ctx->LeftSingle)
+						ctx += p_data->CompoundIdxs[b_data->MiRow][b_data->MiCol - 1];
+					else if (b_data->LeftRefFrame[0] == ALTREF_FRAME)
+						ctx++;
+				}
+				b_data->compound_idx = sb->decodeSymbol(sbCtx, bs, av1ctx->currentFrame.cdfCtx.Compound_Idx[ctx], 3); // S()
+				b_data->compound_type = b_data->compound_idx ? COMPOUND_AVERAGE : COMPOUND_DISTANCE;
 			}
 			else
 			{
-				compound_type = COMPOUND_AVERAGE;
+				b_data->compound_type = COMPOUND_AVERAGE;
 			}
 		}
 		else
 		{
 			if (n == 0)
 			{
-				compound_type = COMPOUND_DIFFWTD;
+				b_data->compound_type = COMPOUND_DIFFWTD;
 			}
 			else
 			{
-				compound_type; // S()
+				b_data->compound_type; // S()
 			}
 		}
-		if (compound_type == COMPOUND_WEDGE)
+		if (b_data->compound_type == COMPOUND_WEDGE)
 		{
-			wedge_index; // S()
-			wedge_sign;	 // L(1)
+			av1ctx->wedge_index = sb->decodeSymbol(sbCtx,bs,av1ctx->currentFrame.cdfCtx.Wedge_Index[b_data->MiSize],16 + 1); // S()
+			av1ctx->wedge_sign = sb->read_literal(sbCtx,bs,1);	 // L(1)
 		}
-		else if (compound_type == COMPOUND_DIFFWTD)
+		else if (b_data->compound_type == COMPOUND_DIFFWTD)
 		{
-			mask_type; // L(1)
+			b_data->mask_type = sb->read_literal(sbCtx,bs,1); // L(1)
 		}
 	}
 	else
 	{
-		if (interintra)
+		if (av1ctx->interintra)
 		{
-			compound_type = wedge_interintra ? COMPOUND_WEDGE : COMPOUND_INTRA;
+			b_data->compound_type = av1ctx->wedge_interintra ? COMPOUND_WEDGE : COMPOUND_INTRA;
 		}
 		else
 		{
-			compound_type = COMPOUND_AVERAGE;
+			b_data->compound_type = COMPOUND_AVERAGE;
 		}
 	}
 }
@@ -2859,49 +2898,66 @@ int frame::read_ref_frames(SymbolContext *sbCtx, bitSt *bs, TileData *t_data,
 		}
 	}
 }
-int frame::palette_tokens()
+int frame::palette_tokens(SymbolContext *sbCtx, bitSt *bs, TileData *t_data,
+								 PartitionData *p_data, BlockData *b_data, AV1DecodeContext *av1ctx)
 {
-	blockHeight = Block_Height[MiSize];
-	blockWidth = Block_Width[MiSize];
-	onscreenHeight = Min(blockHeight, (MiRows - MiRow) * MI_SIZE);
-	onscreenWidth = Min(blockWidth, (MiCols - MiCol) * MI_SIZE);
-	if (PaletteSizeY)
+	frameHeader *frameHdr = av1ctx->curFrameHdr;
+	sequenceHeader *seqHdr = av1ctx->seqHdr;
+	int blockHeight = 4 * Num_4x4_Blocks_High[b_data->MiSize];
+	int blockWidth = 4 * Num_4x4_Blocks_Wide[b_data->MiSize];
+	int onscreenHeight = Min(blockHeight, (frameHdr->MiRows - b_data->MiRow) * MI_SIZE);
+	int onscreenWidth = Min(blockWidth, (frameHdr->MiCols - b_data->MiCol) * MI_SIZE);
+	if (b_data->PaletteSizeY)
 	{
-		color_index_map_y; // NS(PaletteSizeY)
-		ColorMapY[0][0] = color_index_map_y;
-		for (i = 1; i < onscreenHeight + onscreenWidth - 1; i++)
+		int color_index_map_y = sb->readNS(sbCtx,bs,b_data->PaletteSizeY); // NS(PaletteSizeY)
+		b_data->ColorMapY[0][0] = color_index_map_y;
+		for (int i = 1; i < onscreenHeight + onscreenWidth - 1; i++)
 		{
-			for (j = Min(i, onscreenWidth - 1);
+			for (int j = Min(i, onscreenWidth - 1);
 				 j >= Max(0, i - onscreenHeight + 1); j--)
 			{
-				get_palette_color_context(ColorMapY, (i - j), j, PaletteSizeY);
-				palette_color_idx_y; // S()
-				ColorMapY[i - j][j] = ColorOrder[palette_color_idx_y];
+				get_palette_color_context(b_data->ColorMapY, (i - j), j, b_data->PaletteSizeY,b_data);
+				
+				uint16_t *cdf;
+				int ctx = Palette_Color_Context[ b_data->ColorContextHash ];
+				switch(b_data->PaletteSizeY){
+					case 2: cdf = av1ctx->currentFrame.cdfCtx.Palette_Size_2_Y_Color[ctx]; break;
+					case 3:	cdf = av1ctx->currentFrame.cdfCtx.Palette_Size_3_Y_Color[ctx]; break;
+					case 4:	cdf = av1ctx->currentFrame.cdfCtx.Palette_Size_4_Y_Color[ctx]; break;
+					case 5:	cdf = av1ctx->currentFrame.cdfCtx.Palette_Size_5_Y_Color[ctx]; break;
+					case 6:	cdf = av1ctx->currentFrame.cdfCtx.Palette_Size_6_Y_Color[ctx]; break;
+					case 7:	cdf = av1ctx->currentFrame.cdfCtx.Palette_Size_7_Y_Color[ctx]; break;
+					case 8:	cdf = av1ctx->currentFrame.cdfCtx.Palette_Size_8_Y_Color[ctx]; break;
+
+				}
+
+				int palette_color_idx_y =  sb->decodeSymbol(sbCtx,bs,cdf, sizeof(cdf)); // S()
+				b_data->ColorMapY[i - j][j] = b_data->ColorOrder[palette_color_idx_y];
 			}
 		}
-		for (i = 0; i < onscreenHeight; i++)
+		for (int i = 0; i < onscreenHeight; i++)
 		{
-			for (j = onscreenWidth; j < blockWidth; j++)
+			for (int j = onscreenWidth; j < blockWidth; j++)
 			{
-				ColorMapY[i][j] = ColorMapY[i][onscreenWidth - 1];
+				b_data->ColorMapY[i][j] = b_data->ColorMapY[i][onscreenWidth - 1];
 			}
 		}
-		for (i = onscreenHeight; i < blockHeight; i++)
+		for (int i = onscreenHeight; i < blockHeight; i++)
 		{
-			for (j = 0; j < blockWidth; j++)
+			for (int j = 0; j < blockWidth; j++)
 			{
-				ColorMapY[i][j] = ColorMapY[onscreenHeight - 1][j];
+				b_data->ColorMapY[i][j] = b_data->ColorMapY[onscreenHeight - 1][j];
 			}
 		}
 	}
-	if (PaletteSizeUV)
+	if (b_data->PaletteSizeUV)
 	{
-		color_index_map_uv; // NS(PaletteSizeUV)
-		ColorMapUV[0][0] = color_index_map_uv;
-		blockHeight = blockHeight >> subsampling_y;
-		blockWidth = blockWidth >> subsampling_x;
-		onscreenHeight = onscreenHeight >> subsampling_y;
-		onscreenWidth = onscreenWidth >> subsampling_x;
+		int color_index_map_uv = sb->readNS(sbCtx,bs,b_data->PaletteSizeUV); // NS(PaletteSizeUV)
+		b_data->ColorMapUV[0][0] = color_index_map_uv;
+		blockHeight = blockHeight >> seqHdr->color_config.subsampling_y;
+		blockWidth = blockWidth >> seqHdr->color_config.subsampling_x;
+		onscreenHeight = onscreenHeight >> seqHdr->color_config.subsampling_y;
+		onscreenWidth = onscreenWidth >> seqHdr->color_config.subsampling_x;
 		if (blockWidth < 4)
 		{
 			blockWidth += 2;
@@ -2912,27 +2968,40 @@ int frame::palette_tokens()
 			blockHeight += 2;
 			onscreenHeight += 2;
 		}
-		for (i = 1; i < onscreenHeight + onscreenWidth - 1; i++)
+		for (int i = 1; i < onscreenHeight + onscreenWidth - 1; i++)
 		{
-			for (j = Min(i, onscreenWidth - 1); j >= Max(0, i - onscreenHeight + 1); j--)
+			for (int j = Min(i, onscreenWidth - 1); j >= Max(0, i - onscreenHeight + 1); j--)
 			{
-				get_palette_color_context(ColorMapUV, (i - j), j, PaletteSizeUV);
-				palette_color_idx_uv; // S()
-				ColorMapUV[i - j][j] = ColorOrder[palette_color_idx_uv];
+				get_palette_color_context(b_data->ColorMapUV, (i - j), j, b_data->PaletteSizeUV,b_data);
+				uint16_t *cdf;
+				int ctx = Palette_Color_Context[ b_data->ColorContextHash ];
+				switch(b_data->PaletteSizeY){
+					case 2: cdf = av1ctx->currentFrame.cdfCtx.Palette_Size_2_Uv_Color[ctx]; break;
+					case 3:	cdf = av1ctx->currentFrame.cdfCtx.Palette_Size_3_Uv_Color[ctx]; break;
+					case 4:	cdf = av1ctx->currentFrame.cdfCtx.Palette_Size_4_Uv_Color[ctx]; break;
+					case 5:	cdf = av1ctx->currentFrame.cdfCtx.Palette_Size_5_Uv_Color[ctx]; break;
+					case 6:	cdf = av1ctx->currentFrame.cdfCtx.Palette_Size_6_Uv_Color[ctx]; break;
+					case 7:	cdf = av1ctx->currentFrame.cdfCtx.Palette_Size_7_Uv_Color[ctx]; break;
+					case 8:	cdf = av1ctx->currentFrame.cdfCtx.Palette_Size_8_Uv_Color[ctx]; break;
+
+				}
+
+				int palette_color_idx_uv = sb->decodeSymbol(sbCtx,bs,cdf, sizeof(cdf)); // S()
+				b_data->ColorMapUV[i - j][j] = b_data->ColorOrder[palette_color_idx_uv];
 			}
 		}
-		for (i = 0; i < onscreenHeight; i++)
+		for (int i = 0; i < onscreenHeight; i++)
 		{
-			for (j = onscreenWidth; j < blockWidth; j++)
+			for (int j = onscreenWidth; j < blockWidth; j++)
 			{
-				ColorMapUV[i][j] = ColorMapUV[i][onscreenWidth - 1];
+				b_data->ColorMapUV[i][j] = b_data->ColorMapUV[i][onscreenWidth - 1];
 			}
 		}
-		for (i = onscreenHeight; i < blockHeight; i++)
+		for (int i = onscreenHeight; i < blockHeight; i++)
 		{
-			for (j = 0; j < blockWidth; j++)
+			for (int j = 0; j < blockWidth; j++)
 			{
-				ColorMapUV[i][j] = ColorMapUV[onscreenHeight - 1][j];
+				b_data->ColorMapUV[i][j] = b_data->ColorMapUV[onscreenHeight - 1][j];
 			}
 		}
 	}
@@ -3119,5 +3188,60 @@ int frame::needs_interp_filter(BlockData *b_data)
 	else
 	{
 		return 1;
+	}
+}
+int frame::get_palette_color_context(uint8_t **colorMap,int r,int c,int n,BlockData *b_data)
+{
+	int scores[PALETTE_COLORS];
+	int neighbor;
+	for (int i = 0; i < PALETTE_COLORS; i++)
+	{
+		scores[i] = 0;
+		b_data->ColorOrder[i] = i;
+	}
+	if (c > 0)
+	{
+		neighbor = colorMap[r][c - 1];
+		scores[neighbor] += 2;
+	}
+	if ((r > 0) && (c > 0))
+	{
+		neighbor = colorMap[r - 1][c - 1];
+		scores[neighbor] += 1;
+	}
+	if (r > 0)
+	{
+		neighbor = colorMap[r - 1][c];
+		scores[neighbor] += 2;
+	}
+	for (int i = 0; i < PALETTE_NUM_NEIGHBORS; i++)
+	{
+		int maxScore = scores[i];
+		int maxIdx = i;
+		for (int j = i + 1; j < n; j++)
+		{
+			if (scores[j] > maxScore)
+			{
+				maxScore = scores[j];
+				maxIdx = j;
+			}
+		}
+		if (maxIdx != i)
+		{
+			maxScore = scores[maxIdx];
+			int maxColorOrder = b_data->ColorOrder[maxIdx];
+			for (int k = maxIdx; k > i; k--)
+			{
+				scores[k] = scores[k - 1];
+				b_data->ColorOrder[k] = b_data->ColorOrder[k - 1];
+			}
+			scores[i] = maxScore;
+			b_data->ColorOrder[i] = maxColorOrder;
+		}
+	}
+	b_data->ColorContextHash = 0;
+	for (int i = 0; i < PALETTE_NUM_NEIGHBORS; i++)
+	{
+		b_data->ColorContextHash += scores[i] * Palette_Color_Hash_Multipliers[i];
 	}
 }

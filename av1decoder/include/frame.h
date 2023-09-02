@@ -78,9 +78,16 @@ public:
 								 PartitionData *p_data, BlockData *b_data, AV1DecodeContext *av1ctx);
 	int read_interintra_mode(int isCompound,SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
 							PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1ctx);
-	int read_motion_mode(int isCompound);
-	int read_compound_type(int isCompound);
-	int palette_tokens();
+
+	int read_motion_mode(int isCompound,SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
+							PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1ctx);					
+	int read_motion_mode(int isCompound,SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
+							PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1ctx);
+	int read_compound_type(int isCompound,SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
+							PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1ctx);
+	int palette_tokens(SymbolContext *sbCtx, bitSt *bs, TileData *t_data,
+								 PartitionData *p_data, BlockData *b_data, AV1DecodeContext *av1ctx);
+	int get_palette_color_context(uint8_t **colorMap,int r,int c,int n,BlockData *b_data);
 	int read_block_tx_size();
 	int compute_prediction();
 	int reset_block_context(int bw4, int bh4);

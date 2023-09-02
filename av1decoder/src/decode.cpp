@@ -1523,6 +1523,30 @@ coeffs(plane, startX, startY, txSz)
 	return eob;
 }
 /*  find mv stack end ...*/
+//7.10.3
+int decode::has_overlappable_candidates(PartitionData *p_data, BlockData *b_data)
+{
+	if (b_data->AvailU)
+	{
+		int w4 = Num_4x4_Blocks_Wide[b_data->MiSize];
+		for (int x4 = b_data->MiCol; x4 < Min(p_data->MiCols, b_data->MiCol + w4); x4 += 2)
+		{
+			if (RefFrames[b_data->MiRow - 1][x4 | 1][0] > INTRA_FRAME)
+				return 1;
+		}
+	}
+	if (b_data->AvailL)
+	{
+		int h4 = Num_4x4_Blocks_High[b_data->MiSize];
+		for (int y4 = b_data->MiRow; y4 < Min(p_data->MiRows, b_data->MiRow + h4); y4 += 2)
+		{
+			if (RefFrames[y4 | 1][b_data->MiCol - 1][0] > INTRA_FRAME)
+				return 1;
+		}
+	}
+	return 0;
+}
+
 //7.10.4
 //The process examines the neighboring inter predicted blocks and estimates a local warp transformation based on the
 //motion vectors.

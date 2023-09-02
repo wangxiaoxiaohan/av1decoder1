@@ -170,6 +170,8 @@ enum tristate{
 #define TX_SIZES_ALL 19
 #define MI_SIZE_LOG2 2
 #define COMP_NEWMV_CTXS 5
+#define REF_SCALE_SHIFT 14 
+
 enum em_interpolation_filters{
 	EIGHTTAP = 0,
 	EIGHTTAP_SMOOTH = 1,
@@ -476,6 +478,8 @@ const static uint16_t Div_Mult[32] = {
 1489, 1365, 1260, 1170, 1092, 1024, 963, 910, 862, 819, 780,
 744, 712, 682, 655, 630, 606, 585, 564, 546, 528
 };
+const static uint8_t Palette_Color_Context[ PALETTE_MAX_COLOR_CONTEXT_HASH + 1 ] =
+{ -1, -1, 0, -1, -1, 4, 3, 2, 1 };
 const static uint8_t Partition_Subsize[10][BLOCK_SIZES] = {
 	{BLOCK_4X4,
 	 BLOCK_INVALID, BLOCK_INVALID, BLOCK_8X8,
@@ -569,8 +573,11 @@ const static uint8_t Compound_Mode_Ctx_Map[ 3 ][ COMP_NEWMV_CTXS ] = {
 { 1, 2, 3, 4, 4 },
 { 4, 4, 5, 6, 7 }
 };
-
-
+const static uint8_t Wedge_Bits[ BLOCK_SIZES ] = {
+0, 0, 0, 4, 4, 4, 4, 4, 4, 4, 0,
+0, 0, 0, 0, 0, 0, 0, 4, 4, 0, 0
+};
+const static uint8_t  Palette_Color_Hash_Multipliers[ PALETTE_NUM_NEIGHBORS ] = { 1, 2, 2 };
 int inline tile_log2(int  blkSize, int target){
 	int k;
 	for (k = 0; (blkSize << k) < target; k++ ) {
@@ -619,6 +626,9 @@ int inline CeilLog2(int x)
 		p = p << 1;
 	}
 	return i;
+}
+int inline Abs(int x){
+	return x > 0 ? x : -x;
 }
 
 int inline is_inside(int candidateR,int  candidateC ,int colStart, int colEnd,int rowStart, int rowEnd) { 
@@ -743,6 +753,14 @@ int inline count_refs(int frameType,uint8_t AvailU,uint8_t AvailL,uint8_t *Above
 int inline has_nearmv(int YMode ) {
 	return (YMode == NEARMV || YMode == NEAR_NEARMV
 	|| YMode == NEAR_NEWMV || YMode == NEW_NEARMV);
+}
+int inline is_scaled(int refFrame,uint8_t *ref_frame_idx,uint8_t *RefUpscaledWidth,uint8_t *RefFrameHeight,
+					int FrameWidth,int FrameHeight) {
+	int refIdx = ref_frame_idx[ refFrame - LAST_FRAME ];
+	int xScale = ( ( RefUpscaledWidth[ refIdx ] << REF_SCALE_SHIFT ) + ( FrameWidth / 2 ) ) / FrameWidth;
+	int yScale = ( ( RefFrameHeight[ refIdx ] << REF_SCALE_SHIFT ) + ( FrameHeight / 2 ) ) / FrameHeight;
+	int noScale = 1 << REF_SCALE_SHIFT;
+	return xScale != noScale || yScale != noScale;
 }
 #endif
 
