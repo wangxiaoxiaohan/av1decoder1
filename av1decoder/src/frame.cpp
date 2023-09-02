@@ -3006,75 +3006,83 @@ int frame::palette_tokens(SymbolContext *sbCtx, bitSt *bs, TileData *t_data,
 		}
 	}
 }
-int frame::read_block_tx_size()
+int frame::read_block_tx_size(SymbolContext *sbCtx, bitSt *bs, TileData *t_data,
+								 PartitionData *p_data, BlockData *b_data, AV1DecodeContext *av1ctx)
 {
-	bw4 = Num_4x4_Blocks_Wide[MiSize];
-	bh4 = Num_4x4_Blocks_High[MiSize];
-	if (TxMode == TX_MODE_SELECT &&
-		MiSize > BLOCK_4X4 && is_inter &&
-		!skip && !Lossless)
+	frameHeader *frameHdr = av1ctx->curFrameHdr;
+	sequenceHeader *seqHdr = av1ctx->seqHdr;
+	int bw4 = Num_4x4_Blocks_Wide[b_data->MiSize];
+	int bh4 = Num_4x4_Blocks_High[b_data->MiSize];
+	if (frameHdr->TxMode == TX_MODE_SELECT &&
+		b_data->MiSize > BLOCK_4X4 && b_data->is_inter &&
+		!b_data->skip && !b_data->Lossless)
 	{
-		maxTxSz = Max_Tx_Size_Rect[MiSize];
-		txW4 = Tx_Width[maxTxSz] / MI_SIZE;
-		txH4 = Tx_Height[maxTxSz] / MI_SIZE;
-		for (row = MiRow; row < MiRow + bh4; row += txH4)
-			for (col = MiCol; col < MiCol + bw4; col += txW4)
-				read_var_tx_size(row, col, maxTxSz, 0);
+		int maxTxSz = Max_Tx_Size_Rect[b_data->MiSize];
+		int txW4 = Tx_Width[maxTxSz] / MI_SIZE;
+		int txH4 = Tx_Height[maxTxSz] / MI_SIZE;
+		for (int row = b_data->MiRow; row < b_data->MiRow + bh4; row += txH4)
+			for (int col = b_data->MiCol; col < b_data->MiCol + bw4; col += txW4)
+				read_var_tx_size(row, col, maxTxSz, 0,sbCtx,bs,t_data,p_data,b_data,av1ctx);
 	}
 	else
 	{
-		read_tx_size(!skip || !is_inter);
-		for (row = MiRow; row < MiRow + bh4; row++)
-			for (col = MiCol; col < MiCol + bw4; col++)
-				InterTxSizes[row][col] = TxSize;
+		read_tx_size(!b_data->skip || !b_data->is_inter,sbCtx, bs, b_data,av1ctx);
+		for (int row = b_data->MiRow; row < b_data->MiRow + bh4; row++)
+			for (int col = b_data->MiCol; col < b_data->MiCol + bw4; col++)
+				p_data->InterTxSizes[row][col] = b_data->TxSize;
 	}
 }
-int frame::read_var_tx_size(row, col, txSz, depth)
+int frame::read_var_tx_size(int row,int col,int txSz,int depth,SymbolContext *sbCtx, bitSt *bs, TileData *t_data,
+								 PartitionData *p_data, BlockData *b_data, AV1DecodeContext *av1ctx)
 {
-	if (row >= MiRows || col >= MiCols)
+	frameHeader *frameHdr = av1ctx->curFrameHdr;
+	if (row >= frameHdr->MiRows || col >= frameHdr->MiCols)
 		return;
+	int txfm_split;
 	if (txSz == TX_4X4 || depth == MAX_VARTX_DEPTH)
 	{
 		txfm_split = 0;
 	}
 	else
 	{
-		txfm_split; // S()
+		txfm_split; // S()！！！
 	}
-	w4 = Tx_Width[txSz] / MI_SIZE;
-	h4 = Tx_Height[txSz] / MI_SIZE;
+	int w4 = Tx_Width[txSz] / MI_SIZE;
+	int h4 = Tx_Height[txSz] / MI_SIZE;
 	if (txfm_split)
 	{
-		subTxSz = Split_Tx_Size[txSz];
-		stepW = Tx_Width[subTxSz] / MI_SIZE;
-		stepH = Tx_Height[subTxSz] / MI_SIZE;
-		for (i = 0; i < h4; i += stepH)
-			for (j = 0; j < w4; j += stepW)
-				read_var_tx_size(row + i, col + j, subTxSz, depth + 1);
+		int subTxSz = Split_Tx_Size[txSz];
+		int stepW = Tx_Width[subTxSz] / MI_SIZE;
+		int stepH = Tx_Height[subTxSz] / MI_SIZE;
+		for (int i = 0; i < h4; i += stepH)
+			for (int j = 0; j < w4; j += stepW)
+				read_var_tx_size(row + i, col + j, subTxSz, depth + 1,
+					 sbCtx, bs,  t_data,p_data,  b_data,  av1ctx);
 	}
 	else
 	{
-		for (i = 0; i < h4; i++)
-			for (j = 0; j < w4; j++)
-				InterTxSizes[row + i][col + j] = txSz;
-		TxSize = txSz;
+		for (int i = 0; i < h4; i++)
+			for (int j = 0; j < w4; j++)
+				p_data->InterTxSizes[row + i][col + j] = txSz;
+		b_data->TxSize = txSz;
 	}
 }
-int frame::read_tx_size(allowSelect)
+int frame::read_tx_size(int allowSelect, SymbolContext *sbCtx, bitSt *bs,BlockData *b_data,AV1DecodeContext *av1ctx)
 {
-	if (Lossless)
+	frameHeader *frameHdr = av1ctx->curFrameHdr;
+	if (b_data->Lossless)
 	{
-		TxSize = TX_4X4;
+		b_data->TxSize = TX_4X4;
 		return;
 	}
-	maxRectTxSize = Max_Tx_Size_Rect[MiSize];
-	maxTxDepth = Max_Tx_Depth[MiSize];
-	TxSize = maxRectTxSize;
-	if (MiSize > BLOCK_4X4 && allowSelect && TxMode == TX_MODE_SELECT)
+	int maxRectTxSize = Max_Tx_Size_Rect[b_data->MiSize];
+	int maxTxDepth = Max_Tx_Depth[b_data->MiSize];
+	b_data->TxSize = maxRectTxSize;
+	if (b_data->MiSize > BLOCK_4X4 && allowSelect && frameHdr->TxMode == TX_MODE_SELECT)
 	{
-		tx_depth; // S()
-		for (i = 0; i < tx_depth; i++)
-			TxSize = Split_Tx_Size[TxSize];
+		int tx_depth = sb->decodeSymbol(sbCtx,bs,av1ctx->currentFrame.cdfCtx.Single_Ref[ctx][5],sizeof(av1ctx->currentFrame.cdfCtx.Single_Ref[ctx][5])/sizeof(uint16_t));; // S()
+		for (int i = 0; i < tx_depth; i++)
+			b_data->TxSize = Split_Tx_Size[b_data->TxSize];
 	}
 }
 

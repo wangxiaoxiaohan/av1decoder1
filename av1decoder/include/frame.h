@@ -88,7 +88,11 @@ public:
 	int palette_tokens(SymbolContext *sbCtx, bitSt *bs, TileData *t_data,
 								 PartitionData *p_data, BlockData *b_data, AV1DecodeContext *av1ctx);
 	int get_palette_color_context(uint8_t **colorMap,int r,int c,int n,BlockData *b_data);
-	int read_block_tx_size();
+	int read_block_tx_size(SymbolContext *sbCtx, bitSt *bs, TileData *t_data,
+								 PartitionData *p_data, BlockData *b_data, AV1DecodeContext *av1ctx);
+	int read_var_tx_size(int row,int col,int txSz,int depth,SymbolContext *sbCtx, bitSt *bs, TileData *t_data,
+								 PartitionData *p_data, BlockData *b_data, AV1DecodeContext *av1ctx);
+	int read_tx_size(int allowSelect, SymbolContext *sbCtx, bitSt *bs,BlockData *b_data,AV1DecodeContext *av1ctx);
 	int compute_prediction();
 	int reset_block_context(int bw4, int bh4);
 	int needs_interp_filter(BlockData *b_data);

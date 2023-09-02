@@ -322,6 +322,7 @@ typedef struct PartitionData{
 	uint8_t **PaletteSizes[2];
 	uint8_t ***PaletteColors[2];
 	uint8_t **DeltaLFs[4];
+	uint8_t **InterTxSizes;
 }PartitionData;
 typedef struct BlockData{
 	uint8_t HasChroma;
@@ -395,7 +396,7 @@ typedef struct BlockData{
 	uint8_t **ColorMapUV;
 	uint8_t ColorOrder[PALETTE_COLORS];
 	uint8_t ColorContextHash;
-
+	uint8_t TxSize;
 }BlockData;
 
 typedef struct FrameContext{
