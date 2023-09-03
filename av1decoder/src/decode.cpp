@@ -122,7 +122,7 @@ int decode::init_non_coeff_cdfs(CDFArrays *cdf){
 }
 //indicates that this frame can be decoded without dependence on previous coded frames
 int decode::setup_past_independence(AV1DecodeContext *av1Ctx){
-	frameHeader *frameHdr = av1Ctx->frameHdr;
+	frameHeader *frameHdr = av1Ctx->curFrameHdr;
 	for(int i = 0 ; i < MAX_SEGMENTS; i++){
 		for(int j = 0 ; j < SEG_LVL_MAX ; j++){
 			frameHdr->segmentation_params.FeatureData[ i ][ j ] = 0;
@@ -214,7 +214,7 @@ int decode::load_previous_segment_ids(){
 	}
 }
 int decode::init_coeff_cdfs(AV1DecodeContext *av1Ctx){
-	frameHeader *frameHdr = av1Ctx->frameHdr;
+	frameHeader *frameHdr = av1Ctx->curFrameHdr;
     CDFArrays *cdf = &av1Ctx->currentFrame.cdfCtx;
     int idx;
     if(frameHdr->quantization_params.base_q_idx == 20){
@@ -462,19 +462,19 @@ int decode::find_mv_stack(int isCompound,SymbolContext *sbCtx, bitSt *bs, TileDa
 	frameHeader *frameHdr = av1ctx->frameHdr;
 	sequenceHeader *seqHdr = av1ctx->seqHdr;
 									
-	b_data->NumMvFound = 0;
-	b_data->NewMvCount = 0;
-	setup_global_mv(0,b_data->GlobalMvs[0],b_data,av1ctx);
-	setup_global_mv(1,b_data->GlobalMvs[1],b_data,av1ctx);
-	b_data->FoundMatch = 0;
+	av1ctx->NumMvFound = 0;
+	av1ctx->NewMvCount = 0;
+	setup_global_mv(0,av1ctx->GlobalMvs[0],b_data,av1ctx);
+	setup_global_mv(1,av1ctx->GlobalMvs[1],b_data,av1ctx);
+	av1ctx->FoundMatch = 0;
 	scan_row(-1,isCompound,p_data,b_data);
 	int foundAboveMatch,foundLeftMatch;
 
-	foundAboveMatch = b_data->FoundMatch ;
-	b_data->FoundMatch = 0;
+	foundAboveMatch = av1ctx->FoundMatch ;
+	av1ctx->FoundMatch = 0;
 	scan_col(-1,isCompound);
-	foundLeftMatch = b_data->FoundMatch ;
-	b_data->FoundMatch = 0;
+	foundLeftMatch = av1ctx->FoundMatch ;
+	av1ctx->FoundMatch = 0;
 
 	int bh4 = Num_4x4_Blocks_High[ b_data->MiSize ];
 	int bw4 = Num_4x4_Blocks_Wide[ b_data->MiSize ];
@@ -482,61 +482,61 @@ int decode::find_mv_stack(int isCompound,SymbolContext *sbCtx, bitSt *bs, TileDa
 		scan_point(-1,bw4,isCompound);
 	}
 
-	if(b_data->FoundMatch == 1){
+	if(av1ctx->FoundMatch == 1){
 		foundAboveMatch = 1;
 	}
-	b_data->CloseMatches = foundAboveMatch + foundLeftMatch;
-	int numNearest = b_data->NumMvFound;
-	int numNew = b_data->NewMvCount;
+	av1ctx->CloseMatches = foundAboveMatch + foundLeftMatch;
+	int numNearest = av1ctx->NumMvFound;
+	int numNew = av1ctx->NewMvCount;
 	if(numNearest > 0){
 		for(int idx = 0 ;idx < numNearest - 1;idx ++ ){
 				WeightStack[ idx ] += REF_CAT_LEVEL;
 		}
 	}
-	b_data->ZeroMvContext = 0;
+	av1ctx->ZeroMvContext = 0;
 	if(frameHdr->use_ref_frame_mvs == 1){
 
 		temporal_scan(isCompound);
 	}
 	scan_point(-1,-1,isCompound);
-	if(b_data->FoundMatch == 1){
+	if(av1ctx->FoundMatch == 1){
 		foundAboveMatch = 1;
 	}
 
-	b_data->FoundMatch =0;
+	av1ctx->FoundMatch =0;
 	scan_row(-3,isCompound,p_data,b_data);
-	if(b_data->FoundMatch == 1){
+	if(av1ctx->FoundMatch == 1){
 		foundAboveMatch = 1;
 	}
-	b_data->FoundMatch =0;
+	av1ctx->FoundMatch =0;
 
 	scan_col(-3,isCompound);
-	if(b_data->FoundMatch == 1){
+	if(av1ctx->FoundMatch == 1){
 		foundLeftMatch = 1;
 	}
-	b_data->FoundMatch = 0;
+	av1ctx->FoundMatch = 0;
 
 
 	if(bh4 > 1){
 		scan_row(-5,isCompound);
 	}
-	if(b_data->FoundMatch == 1){
+	if(av1ctx->FoundMatch == 1){
 		foundAboveMatch = 1;
 	}
-	b_data->FoundMatch = 0;
+	av1ctx->FoundMatch = 0;
 
 	if(bw4 > 1){
 		scan_col(-5,isCompound);
 	}
-	if(b_data->FoundMatch == 1){
+	if(av1ctx->FoundMatch == 1){
 		foundLeftMatch = 1;
 	}
 
-	b_data->TotalMatches = foundAboveMatch + foundLeftMatch;
+	av1ctx->TotalMatches = foundAboveMatch + foundLeftMatch;
 
 	Sorting(0,numNearest,isCompound);
-	Sorting(numNearest,b_data->NumMvFound,isCompound);
-	if(b_data->NumMvFound < 2){
+	Sorting(numNearest,av1ctx->NumMvFound,isCompound);
+	if(av1ctx->NumMvFound < 2){
 		extra_search(isCompound);
 	}
 	context_and_clamping(isCompound,numNew);
@@ -544,7 +544,7 @@ int decode::find_mv_stack(int isCompound,SymbolContext *sbCtx, bitSt *bs, TileDa
 }
 //7.10.2.1
 int decode::setup_global_mv(int refList,int *mv,
-								int BlockData b_data,AV1DecodeContext *av1Ctx)
+								 BlockData *b_data,AV1DecodeContext *av1Ctx)
 {
 	int ref,typ;
 	ref = b_data->RefFrame[ refList ];
@@ -1628,4 +1628,34 @@ int decode::add_sample(){
 
 
 
+}
+int decode::get_above_tx_width(int row, int col,PartitionData *p_data,BlockData *b_data)
+{
+	if (row == b_data->MiRow)
+	{
+		if (!b_data->AvailU)
+		{
+			return 64;
+		}
+		else if (Skips[row - 1][col] && IsInters[row - 1][col])
+		{
+			return 4 * Num_4x4_Blocks_Wide[p_data->MiSizes[row - 1][col]];
+		}
+	}
+	return Tx_Width[InterTxSizes[row - 1][col]];
+}
+int decode::get_left_tx_height(int row,int col,PartitionData *p_data,BlockData *b_data)
+{
+	if (col == b_data->MiCol)
+	{
+		if (!b_data->AvailL)
+		{
+			return 64;
+		}
+		else if (p_data->Skips[row][col - 1] && p_data->IsInters[row][col - 1])
+		{
+			return 4 * Num_4x4_Blocks_Wide[p_data->MiSizes[row][col - 1]];
+		}
+	}
+	return Tx_Height[p_data->InterTxSizes[row][col - 1]];
 }

@@ -296,14 +296,14 @@ int frame::parseFrameHeader(int sz, bitSt *bs, AV1DecodeContext *av1ctx, sequenc
 
 	if (out->primary_ref_frame == PRIMARY_REF_NONE)
 	{
-		 init_non_coeff_cdfs( );
-		 setup_past_independence( );
+		 decode_instance->init_non_coeff_cdfs( &av1ctx->currentFrame.cdfCtx);
+		 decode_instance->setup_past_independence(av1ctx);
 	}
 	else
 	{
 		//从主参考帧里面拷贝cdf
-		 load_cdfs( ref_frame_idx[ primary_ref_frame ] );
-		 load_previous( ) ;
+		 decode_instance->load_cdfs( av1ctx,out->ref_frame_idx[ out->primary_ref_frame ] );
+		 decode_instance->load_previous(av1ctx);
 	}
 	if (out->use_ref_frame_mvs == 1)
 	{
@@ -325,7 +325,7 @@ int frame::parseFrameHeader(int sz, bitSt *bs, AV1DecodeContext *av1ctx, sequenc
 
 	if (out->primary_ref_frame == PRIMARY_REF_NONE)
 	{
-		 init_coeff_cdfs( );
+		 init_coeff_cdfs(av1ctx);
 	}
 	else
 	{
@@ -2368,7 +2368,7 @@ int frame::inter_block_mode_info(SymbolContext *sbCtx, bitSt *bs, TileData *t_da
 	{
 		for (int dir = 0; dir < (seqHdr->enable_dual_filter ? 2 : 1); dir++)
 		{
-			if (needs_interp_filter(b_data))
+			if (needs_interp_filter(b_data,av1ctx))
 			{
 				int ctx = ((dir & 1) * 2 + (b_data->RefFrame[1] > INTRA_FRAME)) * 4;
 				int leftType = 3;
@@ -2928,7 +2928,8 @@ int frame::palette_tokens(SymbolContext *sbCtx, bitSt *bs, TileData *t_data,
 					case 6:	cdf = av1ctx->currentFrame.cdfCtx.Palette_Size_6_Y_Color[ctx]; break;
 					case 7:	cdf = av1ctx->currentFrame.cdfCtx.Palette_Size_7_Y_Color[ctx]; break;
 					case 8:	cdf = av1ctx->currentFrame.cdfCtx.Palette_Size_8_Y_Color[ctx]; break;
-
+					default:
+						break;
 				}
 
 				int palette_color_idx_y =  sb->decodeSymbol(sbCtx,bs,cdf, sizeof(cdf)); // S()
@@ -2983,7 +2984,8 @@ int frame::palette_tokens(SymbolContext *sbCtx, bitSt *bs, TileData *t_data,
 					case 6:	cdf = av1ctx->currentFrame.cdfCtx.Palette_Size_6_Uv_Color[ctx]; break;
 					case 7:	cdf = av1ctx->currentFrame.cdfCtx.Palette_Size_7_Uv_Color[ctx]; break;
 					case 8:	cdf = av1ctx->currentFrame.cdfCtx.Palette_Size_8_Uv_Color[ctx]; break;
-
+					default:
+						break;
 				}
 
 				int palette_color_idx_uv = sb->decodeSymbol(sbCtx,bs,cdf, sizeof(cdf)); // S()
@@ -3026,7 +3028,7 @@ int frame::read_block_tx_size(SymbolContext *sbCtx, bitSt *bs, TileData *t_data,
 	}
 	else
 	{
-		read_tx_size(!b_data->skip || !b_data->is_inter,sbCtx, bs, b_data,av1ctx);
+		read_tx_size(!b_data->skip || !b_data->is_inter,sbCtx, bs, p_data, b_data,av1ctx);
 		for (int row = b_data->MiRow; row < b_data->MiRow + bh4; row++)
 			for (int col = b_data->MiCol; col < b_data->MiCol + bw4; col++)
 				p_data->InterTxSizes[row][col] = b_data->TxSize;
@@ -3067,9 +3069,10 @@ int frame::read_var_tx_size(int row,int col,int txSz,int depth,SymbolContext *sb
 		b_data->TxSize = txSz;
 	}
 }
-int frame::read_tx_size(int allowSelect, SymbolContext *sbCtx, bitSt *bs,BlockData *b_data,AV1DecodeContext *av1ctx)
+int frame::read_tx_size(int allowSelect, SymbolContext *sbCtx, bitSt *bs,PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1ctx)
 {
 	frameHeader *frameHdr = av1ctx->curFrameHdr;
+	sequenceHeader *seqHdr = av1ctx->seqHdr;
 	if (b_data->Lossless)
 	{
 		b_data->TxSize = TX_4X4;
@@ -3080,56 +3083,104 @@ int frame::read_tx_size(int allowSelect, SymbolContext *sbCtx, bitSt *bs,BlockDa
 	b_data->TxSize = maxRectTxSize;
 	if (b_data->MiSize > BLOCK_4X4 && allowSelect && frameHdr->TxMode == TX_MODE_SELECT)
 	{
-		int tx_depth = sb->decodeSymbol(sbCtx,bs,av1ctx->currentFrame.cdfCtx.Single_Ref[ctx][5],sizeof(av1ctx->currentFrame.cdfCtx.Single_Ref[ctx][5])/sizeof(uint16_t));; // S()
+		int ctx;
+		int maxTxWidth = Tx_Width[maxRectTxSize];
+		int maxTxHeight = Tx_Height[maxRectTxSize];
+		int aboveW;
+		int leftH;
+		if (b_data->AvailU && p_data->IsInters[b_data->MiRow - 1][b_data->MiCol])
+		{
+			aboveW = 4 * Num_4x4_Blocks_Wide[p_data->MiSizes[b_data->MiRow - 1][b_data->MiCol]];
+		}
+		else if (b_data->AvailU)
+		{
+			aboveW = decode_instance->get_above_tx_width(b_data->MiRow, b_data->MiCol,p_data,b_data);
+		}
+		else
+		{
+			aboveW = 0;
+		}
+		if (b_data->AvailL && p_data->IsInters[b_data->MiRow][b_data->MiCol - 1])
+		{
+			leftH = 4 * Num_4x4_Blocks_High[p_data->MiSizes[b_data->MiRow][b_data->MiCol - 1]];
+		}
+		else if (b_data->AvailL)
+		{
+			leftH = decode_instance->get_left_tx_height(b_data->MiRow, b_data->MiCol,p_data,b_data);
+		}
+		else
+		{
+			leftH = 0;
+		}
+		ctx = (aboveW >= maxTxWidth) + (leftH >= maxTxHeight);
+
+		uint16_t *cdf;
+		switch (maxTxDepth)
+		{
+			case 2 : cdf = av1ctx->currentFrame.cdfCtx.Tx_16x16[ctx]; break;
+			case 3 : cdf = av1ctx->currentFrame.cdfCtx.Tx_32x32[ctx]; break;
+			case 4 : cdf = av1ctx->currentFrame.cdfCtx.Tx_64x64[ctx]; break;
+			default:
+				cdf = av1ctx->currentFrame.cdfCtx.Tx_8x8[ctx]; 
+				break;
+		}
+
+		int tx_depth = sb->decodeSymbol(sbCtx,bs,cdf,sizeof(cdf)/sizeof(uint16_t)); // S()
 		for (int i = 0; i < tx_depth; i++)
 			b_data->TxSize = Split_Tx_Size[b_data->TxSize];
 	}
 }
 
-int frame::reset_block_context(int bw4, int bh4)
+int frame::reset_block_context(int bw4, int bh4,SymbolContext *sbCtx, bitSt *bs, 
+						 	PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1ctx)
 {
-	for (plane = 0; plane < 1 + 2 * HasChroma; plane++)
+	sequenceHeader *seqHdr = av1ctx->seqHdr;
+	for (int plane = 0; plane < 1 + 2 * b_data->HasChroma; plane++)
 	{
-		subX = (plane > 0) ? subsampling_x : 0;
-		subY = (plane > 0) ? subsampling_y : 0;
-		for (i = MiCol >> subX; i < ((MiCol + bw4) >> subX); i++)
+		int subX = (plane > 0) ? seqHdr->color_config.subsampling_x : 0;
+		int subY = (plane > 0) ? seqHdr->color_config.subsampling_y : 0;
+		for (int i = b_data->MiCol >> subX; i < ((b_data->MiCol + bw4) >> subX); i++)
 		{
-			AboveLevelContext[plane][i] = 0;
-			AboveDcContext[plane][i] = 0;
+			b_data->AboveLevelContext[plane][i] = 0;
+			b_data->AboveDcContext[plane][i] = 0;
 		}
-		for (i = MiRow >> subY; i < ((MiRow + bh4) >> subY); i++)
+		for (int i = b_data->MiRow >> subY; i < ((b_data->MiRow + bh4) >> subY); i++)
 		{
-			LeftLevelContext[plane][i] = 0;
-			LeftDcContext[plane][i] = 0;
+			b_data->LeftLevelContext[plane][i] = 0;
+			b_data->LeftDcContext[plane][i] = 0;
 		}
 	}
 }
-int frame::compute_prediction()
+int frame::compute_prediction(SymbolContext *sbCtx, bitSt *bs, 
+						 	PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1ctx)
 {
-	sbMask = use_128x128_superblock ? 31 : 15;
-	subBlockMiRow = MiRow & sbMask;
-	subBlockMiCol = MiCol & sbMask;
-	for (plane = 0; plane < 1 + HasChroma * 2; plane++)
+	sequenceHeader *seqHdr = av1ctx->seqHdr;
+	frameHeader *frameHdr = av1ctx->curFrameHdr;
+	int sbMask = seqHdr->use_128x128_superblock ? 31 : 15;
+	int subBlockMiRow = b_data->MiRow & sbMask;
+	int subBlockMiCol = b_data->MiCol & sbMask;
+	for (int plane = 0; plane < 1 + b_data->HasChroma * 2; plane++)
 	{
-		planeSz = get_plane_residual_size(MiSize, plane);
-		num4x4W = Num_4x4_Blocks_Wide[planeSz];
-		num4x4H = Num_4x4_Blocks_High[planeSz];
-		log2W = MI_SIZE_LOG2 + Mi_Width_Log2[planeSz];
-		log2H = MI_SIZE_LOG2 + Mi_Height_Log2[planeSz];
-		subX = (plane > 0) ? subsampling_x : 0;
-		subY = (plane > 0) ? subsampling_y : 0;
-		baseX = (MiCol >> subX) * MI_SIZE;
-		baseY = (MiRow >> subY) * MI_SIZE;
-		candRow = (MiRow >> subY) << subY;
-		candCol = (MiCol >> subX) << subX;
-		IsInterIntra = (is_inter && RefFrame[1] == INTRA_FRAME);
+		int planeSz = get_plane_residual_size(b_data->MiSize, plane,seqHdr->color_config.subsampling_x,seqHdr->color_config.subsampling_y);
+		int num4x4W = Num_4x4_Blocks_Wide[planeSz];
+		int num4x4H = Num_4x4_Blocks_High[planeSz];
+		int log2W = MI_SIZE_LOG2 + Mi_Width_Log2[planeSz];
+		int log2H = MI_SIZE_LOG2 + Mi_Height_Log2[planeSz];
+		int subX = (plane > 0) ? seqHdr->color_config.subsampling_x : 0;
+		int subY = (plane > 0) ? seqHdr->color_config.subsampling_y : 0;
+		int baseX = (b_data->MiCol >> subX) * MI_SIZE;
+		int baseY = (b_data->MiRow >> subY) * MI_SIZE;
+		int candRow = (b_data->MiRow >> subY) << subY;
+		int candCol = (b_data->MiCol >> subX) << subX;
+		int IsInterIntra = (b_data->is_inter && b_data-> RefFrame[1] == INTRA_FRAME);
 		if (IsInterIntra)
 		{
-			if (interintra_mode == II_DC_PRED)
+			int mode;
+			if (av1ctx->interintra_mode == II_DC_PRED)
 				mode = DC_PRED;
-			else if (interintra_mode == II_V_PRED)
+			else if (av1ctx->interintra_mode == II_V_PRED)
 				mode = V_PRED;
-			else if (interintra_mode == II_H_PRED)
+			else if (av1ctx->interintra_mode == II_H_PRED)
 				mode = H_PRED;
 			else
 				mode = SMOOTH_PRED;
@@ -3145,27 +3196,27 @@ int frame::compute_prediction()
 						  mode,
 						  log2W, log2H);
 		}
-		if (is_inter)
+		if (b_data->is_inter)
 		{
-			predW = Block_Width[MiSize] >> subX;
-			predH = Block_Height[MiSize] >> subY;
-			someUseIntra = 0;
-			for (r = 0; r < (num4x4H << subY); r++)
-				for (c = 0; c < (num4x4W << subX); c++)
-					if (RefFrames[candRow + r][candCol + c][0] == INTRA_FRAME)
+			int predW = 4 * Num_4x4_Blocks_Wide[b_data->MiSize] >> subX;
+			int predH = 4 * Num_4x4_Blocks_High[b_data->MiSize] >> subY;
+			int someUseIntra = 0;
+			for (int r = 0; r < (num4x4H << subY); r++)
+				for (int c = 0; c < (num4x4W << subX); c++)
+					if (p_data->RefFrames[candRow + r][candCol + c][0] == INTRA_FRAME)
 					someUseIntra = 1;
 			if (someUseIntra)
 			{
 				predW = num4x4W * 4;
 				predH = num4x4H * 4;
-				candRow = MiRow;
-				candCol = MiCol;
+				candRow = b_data->MiRow;
+				candCol = b_data->MiCol;
 			}
-			r = 0;
-			for (y = 0; y < num4x4H * 4; y += predH)
+			int r = 0;
+			for (int y = 0; y < num4x4H * 4; y += predH)
 			{
-				c = 0;
-				for (x = 0; x < num4x4W * 4; x += predW)
+				int c = 0;
+				for (int x = 0; x < num4x4W * 4; x += predW)
 				{
 					predict_inter(plane, baseX + x, baseY + y,
 								  predW, predH,
@@ -3178,20 +3229,22 @@ int frame::compute_prediction()
 	}
 }
 
-int frame::needs_interp_filter(BlockData *b_data)
+int frame::needs_interp_filter(BlockData *b_data,AV1DecodeContext *av1ctx)
 {
-	int large = (Min(Block_Width[b_data->MiSize], Block_Height[b_data->MiSize]) >= 8);
+	frameHeader *frameHdr = av1ctx->curFrameHdr;
+	int large = (Min(4 * Num_4x4_Blocks_Wide[b_data->MiSize], 4 * Num_4x4_Blocks_High[b_data->MiSize]) >= 8);
 	if (b_data->skip_mode || b_data->motion_mode == LOCALWARP)
 	{
 		return 0;
 	}
 	else if (large && b_data->YMode == GLOBALMV)
 	{
-		return GmType[RefFrame[0]] == TRANSLATION;
+		return frameHdr->global_motion_params.GmType[b_data->RefFrame[0]] == TRANSLATION;
 	}
 	else if (large && b_data->YMode == GLOBAL_GLOBALMV)
 	{
-		return GmType[RefFrame[0]] == TRANSLATION || GmType[RefFrame[1]] == TRANSLATION;
+		return frameHdr->global_motion_params.GmType[b_data->RefFrame[0]] == TRANSLATION ||
+			   frameHdr->global_motion_params.GmType[b_data->RefFrame[1]] == TRANSLATION;
 	}
 	else
 	{

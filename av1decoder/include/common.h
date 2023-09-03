@@ -443,6 +443,13 @@ enum em_TxSize
 	TX_16X64,
 	TX_64X16,
 };
+enum em_interintra_mode{
+	II_DC_PRED = 0,
+	II_V_PRED,
+	II_H_PRED,
+	II_SMOOTH_PRED,
+};
+
 const static uint8_t Remap_Lr_Type[4] = {
 	RESTORE_NONE, RESTORE_SWITCHABLE, RESTORE_WIENER, RESTORE_SGRPROJ};
 const static int8_t Wiener_Taps_Mid[3] = {

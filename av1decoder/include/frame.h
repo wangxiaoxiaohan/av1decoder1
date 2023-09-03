@@ -92,10 +92,12 @@ public:
 								 PartitionData *p_data, BlockData *b_data, AV1DecodeContext *av1ctx);
 	int read_var_tx_size(int row,int col,int txSz,int depth,SymbolContext *sbCtx, bitSt *bs, TileData *t_data,
 								 PartitionData *p_data, BlockData *b_data, AV1DecodeContext *av1ctx);
-	int read_tx_size(int allowSelect, SymbolContext *sbCtx, bitSt *bs,BlockData *b_data,AV1DecodeContext *av1ctx);
-	int compute_prediction();
-	int reset_block_context(int bw4, int bh4);
-	int needs_interp_filter(BlockData *b_data);
+	int read_tx_size(int allowSelect, SymbolContext *sbCtx, bitSt *bs,PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1ctx);
+	int compute_prediction(SymbolContext *sbCtx, bitSt *bs, 
+						 	PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1ctx);
+	int reset_block_context(int bw4, int bh4,SymbolContext *sbCtx, bitSt *bs,
+							PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1ctx);
+	int needs_interp_filter(BlockData *b_data,AV1DecodeContext *av1ctx);
 	static frame& Instance() {
 		static frame m_pInstance;
 		return m_pInstance;

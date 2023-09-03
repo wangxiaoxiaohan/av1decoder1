@@ -397,6 +397,10 @@ typedef struct BlockData{
 	uint8_t ColorOrder[PALETTE_COLORS];
 	uint8_t ColorContextHash;
 	uint8_t TxSize;
+	uint8_t **AboveLevelContext;
+	uint8_t **AboveDcContext;
+	uint8_t **LeftLevelContext;
+	uint8_t **LeftDcContext;
 }BlockData;
 
 typedef struct FrameContext{
