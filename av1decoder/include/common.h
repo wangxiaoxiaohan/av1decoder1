@@ -162,6 +162,7 @@ enum tristate
 #define REF_SCALE_SHIFT 14
 #define MAX_VARTX_DEPTH 2
 
+//给结构体做[]操作符
 #define  Array(x) \
 typedef struct Array##x{ \
 	uint8_t negetive1; \
