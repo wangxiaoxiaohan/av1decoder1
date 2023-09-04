@@ -176,7 +176,7 @@ int decode::load_previous(AV1DecodeContext *av1Ctx){
 int decode::load_loop_filter_params(AV1DecodeContext *av1Ctx,int prevFrame){
 
 	memcpy(av1Ctx->currentFrame.frameHdr.loop_filter_params.loop_filter_ref_deltas,
-		av1Ctx->ref_frames[prevFrame]->frameHdr.loop_filter_params.8,
+		av1Ctx->ref_frames[prevFrame]->frameHdr.loop_filter_params.loop_filter_ref_deltas,
 		TOTAL_REFS_PER_FRAME * sizeof(uint8_t));
 	memcpy(av1Ctx->currentFrame.frameHdr.loop_filter_params.loop_filter_mode_deltas,
 		av1Ctx->ref_frames[prevFrame]->frameHdr.loop_filter_params.loop_filter_mode_deltas,
@@ -325,7 +325,7 @@ int decode::set_frame_refs(){
 
  //remaining references are set to be forward references in anti-chronological order
  //剩余的参考帧被设置为按反时间顺序的前向参考帧
-	for ( i = 0; i < REFS_PER_FRAME - 2; i++ ) {
+	for (int i = 0; i < REFS_PER_FRAME - 2; i++ ) {
 		int refFrame = Ref_Frame_List[ i ];
 		if ( ref_frame_idx[ refFrame - LAST_FRAME ] < 0 ) {
 			ref = -1;
@@ -350,7 +350,7 @@ int decode::set_frame_refs(){
 //Finally, any remaining references are set to the reference frame with smallest output order
 //最后，剩余的参考帧被设置为输出顺序最小的参考帧
 	ref = -1;
-	earliestOrderHint = = INT_MIN;
+	earliestOrderHint = INT_MIN;
 	for (int i = 0; i < NUM_REF_FRAMES; i++ ) {
 		int hint = shiftedOrderHints[ i ];
 		if ( ref < 0 || hint < earliestOrderHint ) {
@@ -1658,4 +1658,49 @@ int decode::get_left_tx_height(int row,int col,PartitionData *p_data,BlockData *
 		}
 	}
 	return Tx_Height[p_data->InterTxSizes[row][col - 1]];
+}
+//The process makes use of the already reconstructed samples in the current frame CurrFrame to form a 
+//prediction for the current block.
+
+int decode::predict_intra(int plane,int x,int y,int haveLeft,int haveAbove,
+				int haveAboveRight,int haveBelowLeft,int mode,int log2W,int log2H){
+
+	int w = 1 << log2W;
+	int h = 1 << log2H;
+	int maxX = ( MiCols * MI_SIZE ) - 1;
+	int maxY = ( MiRows * MI_SIZE ) - 1;
+
+	if(plane > 0){
+		maxX = ( ( MiCols * MI_SIZE ) >> subsampling_x ) - 1;
+		maxY = ( ( MiRows * MI_SIZE ) >> subsampling_y ) - 1;
+	}
+
+    for (int i = 0; i < w + h - 1; i++) {
+        if (haveAbove == 0 && haveLeft == 1) {
+            // 如果haveAbove为0且haveLeft为1，设置AboveRow[i]等于左侧的像素值
+            AboveRow[i] = CurrFrame[y][x - 1];
+        } else if (haveAbove == 0 && haveLeft == 0) {
+            // 如果haveAbove和haveLeft都为0，设置AboveRow[i]为(1 << (BitDepth - 1)) - 1
+            AboveRow[i] = (1 << (BitDepth - 1)) - 1;
+        } else {
+            // 如果以上两个条件都不满足
+            int aboveLimit = x + (haveAboveRight ? 2 * w : w) - 1;
+            AboveRow[i] = CurrFrame[plane][y - 1][Min(aboveLimit, x+i)];
+        }
+
+    }
+    for (int i = 0; i < w + h - 1; i++) {
+        if (haveLeft == 0 && haveAbove == 1) {
+            // 如果haveLeft为0且haveAbove为1，设置LeftCol[i]等于上方的像素值
+            LeftCol[i] = CurrFrame[y - 1][x];
+        } else if (haveLeft == 0 && haveAbove == 0) {
+            // 如果haveLeft和haveAbove都为0，设置LeftCol[i]为(1 << (BitDepth - 1)) + 1
+            LeftCol[i] = (1 << (BitDepth - 1)) + 1;
+        } else {
+            // 如果以上两个条件都不满足
+            int leftLimit = y + (haveBelowLeft ? 2 * h : h) - 1;
+            LeftCol[i] = CurrFrame[plane][Min(leftLimit, y+i)][x - 1];
+        }
+    }
+
 }

@@ -161,6 +161,15 @@ enum tristate
 #define COMP_NEWMV_CTXS 5
 #define REF_SCALE_SHIFT 14
 #define MAX_VARTX_DEPTH 2
+
+#define  Array(x) \
+typedef struct Array##x{ \
+	uint8_t negetive1; \
+	uint8_t data[x]; \
+};
+Array(8);
+Array(16);
+
 enum em_interpolation_filters
 {
 	EIGHTTAP = 0,
