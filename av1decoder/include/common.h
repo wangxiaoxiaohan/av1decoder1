@@ -165,11 +165,60 @@ enum tristate
 //给结构体做[]操作符
 #define  Array(x) \
 typedef struct Array##x{ \
-	uint8_t negetive1; \
-	uint8_t data[x]; \
+	uint8_t data[x + 1]; \
+	uint8_t& operator [](int i) \
+	{ \
+    	return data[i + 1]; \
+	} \
+	const uint8_t& operator [](int i)const \
+	{ \
+    	return data[i + 1]; \
+	} \
 };
 Array(8);
 Array(16);
+
+ 
+typedef struct Array{ 
+	uint8_t *data; 
+	uint8_t& operator [](int i) 
+	{ 
+    	return data[i + 1]; 
+	} 
+	const uint8_t& operator [](int i)const 
+	{ 
+    	return data[i + 1]; 
+	}
+	Array(int size){
+		data = new uint8_t[size + 1];
+	}
+	~Array(){
+		delete[] data;
+		data = NULL;
+	}
+};
+typedef struct dArray{ 
+	Array **data; 
+	uint16_t mSize1,mSize2;
+	Array operator [](int i) 
+	{ 
+    	return *data[i + 1]; 
+	} 
+
+	dArray(int size1,int size2){
+		mSize1 = size1 + 1;
+		mSize2 = size2;
+		for(int i = 0 ; i < mSize1 ; i ++){
+			data[i]  = new Array(mSize2);
+		}
+	}
+	~dArray(){
+		for(int i = 0 ; i < mSize1 ; i ++){
+			delete data[i];
+		}
+		data = NULL;
+	}
+};
 
 enum em_interpolation_filters
 {
