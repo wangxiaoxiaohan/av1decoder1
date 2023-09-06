@@ -163,6 +163,7 @@ enum tristate
 #define MAX_VARTX_DEPTH 2
 
 //给结构体做[]操作符
+/*
 #define  Array(x) \
 typedef struct Array##x{ \
 	uint8_t data[x + 1]; \
@@ -175,10 +176,13 @@ typedef struct Array##x{ \
     	return data[i + 1]; \
 	} \
 };
-Array(8);
+Array(8); 
 Array(16);
-
- 
+*/
+//以下三种自定义 数组，支持访问 -1 下标。内部做了转换，-1实际上为第一个元素。总元素数量比构造传入的值是多一个的
+//一维数组性能较之普通数组损失在6-7层左右
+//二维数组性能一半左右
+//三维未测
 typedef struct Array{ 
 	uint8_t *data; 
 	uint8_t& operator [](int i) 
@@ -199,25 +203,47 @@ typedef struct Array{
 };
 typedef struct dArray{ 
 	Array **data; 
-	uint16_t mSize1,mSize2;
-	Array operator [](int i) 
+	uint16_t mSize1;
+	Array& operator [](int i) 
 	{ 
-    	return *data[i + 1]; 
+    	return *(data[i + 1]); 
 	} 
 
 	dArray(int size1,int size2){
 		mSize1 = size1 + 1;
-		mSize2 = size2;
-		data = (Array **)malloc(mSize1 * sizeof(Array *));
+		data = new Array*[mSize1]; 
 		for(int i = 0 ; i < mSize1 ; i ++){
-			data[i]  = new Array(mSize2);
+			data[i]  = new Array(size2);
 		}
 	}
 	~dArray(){
 		for(int i = 0 ; i < mSize1 ; i ++){
 			delete data[i];
 		}
-		delete data;
+		delete[] data;
+		data = NULL;
+	}
+};
+typedef struct tArray{ 
+	dArray **data; 
+	uint16_t mSize1;
+	dArray& operator [](int i) 
+	{ 
+    	return *(data[i + 1]); 
+	} 
+
+	tArray(int size1,int size2,int size3){
+		mSize1 = size1 + 1;
+		data = new dArray*[mSize1]; 
+		for(int i = 0 ; i < mSize1 ; i ++){
+			data[i]  = new dArray(size2,size3);
+		}
+	}
+	~tArray(){
+		for(int i = 0 ; i < mSize1 ; i ++){
+			delete data[i];
+		}
+		delete[] data;
 		data = NULL;
 	}
 };
