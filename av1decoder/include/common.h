@@ -208,6 +208,7 @@ typedef struct dArray{
 	dArray(int size1,int size2){
 		mSize1 = size1 + 1;
 		mSize2 = size2;
+		data = (Array **)malloc(mSize1 * sizeof(Array *));
 		for(int i = 0 ; i < mSize1 ; i ++){
 			data[i]  = new Array(mSize2);
 		}
@@ -216,6 +217,7 @@ typedef struct dArray{
 		for(int i = 0 ; i < mSize1 ; i ++){
 			delete data[i];
 		}
+		delete data;
 		data = NULL;
 	}
 };
