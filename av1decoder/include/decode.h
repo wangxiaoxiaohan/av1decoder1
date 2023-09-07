@@ -1,3 +1,4 @@
+#include "header_common.h"
 class decode{
 public:
     decode();
@@ -23,7 +24,8 @@ public:
 	int load_previous_segment_ids();
 
 	int decode::predict_intra(int plane,int x,int y,int haveLeft,int haveAbove,
-				int haveAboveRight,int haveBelowLeft,int mode,int log2W,int log2H);
+				int haveAboveRight,int haveBelowLeft,int mode,int log2W,int log2H,
+				PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1);
 
 	static decode& Instance() {
 		static decode m_pInstance;

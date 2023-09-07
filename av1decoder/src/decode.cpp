@@ -1663,7 +1663,8 @@ int decode::get_left_tx_height(int row,int col,PartitionData *p_data,BlockData *
 //prediction for the current block.
 
 int decode::predict_intra(int plane,int x,int y,int haveLeft,int haveAbove,
-				int haveAboveRight,int haveBelowLeft,int mode,int log2W,int log2H){
+				int haveAboveRight,int haveBelowLeft,int mode,int log2W,int log2H,
+				PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1){
 
 	int w = 1 << log2W;
 	int h = 1 << log2H;
@@ -1702,5 +1703,82 @@ int decode::predict_intra(int plane,int x,int y,int haveLeft,int haveAbove,
             LeftCol[i] = CurrFrame[plane][Min(leftLimit, y+i)][x - 1];
         }
     }
+	if(haveAbove == 1 && haveLeft == 1){
+		AboveRow[ -1 ] == [ plane ][ y-1 ][x-1 ];
+	}else if(haveAbove == 1){
+		AboveRow[ -1 ] == [ plane ][ y-1 ][x ];
+	}else if(haveLeft == 1) {
+		AboveRow[ -1 ] == [ plane ][ y ][x-1 ];
+	}else{
+		AboveRow[ -1 ] == 1 << ( BitDepth - 1 ).;
+	}
+	LeftCol[ -1 ] = AboveRow[ -1 ];
 
+	if(plane == 0 && use_filter_intra){
+		recursiveIntraPrdiction();
+	}
+}
+//7.11.2.3
+//For each block of 4x2 samples, this process first prepares an array p of 7 neighboring samples, and then produces the
+//output block by filtering this array
+//输入指定的区域，将之分割为一个一个的 4 * 2小块，进行一系列操作(预测，滤波)生成帧内预测样本
+//输出在 pred数组中
+int decode::recursiveIntraPrdiction(int w, int h,uint8_t **pred)
+{
+	int w4 = w >> 2;
+	int h2 = h >> 1;
+	int i;
+
+	for (int i2 = 0; i2 < h2 - 1; i2++)
+	{
+		for (int j4 = 0; j4 < w4 - 1; j4++)
+		{
+			//对于每个 4 * 2块，做以下操作
+
+			//这个循环为当前 4 * 2块准备一个数组，包含7个样本
+			uint8_t p[7];
+			for (i = 0; i < 7; i++)
+			{
+				if (i < 5)
+				{
+					if (i2 == 0)
+					{
+						p[i][j4 * 4 + i] = AboveRow[(j4 << 2) + i - (i + 1)];
+					}
+					else if (j4 == 0 && i == 0)
+					{
+						p[i][j4 * 4 + i] = LeftCol[(i2 << 1) - 1];
+					}
+					else
+					{
+						p[i][j4 * 4 + i] = pred[(i + 1) * 4][(j4 << 2) + i - (i + 1)];
+					}
+				}
+				else
+				{
+					if (j4 == 0)
+					{
+						p[i][j4 * 4 + i] = LeftCol[(i2 << 1) + i - 4];
+					}
+					else
+					{
+						p[i][j4 * 4 + i] = pred[(i + 1) * 4 + 1][(j4 << 2) - (i + 1)];
+					}
+				}
+			}
+			//对当前 4 * 2 块内的每一个像素 进行滤波处理
+			for (int i1 = 0; i1 < 2; i1++)
+			{
+				for (int j1 = 0; j1 < 4; j1++)
+				{
+					int pr = 0;
+					for (int i = 0; i < 7; i++)
+					{
+						pr += Intra_Filter_Taps[filter_intra_mode][i1][j1][i] * pred[i][(j4 << 2) + i];
+					}
+					pred[(i2 << 1) + i1][(j4 << 2) + j1] = Clip1(Round2Signed(pr / INTRA_FILTER_SCALE_BITS));
+				}
+			}
+		}
+	}
 }

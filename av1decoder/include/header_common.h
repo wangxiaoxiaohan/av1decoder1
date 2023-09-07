@@ -401,6 +401,13 @@ typedef struct BlockData{
 	uint8_t **AboveDcContext;
 	uint8_t **LeftLevelContext;
 	uint8_t **LeftDcContext;
+
+	//块左边，上边的样本，是像素值
+	Array8 *AboveRow;
+	Array8 *LeftCol;
+
+	uint8_t **pred;
+
 }BlockData;
 
 typedef struct FrameContext{

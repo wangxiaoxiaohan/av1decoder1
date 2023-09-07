@@ -162,6 +162,9 @@ enum tristate
 #define REF_SCALE_SHIFT 14
 #define MAX_VARTX_DEPTH 2
 
+#define INTRA_FILTER_SCALE_BITS 4 
+
+#define INTRA_FILTER_MODES 5 
 //给结构体做[]操作符
 /*
 #define  Array(x) \
@@ -183,40 +186,36 @@ Array(16);
 //一维数组性能较之普通数组损失在6-7层左右
 //二维数组性能一半左右
 //三维未测
-typedef struct Array{ 
+typedef struct Array8{ 
 	uint8_t *data; 
 	uint8_t& operator [](int i) 
 	{ 
     	return data[i + 1]; 
 	} 
-	const uint8_t& operator [](int i)const 
-	{ 
-    	return data[i + 1]; 
-	}
-	Array(int size){
+	Array8(int size){
 		data = new uint8_t[size + 1];
 	}
-	~Array(){
+	~Array8(){
 		delete[] data;
 		data = NULL;
 	}
 };
-typedef struct dArray{ 
-	Array **data; 
+typedef struct dArray8{ 
+	Array8 **data; 
 	uint16_t mSize1;
-	Array& operator [](int i) 
+	Array8& operator [](int i) 
 	{ 
     	return *(data[i + 1]); 
 	} 
 
-	dArray(int size1,int size2){
+	dArray8(int size1,int size2){
 		mSize1 = size1 + 1;
-		data = new Array*[mSize1]; 
+		data = new Array8*[mSize1]; 
 		for(int i = 0 ; i < mSize1 ; i ++){
-			data[i]  = new Array(size2);
+			data[i]  = new Array8(size2);
 		}
 	}
-	~dArray(){
+	~dArray8(){
 		for(int i = 0 ; i < mSize1 ; i ++){
 			delete data[i];
 		}
@@ -224,22 +223,22 @@ typedef struct dArray{
 		data = NULL;
 	}
 };
-typedef struct tArray{ 
-	dArray **data; 
+typedef struct tArray8{ 
+	dArray8 **data; 
 	uint16_t mSize1;
-	dArray& operator [](int i) 
+	dArray8& operator [](int i) 
 	{ 
     	return *(data[i + 1]); 
 	} 
 
-	tArray(int size1,int size2,int size3){
+	tArray8(int size1,int size2,int size3){
 		mSize1 = size1 + 1;
-		data = new dArray*[mSize1]; 
+		data = new dArray8*[mSize1]; 
 		for(int i = 0 ; i < mSize1 ; i ++){
-			data[i]  = new dArray(size2,size3);
+			data[i]  = new dArray8(size2,size3);
 		}
 	}
-	~tArray(){
+	~tArray8(){
 		for(int i = 0 ; i < mSize1 ; i ++){
 			delete data[i];
 		}
@@ -247,6 +246,142 @@ typedef struct tArray{
 		data = NULL;
 	}
 };
+
+typedef struct Array16{ 
+	uint16_t *data; 
+	uint16_t& operator [](int i) 
+	{ 
+    	return data[i + 1]; 
+	} 
+	Array16(int size){
+		data = new uint16_t[size + 1];
+	}
+	~Array16(){
+		delete[] data;
+		data = NULL;
+	}
+};
+typedef struct dArray16{ 
+	Array16 **data; 
+	uint16_t mSize1;
+	Array16& operator [](int i) 
+	{ 
+    	return *(data[i + 1]); 
+	} 
+
+	dArray16(int size1,int size2){
+		mSize1 = size1 + 1;
+		data = new Array16*[mSize1]; 
+		for(int i = 0 ; i < mSize1 ; i ++){
+			data[i]  = new Array16(size2);
+		}
+	}
+	~dArray16(){
+		for(int i = 0 ; i < mSize1 ; i ++){
+			delete data[i];
+		}
+		delete[] data;
+		data = NULL;
+	}
+};
+typedef struct tArray16{ 
+	dArray16 **data; 
+	uint16_t mSize1;
+	dArray16& operator [](int i) 
+	{ 
+    	return *(data[i + 1]); 
+	} 
+
+	tArray16(int size1,int size2,int size3){
+		mSize1 = size1 + 1;
+		data = new dArray16*[mSize1]; 
+		for(int i = 0 ; i < mSize1 ; i ++){
+			data[i]  = new dArray16(size2,size3);
+		}
+	}
+	~tArray16(){
+		for(int i = 0 ; i < mSize1 ; i ++){
+			delete data[i];
+		}
+		delete[] data;
+		data = NULL;
+	}
+};
+
+
+
+
+typedef struct Array32{ 
+	uint32_t *data; 
+	uint32_t& operator [](int i) 
+	{ 
+    	return data[i + 1]; 
+	} 
+	Array32(int size){
+		data = new uint32_t[size + 1];
+	}
+	~Array32(){
+		delete[] data;
+		data = NULL;
+	}
+};
+typedef struct dArray32{ 
+	Array32 **data; 
+	uint32_t mSize1;
+	Array32& operator [](int i) 
+	{ 
+    	return *(data[i + 1]); 
+	} 
+
+	dArray32(int size1,int size2){
+		mSize1 = size1 + 1;
+		data = new Array32*[mSize1]; 
+		for(int i = 0 ; i < mSize1 ; i ++){
+			data[i]  = new Array32(size2);
+		}
+	}
+	~dArray32(){
+		for(int i = 0 ; i < mSize1 ; i ++){
+			delete data[i];
+		}
+		delete[] data;
+		data = NULL;
+	}
+};
+typedef struct tArray32{ 
+	dArray32 **data; 
+	uint32_t mSize1;
+	dArray32& operator [](int i) 
+	{ 
+    	return *(data[i + 1]); 
+	} 
+
+	tArray32(int size1,int size2,int size3){
+		mSize1 = size1 + 1;
+		data = new dArray32*[mSize1]; 
+		for(int i = 0 ; i < mSize1 ; i ++){
+			data[i]  = new dArray32(size2,size3);
+		}
+	}
+	~tArray32(){
+		for(int i = 0 ; i < mSize1 ; i ++){
+			delete data[i];
+		}
+		delete[] data;
+		data = NULL;
+	}
+};
+
+
+
+
+
+
+
+
+
+
+
 
 enum em_interpolation_filters
 {
@@ -724,7 +859,58 @@ const static uint8_t Max_Tx_Depth[BLOCK_SIZES] = {
 	4, 4};
 
 const static uint8_t Palette_Color_Hash_Multipliers[PALETTE_NUM_NEIGHBORS] = {1, 2, 2};
-int inline tile_log2(int blkSize, int target)
+
+const static uint8_t Intra_Filter_Taps[INTRA_FILTER_MODES][8][7] = {
+	{
+		{-6, 10, 0, 0, 0, 12, 0},
+		{-5, 2, 10, 0, 0, 9, 0},
+		{-3, 1, 1, 10, 0, 7, 0},
+		{-3, 1, 1, 2, 10, 5, 0},
+		{-4, 6, 0, 0, 0, 2, 12},
+		{-3, 2, 6, 0, 0, 2, 9},
+		{-3, 2, 2, 6, 0, 2, 7},
+		{-3, 1, 2, 2, 6, 3, 5},
+	},
+	{
+		{-10, 16, 0, 0, 0, 10, 0},
+		{-6, 0, 16, 0, 0, 6, 0},
+		{-4, 0, 0, 16, 0, 4, 0},
+		{-2, 0, 0, 0, 16, 2, 0},
+		{-10, 16, 0, 0, 0, 0, 10},
+		{-6, 0, 16, 0, 0, 0, 6},
+		{-4, 0, 0, 16, 0, 0, 4},
+		{-2, 0, 0, 0, 16, 0, 2},
+	},
+	{
+		{-8, 8, 0, 0, 0, 16, 0},
+		{-8, 0, 8, 0, 0, 16, 0},
+		{-8, 0, 0, 8, 0, 16, 0},
+		{-8, 0, 0, 0, 8, 16, 0},
+		{-4, 4, 0, 0, 0, 0, 16},
+		{-4, 0, 4, 0, 0, 0, 16},
+		{-4, 0, 0, 4, 0, 0, 16},
+		{-4, 0, 0, 0, 4, 0, 16},
+	},
+	{
+		{-2, 8, 0, 0, 0, 10, 0},
+		{-1, 3, 8, 0, 0, 6, 0},
+		{-1, 2, 3, 8, 0, 4, 0},
+		{0, 1, 2, 3, 8, 2, 0},
+		{-1, 4, 0, 0, 0, 3, 10},
+		{-1, 3, 4, 0, 0, 4, 6},
+		{-1, 2, 3, 4, 0, 4, 4},
+		{-1, 2, 2, 3, 4, 3, 3},
+	},
+	{
+		{-12, 14, 0, 0, 0, 14, 0},
+		{-10, 0, 14, 0, 0, 12, 0},
+		{-9, 0, 0, 14, 0, 11, 0},
+		{-8, 0, 0, 0, 14, 10, 0},
+		{-10, 12, 0, 0, 0, 0, 14},
+		{-9, 1, 12, 0, 0, 0, 12},
+		{-8, 0, 0, 12, 0, 1, 11},
+		{-7, 0, 0, 1, 12, 1, 9},
+	}} int inline tile_log2(int blkSize, int target)
 {
 	int k;
 	for (k = 0; (blkSize << k) < target; k++)
