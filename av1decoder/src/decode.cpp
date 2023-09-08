@@ -1805,14 +1805,207 @@ int decode::directionalIntraPrediction(int plane,int x,int y,int haveLeft,int ha
 			//7.11.2.8
 			intrafilter(); 
 			if(haveAbove == 1){
-
+				//7.11.2.9
+				int strength = intraEdgeFilterStrengthSelection(w,h,filterType,pAngle - 90 );
+				int numPx =  Min( w, ( maxX - x + 1 ) ) + ( pAngle < 90 ? h : 0 ) + 1;
+				//7.11.2.12 
+				intraEdgeFilter(numPx,strength,0);
 			}
 			if(haveLeft == 1){
-				
+				int strength = intraEdgeFilterStrengthSelection(w,h,filterType,pAngle - 180 );
+				int numPx =   Min( h, ( maxY - y + 1 ) ) + ( pAngle > 180 ? w : 0 ) + 1;
+				//7.11.2.12 
+				intraEdgeFilter(numPx,strength,1);
 			}
 		}
 
+		//7.11.2.10
+		int upsampleAbove = intraEdgeUpsampleSelection(w,h,filterType,pAngle - 90 );
+		int numPx = ( w + (pAngle < 90 ? h : 0) );
+		if(upsampleAbove == 1){
+			//7.11.2.11
+			 intraEdgeUpsample(numPx,0);
+		}
+		int upsampleLeft = intraEdgeUpsampleSelection(w,h,filterType,pAngle - 180 );
+		numPx = ( h + (pAngle > 180 ? w : 0) );
+		if(upsampleLeft == 1){
+			intraEdgeUpsample(numPx,1);
+		}
+	}
+
+	int dx;
+	if( < 90)
+		dx = Dr_Intra_Derivative[ pAngle ];
+	else if(pAngle > 90 && pAngle < 180)
+		dx =	Dr_Intra_Derivative[ 180 - pAngle ];
+	else{
+		//dx should be undefined;
+	}
+	
+	int dy;
+	if( dy > 90 && dy < 180)
+		dy = Dr_Intra_Derivative[ pAngle - 90 ];
+	else if(pAngle > 180)
+		dy =	Dr_Intra_Derivative[ 270 - pAngle ];
+	else{
+		//dx should be undefined;
+	}
+
+	if(pAngle < 90){
+			for(int i = 0 ; i < h){
+				for(int j = 0 ; j < w ; j++){
+					int idx = ( i + 1 ) * dx;
+					int base = (idx >> ( 6 - upsampleAbove ) ) + (j << upsampleAbove);
+					int shift = ( (idx << upsampleAbove) >> 1 ) & 0x1F;
+					int maxBaseX = (w + h - 1) << upsampleAbove;
+					if(base < maxBaseX){
+							pred[ i ][ j ] = Round2( AboveRow[ base ] * ( 32 - shift ) + AboveRow[ base + 1 ] * shift, 5 );
+					}else{
+						pred[ i ][ j ] = AboveRow[maxBaseX ];
+					}
+				}
+			}
+
+	}else if(pAngle > 90 && pAngle < 180){
+
+		for (int i = 0; i < h; i++) {
+			for (int j = 0; j < w; j++) {
+				int idx, base, shift;
+				
+				int idx = (j << 6) - (i + 1) * dx;
+				
+				int base = idx >> (6 - upsampleAbove);
+				
+				if (base >= -(1 << upsampleAbove)) {
+					int shift = ((idx << upsampleAbove) >> 1) & 0x1F;
+
+					pred[i][j] = Round2(AboveRow[base] * (32 - shift) + AboveRow[base + 1] * shift, 5);
+				} else {
+					int idx = (i << 6) - (j + 1) * dy;
+					base = idx >> (6 - upsampleLeft);
+					
+					shift = ((idx << upsampleLeft) >> 1) & 0x1F;
+
+					pred[i][j] = Round2(LeftCol[base] * (32 - shift) + LeftCol[base + 1] * shift, 5);
+				}
+			}
+		}
+
+	}else if(pAngle > 180){
+		for (int i = 0; i < h; i++) {
+			for (int j = 0; j < w; j++) {
+				int idx, base, shift;
+
+				idx = (j + 1) * dy;
+
+				base = (idx >> (6 - upsampleLeft)) + (i << upsampleLeft);
+
+				shift = ((idx << upsampleLeft) >> 1) & 0x1F;
+
+				pred[i][j] = Round2(LeftCol[base] * (32 - shift) + LeftCol[base + 1] * shift, 5);
+			}
+		}
+	}
+	else if (pAngle == 90)
+	{
+		for (int i = 0; i < w; i++)
+		{
+			for (int j = 0; j < h; j++)
+			{
+				pred[i][j] = AboveRow[j];
+			}
+		}
+	}
+	else if (pAngle == 180)
+	{
+		for (int i = 0; i < w; i++)
+		{
+			for (int j = 0; j < h; j++)
+			{
+				pred[i][j] = LeftCol[i];
+			}
+		}
 	}
 }
 //7.11.2.5
 //DC 模式帧内预测
+//DC 模式 ，就是算平均值
+/*一下是一个4*4的示例
+  | | | | | |
+  | |x x x x
+  | |x x x x
+  |	|x x x x
+  | |x x x x
+  如果 左侧上边都有效，则 计算 左侧列 和上边行像素总平均值
+   否则只有行左侧列或者右侧行有效，则只考虑一边
+*/
+int decode::DCIntraPrediction(int haveLeft ,int haveAbove,int log2W,int log2H,int w,int h,int **pred)
+{
+
+	int sum = 0;
+	int avg, leftAvg, aboveAvg;
+
+	// Calculate the average of available edge samples
+	if (haveLeft == 1 && haveAbove == 1)
+	{
+		// Case 1: Both left and above samples are available
+		sum = 0;
+		for (int k = 0; k < h; k++)
+			sum += LeftCol[k];
+		for (int k = 0; k < w; k++)
+			sum += AboveRow[k];
+		sum += (w + h) >> 1;
+		avg = sum / (w + h);
+
+		for (int i = 0; i < h; i++)
+		{
+			for (int j = 0; j < w; j++)
+			{
+				pred[i][j] = avg;
+			}
+		}
+	}
+	else if (haveLeft == 1 && haveAbove == 0)
+	{
+		// Case 2: Only left samples are available
+		for (int k = 0; k < h; k++)
+		{
+			sum += LeftCol[k];
+		}
+		leftAvg = Clip1((sum + (h >> 1)) >> log2H);
+		for (int i = 0; i < h; i++)
+		{
+			for (int j = 0; j < w; j++)
+			{
+				pred[i][j] = leftAvg;
+			}
+		}
+	}
+	else if (haveLeft == 0 && haveAbove == 1)
+	{
+		// Case 3: Only above samples are available
+		for (int k = 0; k < w; k++)
+		{
+			sum += AboveRow[k];
+		}
+		aboveAvg = Clip1((sum + (w >> 1)) >> log2W);
+		for (int i = 0; i < h; i++)
+		{
+			for (int j = 0; j < w; j++)
+			{
+				pred[i][j] = aboveAvg;
+			}
+		}
+	}
+	else
+	{
+		// Case 4: No valid samples available
+		for (int i = 0; i < h; i++)
+		{
+			for (int j = 0; j < w; j++)
+			{
+				pred[i][j] = 1 << (BitDepth - 1);
+			}
+		}
+	}
+}
