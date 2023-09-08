@@ -1716,6 +1716,10 @@ int decode::predict_intra(int plane,int x,int y,int haveLeft,int haveAbove,
 
 	if(plane == 0 && use_filter_intra){
 		recursiveIntraPrdiction();
+	}else if( is_directional_mode( mode ) ){
+
+	}else if(){
+
 	}
 }
 //7.11.2.3
@@ -1782,3 +1786,33 @@ int decode::recursiveIntraPrdiction(int w, int h,uint8_t **pred)
 		}
 	}
 }
+//7.11.2.4
+//The process uses a directional filter to generate filtered samples from the samples in LeftCol and AboveRow
+//使用“方向滤波器”和左侧、上边的像素进行帧内预测，生成帧内预测样本
+//这就是最常见的帧内预测模式
+int decode::directionalIntraPrediction(int plane,int x,int y,int haveLeft,int haveAbove,
+								int mode ,int w ,int h ,int maxX,int maxY,uint8_t **pred){
+	int angleDelta = plane == 0 ? AngleDeltaY : AngleDeltaUV;
+	int pAngle = ( Mode_To_Angle[ mode ] + angleDelta * ANGLE_STEP );
+	int upsampleAbove = 0;
+	int upsampleLeft = 0;
+	if(enable_intra_edge_filter == 1){
+		if(pAngle != 90 && pAngle != 180){
+			if(pAngle > 90 && pAngle < 180 && (w + h)){
+				//7.11.2.7
+				filterCornor();
+			}
+			//7.11.2.8
+			intrafilter(); 
+			if(haveAbove == 1){
+
+			}
+			if(haveLeft == 1){
+				
+			}
+		}
+
+	}
+}
+//7.11.2.5
+//DC 模式帧内预测
