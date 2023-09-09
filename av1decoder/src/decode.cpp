@@ -1717,9 +1717,9 @@ int decode::predict_intra(int plane,int x,int y,int haveLeft,int haveAbove,
 	if(plane == 0 && use_filter_intra){
 		recursiveIntraPrdiction();
 	}else if( is_directional_mode( mode ) ){
-
-	}else if(){
-
+		DCIntraPrediction();
+	}else if(mode == SMOOTH_PRED || mode == SMOOTH_V_PRED  || mode == SMOOTH_H_PRED ){
+		smoothIntraPrediction(); 
 	}
 }
 //7.11.2.3
@@ -1800,10 +1800,10 @@ int decode::directionalIntraPrediction(int plane,int x,int y,int haveLeft,int ha
 		if(pAngle != 90 && pAngle != 180){
 			if(pAngle > 90 && pAngle < 180 && (w + h)){
 				//7.11.2.7
-				filterCornor();
+				filterCornor(LeftCol,AboveRow);
 			}
 			//7.11.2.8
-			intrafilter(); 
+			intrafilterType(); 
 			if(haveAbove == 1){
 				//7.11.2.9
 				int strength = intraEdgeFilterStrengthSelection(w,h,filterType,pAngle - 90 );
@@ -1930,14 +1930,15 @@ int decode::directionalIntraPrediction(int plane,int x,int y,int haveLeft,int ha
 //7.11.2.5
 //DC 模式帧内预测
 //DC 模式 ，就是算平均值
-/*一下是一个4*4的示例
+/*
   | | | | | |
   | |x x x x
   | |x x x x
   |	|x x x x
   | |x x x x
   如果 左侧上边都有效，则 计算 左侧列 和上边行像素总平均值
-   否则只有行左侧列或者右侧行有效，则只考虑一边
+   否则只有行左侧列或者右侧行有效，则只考虑一边的平均值
+   把平均值赋给块内每一个像素
 */
 int decode::DCIntraPrediction(int haveLeft ,int haveAbove,int log2W,int log2H,int w,int h,int **pred)
 {
@@ -2008,4 +2009,289 @@ int decode::DCIntraPrediction(int haveLeft ,int haveAbove,int log2W,int log2H,in
 			}
 		}
 	}
+}
+//7.11.2.7 
+int decode::smoothIntraPrediction(int mode, int log2W, int log2H, int w, int h, int *LeftCol, int *AboveRow, int **pred){
+    if (mode == SMOOTH_PRED) {
+        const int *smWeightsX;
+        const int *smWeightsY;
+ 		if(log2W == 2){
+			smWeightsX = Sm_Weights_Tx_4x4;
+		}else if(log2W == 3){
+			smWeightsX = Sm_Weights_Tx_8x8;
+		}else if(log2W == 4){
+			smWeightsX = Sm_Weights_Tx_16x16;
+		}else if(log2W == 5){	
+			smWeightsX = Sm_Weights_Tx_32x32;
+		}else if(log2W == 6){
+			smWeightsX = Sm_Weights_Tx_64x64;
+		}
+
+ 		if(log2H == 2){
+			 smWeightsY = Sm_Weights_Tx_4x4; 
+		}else if(log2H == 3){
+			smWeightsY = Sm_Weights_Tx_8x8;
+		}else if(log2H == 4){
+			smWeightsY = Sm_Weights_Tx_16x16;
+		}else if(log2H == 5){	
+			smWeightsY = Sm_Weights_Tx_32x32;
+		}else if(log2H == 6){
+			smWeightsY = Sm_Weights_Tx_64x64;
+		}
+        for (int i = 0; i < h; i++) {
+            for (int j = 0; j < w; j++) {
+                int smoothPred = smWeightsY[i] * AboveRow[j] +
+                                 (256 - smWeightsY[i]) * LeftCol[h - 1] +
+                                 smWeightsX[j] * LeftCol[i] +
+                                 (256 - smWeightsX[j]) * AboveRow[w - 1];
+                pred[i][j] = Round2(smoothPred, 9);
+            }
+        }
+    } else if (mode == SMOOTH_V_PRED) {
+        const int *smWeights;
+ 		if(log2W == 2){
+			smWeights = Sm_Weights_Tx_4x4;
+		}else if(log2W == 3){
+			smWeights = Sm_Weights_Tx_8x8;
+		}else if(log2W == 4){
+			smWeights = Sm_Weights_Tx_16x16;
+		}else if(log2W == 5){	
+			smWeights = Sm_Weights_Tx_32x32;
+		}else if(log2W == 6){
+			smWeights = Sm_Weights_Tx_64x64;
+		}
+        for (int i = 0; i < h; i++) {
+            for (int j = 0; j < w; j++) {
+                int smoothPred = smWeights[i] * AboveRow[j] +
+                                 (256 - smWeights[i]) * LeftCol[h - 1];
+                pred[i][j] = Round2(smoothPred, 8);
+            }
+        }
+    } else if (mode == SMOOTH_H_PRED) {
+        const int *smWeights;
+ 		if(log2W == 2){
+			smWeights = Sm_Weights_Tx_4x4;
+		}else if(log2W == 3){
+			smWeights = Sm_Weights_Tx_8x8;
+		}else if(log2W == 4){
+			smWeights = Sm_Weights_Tx_16x16;
+		}else if(log2W == 5){	
+			smWeights = Sm_Weights_Tx_32x32;
+		}else if(log2W == 6){
+			smWeights = Sm_Weights_Tx_64x64;
+		}
+        for (int i = 0; i < h; i++) {
+            for (int j = 0; j < w; j++) {
+                int smoothPred = smWeights[j] * LeftCol[i] +
+                                 (256 - smWeights[j]) * AboveRow[w - 1];
+                pred[i][j] = Round2(smoothPred, 8);
+            }
+        }
+    }
+
+}
+//7.11.2.7 使用一个三抽头滤波器对 leftcol aboverow角落像素进行滤波
+int decode::filterCornor(Array8 *LeftCol,Array8 *AboveRow){
+	int s = (*LeftCol)[ 0 ] * 5 + (*AboveRow)[ -1 ] * 6 + (*AboveRow)[ 0 ] * 5;
+	LeftCol[-1] = Round2(s, 4);
+	AboveRow[-1] = Round2(s, 4);
+}
+//7.11.2.8
+//如果左边或上边的块使用了smooth mode ，则返回值为1
+int decode::intrafilterType(iny plane){
+	return get_filter_type(plane);
+}
+
+
+int decode::is_smooth(int row, int col, int plane) {
+    int mode;
+    if (plane == 0) {
+        mode = YModes[row][col];
+    } else {
+        if (RefFrames[row][col][0] > INTRA_FRAME) {
+            return 0;
+        }
+        mode = UVModes[row][col];
+    }
+    return (mode == SMOOTH_PRED || mode == SMOOTH_V_PRED || mode == SMOOTH_H_PRED);
+}
+
+int decode::get_filter_type(int plane) {
+    int aboveSmooth = 0;
+    int leftSmooth = 0;
+    int r, c;
+
+    if ((plane == 0) ? AvailU : AvailUChroma) {
+        r = MiRow - 1;
+        c = MiCol;
+
+        if (plane > 0) {
+            if (subsampling_x && !(MiCol & 1)) {
+                c++;
+            }
+            if (subsampling_y && (MiRow & 1)) {
+                r--;
+            }
+        }
+
+        aboveSmooth = is_smooth(r, c, plane);
+    }
+
+    if ((plane == 0) ? AvailL : AvailLChroma) {
+        r = MiRow;
+        c = MiCol - 1;
+
+        if (plane > 0) {
+            if (subsampling_x && (MiCol & 1)) {
+                c--;
+            }
+            if (subsampling_y && !(MiRow & 1)) {
+                r++;
+            }
+        }
+
+        leftSmooth = is_smooth(r, c, plane);
+    }
+
+    return aboveSmooth || leftSmooth;
+}
+//7.11.2.9
+//滤波强度
+int decode::intraEdgeFilterStrengthSelection(int w, int h, int filterType, int delta)
+{
+	int  d =  Abs( delta );
+	int  blkWh =  w + h;
+	int strength = 0;
+	if (filterType == 0)
+	{
+		if (blkWh <= 8)
+		{
+			if (d >= 56)
+				strength = 1;
+		}
+		else if (blkWh <= 12)
+		{
+			if (d >= 40)
+				strength = 1
+		}
+		else if (blkWh <= 16)
+		{
+			if (d >= 40)
+				strength = 1
+		}
+		else if (blkWh <= 24)
+		{
+			if (d >= 8)
+				strength = 1;
+			if (d >= 16)1
+			if (d >= 32)
+				strength = 3;
+		}
+		else if (blkWh <= 32)
+		{
+			strength = 1;
+			if (d >= 4)
+				strength = 2;
+			if (d >= 32)
+				strength = 3;
+		}
+		else
+		{
+			strength = 3;
+		}
+	}
+	else
+	{
+		if (blkWh <= 8)
+		{
+			if (d >= 40)
+				strength = 1;
+			if (d >= 64)
+				strength = 2;
+		}
+		else if (blkWh <= 16)
+		{
+			if (d >= 20)
+				strength = 1;
+			if (d >= 48)
+				strength = 2;
+		}
+		else if (blkWh <= 24)
+		{
+			if (d >= 4)
+				strength = 3;
+		}
+		else
+		{
+			strength = 3;
+		}
+	}
+	return strength;
+}
+int decode::intraEdgeFilterStrengthSelection(int w, int h, int filterType, int delta){
+
+	int useUpsample;
+	int  d =  Abs( delta );
+	int  blkWh =  w + h;
+	if ( d <= 0 || d >= 40 ) {
+		useUpsample = 0;
+	} else if ( filterType == 0 ) {
+		useUpsample = (blkWh <= 16);
+	} else {
+		useUpsample = (blkWh <= 8);
+	}
+	return useUpsample;
+}
+int decode::intraEdgeUpsample(int numPx,int dir){
+	Array8 *buf;
+	if(dir == 0 )
+		buf = AboveRow;
+	else 
+		buf = LeftCol;
+
+    int dup[numPx + 3];
+
+
+    dup[0] = buf[-1];
+    for (int i = -1; i < numPx; i++) {
+        dup[i + 2] = buf[i];
+    }
+    dup[numPx + 2] = buf[numPx - 1];
+
+
+    buf[-2] = dup[0];
+    for (int i = 0; i < numPx; i++) {
+        int s = -dup[i] + (9 * dup[i + 1]) + (9 * dup[i + 2]) - dup[i + 3];
+        s = Clip1(Round2(s, 4));
+        buf[2 * i - 1] = s;
+        buf[2 * i] = dup[i + 2];
+    }
+
+}
+int decode::intraEdgeFilter(int sz, int strength, int left){
+    if (strength == 0) {
+        return; 
+    }
+
+    int edge[sz]; 
+    for (int i = 0; i < sz; i++) {
+        edge[i] = (left ? LeftCol[i - 1] : AboveRow[i - 1]);
+    }
+
+    for (int i = 1; i < sz; i++) {
+        int s = 0;
+
+
+        for (int j = 0; j < INTRA_EDGE_TAPS; j++) {
+            int k = Clip3(0, sz - 1, i - 2 + j);
+            s += Intra_Edge_Kernel[strength - 1][j] * edge[k];
+        }
+
+        if (left) {
+            LeftCol[i - 1] = (s + 8) >> 4;
+        } else {
+            AboveRow[i - 1] = (s + 8) >> 4;
+        }
+    }
+
 }

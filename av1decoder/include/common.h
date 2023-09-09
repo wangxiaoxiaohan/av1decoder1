@@ -165,23 +165,10 @@ enum tristate
 #define INTRA_FILTER_SCALE_BITS 4 
 
 #define INTRA_FILTER_MODES 5 
-//给结构体做[]操作符
-/*
-#define  Array(x) \
-typedef struct Array##x{ \
-	uint8_t data[x + 1]; \
-	uint8_t& operator [](int i) \
-	{ \
-    	return data[i + 1]; \
-	} \
-	const uint8_t& operator [](int i)const \
-	{ \
-    	return data[i + 1]; \
-	} \
-};
-Array(8); 
-Array(16);
-*/
+
+#define INTRA_EDGE_KERNELS 3 
+#define INTRA_EDGE_TAPS 5 
+
 //以下三种自定义 数组，支持访问 -1 下标。内部做了转换，-1实际上为第一个元素。总元素数量比构造传入的值是多一个的
 //一维数组性能较之普通数组损失在6-7层左右
 //二维数组性能一半左右
@@ -910,7 +897,31 @@ const static uint8_t Intra_Filter_Taps[INTRA_FILTER_MODES][8][7] = {
 		{-9, 1, 12, 0, 0, 0, 12},
 		{-8, 0, 0, 12, 0, 1, 11},
 		{-7, 0, 0, 1, 12, 1, 9},
-	}} int inline tile_log2(int blkSize, int target)
+	}};
+const static uint8_t Intra_Edge_Kernel[INTRA_EDGE_KERNELS][INTRA_EDGE_TAPS] = {
+{ 0, 4, 8, 4, 0 },
+{ 0, 5, 6, 5, 0 },
+{ 2, 4, 4, 4, 2 }
+};
+
+
+const static uint8_t Sm_Weights_Tx_4x4 [ 4 ] = { 255, 149, 85, 64 };
+const static uint8_t Sm_Weights_Tx_8x8 [ 8 ] = { 255, 197, 146, 105, 73, 50, 37, 32 };
+const static uint8_t Sm_Weights_Tx_16x16[ 16 ] = { 255, 225, 196, 170, 145, 123, 102, 84, 68, 54, 43, 33, 26, 20,
+17, 16 };
+const static uint8_t Sm_Weights_Tx_32x32[ 32 ] = { 255, 240, 225, 210, 196, 182, 169, 157, 145, 133, 122, 111, 101, 92,
+83, 74,
+66, 59, 52, 45, 39, 34, 29, 25, 21, 17, 14, 12, 10, 9,
+8, 8 };
+const static uint8_t Sm_Weights_Tx_64x64[ 64 ] = { 255, 248, 240, 233, 225, 218, 210, 203, 196, 189, 182, 176, 169, 163,
+156,
+150, 144, 138, 133, 127, 121, 116, 111, 106, 101, 96, 91, 86, 82, 77,
+73, 69,
+65, 61, 57, 54, 50, 47, 44, 41, 38, 35, 32, 29, 27, 25, 22, 20, 18, 16,
+15,
+13, 12, 10, 9, 8, 7, 6, 6, 5, 5, 4, 4, 4 };
+
+int inline tile_log2(int blkSize, int target)
 {
 	int k;
 	for (k = 0; (blkSize << k) < target; k++)
