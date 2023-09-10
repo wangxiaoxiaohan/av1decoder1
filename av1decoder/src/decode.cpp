@@ -2357,8 +2357,45 @@ int decode::predict_inter(int plane, int x, int y,int w ,int h ,int candRow,int 
 		warpEstimation(CandList,LocalWarpParams,&LocalValid);
 	}
 	if(plane == 0 && motion_mode == LOCALWARP && LocalValid == 1){
-		setupShear(LocalWarpParams);
+		int a,b,g,d;//these values will bediscard;
+		setupShear(LocalWarpParams,&LocalValid,&a,&b,&g,&d);
 	}
+	int refList = 0;
+	int refFrame = RefFrames[ candRow ][ candCol ][ refList ];
+	int globalValid;
+    if((YMode == GLOBALMV || YMode == GLOBAL_GLOBALMV) && GmType[ refFrame ] > TRANSLATION){
+		int a,b,g,d;//these values will bediscard;
+		setupShear(gm_params[ refFrame ],&globalValid,&a,&b,&g,&d);
+	}
+
+	int useWarp = 0;
+    if (w >= 8 && h >= 8) {
+		useWarp = 0;
+    }else if( force_integer_mv == 0){
+		useWarp = 0;
+	}else if(motion_mode ==LOCALWARP && LocalValid = 1){
+		useWarp = 1;
+	}else if(
+		(YMode == GLOBALMV || YMode == GLOBAL_GLOBALMV) && GmType[ refFrame ] > TRANSLATION &&
+		is_scaled( refFrame ) == 0 && globalValid == 1)
+	{
+		useWarp = 2;
+	}else{
+		useWarp = 0;
+	}
+	int mv[2] = Mvs[ candRow ][ candCol ][ refList ];
+	int refIdx ;
+	if(use_intrabc == 0){
+		refIdx == ref_frame_idx[ refFrame - LAST_FRAME ];
+	}else{
+		refIdx = -1;
+		//These values ensure that the motion vector scaling has no effect
+		//spec 是这样说的 ，但是还是没明白为啥
+		RefFrameWidth[ -1 ] = FrameWidth;
+		RefUpscaledWidth[ -1 ] = UpscaledWidth;
+	}
+	motionVectorScaling( plane,refIdx, x, y, mv );
+
 }
 int decode::roundingVariablesDerivation(){
 	int isCompound =  RefFrames[ candRow ][ candCol ][ 1 ] > INTRA_FRAME;
@@ -2383,33 +2420,28 @@ int decode::roundingVariablesDerivation(){
 
 }
 //7.11.3.6
-int decode::setupShear(int *LocalWarpParams){
+int decode::setupShear(int *LocalWarpParams,int *warpValid,int *alpha,int *beta,int *gamma,int *delta){
    int divShift, divFactor;
     int warpValid;
     int alpha, beta, gamma, delta;
 
-    // Calculate alpha0 and beta0
+
     int alpha0 = Clip3(-32768, 32767, warpParams[2] - (1 << WARPEDMODEL_PREC_BITS));
     int beta0 = Clip3(-32768, 32767, warpParams[3]);
 
-    // Resolve divisor for gamma0
     resolveDivisor(warpParams[2], &divShift, &divFactor);
 
-    // Calculate gamma0
     int v = warpParams[4] << WARPEDMODEL_PREC_BITS;
     int gamma0 = Clip3(-32768, 32767, Round2Signed(v * divFactor, divShift));
 
-    // Calculate delta0
     int w = warpParams[3] * warpParams[4];
     int delta0 = Clip3(-32768, 32767, warpParams[5] - Round2Signed(w * divFactor, divShift) - (1 << WARPEDMODEL_PREC_BITS));
 
-    // Reduce precision and shift
-    alpha = (Round2Signed(alpha0, WARP_PARAM_REDUCE_BITS)) << WARP_PARAM_REDUCE_BITS;
-    beta = (Round2Signed(beta0, WARP_PARAM_REDUCE_BITS)) << WARP_PARAM_REDUCE_BITS;
-    gamma = (Round2Signed(gamma0, WARP_PARAM_REDUCE_BITS)) << WARP_PARAM_REDUCE_BITS;
-    delta = (Round2Signed(delta0, WARP_PARAM_REDUCE_BITS)) << WARP_PARAM_REDUCE_BITS;
+    *alpha = (Round2Signed(alpha0, WARP_PARAM_REDUCE_BITS)) << WARP_PARAM_REDUCE_BITS;
+    *beta = (Round2Signed(beta0, WARP_PARAM_REDUCE_BITS)) << WARP_PARAM_REDUCE_BITS;
+    *gamma = (Round2Signed(gamma0, WARP_PARAM_REDUCE_BITS)) << WARP_PARAM_REDUCE_BITS;
+    *delta = (Round2Signed(delta0, WARP_PARAM_REDUCE_BITS)) << WARP_PARAM_REDUCE_BITS;
 
-    // Check warp validity
     if ((4 * abs(alpha) + 7 * abs(beta)) >= (1 << WARPEDMODEL_PREC_BITS) ||
         (4 * abs(gamma) + 4 * abs(delta)) >= (1 << WARPEDMODEL_PREC_BITS)) {
         warpValid = 0;
@@ -2501,4 +2533,39 @@ int decode::warpEstimation(int **CandList, int LocalWarpParams[6], int *LocalVal
     LocalWarpParams[0] = Clip3(-WARPEDMODEL_TRANS_CLAMP, WARPEDMODEL_TRANS_CLAMP - 1, vx);
     LocalWarpParams[1] = Clip3(-WARPEDMODEL_TRANS_CLAMP, WARPEDMODEL_TRANS_CLAMP - 1, vy);
 
+}
+int decode::motionVectorScaling(int plane, int refIdx, int x, int y, int mv[2]){
+	int xScale, yScale;
+    int subX, subY;
+    int halfSample = 1 << (SUBPEL_BITS - 1);
+    int origX, origY;
+    int baseX, baseY;
+    int off;
+    int startX, startY;
+    int stepX, stepY;
+
+    if (plane == 0) {
+        subX = 0;
+        subY = 0;
+    } else {
+        subX = subsampling_x;
+        subY = subsampling_y;
+    }
+
+    origX = (x << SUBPEL_BITS) + ((2 * mv[1]) >> subX) + halfSample;
+    origY = (y << SUBPEL_BITS) + ((2 * mv[0]) >> subY) + halfSample;
+
+    xScale = ((RefUpscaledWidth[refIdx] << REF_SCALE_SHIFT) + (FrameWidth / 2)) / FrameWidth;
+    yScale = ((RefFrameHeight[refIdx] << REF_SCALE_SHIFT) + (FrameHeight / 2)) / FrameHeight;
+
+    baseX = (origX * xScale - (halfSample << REF_SCALE_SHIFT));
+    baseY = (origY * yScale - (halfSample << REF_SCALE_SHIFT));
+
+    off = (1 << (SCALE_SUBPEL_BITS - SUBPEL_BITS)) / 2;
+
+    startX = (Round2Signed(baseX, REF_SCALE_SHIFT + SUBPEL_BITS - SCALE_SUBPEL_BITS) + off);
+    startY = (Round2Signed(baseY, REF_SCALE_SHIFT + SUBPEL_BITS - SCALE_SUBPEL_BITS) + off);
+
+    stepX = Round2Signed(xScale, REF_SCALE_SHIFT - SCALE_SUBPEL_BITS);
+    stepY = Round2Signed(yScale, REF_SCALE_SHIFT - SCALE_SUBPEL_BITS);
 }
