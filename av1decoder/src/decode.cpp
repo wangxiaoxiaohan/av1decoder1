@@ -1184,7 +1184,7 @@ int decode::lower_precision(int *candMv,AV1DecodeContext *av1Ctx)
 		}
 	}
 }
-residual()
+int decode::residual()
 {
 	sbMask = use_128x128_superblock ? 31 : 15;
 	widthChunks = Max(1, Block_Width[MiSize] >> 6)
@@ -1228,7 +1228,7 @@ residual()
 		}
 	}
 }
-transform_tree(startX, startY, w, h)
+int decode::transform_tree(startX, startY, w, h)
 {
 	maxX = MiCols * MI_SIZE;
 	maxY = MiRows * MI_SIZE;
@@ -1267,7 +1267,7 @@ transform_tree(startX, startY, w, h)
 		}
 	}
 }
-transform_block(plane, baseX, baseY, txSz, x, y)
+int decode::transform_block(plane, baseX, baseY, txSz, x, y)
 {
 	startX = baseX + 4 * x;
 	startY = baseY + 4 * y;
@@ -1342,7 +1342,7 @@ transform_block(plane, baseX, baseY, txSz, x, y)
 		}
 	}
 }
-coeffs(plane, startX, startY, txSz)
+int decode::coeffs(plane, startX, startY, txSz)
 {
 	x4 = startX >> 2;
 	y4 = startY >> 2;
@@ -1624,8 +1624,55 @@ int decode::find_warp_samples(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
 	if (av1ctx->NumSamples == 0 && av1ctx->NumSamplesScanned > 0)
 		av1ctx->NumSamples = 1;
 }
-int decode::add_sample(){
+int decode::add_sample(int deltaRow,int deltaCol){
+    if (NumSamplesScanned >= LEAST_SQUARES_SAMPLES_MAX) {
+        return; 
+    }
 
+    int mvRow = MiRow + deltaRow;
+    int mvCol = MiCol + deltaCol;
+
+    if (!is_inside(mvRow, mvCol)) {
+        return; 
+    }
+
+    if (!isWrittenFrame[mvRow][mvCol][0]) {
+        return; 
+    }
+
+    if (RefFrames[mvRow][mvCol][0] != RefFrame[0]) {
+        return; 
+
+    if (RefFrames[mvRow][mvCol][1] != NONE) {
+        return; 
+    }
+
+    int candSz = MiSizes[mvRow][mvCol];
+    int candW4 = Num_4x4_Blocks_Wide[candSz];
+    int candH4 = Num_4x4_Blocks_High[candSz];
+    int candRow = mvRow & ~(candH4 - 1);
+    int candCol = mvCol & ~(candW4 - 1);
+    int midY = candRow * 4 + candH4 * 2 - 1;
+    int midX = candCol * 4 + candW4 * 2 - 1;
+    int threshold = Clip3(16, 112, max(Block_Width[MiSize], Block_Height[MiSize]));
+    int mvDiffRow = abs(Mvs[candRow][candCol][0][0] - Mv[0][0]);
+    int mvDiffCol = abs(Mvs[candRow][candCol][0][1] - Mv[0][1]);
+    int valid = ((mvDiffRow + mvDiffCol) <= threshold);
+
+    CandList[NumSamples][0] = midY * 8;
+    CandList[NumSamples][1] = midX * 8;
+    CandList[NumSamples][2] = midY * 8 + Mvs[candRow][candCol][0][0];
+    CandList[NumSamples][3] = midX * 8 + Mvs[candRow][candCol][0][1];
+
+    NumSamplesScanned++;
+
+    if (valid == 1) {
+        NumSamples++;
+    }
+
+    if (valid == 0 && NumSamplesScanned > 1) {
+        return;
+    }
 
 
 }
@@ -1659,6 +1706,8 @@ int decode::get_left_tx_height(int row,int col,PartitionData *p_data,BlockData *
 	}
 	return Tx_Height[p_data->InterTxSizes[row][col - 1]];
 }
+
+/*帧内预测*/
 //The process makes use of the already reconstructed samples in the current frame CurrFrame to form a 
 //prediction for the current block.
 
@@ -1931,11 +1980,12 @@ int decode::directionalIntraPrediction(int plane,int x,int y,int haveLeft,int ha
 //DC 模式帧内预测
 //DC 模式 ，就是算平均值
 /*
-  | | | | | |
-  | |x x x x
-  | |x x x x
-  |	|x x x x
-  | |x x x x
+	| | | | | | AboveRow
+	| |x x x x
+	| |x x x x
+	| |x x x x
+	| |x x x x
+  LeftCol
   如果 左侧上边都有效，则 计算 左侧列 和上边行像素总平均值
    否则只有行左侧列或者右侧行有效，则只考虑一边的平均值
    把平均值赋给块内每一个像素
@@ -2011,6 +2061,8 @@ int decode::DCIntraPrediction(int haveLeft ,int haveAbove,int log2W,int log2H,in
 	}
 }
 //7.11.2.7 
+//使用插值的方法生成预测像素
+//smWeights* 是一个权重值，用来
 int decode::smoothIntraPrediction(int mode, int log2W, int log2H, int w, int h, int *LeftCol, int *AboveRow, int **pred){
     if (mode == SMOOTH_PRED) {
         const int *smWeightsX;
@@ -2293,5 +2345,160 @@ int decode::intraEdgeFilter(int sz, int strength, int left){
             AboveRow[i - 1] = (s + 8) >> 4;
         }
     }
+
+}
+/*帧内预测结束*/
+/*帧间预测*/
+
+int decode::predict_inter(int plane, int x, int y,int w ,int h ,int candRow,int candCol){
+	roundingVariablesDerivation();
+	int LocalValid;
+	if(plane == 0 && motion_mode == LOCALWARP){
+		warpEstimation(CandList,LocalWarpParams,&LocalValid);
+	}
+	if(plane == 0 && motion_mode == LOCALWARP && LocalValid == 1){
+		setupShear(LocalWarpParams);
+	}
+}
+int decode::roundingVariablesDerivation(){
+	int isCompound =  RefFrames[ candRow ][ candCol ][ 1 ] > INTRA_FRAME;
+
+	InterRound0 = 3;
+	InterRound1 = isCompound ? 7 : 11;
+    if (BitDepth == 12) {
+        InterRound0 += 2;
+    }
+
+    if (isCompound) {
+        InterRound1 = 7;
+    } else {
+        InterRound1 = 11;
+    }
+
+    if (BitDepth == 12 && !isCompound) {
+        InterRound1 -= 2;
+    }
+    InterPostRound = 2 * FILTER_BITS - (InterRound0 + InterRound1);
+
+
+}
+//7.11.3.6
+int decode::setupShear(int *LocalWarpParams){
+   int divShift, divFactor;
+    int warpValid;
+    int alpha, beta, gamma, delta;
+
+    // Calculate alpha0 and beta0
+    int alpha0 = Clip3(-32768, 32767, warpParams[2] - (1 << WARPEDMODEL_PREC_BITS));
+    int beta0 = Clip3(-32768, 32767, warpParams[3]);
+
+    // Resolve divisor for gamma0
+    resolveDivisor(warpParams[2], &divShift, &divFactor);
+
+    // Calculate gamma0
+    int v = warpParams[4] << WARPEDMODEL_PREC_BITS;
+    int gamma0 = Clip3(-32768, 32767, Round2Signed(v * divFactor, divShift));
+
+    // Calculate delta0
+    int w = warpParams[3] * warpParams[4];
+    int delta0 = Clip3(-32768, 32767, warpParams[5] - Round2Signed(w * divFactor, divShift) - (1 << WARPEDMODEL_PREC_BITS));
+
+    // Reduce precision and shift
+    alpha = (Round2Signed(alpha0, WARP_PARAM_REDUCE_BITS)) << WARP_PARAM_REDUCE_BITS;
+    beta = (Round2Signed(beta0, WARP_PARAM_REDUCE_BITS)) << WARP_PARAM_REDUCE_BITS;
+    gamma = (Round2Signed(gamma0, WARP_PARAM_REDUCE_BITS)) << WARP_PARAM_REDUCE_BITS;
+    delta = (Round2Signed(delta0, WARP_PARAM_REDUCE_BITS)) << WARP_PARAM_REDUCE_BITS;
+
+    // Check warp validity
+    if ((4 * abs(alpha) + 7 * abs(beta)) >= (1 << WARPEDMODEL_PREC_BITS) ||
+        (4 * abs(gamma) + 4 * abs(delta)) >= (1 << WARPEDMODEL_PREC_BITS)) {
+        warpValid = 0;
+    } else {
+        warpValid = 1;
+    }
+}
+//7.11.3.7
+int decode::resolveDivisor(int d, int *divShift, int *divFactor){
+
+    int n = (int)floor(log(fabs(d)) / log(2));
+    int e = abs(d) - (1 << n);
+    int f;
+    if (n > DIV_LUT_BITS) {
+        f = (int)round((double)e / (1 << (n - DIV_LUT_BITS)));
+    } else {
+        f = e << (DIV_LUT_BITS - n);
+    }
+
+    *divShift = n + DIV_LUT_PREC_BITS;
+
+    if (d < 0) {
+        *divFactor = -Div_Lut[f];
+    } else {
+        *divFactor = Div_Lut[f];
+    }
+}
+//7.11.3.8
+int decode::warpEstimation(int **CandList, int LocalWarpParams[6], int *LocalValid){
+	int A[2][2] = {{0}};
+    int Bx[2] = {0};
+    int By[2] = {0};
+
+    int w4 = Num_4x4_Blocks_Wide[MiSize];
+    int h4 = Num_4x4_Blocks_High[MiSize];
+    int midY = MiRow * 4 + h4 * 2 - 1;
+    int midX = MiCol * 4 + w4 * 2 - 1;
+    int suy = midY * 8;
+    int sux = midX * 8;
+    int duy = suy + Mv[0][0];
+    int dux = sux + Mv[0][1];
+
+    for (int i = 0; i < NumSamples; i++) {
+        int sy = CandList[i][0] - suy;
+        int sx = CandList[i][1] - sux;
+        int dy = CandList[i][2] - duy;
+        int dx = CandList[i][3] - dux;
+
+        if (abs(sx - dx) < LS_MV_MAX && abs(sy - dy) < LS_MV_MAX) {
+            A[0][0] += ls_product(sx, sx) + 8;
+            A[0][1] += ls_product(sx, sy) + 4;
+            A[1][1] += ls_product(sy, sy) + 8;
+            Bx[0] += ls_product(sx, dx) + 8;
+            Bx[1] += ls_product(sy, dx) + 4;
+            By[0] += ls_product(sx, dy) + 4;
+            By[1] += ls_product(sy, dy) + 8;
+        }
+    }
+
+    int det = A[0][0] * A[1][1] - A[0][1] * A[0][1];
+    
+    if (det == 0) {
+        *LocalValid = 0;
+        return;
+    }
+
+    int divShift = 0;
+    int divFactor = 0; 
+
+	resolveDivisor(det,&divShift,&divFactor);
+
+    // 计算 LocalWarpParams
+    divShift -= WARPEDMODEL_PREC_BITS;
+    if (divShift < 0) {
+        divFactor = divFactor << (-divShift);
+        divShift = 0;
+    }
+
+    LocalWarpParams[2] = diag(A[1][1] * Bx[0] - A[0][1] * Bx[1],divFactor,divShift);
+    LocalWarpParams[3] = nondiag(-A[0][1] * Bx[0] + A[0][0] * Bx[1],divFactor,divShift);
+    LocalWarpParams[4] = nondiag(A[1][1] * By[0] - A[0][1] * By[1],divFactor,divShift);
+    LocalWarpParams[5] = diag(-A[0][1] * By[0] + A[0][0] * By[1],divFactor,divShift);
+
+    int mvx = Mv[0][1];
+    int mvy = Mv[0][0];
+    int vx = mvx * (1 << (WARPEDMODEL_PREC_BITS - 3)) - (midX * (LocalWarpParams[2] - (1 << WARPEDMODEL_PREC_BITS)) + midY * LocalWarpParams[3]);
+    int vy = mvy * (1 << (WARPEDMODEL_PREC_BITS - 3)) - (midX * LocalWarpParams[4] + midY * (LocalWarpParams[5] - (1 << WARPEDMODEL_PREC_BITS)));
+
+    LocalWarpParams[0] = Clip3(-WARPEDMODEL_TRANS_CLAMP, WARPEDMODEL_TRANS_CLAMP - 1, vx);
+    LocalWarpParams[1] = Clip3(-WARPEDMODEL_TRANS_CLAMP, WARPEDMODEL_TRANS_CLAMP - 1, vy);
 
 }
