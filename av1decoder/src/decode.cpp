@@ -2361,6 +2361,8 @@ int decode::predict_inter(int plane, int x, int y,int w ,int h ,int candRow,int 
 		setupShear(LocalWarpParams,&LocalValid,&a,&b,&g,&d);
 	}
 	int refList = 0;
+
+genArray:
 	int refFrame = RefFrames[ candRow ][ candCol ][ refList ];
 	int globalValid;
     if((YMode == GLOBALMV || YMode == GLOBAL_GLOBALMV) && GmType[ refFrame ] > TRANSLATION){
@@ -2395,6 +2397,61 @@ int decode::predict_inter(int plane, int x, int y,int w ,int h ,int candRow,int 
 		RefUpscaledWidth[ -1 ] = UpscaledWidth;
 	}
 	motionVectorScaling( plane,refIdx, x, y, mv );
+
+//These values are needed to avoid intrabc prediction being cropped to the frame boundaries
+	if(use_intrabc == 1){
+		RefFrameWidth[ -1 ] = MiCols * MI_SIZE;
+		RefFrameHeight[ -1 ] = MiRows * MI_SIZE;
+		RefUpscaledWidth[ -1 ] = MiCols * MI_SIZE;
+	}
+
+// 这里有问题！！
+	if(useWarp == 0){
+		blockWarp(useWarp,plane,refList,x,y,i8,j8,w,h);
+		blockInterPrediction(plane, refIdx,startX, startY, stepX, stepY, w, h, candRow, candCol );
+	}
+	if(isCompound == 1){
+		refList = 1;
+		goto genArray;
+	}
+
+	if(compound_type == COMPOUND_WEDGE && plane == 0){
+		wedgeMask(w,h);
+	}else if(compound_type == COMPOUND_INTRA){
+		intraModeVariantMask(w,h);
+	}else if(compound_type == COMPOUND_DIFFWTD && plane == 0){
+		differenceWeightMask(preds,w,h);
+	}
+
+	if(compound_type == COMPOUND_DISTANCE){
+		distanceWeights(candRow,candCol);
+	}
+
+	if(isCompound == 0 && IsInterIntra == 0){
+		for(int i = 0 ; i < h ; i ++){
+			for(int j = 0 ; j < w ; j ++){
+				CurrFrame[ plane ][ y + i ][ x + j ] = Clip1(preds[ 0 ][ i ][ j ] );
+			}
+		}
+	}else if(compound_type == COMPOUND_AVERAGE){
+		for(int i = 0 ; i < h ; i ++){
+			for(int j = 0 ; j < w ; j ++){
+				CurrFrame[ plane ][ y + i ][ x + j ] = Clip1( Round2( preds[ 0 ][ i ][ j ] + preds[ 1 ][ i ][ j ], 1 + InterPostRound ) );
+			}
+		}
+	}else if(compound_type == COMPOUND_DISTANCE){
+		for(int i = 0 ; i < h ; i ++){
+			for(int j = 0 ; j < w ; j ++){
+				CurrFrame[ plane ][ y + i ][ x + j ] = Clip1( Round2( FwdWeight * preds[ 0 ][ i ][ j ] + BckWeight * preds[ 1 ][ i ][ j ], 4 + InterPostRound ) )
+			}
+		}
+	}else{
+		maskBlend(preds,plane ,x,y,w,h);
+	}
+
+	if(motion_mode == OBMC ){
+		overlappedMotionCompensation();
+	}
 
 }
 int decode::roundingVariablesDerivation(){
@@ -2568,4 +2625,10 @@ int decode::motionVectorScaling(int plane, int refIdx, int x, int y, int mv[2]){
 
     stepX = Round2Signed(xScale, REF_SCALE_SHIFT - SCALE_SUBPEL_BITS);
     stepY = Round2Signed(yScale, REF_SCALE_SHIFT - SCALE_SUBPEL_BITS);
+}
+int decode::blockWarp(int useWarp,int plane,int refList,int x,int y,
+						int i8,int j8,int w,int h,int **pred)
+{
+	
+
 }
