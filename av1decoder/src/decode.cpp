@@ -2407,9 +2407,19 @@ genArray:
 
 // 这里有问题！！
 	if(useWarp == 0){
-		blockWarp(useWarp,plane,refList,x,y,i8,j8,w,h);
+		for(int i8 = 0 ; i8 < ((h-1) >> 3 ;i8 ++)){
+			for(int j8 = 0 ; j8 < ((w-1) >> 3 ;j8 ++)){
+				//块扭曲操作，每次一个 8*8大小的子块
+				blockWarp(useWarp,plane,refList,x,y,i8,j8,w,h);
+			}
+		} 
+		
+
+	}
+	if(useWarp == 0){
 		blockInterPrediction(plane, refIdx,startX, startY, stepX, stepY, w, h, candRow, candCol );
 	}
+
 	if(isCompound == 1){
 		refList = 1;
 		goto genArray;
@@ -2454,6 +2464,7 @@ genArray:
 	}
 
 }
+//7.11.3.2
 int decode::roundingVariablesDerivation(){
 	int isCompound =  RefFrames[ candRow ][ candCol ][ 1 ] > INTRA_FRAME;
 
@@ -2626,9 +2637,247 @@ int decode::motionVectorScaling(int plane, int refIdx, int x, int y, int mv[2]){
     stepX = Round2Signed(xScale, REF_SCALE_SHIFT - SCALE_SUBPEL_BITS);
     stepY = Round2Signed(yScale, REF_SCALE_SHIFT - SCALE_SUBPEL_BITS);
 }
+////7.11.3.3
 int decode::blockWarp(int useWarp,int plane,int refList,int x,int y,
 						int i8,int j8,int w,int h,int **pred)
 {
 	
+    int refIdx = ref_frame_idx[RefFrame[refList] - LAST_FRAME];
 
+    // Calculate ref
+    int ref = FrameStore[refIdx];
+
+    // Calculate subX and subY
+    int subX, subY;
+    if (plane == 0) {
+        subX = 0;
+        subY = 0;
+    } else {
+        subX = subsampling_x;
+        subY = subsampling_y;
+    }
+
+    // Calculate lastX and lastY
+    int lastX = ((RefUpscaledWidth[refIdx] + subX) >> subX) - 1;
+    int lastY = ((RefFrameHeight[refIdx] + subY) >> subY) - 1;
+
+    // Calculate srcX and srcY
+    int srcX = (x + j8 * 8 + 4) << subX;
+    int srcY = (y + i8 * 8 + 4) << subY;
+
+    // Calculate warpParams
+    float warpParams[6];
+    if (useWarp == 1) {
+        for (int i = 0; i < 6; i++) {
+            warpParams[i] = LocalWarpParams[i];
+        }
+    } else if (useWarp == 2) {
+        for (int i = 0; i < 6; i++) {
+            warpParams[i] = gm_params[RefFrame[refList]][i];
+        }
+    }
+
+    // Calculate dstX and dstY
+    float dstX = warpParams[2] * srcX + warpParams[3] * srcY + warpParams[0];
+    float dstY = warpParams[4] * srcX + warpParams[5] * srcY + warpParams[1];
+
+    // Invoke shear process
+    int warpValid, alpha, beta, gamma, delta;
+    setupShear(warpParams, &warpValid, &alpha, &beta, &gamma, &delta);
+
+    // Sub-sample interpolation - Horizontal filter
+    int intermediate[15][8];
+    for (int i1 = -7; i1 < 8; i1++) {
+        for (int i2 = -4; i2 < 4; i2++) {
+            float sx = sx4 + alpha * i2 + beta * i1;
+            int offs = Round2(sx, WARPEDDIFF_PREC_BITS) + WARPEDPIXEL_PREC_SHIFTS;
+            int s = 0;
+            for (int i3 = 0; i3 < 8; i3++) {
+                s += Warped_Filters[offs][i3] *
+                     ref[plane][Clip3(0, lastY, iy4 + i1)][Clip3(0, lastX, ix4 + i2 - 3 + i3)];
+            }
+            intermediate[i1 + 7][i2 + 4] = Round2(s, InterRound0);
+        }
+    }
+
+    // Sub-sample interpolation - Vertical filter
+    for (int i1 = -4; i1 < Min(4, h - i8 * 8 - 4); i1++) {
+        for (int i2 = -4; i2 < Min(4, w - j8 * 8 - 4); i2++) {
+            float sy = sy4 + gamma * i2 + delta * i1;
+            int offs = Round2(sy, WARPEDDIFF_PREC_BITS) + WARPEDPIXEL_PREC_SHIFTS;
+            int s = 0;
+            for (int i3 = 0; i3 < 8; i3++) {
+                s += Warped_Filters[offs][i3] * intermediate[i1 + i3 + 4][i2 + 4];
+            }
+            pred[i8 * 8 + i1 + 4][j8 * 8 + i2 + 4] = Round2(s, InterRound1);
+        }
+    }
+}
+//7.11.3.4
+//The sub-sample interpolation is effected via two one-dimensional convolutions. First a horizontal filter is used to build up a
+//temporary array, and then this array is vertically filtered to obtain the final prediction. The fractional parts of the motion
+//vectors determine the filtering process. If the fractional part is zero, then the filtering is equivalent to a straight sample
+//copy
+int decode::block_inter_prediction(int plane, int refIdx, int x, int y, int xStep, int yStep, int w, int h, int candRow, int candCol, int ref[plane][lastY + 1][lastX + 1]) {
+    // Calculate ref
+    int ref[plane][lastY + 1][lastX + 1];
+    if (refIdx == -1) {
+        ref = CurrFrame;
+    } else if (refIdx >= 0) {
+        ref = FrameStore[refIdx];
+    }
+
+    // Calculate subX and subY
+    int subX, subY;
+    if (plane == 0) {
+        subX = 0;
+        subY = 0;
+    } else {
+        subX = subsampling_x;
+        subY = subsampling_y;
+    }
+
+    // Calculate lastX and lastY
+    int lastX = ((RefUpscaledWidth[refIdx] + subX) >> subX) - 1;
+    int lastY = ((RefFrameHeight[refIdx] + subY) >> subY) - 1;
+
+    // Calculate intermediateHeight
+    int intermediateHeight = (((h - 1) * yStep + (1 << SCALE_SUBPEL_BITS) - 1) >> SCALE_SUBPEL_BITS) + 8;
+
+    // Sub-sample interpolation - Horizontal filter
+    int interpFilter = InterpFilters[candRow][candCol][1];
+    if (w <= 4) {
+        if (interpFilter == EIGHTTAP || interpFilter == EIGHTTAP_SHARP) {
+            interpFilter = 4;
+        } else if (interpFilter == EIGHTTAP_SMOOTH) {
+            interpFilter = 5;
+        }
+    }
+    
+    for (int r = 0; r < intermediateHeight; r++) {
+        for (int c = 0; c < w; c++) {
+            int s = 0;
+            int p = x + xStep * c;
+            for (int t = 0; t < 8; t++) {
+                s += Subpel_Filters[interpFilter][(p >> 6) & SUBPEL_MASK][t] *
+                     ref[plane][Clip3(0, lastY, (y >> 10) + r - 3)][Clip3(0, lastX, (p >> 10) + t - 3)];
+            }
+            intermediate[r][c] = Round2(s, InterRound0);
+        }
+    }
+
+    // Sub-sample interpolation - Vertical filter
+    interpFilter = InterpFilters[candRow][candCol][0];
+    if (h <= 4) {
+        if (interpFilter == EIGHTTAP || interpFilter == EIGHTTAP_SHARP) {
+            interpFilter = 4;
+        } else if (interpFilter == EIGHTTAP_SMOOTH) {
+            interpFilter = 5;
+        }
+    }
+    
+    for (int r = 0; r < h; r++) {
+        for (int c = 0; c < w; c++) {
+            int s = 0;
+            int p = (y & 1023) + yStep * r;
+            for (int t = 0; t < 8; t++) {
+                s += Subpel_Filters[interpFilter][(p >> 6) & SUBPEL_MASK][t] * intermediate[(p >> 10) + t][c];
+            }
+            pred[r][c] = Round2(s, InterRound1);
+        }
+    }
+}
+//7.11.3.11
+int decode::wedgeMask(int w,int h){
+	initializeWedgeMaskTable();
+	for ( i = 0; i < h; i++ ) {
+		for ( j = 0; j < w; j++ ) {
+			Mask[ i ][ j ] = WedgeMasks[ MiSize ][ wedge_sign ][ wedge_index ][ i ][ j ];
+		}
+	}
+}
+int decode::initializeWedgeMaskTable() {
+    int w, h,shift, sum, avg, flipSign, msk;
+    
+    w = MASK_MASTER_SIZE;
+	h = MASK_MASTER_SIZE;
+
+	for (int j = 0; j < w; j++)
+	{
+		shift = MASK_MASTER_SIZE / 4;
+		for (int i = 0; i < h; i += 2)
+		{
+			MasterMask[WEDGE_OBLIQUE63][i][j] = Wedge_Master_Oblique_Even[Clip3(0,
+																				MASK_MASTER_SIZE - 1, j - shift)];
+			shift -= 1;
+			MasterMask[WEDGE_OBLIQUE63][i + 1][j] = Wedge_Master_Oblique_Odd[Clip3(0,
+																				   MASK_MASTER_SIZE - 1, j - shift)];
+			MasterMask[WEDGE_VERTICAL][i][j] = Wedge_Master_Vertical[j];
+			MasterMask[WEDGE_VERTICAL][i + 1][j] = Wedge_Master_Vertical[j];
+		}
+	}
+	for (int i = 0; i < h; i++)
+	{
+		for (int j = 0; j < w; j++)
+		{
+			msk = MasterMask[WEDGE_OBLIQUE63][i][j];
+			MasterMask[WEDGE_OBLIQUE27][j][i] = msk;
+			MasterMask[WEDGE_OBLIQUE117][i][w - 1 - j] = 64 - msk;
+			MasterMask[WEDGE_OBLIQUE153][w - 1 - j][i] = 64 - msk;
+			MasterMask[WEDGE_HORIZONTAL][j][i] = MasterMask[WEDGE_VERTICAL][i][j];
+		}
+	}
+	// Populate WedgeMasks for different block sizes and wedge types
+    for (int bsize = BLOCK_8X8; bsize < BLOCK_SIZES; bsize++) {
+        if (Wedge_Bits[bsize] > 0) {
+            w = Block_Width[bsize];
+            h = Block_Height[bsize];
+            for (int wedge = 0; wedge < WEDGE_TYPES; wedge++) {
+                int dir = get_wedge_direction(bsize, wedge);
+                int xoff = MASK_MASTER_SIZE / 2 - ((get_wedge_xoff(bsize, wedge) * w) >> 3);
+                int yoff = MASK_MASTER_SIZE / 2 - ((get_wedge_yoff(bsize, wedge) * h) >> 3);
+                sum = 0;
+                for (int i = 0; i < w; i++)
+                    sum += MasterMask[dir][yoff][xoff + i];
+                for (int i = 1; i < h; i++)
+                    sum += MasterMask[dir][yoff + i][xoff];
+                avg = (sum + (w + h - 1) / 2) / (w + h - 1);
+                flipSign = (avg < 32);
+                for (int i = 0; i < h; i++) {
+                    for (int j = 0; j < w; j++) {
+                        WedgeMasks[bsize][flipSign][wedge][i][j] = MasterMask[dir][yoff + i][xoff + j];
+                        WedgeMasks[bsize][!flipSign][wedge][i][j] = 64 - MasterMask[dir][yoff + i][xoff + j];
+                    }
+                }
+            }
+        }
+    }
+}
+//7.11.3.13
+//This process prepares an array Mask containing the blending weights for the luma samples.
+int decode::intraModeVariantMask(int w, int h)
+{
+	int sizeScale = MAX_SB_SIZE / Max(h, w);
+	for (i = 0; i < h; i++)
+	{
+		for (j = 0; j < w; j++)
+		{
+			if (interintra_mode == II_V_PRED)
+			{
+				Mask[i][j] = Ii_Weights_1d[i * sizeScale];
+			}
+			else if (interintra_mode == II_H_PRED)
+			{
+				Mask[i][j] = Ii_Weights_1d[j * sizeScale];
+			}
+			else if (interintra_mode == II_SMOOTH_PRED)
+			{
+				Mask[i][j] = Ii_Weights_1d[Min(i, j) * sizeScale];
+			}
+			else
+			{
+				Mask[i][j] = 32;
+			}
+		}
+	}
 }
