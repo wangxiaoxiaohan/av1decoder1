@@ -180,6 +180,7 @@ enum tristate
 #define DIV_LUT_BITS 8
 #define MASK_MASTER_SIZE 64 
 #define MAX_SB_SIZE 128
+#define MAX_FRAME_DISTANCE 31
 // 以下三种自定义 数组，支持访问 -1 下标。内部做了转换，-1实际上为第一个元素。总元素数量比构造传入的值是多一个的
 // 一维数组性能较之普通数组损失在6-7层左右
 // 二维数组性能一半左右
@@ -1155,7 +1156,21 @@ const static uint8_t Ii_Weights_1d[MAX_SB_SIZE] = {
 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1,
 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
 };
-
+const static uint8_t Quant_Dist_Weight[ 4 ][ 2 ] = {
+{ 2, 3 }, { 2, 5 }, { 2, 7 }, { 1, MAX_FRAME_DISTANCE }
+};
+const static uint8_t Quant_Dist_Lookup[ 4 ][ 2 ] = {
+{ 9, 7 }, { 11, 5 }, { 12, 4 }, { 13, 3 }
+};
+const static uint8_t Obmc_Mask_2[2] = { 45, 64 };
+const static uint8_t Obmc_Mask_4[4] = { 39, 50, 59, 64 };
+const static uint8_t Obmc_Mask_8[8] = { 36, 42, 48, 53, 57, 61, 64, 64 };
+const static uint8_t Obmc_Mask_16[16] = { 34, 37, 40, 43, 46, 49, 52, 54,
+56, 58, 60, 61, 64, 64, 64, 64 };
+const static uint8_t Obmc_Mask_32[32] = { 33, 35, 36, 38, 40, 41, 43, 44,
+45, 47, 48, 50, 51, 52, 53, 55,
+56, 57, 58, 59, 60, 60, 61, 62,
+64, 64, 64, 64, 64, 64, 64, 64 };
 
 int inline tile_log2(int blkSize, int target)
 {
@@ -1394,6 +1409,19 @@ return Wedge_Codebook[block_shape(bsize)][index][1];
 }
 int inline get_wedge_yoff(int bsize, int index) {
 return Wedge_Codebook[block_shape(bsize)][index][2];
+}
+uint8_t* inline get_obmc_mask(int length ) {
+if ( length == 2 ) {
+return Obmc_Mask_2;
+} else if ( length == 4 ) {
+return Obmc_Mask_4;
+} else if ( length == 8 ) {
+return Obmc_Mask_8;
+} else if ( length == 16 ) {
+return Obmc_Mask_16;
+} else {
+return Obmc_Mask_32;
+}
 }
 
 #endif

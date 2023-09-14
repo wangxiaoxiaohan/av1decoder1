@@ -2602,6 +2602,7 @@ int decode::warpEstimation(int **CandList, int LocalWarpParams[6], int *LocalVal
     LocalWarpParams[1] = Clip3(-WARPEDMODEL_TRANS_CLAMP, WARPEDMODEL_TRANS_CLAMP - 1, vy);
 
 }
+////7.11.3.3
 int decode::motionVectorScaling(int plane, int refIdx, int x, int y, int mv[2]){
 	int xScale, yScale;
     int subX, subY;
@@ -2637,7 +2638,7 @@ int decode::motionVectorScaling(int plane, int refIdx, int x, int y, int mv[2]){
     stepX = Round2Signed(xScale, REF_SCALE_SHIFT - SCALE_SUBPEL_BITS);
     stepY = Round2Signed(yScale, REF_SCALE_SHIFT - SCALE_SUBPEL_BITS);
 }
-////7.11.3.3
+////7.11.3.5
 int decode::blockWarp(int useWarp,int plane,int refList,int x,int y,
 						int i8,int j8,int w,int h,int **pred)
 {
@@ -2881,3 +2882,205 @@ int decode::intraModeVariantMask(int w, int h)
 		}
 	}
 }
+//7.11.3.12
+//This process prepares an array Mask containing the blending weights for the luma samples
+int decode::differenceWeightMask(int ***preds, int w, int h)
+{
+	for (int i = 0; i < h; i++)
+	{
+		for (int j = 0; j < w; j++)
+		{
+			int diff = Abs(preds[0][i][j] - preds[1][i][j]);
+			diff = Round2(diff, (BitDepth - 8) + InterPostRound);
+			m = Clip3(0, 64, 38 + diff / 16);
+			if (mask_type)
+				Mask[i][j] = 64 - m;
+			else
+				Mask[i][j] = m;
+		}
+	}
+}
+//7.11.3.15
+//This process computes weights to be used for blending predictions together based on the expected output times of the
+//reference frames.
+int decode::distanceWeights(int candRow,int candCol)
+{
+ 	int refList;  
+    int h;  
+    int dist[2];  
+    int d0, d1;  
+    int order;  
+    int i;  
+  
+    for (refList = 0; refList < 2; refList++) {  
+        h = OrderHints[RefFrames[candRow][candCol][refList]];  
+        dist[refList] = fmin(fmax(0, Abs(get_relative_dist(h, OrderHint))), MAX_FRAME_DISTANCE);  
+    }  
+  
+    d0 = dist[1];  
+    d1 = dist[0];  
+    order = d0 <= d1;  
+  
+    if (d0 == 0 || d1 == 0) {  
+        FwdWeight = Quant_Dist_Lookup[3][order];  
+        BckWeight = Quant_Dist_Lookup[3][1 - order];  
+    } else {  
+        for (i = 0; i < 3; i++) {  
+            int c0 = Quant_Dist_Weight[i][order];  
+            int c1 = Quant_Dist_Weight[i][1 - order];  
+  
+            if (order) {  
+                if (d0 * c0 > d1 * c1)  
+                    break;  
+            } else {  
+                if (d0 * c0 < d1 * c1)  
+                    break;  
+            }  
+        }  
+  
+        FwdWeight = Quant_Dist_Lookup[i][order];  
+        BckWeight = Quant_Dist_Lookup[i][1 - order];  
+    }  
+}
+//The process combines two predictions according to the mask. It makes use of an array Mask containing the blending
+//weights to apply (the weights are defined for the current plane samples if compound_type is equal to
+//COMPOUND_INTRA, or the luma plane otherwise).
+int decode::maskBlend(int ***preds,int plane ,int x,int y,int w,int h){
+  	int x, y;  
+    int subX, subY;  
+    int m;  
+    int pred0, pred1;  
+  
+    if (plane == 0) {  
+        subX = subY = 0;  
+    } else {  
+        subX = subsampling_x;  
+        subY = subsampling_y;  
+    }  
+  
+    for (y = 0; y < h; y++) {  
+        for (x = 0; x < w; x++) {  
+            if ((!subX && !subY) || (interintra && !wedge_interintra)) {  
+                m = Mask[y][x];  
+            } else if (subX && !subY) {  
+                m = Round2(Mask[y][2*x] + Mask[y][2*x+1], 1);  
+            } else if (!subX && subY) {  
+                m = Round2(Mask[2*y][x] + Mask[2*y+1][x], 1);  
+            } else {  
+                m = Round2(Mask[2*y][2*x] + Mask[2*y][2*x+1] + Mask[2*y+1][2*x] + Mask[2*y+1][2*x+1], 2);  
+            }  
+  
+            if (interintra) {  
+                pred0 = Clip1(Round2(preds[0][y][x], InterPostRound));  
+                pred1 = CurrFrame[plane][y+dstY][x+dstX];  
+                CurrFrame[plane][y+dstY][x+dstX] = Round2(m * pred1 + (64 - m) * pred0, 6);  
+            } else {  
+                pred0 = preds[0][y][x];  
+                pred1 = preds[1][y][x];  
+                CurrFrame[plane][y+dstY][x+dstX] = Clip1(Round2(m * pred0 + (64 - m) * pred1, 6 + InterPostRound));  
+            }  
+        }  
+    }  
+
+}
+//This process blends the inter predicted samples for the current block with inter predicted samples based on motion
+//vectors from the above and left blocks.
+//The maximum number of overlapped predictions is limited based on the size of the block.
+//For small blocks, only the left neighbor will be used to form the prediction
+//7.11.3.9
+
+int decode::overlappedMotionCompensation(int plane, int w ,int h) {
+    int AvailU = 1; // 上方是否可用
+    int AvailL = 1; // 左侧是否可用
+    int pass;
+    int w4, x4, y4, nCount, nLimit;
+    int candRow, candCol, candSz, step4, predW, predH, mask;
+
+    if (AvailU) {
+        if (get_plane_residual_size(MiSize, plane) >= BLOCK_8X8) {
+            pass = 0;
+            w4 = Num_4x4_Blocks_Wide[MiSize];
+            x4 = MiCol;
+            y4 = MiRow;
+            nCount = 0;
+            nLimit = Min(4, Mi_Width_Log2[MiSize]);
+
+            while (nCount < nLimit && x4 < Min(MiCols, MiCol + w4)) {
+                candRow = MiRow - 1;
+                candCol = x4 | 1;
+                candSz = MiSizes[candRow][candCol];
+                step4 = Clip3(2, 16, Num_4x4_Blocks_Wide[candSz]);
+
+                if (RefFrames[candRow][candCol][0] > INTRA_FRAME) {
+                    nCount += 1;
+                    predW = Min(w, (step4 * MI_SIZE) >> subX);
+                    predH = Min(h >> 1, 32 >> subY);
+                    mask = get_obmc_mask(predH);
+                    predict_overlap(MiSize, plane, x4, y4, predW, predH, subX, subY);
+                }
+
+                x4 += step4;
+            }
+        }
+    }
+
+    if (AvailL) {
+        pass = 1;
+        h4 = Num_4x4_Blocks_High[MiSize];
+        x4 = MiCol;
+        y4 = MiRow;
+        nCount = 0;
+        nLimit = Min(4, Mi_Height_Log2[MiSize]);
+
+        while (nCount < nLimit && y4 < Min(MiRows, MiRow + h4)) {
+            candCol = MiCol - 1;
+            candRow = y4 | 1;
+            candSz = MiSizes[candRow][candCol];
+            step4 = Clip3(2, 16, Num_4x4_Blocks_High[candSz]);
+
+            if (RefFrames[candRow][candCol][0] > INTRA_FRAME) {
+                nCount += 1;
+                predW = Min(w >> 1, 32 >> subX);
+                predH = Min(h, (step4 * MI_SIZE) >> subY);
+                mask = get_obmc_mask(predW);
+                predict_overlap(MiSize, plane, x4, y4, predW, predH, subX, subY);
+            }
+
+            y4 += step4;
+        }
+    }
+}
+
+int decode::predict_overlap(){
+	mv = Mvs[ candRow ][ candCol ][ 0 ];
+	int refIdx = ref_frame_idx[ RefFrames[ candRow ][ candCol ][ 0 ] - LAST_FRAME ];
+	predX = (x4 * 4) >> subX;
+	predY = (y4 * 4) >> subY;
+	motionVectorScaling(plane,refIdx,predX, predY, mv);
+	block_inter_prediction(plane, refIdx, startX, startY, stepX, stepY,predW, predH, candRow, candCol);
+	for(int i = 0; i < predH;i++){
+		for(int j = 0; j < predW;j++){
+			obmcPred[ i ][ j ] = Clip1( obmcPred[ i ][ j ] );
+		}
+	}
+	OverlapBlending(plane, predX, predY, predW, predH, pass, obmcPred,mask);
+
+}
+//7.11.3.10
+
+int decode::OverlapBlending(int plane ,int predX,int predY,int predW,int predH ,int pass,int **obmcPred,int *mask){
+	int m;
+	for(int i = 0; i < predH;i++){
+		for(int j = 0; j < predW;j++){
+			if(pass == 0){
+				//blend from above
+				m =  mask[ i ];
+			}else{
+				//blend from left
+				m = mask[ j ];
+			}
+			CurrFrame[ plane ][ predY + i ][ predX + j ] = Round2( m * CurrFrame[ plane ][ predY + i ][ predX + j ]
+					+ (64 - m) * obmcPred[ i ][ j ], 6);
+		}
+	}
+} 
