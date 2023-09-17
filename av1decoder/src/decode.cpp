@@ -3047,7 +3047,7 @@ int decode::overlappedMotionCompensation(int plane, int w ,int h) {
             }
 
             y4 += step4;
-        }
+        }34
     }
 }
 
@@ -3084,3 +3084,87 @@ int decode::OverlapBlending(int plane ,int predX,int predY,int predW,int predH ,
 		}
 	}
 } 
+
+//7.11.4
+int decode::palettePrediction(int plane, int startX, int startY, int x, int y, int txSz) {
+    int w = Tx_Width[txSz]; // 获取变换块的宽度
+    int h = Tx_Height[txSz]; // 获取变换块的高度
+    int* palette; // 调色板数组
+    int* map; // 颜色映射数组
+
+    if (plane == 0) {
+        palette = palette_colors_y;
+        map = ColorMapY;
+    } else {
+        palette = (plane == 1) ? palette_colors_u : palette_colors_v;
+        map = ColorMapUV;
+    }
+
+    for (int i = 0; i < h; i++) {
+        for (int j = 0; j < w; j++) {
+            CurrFrame[plane][startY + i][startX + j] = palette[map[y * 4 + i][x * 4 + j]];
+        }
+    }
+}
+//7.11.5
+int decode::predictChromaFromLuma(int plane, int startX, int startY, int txSz) {
+    int w = Tx_Width[txSz]; // 获取变换块的宽度
+    int h = Tx_Height[txSz]; // 获取变换块的高度
+    int subX = subsampling_x;
+    int subY = subsampling_y;
+    int alpha = (plane == 1) ? CflAlphaU : CflAlphaV;
+    int L[MAX_FRAME_HEIGHT][MAX_FRAME_WIDTH]; // 保存亮度样本
+    int lumaAvg = 0;
+
+    for (int i = 0; i < h; i++) {
+        for (int j = 0; j < w; j++) {
+            int lumaY = (startY + i) << subY;
+            lumaY = (lumaY < MaxLumaH - (1 << subY)) ? lumaY : MaxLumaH - (1 << subY);
+            int t = 0;
+            for (int dy = 0; dy <= subY; dy += 1) {
+                for (int dx = 0; dx <= subX; dx += 1) {
+                    t += CurrFrame[0][lumaY + dy][startX + j * (1 << subX) + dx];
+                }
+            }
+            int v = t << (3 - subX - subY);
+            L[i][j] = v;
+            lumaAvg += v;
+        }
+    }
+
+    lumaAvg = (lumaAvg + (1 << (Tx_Width_Log2[txSz] + Tx_Height_Log2[txSz] - 1))) >> (Tx_Width_Log2[txSz] + Tx_Height_Log2[txSz]);
+
+    for (int i = 0; i < h; i++) {
+        for (int j = 0; j < w; j++) {
+            int dc = CurrFrame[plane][startY + i][startX + j];
+            int scaledLuma = (alpha * (L[i][j] - lumaAvg)) >> 6;
+            CurrFrame[plane][startY + i][startX + j] = (dc + scaledLuma < 0) ? 0 : ((dc + scaledLuma > 255) ? 255 : dc + scaledLuma);
+        }
+    }
+}
+
+//7.12
+int get_dc_quant(int plane) {
+    int qindex = get_qindex(0, segment_id,  FeatureData);
+    
+    if (plane == 0) {
+        return dc_q(qindex + DeltaQYDc);
+    } else if (plane == 1) {
+        return dc_q(qindex + DeltaQUDc);
+    } else {
+        return dc_q(qindex + DeltaQVDc);
+    }
+}
+
+// Function to calculate the quantizer value for the ac coefficient for a given plane.
+int get_ac_quant(int plane) {
+    int qindex = get_qindex(0, segment_id, FeatureData);
+    
+    if (plane == 0) {
+        return ac_q(qindex);
+    } else if (plane == 1) {
+        return ac_q(qindex + DeltaQUAc);
+    } else {
+        return ac_q(qindex + DeltaQVAc);
+    }
+}

@@ -1156,7 +1156,7 @@ int frame::decodeFrame(int sz, bitSt *bs, AV1DecodeContext *av1ctx){
 		t_data.MiColStart = frameHdr->tile_info.MiColStarts[ tileCol ];
 		t_data.MiColEnd = frameHdr->tile_info.MiColStarts[ tileCol + 1 ];
 	//	注意这个!!!! spec中有用，但是用到那个地方在 dav1d中，和libaom中又都没有用
-		int CurrentQIndex = frameHdr->quantization_params.base_q_idx;
+		t_data.CurrentQIndex = frameHdr->quantization_params.base_q_idx;
 		//之所以 每个tile 进行一次 init_symbol 是因为tile内的所有语法元素和数据都是算术编码的，而tile层之上会有非算术编码的语法元素。
 		//init_symbol( tileSize );
 		SymbolContext symCtx;
