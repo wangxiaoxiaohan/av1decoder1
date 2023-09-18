@@ -181,6 +181,13 @@ enum tristate
 #define MASK_MASTER_SIZE 64 
 #define MAX_SB_SIZE 128
 #define MAX_FRAME_DISTANCE 31
+
+
+#define SINPI_1_9 1321
+#define SINPI_2_9 2482
+#define SINPI_3_9 3344
+#define SINPI_4_9 3803
+
 // 以下三种自定义 数组，支持访问 -1 下标。内部做了转换，-1实际上为第一个元素。总元素数量比构造传入的值是多一个的
 // 一维数组性能较之普通数组损失在6-7层左右
 // 二维数组性能一半左右
@@ -1340,6 +1347,17 @@ const static uint16_t Ac_Qlookup[ 3 ][ 256 ] = {
 25551, 26047, 26559, 27071, 27599, 28143, 28687, 29247
 }
 };
+
+const static uint16_t  Cos128_Lookup[ 65 ] = {
+4096, 4095, 4091, 4085, 4076, 4065, 4052, 4036,
+4017, 3996, 3973, 3948, 3920, 3889, 3857, 3822,
+3784, 3745, 3703, 3659, 3612, 3564, 3513, 3461,
+3406, 3349, 3290, 3229, 3166, 3102, 3035, 2967,
+2896, 2824, 2751, 2675, 2598, 2520, 2440, 2359,
+2276, 2191, 2106, 2019, 1931, 1842, 1751, 1660,
+1567, 1474, 1380, 1285, 1189, 1092, 995, 897,
+799, 700, 601, 501, 401, 301, 201, 101, 0
+};
 int inline tile_log2(int blkSize, int target)
 {
 	int k;
@@ -1604,12 +1622,66 @@ else
 
 return ret;
 }
+//获取量化参数
 int inline dc_q(int b ,int BitDepth){
 	return  Dc_Qlookup[ (BitDepth-8) >> 1 ][ Clip3( 0, 255, b ) ] ;
 }
 
 int inline ac_q(int b ,int BitDepth){
 	return Ac_Qlookup[ (BitDepth-8) >> 1 ][ Clip3( 0, 255, b ) ] ;
+}
+
+//蝶形变换相关
+int inline brev(int numBits, int x) {
+    int t = 0;
+    for (int i = 0; i < numBits; i++) {
+        int bit = (x >> i) & 1;
+        t += bit << (numBits - 1 - i);
+    }
+    return t;
+}
+//butterfly rotation
+void inline B(int a, int b, int angle, int flip, int r, int T[]) {
+    int x = T[a] * cos128(angle) - T[b] * sin128(angle);
+    int y = T[a] * sin128(angle) + T[b] * cos128(angle);
+    T[a] = Round2(x, 12);
+    T[b] = Round2(y, 12);
+
+    if (flip) {
+        int temp = T[a];
+        T[a] = T[b];
+        T[b] = temp;
+    }
+}
+//Hadamard rotation
+void inline H(int a, int b, int flip, int r, int T[]) {
+    int x = T[a];
+    int y = T[b];
+    T[a] = Clip3(-(1 << (r - 1)), (1 << (r - 1)) - 1, x + y);
+    T[b] = Clip3(-(1 << (r - 1)), (1 << (r - 1)) - 1, x - y);
+
+    if (flip) {
+        int temp = T[a];
+        T[a] = T[b];
+        T[b] = temp;
+    }
+}
+
+int cos128(int angle) {
+    int angle2 = angle & 255;
+    if (angle2 >= 0 && angle2 <= 64)
+        return Cos128_Lookup[angle2];
+    else if (angle2 > 64 && angle2 <= 128)
+        return Cos128_Lookup[128 - angle2] * -1;
+    else if (angle2 > 128 && angle2 <= 192)
+        return Cos128_Lookup[angle2 - 128] * -1;
+    else
+        return Cos128_Lookup[256 - angle2];
+}
+
+// Sine function for integer angles
+int sin128(int angle) {
+    return cos128(angle - 64);
 }
 
 #endif

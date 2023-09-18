@@ -3144,7 +3144,7 @@ int decode::predictChromaFromLuma(int plane, int startX, int startY, int txSz) {
 }
 
 //7.12
-int get_dc_quant(int plane) {
+int decode::get_dc_quant(int plane) {
     int qindex = get_qindex(0, segment_id,  FeatureData);
     
     if (plane == 0) {
@@ -3157,7 +3157,7 @@ int get_dc_quant(int plane) {
 }
 
 // Function to calculate the quantizer value for the ac coefficient for a given plane.
-int get_ac_quant(int plane) {
+int decode::get_ac_quant(int plane) {
     int qindex = get_qindex(0, segment_id, FeatureData);
     
     if (plane == 0) {
@@ -3167,4 +3167,391 @@ int get_ac_quant(int plane) {
     } else {
         return ac_q(qindex + DeltaQVAc);
     }
+}
+int decode::reconstruct(int plane, int x, int y, int txSz) {
+    int dqDenom;
+	if (txSz == TX_32X32 || txSz == TX_16X32 || txSz == TX_32X16 || txSz == TX_16X64 || txSz == TX_64X16) {
+        dqDenom = 2;
+    } else if (txSz == TX_64X64 || txSz == TX_32X64 || txSz == TX_64X32) {
+        dqDenom =  4;
+    } else {
+        dqDenom =  1;
+    }
+    int log2W = Tx_Width_Log2[txSz];
+    int log2H = Tx_Height_Log2[txSz];
+    int w = 1 << log2W;
+    int h = 1 << log2H;
+    int tw = Min(32, w);
+    int th = Min(32, h);
+    int flipUD = (PlaneTxType == FLIPADST_DCT || PlaneTxType == FLIPADST_ADST || PlaneTxType == V_FLIPADST || PlaneTxType == FLIPADST_FLIPADST) ? 1 : 0;
+    int flipLR = (PlaneTxType == DCT_FLIPADST || PlaneTxType == ADST_FLIPADST || PlaneTxType == H_FLIPADST || PlaneTxType == FLIPADST_FLIPADST) ? 1 : 0;
+    
+    for (int i = 0; i < th; i++) {
+        for (int j = 0; j < tw; j++) {
+            int q = (i == 0 && j == 0) ? 
+					get_dc_quant(plane, segment_id, DeltaQYDc, DeltaQUDc, DeltaQVDc, quant_idx[plane][segment_id], 0, 0, 0, FeatureData) : 
+					get_ac_quant(plane, segment_id, DeltaQUAc, DeltaQVAc, quant_idx[plane][segment_id], 0, 0, 0, FeatureData);
+            
+            int q2 = using_qmatrix ? Round2(q * Quantizer_Matrix[SegQMLevel[plane][segment_id]][plane > 0][Qm_Offset[txSz] + i * tw + j], 5) : q;
+            
+            int dq = Quant[i * tw + j] * q2;
+            int sign = (dq < 0) ? -1 : 1;
+            int dq2 = sign * (Abs(dq) & 0xFFFFFF) / dqDenom;
+            
+			Dequant[ i ][ j ] = Clip3( - ( 1 << ( 7 + BitDepth ) ), ( 1 << ( 7 + BitDepth ) ) - 1, dq2 );
+
+        }
+    }
+    
+    // Invoke the 2D inverse transform block process here (not shown in this code).
+	twoDInverseTransformBlock();
+
+    for (int i = 0; i < h; i++) {
+        for (int j = 0; j < w; j++) {
+            int xx = flipLR ? (w - j - 1) : j;
+            int yy = flipUD ? (h - i - 1) : i;
+            
+            CurrFrame[plane][y + yy][x + xx] = Clip1(CurrFrame[plane][y + yy][x + xx] + Residual[i][j]);
+        }
+    }
+    // 无损模式下 需要完全无损 ，因此 Residual 内的每个像素 用 1 + BitDepth位来表示，即比位深度还多一位
+	//确保不会溢出 ，保证数据 无损
+    if (Lossless == 1) {
+        // Ensure values in the Residual array are representable by a signed integer with 1 + BitDepth bits (not shown in this code).
+    }
+}
+//7.13.2.2 翻转数组
+int decode::inverseDCTArrayPermutation(int n,int T)
+{
+    int copyT[1 << n];
+    // 复制数组 T 到 copyT
+	memcpy(copyT,T,1 << n);
+    // 根据位翻转函数 brev(n, i) 重新排列数组 T
+    for (int i = 0; i < (1 << n); i++) {
+        T[i] = copyT[brev(n, i)];
+    }
+}
+//7.13.2.3 一维反 DCT 变换
+int decode::inverseDCT(int T[], int n, int r) {
+    // 步骤1：执行逆 DCT 排列
+    inverseDCTArrayPermutation(T, n);
+
+    if (n == 6) {
+
+        for (int i = 0; i < 16; i++) {
+            B(32 + i, 63 - i, 63 - 4 * brev(4, i), 0, r ,T);
+        }
+
+        for (int i = 0; i < 16; i++) {
+            H(32 + i * 2, 33 + i * 2, i & 1, r ,T);
+        }
+
+
+        for (int i = 0; i < 4; i++) {
+            for (int j = 0; j < 2; j++) {
+                B(62 - i * 4 - j, 33 + i * 4 + j, 60 - 16 * brev(2, i) + 64 * j, 1, r ,T);
+            }
+        }
+
+        for (int i = 0; i < 8; i++) {
+            for (int j = 0; j < 2; j++) {
+                B(32 + i * 4 + j, 35 + i * 4 - j, i & 1, r ,T);
+            }
+        }
+    } else if (n >= 5) {
+
+        for (int i = 0; i < 8; i++) {
+            B(16 + i, 31 - i, 6 + (brev(3, 7 - i) << 3), 0, r ,T);
+        }
+
+
+        for (int i = 0; i < 4; i++) {
+            B(8 + i, 15 - i, 12 + (brev(2, 3 - i) << 4), 0, r ,T);
+        }
+
+        for (int i = 0; i < 2; i++) {
+            for (int j = 0; j < 2; j++) {
+                B(30 - 4 * i - j, 17 + 4 * i + j, 24 + (j << 6) + ((1 - i) << 5), 1, r ,T);
+            }
+        }
+    } else if (n >= 4) {
+
+        for (int i = 0; i < 4; i++) {
+            B(8 + i, 9 + i, i & 1, r ,T);
+        }
+
+        for (int i = 0; i < 4; i++) {
+            H(8 + 2 * i, 9 + 2 * i, i & 1, r ,T);
+        }
+    }
+
+    for (int i = 0; i < 2; i++) {
+        B(2 * i, 2 * i + 1, 32 + 16 * i, 1 - i, r ,T);
+    }
+
+    for (int i = 0; i < 2; i++) {
+        H(4 + 2 * i, 5 + 2 * i, i, r ,T);
+    }
+
+    for (int i = 0; i < 2; i++) {
+        B(6, 5, 32, 1, r ,T);
+    }
+
+    for (int i = 0; i < 2; i++) {
+        B(13 - i, 10 + i, 32, 1, r ,T);
+    }
+}
+//7.13.2.4
+void decode::inverseADSTInputArrayPermutation(int* T, int n) {
+    int n0 = 1 << n;
+    int copyT[n0]; 
+
+	memcpy(copyT,T,n0);
+    // 执行位逆序排列
+    for (int i = 0; i < n0; i++) {
+		 //区分奇偶
+        int idx = (i & 1) ? (i - 1) : (n0 - i - 1);
+        T[i] = copyT[idx];
+    }
+
+}
+//7.13.2.5
+void decode::inverseADSTOutputArrayPermutation(int* T, int n) {
+    int n0 = 1 << n;
+    int copyT[n0];
+	memcpy(copyT,T,n0);
+    // 执行输出数组排列
+    for (int i = 0; i < n0; i++) {
+        int a = ((i >> 3) & 1);
+        int b = ((i >> 2) & 1) ^ ((i >> 3) & 1);
+        int c = ((i >> 1) & 1) ^ ((i >> 2) & 1);
+        int d = (i & 1) ^ ((i >> 1) & 1);
+
+        int idx = ((d << 3) | (c << 2) | (b << 1) | a) >> (4 - n);
+
+        T[i] = (i & 1) ? (-copyT[idx]) : copyT[idx];
+    }
+}
+//7.13.2.6
+void inverseADST4(int* T, int r) {
+    const int SINPI_1_9 = 1321;
+    const int SINPI_2_9 = 2482;
+    const int SINPI_3_9 = 3344;
+    const int SINPI_4_9 = 3803;
+
+    int s[7];
+    int x[4];
+
+    s[0] = SINPI_1_9 * T[0];
+    s[1] = SINPI_2_9 * T[0];
+    s[2] = SINPI_3_9 * T[1];
+    s[3] = SINPI_4_9 * T[2];
+    s[4] = SINPI_1_9 * T[2];
+    s[5] = SINPI_2_9 * T[3];
+    s[6] = SINPI_4_9 * T[3];
+
+    int a7 = T[0] - T[2];
+    int b7 = a7 + T[3];
+
+    s[0] = s[0] + s[3];
+    s[1] = s[1] - s[4];
+    s[3] = s[2];
+    s[2] = SINPI_3_9 * b7;
+    s[0] = s[0] + s[5];
+    s[1] = s[1] - s[6];
+
+    x[0] = s[0] + s[3];
+    x[1] = s[1] + s[3];
+    x[2] = s[2];
+    x[3] = s[0] + s[1] - s[3];
+
+    T[0] = Round2(x[0], 12);
+    T[1] = Round2(x[1], 12);
+    T[2] = Round2(x[2], 12);
+    T[3] = Round2(x[3], 12);
+}
+//7.13.2.7
+void decode::inverseADST8(int* T, int r) {
+
+    int n = 3;
+	inverseADSTInputArrayPermutation(T,3);
+
+    for (int i = 0; i < 4; i++) {
+        int a = 2 * i;
+        int b = 2 * i + 1;
+        int angle = 60 - 16 * i;
+        B(a, b, angle, 1, r ,T);
+    }
+
+
+    for (int i = 0; i < 4; i++) {
+        int a = i;
+        int b = 4 + i;
+        H(a, b, 0, r,T);
+    }
+
+
+    for (int i = 0; i < 2; i++) {
+        int a = 4 + 3 * i;
+        int b = 5 + i;
+        int angle = 48 - 32 * i;
+        B(a, b, angle, 1, r,T);
+    }
+
+
+    for (int j = 0; j < 2; j++) {
+        for (int i = 0; i < 2; i++) {
+            int a = 4 * j + i;
+            int b = 2 + 4 * j + i;
+            H(a, b, 0, r,T);
+        }
+    }
+
+    for (int i = 0; i < 2; i++) {
+        int a = 2 + 4 * i;
+        int b = 3 + 4 * i;
+        int angle = 32;
+        B(a, b, angle, 1, r,T);
+    }
+
+	inverseADSTOutputArrayPermutation(T,3);
+}
+//7.13.2.8
+void inverseADST16(int* T, int r) {
+    // Step 1: Invoke the ADST input array permutation process with n = 4
+    int n = 4;
+    int copyT[16];
+	inverseADSTInputArrayPermutation(T,4);
+
+    for (int i = 0; i < 8; i++) {
+        int a = 2 * i;
+        int b = 2 * i + 1;
+        int angle = 62 - 8 * i;
+        B(a, b, angle, 1, r ,T);
+    }
+
+    for (int i = 0; i < 8; i++) {
+        int a = i;
+        int b = 8 + i;
+        H(a, b, 0, r,T);
+    }
+
+
+    for (int i = 0; i < 2; i++) {
+        int a = 8 + 2 * i;
+        int b = 9 + 2 * i;
+        int angle1 = 56 - 32 * i;
+        B(a, b, angle1, 1, r,T);
+
+        int c = 13 + 2 * i;
+        int d = 12 + 2 * i;
+        int angle2 = 8 + 32 * i;
+        B(c, d, angle2, 1, r,T);
+    }
+
+    for (int j = 0; j < 2; j++) {
+        for (int i = 0; i < 4; i++) {
+            int a = 8 * j + i;
+            int b = 4 + 8 * j + i;
+            H(a, b, 0, r,T);
+        }
+    }
+
+
+    for (int j = 0; j < 2; j++) {
+        for (int i = 0; i < 2; i++) {
+            int a = 4 + 8 * j + 3 * i;
+            int b = 5 + 8 * j + i;
+            int angle = 48 - 32 * i;
+            B(a, b, angle, 1, r,T);
+        }
+    }
+
+    for (int j = 0; j < 4; j++) {
+        for (int i = 0; i < 2; i++) {
+            int a = 4 * j + i;
+            int b = 2 + 4 * j + i;
+            H(a, b, 0, r,T);
+        }
+    }
+
+
+    for (int i = 0; i < 4; i++) {
+        int a = 2 + 4 * i;
+        int b = 3 + 4 * i;
+        int angle = 32;
+        B(a, b, angle, 1, r,T);
+    }
+	inverseADSTOutputArrayPermutation(T,4);
+}
+
+
+//7.13.2.9. 
+void decode::inverseADST(int T[],int n,int r){
+	if(n == 2 ){
+		inverseADST4(T,r);
+	}else if(n == 3){
+		inverseADST8(T,r);
+	}else if(n ==4){
+		inverseADST16(T,r);
+	}
+}
+//7.13.2.10
+void decode::inverseWalshHadamardTransform(int* T, int shift) {
+    int a = T[0] >> shift;
+    int c = T[1] >> shift;
+    int d = T[2] >> shift;
+    int b = T[3] >> shift;
+
+    a += c;
+    d -= b;
+    int e = (a - d) >> 1;
+    b = e - b;
+    c = e - c;
+    a -= b;
+
+    T[0] = a;
+    T[1] = b;
+    T[2] = c;
+    T[3] = d;
+}
+//7.13.2.11
+void decode::inverseIdentityTransform4(int* T){
+	for(int i = 0 ; i < 4 ; i ++){
+		T[ i ] = Round2( T[ i ] * 5793, 12 );
+	}
+}
+
+//7.13.2.12
+void decode::inverseIdentityTransform8(int* T){
+	for(int i = 0 ; i < 8 ; i ++){
+		T[ i ] = T[ i ] * 2;
+	}
+}
+
+//7.13.2.13
+void decode::inverseIdentityTransform16(int* T){
+	for(int i = 0 ; i < 16 ; i ++){
+		T[ i ] = Round2( T[ i ] * 11586, 12 );
+	}
+}
+
+//7.13.2.14
+void decode::inverseIdentityTransform32(int* T){
+	for(int i = 0 ; i < 32 ; i ++){
+		T[ i ] = T[ i ] * 4;
+	}
+}
+
+//7.13.2.15
+void decode::inverseIdentityTransform(int *T,int n){
+	if( n == 2){
+		inverseIdentityTransform4(T);
+	}else if(n == 3){
+		inverseIdentityTransform8(T);
+	}else if(n == 4){
+		inverseIdentityTransform16(T);
+	}else if(n == 5){
+		inverseIdentityTransform32(T);
+	}
 }
