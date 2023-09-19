@@ -3555,3 +3555,293 @@ void decode::inverseIdentityTransform(int *T,int n){
 		inverseIdentityTransform32(T);
 	}
 }
+void decode::twoDinverseTransform(int txSz,int T[];) {
+    int log2W = Tx_Width_Log2[txSz];
+    int log2H = Tx_Height_Log2[txSz];
+    int w = 1 << log2W;
+    int h = 1 << log2H;
+    int rowShift = Lossless ? 0 : Transform_Row_Shift[txSz];
+    int colShift = Lossless ? 0 : 4;
+    int rowClampRange = BitDepth + 8;
+    int colClampRange = Max(BitDepth + 6, 16);
+
+
+    for (int i = 0; i < h; i++) {
+        for (int j = 0; j < w; j++) {
+            if (i < 32 && j < 32) {
+                T[j] = Dequant[i][j];
+            } else {
+                T[j] = 0;
+            }
+        }
+
+        if (Abs(log2W - log2H) == 1) {
+            for (int j = 0; j < w; j++) {
+                T[j] = Round2(T[j] * 2896, 12);
+            }
+        }
+
+        if (Lossless) {
+            inverseWalshHadamardTransform(T, 2);
+        } else if (PlaneTxType == DCT_DCT || PlaneTxType == ADST_DCT || PlaneTxType == FLIPADST_DCT || PlaneTxType == H_DCT) {
+            inverseDCT(T, log2W, rowClampRange);
+        } else if (PlaneTxType == DCT_ADST || PlaneTxType == ADST_ADST || PlaneTxType == DCT_FLIPADST ||
+                   PlaneTxType == FLIPADST_FLIPADST || PlaneTxType == ADST_FLIPADST || PlaneTxType == FLIPADST_ADST ||
+                   PlaneTxType == H_ADST || PlaneTxType == H_FLIPADST) {
+            inverseADST(T, log2W, rowClampRange);
+        } else {
+            inverseIdentityTransform(T, log2W);
+        }
+
+        for (int j = 0; j < w; j++) {
+            Residual[i][j] = Round2(T[j], rowShift);
+        }
+    }
+
+    for (int i = 0; i < h; i++) {
+        for (int j = 0; j < w; j++) {
+            Residual[i][j] = Min(Max(-((1 << (colClampRange - 1))), Residual[i][j]), ((1 << (colClampRange - 1)) - 1));
+        }
+    }
+
+    for (int j = 0; j < w; j++) {
+        int T[h];
+        for (int i = 0; i < h; i++) {
+            T[i] = Residual[i][j];
+        }
+
+        if (Lossless) {
+            inverseWalshHadamardTransform(T, 0);
+        } else if (PlaneTxType == DCT_DCT || PlaneTxType == DCT_ADST || PlaneTxType == DCT_FLIPADST || PlaneTxType == V_DCT) {
+            inverseDCT(T, log2H, colClampRange);
+        } else if (PlaneTxType == ADST_DCT || PlaneTxType == ADST_ADST || PlaneTxType == FLIPADST_DCT ||
+                   PlaneTxType == FLIPADST_FLIPADST || PlaneTxType == ADST_FLIPADST || PlaneTxType == FLIPADST_ADST ||
+                   PlaneTxType == V_ADST || PlaneTxType == V_FLIPADST) {
+            inverseADST(T, log2H, colClampRange);
+        } else {
+            inverseIdentityTransform(T, log2H);
+        }
+
+        for (int i = 0; i < h; i++) {
+            Residual[i][j] = Round2(T[i], colShift);
+        }
+    }
+}
+//7.14
+void decode::loopFilter(int **CurrFrame){
+	for ( plane = 0; plane < NumPlanes; plane++ ) {
+		if ( plane == 0 || loop_filter_level[ 1 + plane ] ) {
+			for ( pass = 0; pass < 2; pass++ ) {
+				rowStep = ( plane == 0 ) ? 1 : ( 1 << subsampling_y );
+				colStep = ( plane == 0 ) ? 1 : ( 1 << subsampling_x );
+				for ( row = 0; row < MiRows; row += rowStep )
+				for ( col = 0; col < MiCols; col += colStep )
+				loop_filter_edge( plane, pass, row, col );
+			}
+		}
+	}
+}
+void decode::edgeLoopFilter(int plane, int pass, int row, int col) {
+    int subX, subY, dx, dy, x, y, onScreen, xP, yP, prevRow, prevCol, MiSize, txSz, planeSize, skip, isIntra, prevTxSz;
+    int isBlockEdge, isTxEdge, applyFilter, filterSize;
+    int lvl, limit, blimit, thresh;
+
+    // Derive subX and subY
+    if (plane == 0) {
+        subX = subY = 0;
+    } else {
+        subX = subsampling_x;
+        subY = subsampling_y;
+    }
+
+    // Derive dx and dy
+    if (pass == 0) {
+        dx = 1;
+        dy = 0;
+    } else {
+        dy = 1;
+        dx = 0;
+    }
+
+    // Derive x and y
+    x = col * MI_SIZE;
+    y = row * MI_SIZE;
+
+    // Adjust row and col
+    row = (row | subY);
+    col = (col | subX);
+
+    // Derive onScreen
+    onScreen = 1;
+    if (x >= FrameWidth || y >= FrameHeight || (pass == 0 && x == 0) || (pass == 1 && y == 0)) {
+        onScreen = 0;
+    }
+
+    if (onScreen == 0) {
+        return; // No filtering is applied if off-screen
+    }
+
+    // Derive xP and yP
+    xP = x >> subX;
+    yP = y >> subY;
+
+    // Derive prevRow and prevCol
+    prevRow = row - (dy << subY);
+    prevCol = col - (dx << subX);
+
+    // Set MiSize, txSz, planeSize, skip, isIntra, and prevTxSz
+    MiSize = MiSizes[row][col];
+    txSz = LoopfilterTxSizes[plane][row >> subY][col >> subX];
+    planeSize = get_plane_residual_size(MiSize, plane);
+    skip = Skips[row][col];
+    isIntra = RefFrames[row][col][0] <= INTRA_FRAME;
+    prevTxSz = LoopfilterTxSizes[plane][prevRow >> subY][prevCol >> subX];
+
+    // Derive isBlockEdge
+    isBlockEdge = 0;
+    if ((pass == 0 && xP % Block_Width[planeSize] == 0) || (pass == 1 && yP % Block_Height[planeSize] == 0)) {
+        isBlockEdge = 1;
+    }
+
+    // Derive isTxEdge
+    isTxEdge = 0;
+    if ((pass == 0 && xP % Tx_Width[txSz] == 0) || (pass == 1 && yP % Tx_Height[txSz] == 0)) {
+        isTxEdge = 1;
+    }
+
+    // Derive applyFilter
+    applyFilter = 0;
+    if (isTxEdge == 0) {
+        applyFilter = 0;
+    } else if (isBlockEdge == 1 || skip == 0 || isIntra == 1) {
+        applyFilter = 1;
+    } else {
+        applyFilter = 0;
+    }
+//注意这里没写完
+    // Invoke filter size process (section 7.14.3) to calculate filterSize
+
+    // Invoke adaptive filter strength process (section 7.14.4) to calculate lvl, limit, blimit, and thresh
+
+    // If lvl is equal to 0, invoke adaptive filter strength process for prevRow, prevCol
+
+    // Apply sample filtering process (section 7.14.6) for each sample if applyFilter is 1 and lvl is greater than 0
+}
+//7.14.3
+//The purpose of this process is to reduce the width of the chroma filters and to ensure that different boundaries can be
+//filtered in parallel.
+int decode::filterSize(int txSz, int prevTxSz, int pass, int plane) {
+    int baseSize;
+
+    // Derive baseSize based on pass
+    if (pass == 0) {
+        baseSize = min(Tx_Width[prevTxSz], Tx_Width[txSz]);
+    } else {
+        baseSize = min(Tx_Height[prevTxSz], Tx_Height[txSz]);
+    }
+
+    // Derive filterSize based on plane
+    int filterSize;
+    if (plane == 0) {
+        filterSize = min(16, baseSize);
+    } else {
+        filterSize = min(8, baseSize);
+    }
+
+    return filterSize;
+}
+//7.14.4
+void adaptiveFilterStrength(int row, int col, int plane, int pass, int& lvl, int& limit, int& blimit, int& thresh) {
+    // Derive segment, ref, mode, modeType, and deltaLF
+    int segment = SegmentIds[row][col];
+    int ref = RefFrames[row][col][0];
+    int mode = YModes[row][col];
+    int modeType;
+
+    if (mode >= NEARESTMV && mode != GLOBALMV && mode != GLOBAL_GLOBALMV) {
+        modeType = 1;
+    } else {
+        modeType = 0;
+    }
+
+    int deltaLF;
+    if (delta_lf_multi == 0) {
+        deltaLF = DeltaLFs[row][col][0];
+    } else {
+        deltaLF = DeltaLFs[row][col][plane == 0 ? pass : (plane + 1)];
+    }
+
+    // Invoke the adaptive filter strength selection process
+    lvl = adaptiveFilterStrengthSelection(segment, ref, modeType, deltaLF, plane, pass);
+
+    // Derive shift
+    int shift;
+    if (loop_filter_sharpness > 4) {
+        shift = 2;
+    } else if (loop_filter_sharpness > 0) {
+        shift = 1;
+    } else {
+        shift = 0;
+    }
+
+    // Derive limit
+    if (loop_filter_sharpness > 0) {
+        limit = Clip3(1, 9 - loop_filter_sharpness, lvl >> shift);
+    } else {
+        limit = max(1, lvl >> shift);
+    }
+
+    // Derive blimit and thresh
+    blimit = 2 * (lvl + 2) + limit;
+    thresh = lvl >> 4;
+}
+//7.14.5
+int AdaptiveFilterStrengthSelection(int segment, int ref, int modeType, int deltaLF, int plane, int pass) {
+    // 初始化变量
+    int i = (plane == 0) ? pass : (plane + 1);
+    int baseFilterLevel = Clip3(0, MAX_LOOP_FILTER, deltaLF + loop_filter_level[i]);
+    int lvlSeg = baseFilterLevel;
+    int feature = SEG_LVL_ALT_LF_Y_V + i;
+
+    // 检查segment特征是否激活
+    if (seg_feature_active_idx(segment, feature) == 1) {
+        lvlSeg += FeatureData[segment][feature];
+        lvlSeg = Clip3(0, MAX_LOOP_FILTER, lvlSeg);
+    }
+
+    // 如果loop_filter_delta_enabled为1，应用delta值
+    if (loop_filter_delta_enabled == 1) {
+        int nShift = lvlSeg >> 5;
+        
+        if (ref == INTRA_FRAME) {
+            lvlSeg += (loop_filter_ref_deltas[INTRA_FRAME] << nShift);
+        } else {
+            lvlSeg += (loop_filter_ref_deltas[ref] << nShift) + (loop_filter_mode_deltas[modeType] << nShift);
+        }
+        
+        lvlSeg = Clip3(0, MAX_LOOP_FILTER, lvlSeg);
+    }
+
+    return lvlSeg;
+}
+//7.14.6
+void sampleFiltering(int x,int  y,int  plane, int limit,int  blimit,int  thresh,int  dx,int  dy,int  filterSize){
+
+	// 调用Filter Mask生成过程
+	int hevMask, filterMask, flatMask, flatMask2;
+	GenerateFilterMasks(x, y, plane, limit, blimit, thresh, dx, dy, filterSize, hevMask, filterMask, flatMask, flatMask2);
+
+	// 根据Filter Mask和Filter Size选择适当的Filter过程
+	if (filterMask == 0) {
+		// 不需要滤波
+	} else if (filterSize == 4 || flatMask == 0) {
+		// 使用狭窄滤波过程
+		NarrowFilterProcess(x, y, plane, dx, dy, hevMask);
+	} else if (filterSize == 8 || flatMask2 == 0) {
+		// 使用宽滤波过程，log2Size为3
+		WideFilterProcess(x, y, plane, dx, dy, 3);
+	} else {
+		// 使用宽滤波过程，log2Size为4
+		WideFilterProcess(x, y, plane, dx, dy, 4);
+	}
+}

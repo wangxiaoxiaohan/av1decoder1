@@ -188,6 +188,7 @@ enum tristate
 #define SINPI_3_9 3344
 #define SINPI_4_9 3803
 
+
 // 以下三种自定义 数组，支持访问 -1 下标。内部做了转换，-1实际上为第一个元素。总元素数量比构造传入的值是多一个的
 // 一维数组性能较之普通数组损失在6-7层左右
 // 二维数组性能一半左右
@@ -712,7 +713,18 @@ enum em_wedge_direction_constants
 	WEDGE_OBLIQUE117,
 	WEDGE_OBLIQUE153,
 };
-
+enum em_inverse_transform
+{
+	DCT_DCT  = 0 ,
+	ADST_DCT = 1 ,
+	DCT_ADST = 2 ,
+	ADST_ADST = 3 ,
+	FLIPADST_DCT = 4,
+	DCT_FLIPADST = 5 ,
+	FLIPADST_FLIPADST = 6 ,
+	ADST_FLIPADST = 7 ,
+	FLIPADST_ADST = 8,
+};
 
 const static uint8_t Remap_Lr_Type[4] = {
 	RESTORE_NONE, RESTORE_SWITCHABLE, RESTORE_WIENER, RESTORE_SGRPROJ};
@@ -1357,6 +1369,10 @@ const static uint16_t  Cos128_Lookup[ 65 ] = {
 2276, 2191, 2106, 2019, 1931, 1842, 1751, 1660,
 1567, 1474, 1380, 1285, 1189, 1092, 995, 897,
 799, 700, 601, 501, 401, 301, 201, 101, 0
+};
+const static uint8_t Transform_Row_Shift[ TX_SIZES_ALL ] = {
+0, 1, 2, 2, 2, 0, 0, 1, 1,
+1, 1, 1, 1, 1, 1, 2, 2, 2, 2
 };
 int inline tile_log2(int blkSize, int target)
 {
