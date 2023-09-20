@@ -3845,3 +3845,134 @@ void sampleFiltering(int x,int  y,int  plane, int limit,int  blimit,int  thresh,
 		WideFilterProcess(x, y, plane, dx, dy, 4);
 	}
 }
+////7.14.6.2
+void filterMask(int x,int y.int plane,int limit,int blimit,int thresh,int dx,int dy,int filterSize)
+{
+	int q0 = CurrFrame[ plane ][ y ][ x ];
+	int q1 = CurrFrame[ plane ][ y + dy ][ x + dx ];
+	int q2 = CurrFrame[ plane ][ y + dy * 2 ][ x + dx * 2 ];
+	int q3 = CurrFrame[ plane ][ y + dy * 3 ][ x + dx * 3 ];
+	int q4 = CurrFrame[ plane ][ y + dy * 4 ][ x + dx * 4 ];
+	int q5 = CurrFrame[ plane ][ y + dy * 5 ][ x + dx * 5 ];
+	int q6 = CurrFrame[ plane ][ y + dy * 6 ][ x + dx * 6 ];
+	int p0 = CurrFrame[ plane ][ y - dy ][ x - dx ];
+	int p1 = CurrFrame[ plane ][ y - dy * 2 ][ x - dx * 2 ];
+	int p2 = CurrFrame[ plane ][ y - dy * 3 ][ x - dx * 3 ];
+	int p3 = CurrFrame[ plane ][ y - dy * 4 ][ x - dx * 4 ];
+	int p4 = CurrFrame[ plane ][ y - dy * 5 ][ x - dx * 5 ];
+	int p5 = CurrFrame[ plane ][ y - dy * 6 ][ x - dx * 6 ];
+	int p6 = CurrFrame[ plane ][ y - dy * 7 ][ x - dx * 7 ];
+	// hev : means |high| edge| variance|
+	hevMask = 0 ;
+	int threshBd = thresh << (BitDepth - 8)；
+	hevMask |= (Abs( p1 - p0 ) > threshBd)；
+	hevMask |= (Abs( q1 - q0 ) > threshBd)；
+
+	int filterLen;//滤波器抽头(taps)数
+	if(filterSize == 4){
+		filterLen = 4;
+	}else if(plane == 0){
+		filterLen = 6;
+	}else if(filterSize == 8){
+		filterLen = 8;
+	}else{
+		filterLen = 16;
+	}
+//filterMask的值指示靠近边缘的相邻样本(在指定边界两侧的四个样本内)
+//的变化是否小于由limit和blimit给出的限制。它用于确定是否应该执行某种过滤，计算方法如下:
+	int limitBd = limit << (BitDepth - 8);
+	int blimitBd = blimit << (BitDepth - 8);
+	int mask = 0;
+	mask |= (Abs( p1 - p0 ) > limitBd);
+	mask |= (Abs( q1 - q0 ) > limitBd);
+	mask |= (Abs( p0 - q0 ) * 2 + Abs( p1 - q1 ) / 2 > blimitBd);
+	if ( filterLen >= 6 ) {
+		mask |= (Abs( p2 - p1 ) > limitBd);
+		mask |= (Abs( q2 - q1 ) > limitBd);
+	}
+	if ( filterLen >= 8 ) {
+		mask |= (Abs( p3 - p2 ) > limitBd);
+		mask |= (Abs( q3 - q2 ) > limitBd);
+	}
+
+	filterMask = (mask == 0);
+
+	//只有当filterSize >= 8时才需要flatMask的值。
+	//它测量来自指定边界两侧的样本是否在一个平坦区域内。
+	//即这些样本与边界上的样本是否最多存在(1 << (BitDepth - 8))的差异。计算方法如下:
+	int thresholdBd = 1 << (BitDepth - 8);
+	if ( filterSize >= 8 ) {
+		 mask = 0
+		mask |= (Abs( p1 - p0 ) > thresholdBd);
+		mask |= (Abs( q1 - q0 ) > thresholdBd);
+		mask |= (Abs( p2 - p0 ) > thresholdBd);
+		mask |= (Abs( q2 - q0 ) > thresholdBd);
+		if ( filterLen >= 8 ) {
+			mask |= (Abs( p3 - p0 ) > thresholdBd);
+			mask |= (Abs( q3 - q0 ) > thresholdBd);
+		}
+		flatMask = (mask == 0);
+	}
+	//假设前面四个点(0,1,2,3)都在同一个平坦区域， flatMask2 代表后面3个点也在同一个平坦区域
+	// 如果 flatMask & flatMask2 == 0 ,则所有点都在一个平坦区域
+	thresholdBd = 1 << (BitDepth - 8);
+	if ( filterSize >= 16 ) {
+		mask = 0;
+		mask |= (Abs( p6 - p0 ) > thresholdBd);
+		mask |= (Abs( q6 - q0 ) > thresholdBd);
+		mask |= (Abs( p5 - p0 ) > thresholdBd);
+		mask |= (Abs( q5 - q0 ) > thresholdBd);
+		mask |= (Abs( p4 - p0 ) > thresholdBd);
+		mask |= (Abs( q4 - q0 ) > thresholdBd);
+		flatMask2 = (mask == 0);
+	}
+
+}
+//This process modifies up to two samples on each side of the 
+//specified boundary depending on the value of hevMask 
+void narrowFilter(int hevMask,int x,int y,int plane,int dx ,int dy){
+	int q0 = CurrFrame[ plane ][ y ][ x ];
+	int q1 = CurrFrame[ plane ][ y + dy ][ x + dx ];
+	int p0 = CurrFrame[ plane ][ y - dy ][ x - dx ];
+	int p1 = CurrFrame[ plane ][ y - dy * 2 ][ x - dx * 2 ];
+	int ps1 = p1 - (0x80 << (BitDepth - 8));
+	int ps0 = p0 - (0x80 << (BitDepth - 8));
+	int qs0 = q0 - (0x80 << (BitDepth - 8));
+	int qs1 = q1 - (0x80 << (BitDepth - 8));
+	int filter = hevMask ? filter4_clamp( ps1 - qs1 ) : 0;
+	filter = filter4_clamp( filter + 3 * (qs0 - ps0) );
+	int filter1 = filter4_clamp( filter + 4 ) >> 3;
+	int filter2 = filter4_clamp( filter + 3 ) >> 3;
+	int oq0 = filter4_clamp( qs0 - filter1 ) + (0x80 << (BitDepth - 8));
+	int op0 = filter4_clamp( ps0 + filter2 ) + (0x80 << (BitDepth - 8));
+	CurrFrame[ plane ][ y ][ x ] = oq0;
+	CurrFrame[ plane ][ y - dy ][ x - dx ] = op0;
+	if ( !hevMask ) {
+		filter = Round2( filter1, 1 );
+		int oq1 = filter4_clamp( qs1 - filter ) + (0x80 << (BitDepth - 8));
+		int op1 = filter4_clamp( ps1 + filter ) + (0x80 << (BitDepth - 8));
+		CurrFrame[ plane ][ y + dy ][ x + dx ] = oq1;
+		CurrFrame[ plane ][ y - dy * 2 ][ x - dx * 2 ] = op1;
+	}
+
+}
+void wideFilter(int x,int y,int plane,int dx ,int dy,int log2Size){
+	//specifying the number of filter taps on each side of the central sample
+	int n;
+	
+	if(log2Size == 4){
+		n = 6;
+	}else if(plane == 0){
+		n = 4;
+	}else {
+		n = 2;
+	}
+	//(specifying the number of filter taps equal to 2 on each side of the central sample needed to give a unity DC gain
+	int n2;
+	if(log2Size == 3 && plane == 0){
+		n2 = 0;
+	}else{
+		n2 = 1;
+	}
+
+}
