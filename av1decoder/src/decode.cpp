@@ -3879,7 +3879,7 @@ void filterMask(int x,int y.int plane,int limit,int blimit,int thresh,int dx,int
 		filterLen = 16;
 	}
 //filterMask的值指示靠近边缘的相邻样本(在指定边界两侧的四个样本内)
-//的变化是否小于由limit和blimit给出的限制。它用于确定是否应该执行某种过滤，计算方法如下:
+//的差异是否小于由limit和blimit给出的限制。它用于确定是否应该执行某种过滤，
 	int limitBd = limit << (BitDepth - 8);
 	int blimitBd = blimit << (BitDepth - 8);
 	int mask = 0;
@@ -3974,5 +3974,440 @@ void wideFilter(int x,int y,int plane,int dx ,int dy,int log2Size){
 	}else{
 		n2 = 1;
 	}
+	for (int i = -n; i < n; i++) {
+		int t = 0;
+		for (int j = -n; j <= n; j++) {
+			int p = Clip3(-(n + 1), n, i + j);
+			int tap = (Abs(j) <= n2) ? 2 : 1;
+			t += CurrFrame[plane][y + p * dy][x + p * dx] * tap;
+		}
+		
+		// 将滤波结果保存到数组 F
+		F[i] = Round2(t, log2Size);
+	}
 
+	// 应用滤波结果到当前帧
+	for (int i = -n; i < n; i++) {
+		CurrFrame[plane][y + i * dy][x + i * dx] = F[i];
+	}
+}
+//7.15
+void cdef(){
+	int step4 = Num_4x4_Blocks_Wide[ BLOCK_8X8 ];
+	int cdefSize4 = Num_4x4_Blocks_Wide[ BLOCK_64X64 ];
+	cdefMask4 = ~(cdefSize4 - 1);
+	for (int r = 0; r < MiRows; r += step4 ) {
+		for (int c = 0; c < MiCols; c += step4 ) {
+			int baseR = r & cdefMask4;
+			int baseC = c & cdefMask4;
+			int idx = cdef_idx[ baseR ][ baseC ];
+			cdefBlock(r, c, idx);
+		}
+	}
+}
+void cdefBlock(int r, int c, int idx) {
+    int startY = r * MI_SIZE;
+    int endY = startY + MI_SIZE * 2;
+    int startX = c * MI_SIZE;
+    int endX = startX + MI_SIZE * 2;
+
+    for (int y = startY; y < endY; y++) {
+        for (int x = startX; x < endX; x++) {
+            CdefFrame[0][y][x] = CurrFrame[0][y][x];
+        }
+    }
+
+    if (NumPlanes > 1) {
+        startY >>= subsampling_y;
+        endY >>= subsampling_y;
+        startX >>= subsampling_x;
+        endX >>= subsampling_x;
+
+        for (int y = startY; y < endY; y++) {
+            for (int x = startX; x < endX; x++) {
+                CdefFrame[1][y][x] = CurrFrame[1][y][x];
+                CdefFrame[2][y][x] = CurrFrame[2][y][x];
+            }
+        }
+    }
+
+    if (idx == -1) {
+        return;
+    }
+
+    int coeffShift = BitDepth - 8;
+    int skip = (Skips[r][c] && Skips[r + 1][c] && Skips[r][c + 1] && Skips[r + 1][c + 1]);
+
+    if (skip == 0) {
+        int yDir, var;
+        cdefDirectionProcess(r, c, &yDir, &var);
+        int priStr = cdef_y_pri_strength[idx] << coeffShift;
+        int secStr = cdef_y_sec_strength[idx] << coeffShift;
+        int dir = (priStr == 0) ? 0 : yDir;
+        int varStr = (var >> 6) ? Min(FloorLog2(var >> 6), 12) : 0;
+        priStr = (var ? (priStr * (4 + varStr) + 8) >> 4 : 0);
+        int damping = CdefDamping + coeffShift;
+
+        CDEF_filter_process(0, r, c, priStr, secStr, damping, dir);
+
+        if (NumPlanes == 1) {
+            return;
+        }
+
+        priStr = cdef_uv_pri_strength[idx] << coeffShift;
+        secStr = cdef_uv_sec_strength[idx] << coeffShift;
+        dir = (priStr == 0) ? 0 : Cdef_Uv_Dir[subsampling_x][subsampling_y][yDir];
+        damping = CdefDamping + coeffShift - 1;
+
+        CDEF_filter_process(1, r, c, priStr, secStr, damping, dir);
+        CDEF_filter_process(2, r, c, priStr, secStr, damping, dir);
+    }
+}
+//7.15.2
+void cdefDirectionProcess(int r, int c, int *yDir, int *var) {
+    int cost[8];
+    int partial[8][15];
+    int bestCost = 0;
+    *yDir = 0;
+    int x0 = c << MI_SIZE_LOG2;
+    int y0 = r << MI_SIZE_LOG2;
+
+    for (int i = 0; i < 8; i++) {
+        cost[i] = 0;
+        for (int j = 0; j < 15; j++) {
+            partial[i][j] = 0;
+        }
+    }
+
+    for (int i = 0; i < 8; i++) {
+        for (int j = 0; j < 8; j++) {
+            int x = (CurrFrame[0][y0 + i][x0 + j] >> (BitDepth - 8)) - 128;
+            partial[0][i + j] += x;
+            partial[1][i + j / 2] += x;
+            partial[2][i] += x;
+            partial[3][3 + i - j / 2] += x;
+            partial[4][7 + i - j] += x;
+            partial[5][3 - i / 2 + j] += x;
+            partial[6][j] += x;
+            partial[7][i / 2 + j] += x;
+        }
+    }
+
+    for (int i = 0; i < 8; i++) {
+        cost[2] += partial[2][i] * partial[2][i];
+        cost[6] += partial[6][i] * partial[6][i];
+    }
+
+    cost[2] *= Div_Table[8];
+    cost[6] *= Div_Table[8];
+
+    for (int i = 0; i < 7; i++) {
+        cost[0] += (partial[0][i] * partial[0][i] + partial[0][14 - i] * partial[0][14 - i]) * Div_Table[i + 1];
+        cost[4] += (partial[4][i] * partial[4][i] + partial[4][14 - i] * partial[4][14 - i]) * Div_Table[i + 1];
+    }
+
+    cost[0] += partial[0][7] * partial[0][7] * Div_Table[8];
+    cost[4] += partial[4][7] * partial[4][7] * Div_Table[8];
+
+    for (int i = 1; i < 8; i += 2) {
+        for (int j = 0; j < 4 + 1; j++) {
+            cost[i] += partial[i][3 + j] * partial[i][3 + j];
+        }
+        cost[i] *= Div_Table[8];
+
+        for (int j = 0; j < 4 - 1; j++) {
+            cost[i] += (partial[i][j] * partial[i][j] + partial[i][10 - j] * partial[i][10 - j]) * Div_Table[2 * j + 2];
+        }
+    }
+
+    for (int i = 0; i < 8; i++) {
+        if (cost[i] > bestCost) {
+            bestCost = cost[i];
+            *yDir = i;
+        }
+    }
+
+    *var = (bestCost - cost[(*yDir + 4) & 7]) >> 10;
+}
+//7.15.3
+void cdefFilter(int plane, int r, int c, int priStr, int secStr, int damping, int dir) {
+    int subX = (plane > 0) ? subsampling_x : 0;
+    int subY = (plane > 0) ? subsampling_y : 0;
+    int x0 = (c * MI_SIZE) >> subX;
+    int y0 = (r * MI_SIZE) >> subY;
+    int w = 8 >> subX;
+    int h = 8 >> subY;
+
+    for (int i = 0; i < h; i++) {
+        for (int j = 0; j < w; j++) {
+            int sum = 0;
+            int x = CurrFrame[plane][y0 + i][x0 + j];
+            int max = x;
+            int min = x;
+
+            for (int k = 0; k < 2; k++) {
+                for (int sign = -1; sign <= 1; sign += 2) {
+                    int p = cdef_get_at(plane, x0, y0, i, j, dir, k, sign, subX, subY);
+
+                    if (CdefAvailable) {
+                        sum += Cdef_Pri_Taps[(priStr >> (BitDepth - 8)) & 1][k] * constrain(p - x, priStr, damping);
+                        max = Max(p, max);
+                        min = Min(p, min);
+                    }
+
+                    for (int dirOff = -2; dirOff <= 2; dirOff += 4) {
+                        int s = cdef_get_at(plane, x0, y0, i, j, (dir + dirOff) & 7, k, sign, subX, subY);
+
+                        if (CdefAvailable) {
+                            sum += Cdef_Sec_Taps[(priStr >> (BitDepth - 8)) & 1][k] * constrain(s - x, secStr, damping);
+                            max = Max(s, max);
+                            min = Min(s, min);
+                        }
+                    }
+                }
+            }
+
+            CurrFrame[plane][y0 + i][x0 + j] = Clip3(min, max, x + ((8 + sum - (sum < 0)) >> 4));
+        }
+    }
+}
+
+
+
+int cdef_get_at(plane, x0, y0, i, j, dir, k, sign, subX, subY,int * CdefAvailable,int CurrFrame[][][]) {
+	int y = y0 + i + sign * Cdef_Directions[dir][k][0];
+	int x = x0 + j + sign * Cdef_Directions[dir][k][1];
+	int candidateR = (y << subY) >> MI_SIZE_LOG2;
+	int candidateC = (x << subX) >> MI_SIZE_LOG2;
+	if ( is_inside_filter_region( candidateR, candidateC ) ) {
+		CdefAvailable = 1;
+		return CurrFrame[ plane ][ y ][ x ]
+	} else {
+		CdefAvailable = 0;
+		return 0;
+	}
+}
+void upscalingProcess() {
+    for (int plane = 0; plane < NumPlanes; plane++) {
+        int subX, subY;
+
+        if (plane > 0) {
+            subX = subsampling_x;
+            subY = subsampling_y;
+        } else {
+            subX = 0;
+            subY = 0;
+        }
+
+        int downscaledPlaneW = Round2(FrameWidth, subX);
+        int upscaledPlaneW = Round2(UpscaledWidth, subX);
+        int planeH = Round2(FrameHeight, subY);
+        int stepX = ((downscaledPlaneW << SUPERRES_SCALE_BITS) + (upscaledPlaneW / 2)) / upscaledPlaneW;
+        int err = (upscaledPlaneW * stepX) - (downscaledPlaneW << SUPERRES_SCALE_BITS);
+        int initialSubpelX = (-((upscaledPlaneW - downscaledPlaneW) << (SUPERRES_SCALE_BITS - 1)) + upscaledPlaneW / 2) / upscaledPlaneW + (1 << (SUPERRES_EXTRA_BITS - 1)) - err / 2;
+        initialSubpelX &= SUPERRES_SCALE_MASK;
+        int miW = MiCols >> subX;
+        int minX = 0;
+        int maxX = miW * 4 - 1;
+
+        for (int y = 0; y < planeH; y++) {
+            for (int x = 0; x < upscaledPlaneW; x++) {
+                int srcX = -(1 << SUPERRES_SCALE_BITS) + initialSubpelX + x * stepX;
+                int srcXPx = (srcX >> SUPERRES_SCALE_BITS);
+                int srcXSubpel = (srcX & SUPERRES_SCALE_MASK) >> SUPERRES_EXTRA_BITS;
+                int sum = 0;
+
+                for (int k = 0; k < SUPERRES_FILTER_TAPS; k++) {
+                    int sampleX = Clip1(srcXPx + k - SUPERRES_FILTER_OFFSET);
+                    int px = frame[plane][y][sampleX];
+                    sum += px * Upscale_Filter[srcXSubpel][k];
+                }
+
+                outputFrame[plane][y][x] = Clip1(sum >> 8);
+            }
+        }
+    }
+}
+//7.17
+void loopRestoration(){
+
+	uint8_t LrFrame[3][FrameHeight][UpscaledWidth];
+	memcpy(LrFrame,UpscaledCdefFrame,sizeof(uint8_t) * 3 * FrameHeight * UpscaledWidth);
+
+	// 如果不需要循环恢复，直接返回
+	if (UsesLr == 0) {
+		return;
+	}
+
+	// 循环遍历图像块 以 4*4块为单位 
+	for (int y = 0; y < FrameHeight; y += MI_SIZE) {
+		for (int x = 0; x < UpscaledWidth; x += MI_SIZE) {
+			for (int plane = 0; plane < NumPlanes; plane++) {
+				// 检查是否需要进行循环恢复
+				if (FrameRestorationType[plane] != RESTORE_NONE) {
+					int row = y >> MI_SIZE_LOG2;
+					int col = x >> MI_SIZE_LOG2;
+					// 调用循环恢复块过程
+					loopRestoreBlock(plane, row, col);
+				}
+			}
+		}
+	}
+}
+//7.17.1
+void loopRestoreBlock(int plane,int row ,int col){
+	int lumaY = row * MI_SIZE;
+
+	int stripeNum = (lumaY + 8) / 64;
+
+	int subX, subY;
+	if (plane == 0) {
+		subX = 0;
+		subY = 0;
+	} else {
+		subX = subsampling_x;
+		subY = subsampling_y;
+	}
+
+	int StripeStartY = (-8 + stripeNum * 64) >> subY;
+	int StripeEndY = StripeStartY + (64 >> subY) - 1;
+
+
+	int unitSize = LoopRestorationSize[plane];
+	int unitRows = count_units_in_frame(unitSize, Round2(FrameHeight, subY));
+	int unitCols = count_units_in_frame(unitSize, Round2(UpscaledWidth, subX));
+
+
+	int unitRow = Min(unitRows - 1, ((row * MI_SIZE + 8) >> subY) / unitSize);
+	int unitCol = Min(unitCols - 1, (col * MI_SIZE >> subX) / unitSize);
+
+	int PlaneEndX = Round2(UpscaledWidth, subX) - 1;
+	int PlaneEndY = Round2(FrameHeight, subY) - 1;
+
+
+	int x = col * MI_SIZE >> subX;
+	int y = row * MI_SIZE >> subY;
+	int w = Min(MI_SIZE >> subX, PlaneEndX - x + 1);
+	int h = Min(MI_SIZE >> subY, PlaneEndY - y + 1);
+
+	int rType = LrType[plane][unitRow][unitCol];
+
+	// 根据rType选择滤波器
+	if (rType == RESTORE_WIENER) {
+		// 调用Wiener filter process，传入plane、unitRow、unitCol、x、y、w和h作为输入
+		WienerFilter(plane, unitRow, unitCol, x, y, w, h);
+	} else if (rType == RESTORE_SGRPROJ) {
+		// 调用self guided filter process，传入plane、unitRow、unitCol、x、y、w和h作为输入
+		selfGuidedFilter(plane, unitRow, unitCol, x, y, w, h);
+	} else {
+		// 不应用滤波
+	}
+}
+
+void selfGuidedFilter(int plane,int unitRow,int unitCol, int x,int y,int w,int h){
+	int set = LrSgrSet[plane][unitRow][unitCol];
+	int pass = 0;
+	int[][] flt0 = boxFilter(plane, x, y, w, h, set, pass);
+	pass = 1;
+	int[][] flt1 = boxFilter(plane, x, y, w, h, set, pass);
+
+	// 计算权重和参数
+	int w0 = LrSgrXqd[plane][unitRow][unitCol][0];
+	int w1 = LrSgrXqd[plane][unitRow][unitCol][1];
+	int w2 = (1 << SGRPROJ_PRJ_BITS) - w0 - w1;
+	int r0 = Sgr_Params[set][0];
+	int r1 = Sgr_Params[set][2];
+
+	// 应用恢复过程
+	for (int i = 0; i < h; i++) {
+		for (int j = 0; j < w; j++) {
+			int u = UpscaledCdefFrame[plane][y + i][x + j] << SGRPROJ_RST_BITS;
+			int v = w1 * u;
+			
+			if (r0 != 0) {
+				v += w0 * flt0[i][j];
+			} else {
+				v += w0 * u;
+			}
+			
+			if (r1 != 0) {
+				v += w2 * flt1[i][j];
+			} else {
+				v += w2 * u;
+			}
+			
+			int s = Round2(v, SGRPROJ_RST_BITS + SGRPROJ_PRJ_BITS);
+			LrFrame[plane][y + i][x + j] = Clip1(s);
+		}
+	}
+}
+void boxFilter(int plane,int x,int y,int w,int h,int set ,int pass){
+
+	// 输出数组
+	int[][] F;      // 2D数组，用于存储过滤结果
+
+	// 计算r和eps
+	int r = Sgr_Params[set][pass * 2];
+	if (r == 0) {
+		return; // 立即退出
+	}
+	int eps = Sgr_Params[set][pass * 2 + 1];
+
+	// 准备A和B数组
+	int n = (2 * r + 1) * (2 * r + 1);
+	int n2e = n * n * eps;
+	int s = (((1 << SGRPROJ_MTABLE_BITS) + n2e / 2) / n2e);
+	int[][] A = new int[h + 2][w + 2];
+	int[][] B = new int[h + 2][w + 2];
+
+	for (int i = -1; i < h + 1; i++) {
+		for (int j = -1; j < w + 1; j++) {
+			int a = 0;
+			int b = 0;
+			for (int dy = -r; dy <= r; dy++) {
+				for (int dx = -r; dx <= r; dx++) {
+					int c = get_source_sample(plane, x + j + dx, y + i + dy);
+					a += c * c;
+					b += c;
+				}
+			}
+			a = Round2(a, 2 * (BitDepth - 8));
+			int d = Round2(b, BitDepth - 8);
+			int p = Max(0, a * n - d * d);
+			int z = Round2(p * s, SGRPROJ_MTABLE_BITS);
+			int a2 = 0;
+			if (z >= 255) {
+				a2 = 256;
+			} else if (z == 0) {
+				a2 = 1;
+			} else {
+				a2 = ((z << SGRPROJ_SGR_BITS) + (z / 2)) / (z + 1);
+			}
+			int oneOverN = ((1 << SGRPROJ_RECIP_BITS) + (n / 2)) / n;
+			int b2 = ((1 << SGRPROJ_SGR_BITS) - a2) * b * oneOverN;
+			A[i + 1][j + 1] = a2;
+			B[i + 1][j + 1] = Round2(b2, SGRPROJ_RECIP_BITS);
+		}
+	}
+
+	// 生成输出数组F
+	for (int i = 0; i < h; i++) {
+		int shift = 5;
+		if (pass == 0 && (i & 1) != 0) {
+			shift = 4;
+		}
+		for (int j = 0; j < w; j++) {
+			int a = 0;
+			int b = 0;
+			for (int dy = -1; dy <= 1; dy++) {
+				for (int dx = -1; dx <= 1; dx++) {
+					int weight = (pass == 0) ? ((i + dy) & 1) ? ((dx == 0) ? 6 : 5) : 0 : ((dx == 0 || dy == 0) ? 4 : 3);
+					a += weight * A[i + dy + 1][j + dx + 1];
+					b += weight * B[i + dy + 1][j + dx + 1];
+				}
+			}
+			int v = a * UpscaledCdefFrame[plane][y + i][x + j] + b;
+			F[i][j] = Round2(v, SGRPROJ_SGR_BITS + shift - SGRPROJ_RST_BITS);
+		}
+	}
 }

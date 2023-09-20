@@ -188,7 +188,17 @@ enum tristate
 #define SINPI_3_9 3344
 #define SINPI_4_9 3803
 
-
+#define SUPERRES_NUM 8 
+#define SUPERRES_DENOM_MIN 9 
+#define SUPERRES_DENOM_BITS 3
+#define SUPERRES_FILTER_BITS 6 
+#define SUPERRES_FILTER_SHIFTS 1 << SUPERRES_FILTER_BITS
+#define SUPERRES_FILTER_TAPS 8
+#define SUPERRES_FILTER_OFFSET 3
+#define SUPERRES_SCALE_BITS 14 
+#define SUPERRES_SCALE_MASK (1 << 14) - 1
+#define SUPERRES_EXTRA_BITS 8
+#define SGRPROJ_PARAMS_BITS 4
 // 以下三种自定义 数组，支持访问 -1 下标。内部做了转换，-1实际上为第一个元素。总元素数量比构造传入的值是多一个的
 // 一维数组性能较之普通数组损失在6-7层左右
 // 二维数组性能一半左右
@@ -969,6 +979,9 @@ const static uint8_t Intra_Edge_Kernel[INTRA_EDGE_KERNELS][INTRA_EDGE_TAPS] = {
 	{0, 4, 8, 4, 0},
 	{0, 5, 6, 5, 0},
 	{2, 4, 4, 4, 2}};
+const static uint16_t Div_Table[9] = {
+0, 840, 420, 280, 210, 168, 140, 120, 105
+};
 
 const static uint8_t Sm_Weights_Tx_4x4[4] = {255, 149, 85, 64};
 const static uint8_t Sm_Weights_Tx_8x8[8] = {255, 197, 146, 105, 73, 50, 37, 32};
@@ -1374,6 +1387,70 @@ const static uint8_t Transform_Row_Shift[ TX_SIZES_ALL ] = {
 0, 1, 2, 2, 2, 0, 0, 1, 1,
 1, 1, 1, 1, 1, 1, 2, 2, 2, 2
 };
+const static uint8_t Cdef_Uv_Dir[ 2 ][ 2 ][ 8 ] = {
+{ {0, 1, 2, 3, 4, 5, 6, 7},
+{1, 2, 2, 2, 3, 4, 6, 0} },
+{ {7, 0, 2, 4, 5, 6, 6, 6},
+{0, 1, 2, 3, 4, 5, 6, 7} }
+};
+const static uint8_t Cdef_Pri_Taps[2][2] = {
+{ 4, 2 }, { 3, 3 }
+};
+const static uint8_t Cdef_Sec_Taps[2][2] = {
+{ 2, 1 }, { 2, 1 }
+};
+
+const static int8_t  Cdef_Directions[8][2][2] = {
+{ { -1, 1 }, { -2, 2 } },
+{ { 0, 1 }, { -1, 2 } },
+{ { 0, 1 }, { 0, 2 } },
+{ { 0, 1 }, { 1, 2 } },
+{ { 1, 1 }, { 2, 2 } },
+{ { 1, 0 }, { 2, 1 } },
+{ { 1, 0 }, { 2, 0 } },
+{ { 1, 0 }, { 2, -1 } }
+};
+const static int8_t Upscale_Filter[SUPERRES_FILTER_SHIFTS][SUPERRES_FILTER_TAPS] = {
+{ 0, 0, 0, 128, 0, 0, 0, 0 }, { 0, 0, -1, 128, 2, -1, 0, 0 },
+{ 0, 1, -3, 127, 4, -2, 1, 0 }, { 0, 1, -4, 127, 6, -3, 1, 0 },
+{ 0, 2, -6, 126, 8, -3, 1, 0 }, { 0, 2, -7, 125, 11, -4, 1, 0 },
+{ -1, 2, -8, 125, 13, -5, 2, 0 }, { -1, 3, -9, 124, 15, -6, 2, 0 },
+{ -1, 3, -10, 123, 18, -6, 2, -1 }, { -1, 3, -11, 122, 20, -7, 3, -1 },
+{ -1, 4, -12, 121, 22, -8, 3, -1 }, { -1, 4, -13, 120, 25, -9, 3, -1 },
+{ -1, 4, -14, 118, 28, -9, 3, -1 }, { -1, 4, -15, 117, 30, -10, 4, -1 },
+{ -1, 5, -16, 116, 32, -11, 4, -1 }, { -1, 5, -16, 114, 35, -12, 4, -1 },
+{ -1, 5, -17, 112, 38, -12, 4, -1 }, { -1, 5, -18, 111, 40, -13, 5, -1 },
+{ -1, 5, -18, 109, 43, -14, 5, -1 }, { -1, 6, -19, 107, 45, -14, 5, -1 },
+{ -1, 6, -19, 105, 48, -15, 5, -1 }, { -1, 6, -19, 103, 51, -16, 5, -1 },
+{ -1, 6, -20, 101, 53, -16, 6, -1 }, { -1, 6, -20, 99, 56, -17, 6, -1 },
+{ -1, 6, -20, 97, 58, -17, 6, -1 }, { -1, 6, -20, 95, 61, -18, 6, -1 },
+{ -2, 7, -20, 93, 64, -18, 6, -2 }, { -2, 7, -20, 91, 66, -19, 6, -1 },
+{ -2, 7, -20, 88, 69, -19, 6, -1 }, { -2, 7, -20, 86, 71, -19, 6, -1 },
+{ -2, 7, -20, 84, 74, -20, 7, -2 }, { -2, 7, -20, 81, 76, -20, 7, -1 },
+{ -2, 7, -20, 79, 79, -20, 7, -2 }, { -1, 7, -20, 76, 81, -20, 7, -2 },
+{ -2, 7, -20, 74, 84, -20, 7, -2 }, { -1, 6, -19, 71, 86, -20, 7, -2 },
+{ -1, 6, -19, 69, 88, -20, 7, -2 }, { -1, 6, -19, 66, 91, -20, 7, -2 },
+{ -2, 6, -18, 64, 93, -20, 7, -2 }, { -1, 6, -18, 61, 95, -20, 6, -1 },
+{ -1, 6, -17, 58, 97, -20, 6, -1 }, { -1, 6, -17, 56, 99, -20, 6, -1 },
+{ -1, 6, -16, 53, 101, -20, 6, -1 }, { -1, 5, -16, 51, 103, -19, 6, -1 },
+{ -1, 5, -15, 48, 105, -19, 6, -1 }, { -1, 5, -14, 45, 107, -19, 6, -1 },
+{ -1, 5, -14, 43, 109, -18, 5, -1 }, { -1, 5, -13, 40, 111, -18, 5, -1 },
+{ -1, 4, -12, 38, 112, -17, 5, -1 }, { -1, 4, -12, 35, 114, -16, 5, -1 },
+{ -1, 4, -11, 32, 116, -16, 5, -1 }, { -1, 4, -10, 30, 117, -15, 4, -1 },
+{ -1, 3, -9, 28, 118, -14, 4, -1 }, { -1, 3, -9, 25, 120, -13, 4, -1 },
+{ -1, 3, -8, 22, 121, -12, 4, -1 }, { -1, 3, -7, 20, 122, -11, 3, -1 },
+{ -1, 2, -6, 18, 123, -10, 3, -1 }, { 0, 2, -6, 15, 124, -9, 3, -1 },
+{ 0, 2, -5, 13, 125, -8, 2, -1 }, { 0, 1, -4, 11, 125, -7, 2, 0 },
+{ 0, 1, -3, 8, 126, -6, 2, 0 }, { 0, 1, -3, 6, 127, -4, 1, 0 },
+{ 0, 1, -2, 4, 127, -3, 1, 0 }, { 0, 0, -1, 2, 128, -1, 0, 0 },
+};
+
+const static uint8_t  Sgr_Params[ (1 << SGRPROJ_PARAMS_BITS) ][ 4 ] = {
+{ 2, 12, 1, 4 }, { 2, 15, 1, 6 }, { 2, 18, 1, 8 }, { 2, 21, 1, 9 },
+{ 2, 24, 1, 10 }, { 2, 29, 1, 11 }, { 2, 36, 1, 12 }, { 2, 45, 1, 13 },
+{ 2, 56, 1, 14 }, { 2, 68, 1, 15 }, { 0, 0, 1, 5 }, { 0, 0, 1, 8 },
+{ 0, 0, 1, 11 }, { 0, 0, 1, 14 }, { 2, 30, 0, 0 }, { 2, 75, 0, 0 }
+};
 int inline tile_log2(int blkSize, int target)
 {
 	int k;
@@ -1436,7 +1513,13 @@ int inline Abs(int x)
 {
 	return x > 0 ? x : -x;
 }
-
+int inline constrain(int diff,int  threshold, int damping) {
+	if ( !threshold )
+		return 0;
+	int dampingAdj = Max(0, damping - FloorLog2( threshold ) );
+	int sign = (diff < 0) ? -1 : 1;
+	return sign * Clip3(0, Abs(diff), threshold - (Abs(diff) >> dampingAdj) );
+}
 int inline is_inside(int candidateR, int candidateC, int colStart, int colEnd, int rowStart, int rowEnd)
 {
 	return (candidateC >= colStart &&
@@ -1444,6 +1527,17 @@ int inline is_inside(int candidateR, int candidateC, int colStart, int colEnd, i
 			candidateR >= rowStart &&
 			candidateR < rowEnd);
 }
+int inline  is_inside_filter_region( int candidateR, int candidateC ,int MiCols,int MiRows) { 
+	int colStart = 0;
+	int colEnd = MiCols;
+	int rowStart = 0;
+	int rowEnd = MiRows;
+	return (candidateC >= colStart &&
+			candidateC < colEnd &&
+			candidateR >= rowStart &&
+			candidateR < rowEnd);
+}
+
 int inline neg_deinterleave(int diff, int ref, int max)
 {
 	if (!ref)
