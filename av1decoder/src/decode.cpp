@@ -2465,7 +2465,7 @@ genArray:
 
 }
 //7.11.3.2
-int decode::roundingVariablesDerivation(){
+int decode::roundingVariablesDerivation(int isCompound){
 	int isCompound =  RefFrames[ candRow ][ candCol ][ 1 ] > INTRA_FRAME;
 
 	InterRound0 = 3;
@@ -4303,7 +4303,7 @@ void loopRestoreBlock(int plane,int row ,int col){
 		// 不应用滤波
 	}
 }
-
+//7.17.2
 void selfGuidedFilter(int plane,int unitRow,int unitCol, int x,int y,int w,int h){
 	int set = LrSgrSet[plane][unitRow][unitCol];
 	int pass = 0;
@@ -4341,6 +4341,7 @@ void selfGuidedFilter(int plane,int unitRow,int unitCol, int x,int y,int w,int h
 		}
 	}
 }
+//7.17.3
 void boxFilter(int plane,int x,int y,int w,int h,int set ,int pass){
 
 	// 输出数组
@@ -4410,4 +4411,429 @@ void boxFilter(int plane,int x,int y,int w,int h,int set ,int pass){
 			F[i][j] = Round2(v, SGRPROJ_SGR_BITS + shift - SGRPROJ_RST_BITS);
 		}
 	}
+}
+//7.17.4
+void wienerFilter(int plane ,int unitRow,int unitCol,int x,int y,int w,int h){
+
+	int[][] LrFrame;  
+
+	int isCompound = 0;
+	roundingVariablesDerivation(isCompound);
+	
+
+	int[] vfilter = Wiener_coefficient_process(LrWiener[plane][unitRow][unitCol][0]);
+	int[] hfilter = Wiener_coefficient_process(LrWiener[plane][unitRow][unitCol][1]);
+
+
+	int[][] intermediate = new int[h + 6][w];
+	int offset = (1 << (BitDepth + FILTER_BITS - InterRound0 - 1));
+	int limit = (1 << (BitDepth + 1 + FILTER_BITS - InterRound0)) - 1;
+
+	for (int r = 0; r < h + 6; r++) {
+		for (int c = 0; c < w; c++) {
+			int s = 0;
+			for (int t = 0; t < 7; t++) {
+				s += hfilter[t] * get_source_sample(plane, x + c + t - 3, y + r - 3);
+			}
+			int v = Round2(s, InterRound0);
+			intermediate[r][c] = Clip3(-offset, limit - offset, v);
+		}
+	}
+
+	for (int r = 0; r < h; r++) {
+		for (int c = 0; c < w; c++) {
+			int s = 0;
+			for (int t = 0; t < 7; t++) {
+				s += vfilter[t] * intermediate[r + t][c];
+			}
+			int v = Round2(s, InterRound1);
+			LrFrame[plane][y + r][x + c] = Clip1(v);
+		}
+	}
+}
+//7.17.5
+void wienerCoefficient(int *coeff,int **filter){
+	(*filter)[ 3 ] = 128;
+	for (int i = 0; i < 3; i++ ) {
+		int c = coeff[ i ];
+		(*filter)[ i ] = c;
+		(*filter)[ 6 - i ] = c;
+		(*filter)[ 3 ] -= 2 * c;
+	}
+
+}
+//7.17.6
+void getSourceSample(int plane ,int x,int y){
+
+	int PlaneEndX;   // 当前平面的水平边界
+	int PlaneEndY;   // 当前平面的垂直边界
+	int StripeStartY; // 当前条带的起始y坐标
+	int StripeEndY;   // 当前条带的结束y坐标
+
+	// 获取当前平面的边界
+	PlaneEndX = Round2(UpscaledWidth, subX) - 1;
+	PlaneEndY = Round2(FrameHeight, subY) - 1;
+
+	// 获取当前条带的边界
+	StripeStartY = (-8 + stripeNum * 64) >> subY;
+	StripeEndY = StripeStartY + (64 >> subY) - 1;
+
+	// 确保x和y在合法范围内
+	x = Min(PlaneEndX, x);
+	x = Max(0, x);
+	y = Min(PlaneEndY, y);
+	y = Max(0, y);
+
+	// 根据y的位置确定样本来源
+	if (y < StripeStartY) {
+		y = Max(StripeStartY - 2, y);
+		return UpscaledCurrFrame[plane][y][x];
+	} else if (y > StripeEndY) {
+		y = Min(StripeEndY + 2, y);
+		return UpscaledCurrFrame[plane][y][x];
+	} else {
+		return UpscaledCdefFrame[plane][y][x];
+	}
+}
+//7.18
+void filmGrainSynthesis(int w, int h, int subX, int subY) {
+    // 设置随机数生成器的初始状态
+    int RandomRegister = grain_seed;
+    
+    // 计算常数值
+    int GrainCenter = 128 << (BitDepth - 8);
+    int GrainMin = -GrainCenter;
+    int GrainMax = (256 << (BitDepth - 8)) - 1 - GrainCenter;
+    
+    GenerateGrain(w, h, subX, subY);
+
+    
+    // 初始化缩放查找表
+    InitializeScalingLookup(BitDepth);
+    
+    // 添加噪音
+    AddNoise(w, h, subX, subY);
+
+}
+int get_random_number( int bits ) {
+	int r = RandomRegister;
+	int bit = ((r >> 0) ^ (r >> 1) ^ (r >> 3) ^ (r >> 12)) & 1;
+	r = (r >> 1) | (bit << 15);
+	int result = (r >> (16 - bits)) & ((1 << bits) - 1);
+	RandomRegister = r;
+	return result;
+}
+void generateGrain() {
+    // 生成白噪声
+    int shift = 12 - BitDepth + grain_scale_shift;
+    for (int y = 0; y < 73; y++) {
+        for (int x = 0; x < 82; x++) {
+            int g = 0;
+            if (num_y_points > 0) {
+                g = Gaussian_Sequence[get_random_number(11)];
+            }
+            LumaGrain[y][x] = Round2(g, shift);
+        }
+    }
+
+    // 应用自回归滤波
+    shift = ar_coeff_shift_minus_6 + 6;
+    for (int y = 3; y < 73; y++) {
+        for (int x = 3; x < 82 - 3; x++) {
+            int s = 0;
+            int pos = 0;
+            for (int deltaRow = -ar_coeff_lag; deltaRow <= 0; deltaRow++) {
+                for (int deltaCol = -ar_coeff_lag; deltaCol <= ar_coeff_lag; deltaCol++) {
+                    if (deltaRow == 0 && deltaCol == 0) {
+                        break;
+                    }
+                    int c = ar_coeffs_y_plus_128[pos] - 128;
+                    s += LumaGrain[y + deltaRow][x + deltaCol] * c;
+                    pos++;
+                }
+            }
+            LumaGrain[y][x] = Clip3(GrainMin, GrainMax, LumaGrain[y][x] + Round2(s, shift));
+        }
+    }
+
+    // 生成色度噪声
+    int chromaW = (subX ? 44 : 82);
+    int chromaH = (subY ? 38 : 73);
+    shift = 12 - BitDepth + grain_scale_shift;
+    int RandomRegister = grain_seed ^ 0xb524;
+    for (int y = 0; y < chromaH; y++) {
+        for (int x = 0; x < chromaW; x++) {
+            int g = 0;
+            if (num_cb_points > 0 || chroma_scaling_from_luma) {
+                g = Gaussian_Sequence[get_random_number(11)];
+            }
+            CbGrain[y][x] = Round2(g, shift);
+        }
+    }
+
+    RandomRegister = grain_seed ^ 0x49d8;
+    for (int y = 0; y < chromaH; y++) {
+        for (int x = 0; x < chromaW; x++) {
+            int g = 0;
+            if (num_cr_points > 0 || chroma_scaling_from_luma) {
+                g = Gaussian_Sequence[get_random_number(11)];
+            }
+            CrGrain[y][x] = Round2(g, shift);
+        }
+    }
+
+    // 应用自回归滤波到色度噪声
+    shift = ar_coeff_shift_minus_6 + 6;
+    for (int y = 3; y < chromaH; y++) {
+        for (int x = 3; x < chromaW - 3; x++) {
+            int s0 = 0;
+            int s1 = 0;
+            int pos = 0;
+            for (int deltaRow = -ar_coeff_lag; deltaRow <= 0; deltaRow++) {
+                for (int deltaCol = -ar_coeff_lag; deltaCol <= ar_coeff_lag; deltaCol++) {
+                    int c0 = ar_coeffs_cb_plus_128[pos] - 128;
+                    int c1 = ar_coeffs_cr_plus_128[pos] - 128;
+                    if (deltaRow == 0 && deltaCol == 0) {
+                        if (num_y_points > 0) {
+                            int luma = 0;
+                            int lumaX = ((x - 3) << subX) + 3;
+                            int lumaY = ((y - 3) << subY) + 3;
+                            for (int i = 0; i <= subY; i++) {
+                                for (int j = 0; j <= subX; j++) {
+                                    luma += LumaGrain[lumaY + i][lumaX + j];
+                                }
+                            }
+                            luma = Round2(luma, subX + subY);
+                            s0 += luma * c0;
+                            s1 += luma * c1;
+                        }
+                        break;
+                    }
+                    s0 += CbGrain[y + deltaRow][x + deltaCol] * c0;
+                    s1 += CrGrain[y + deltaRow][x + deltaCol] * c1;
+                    pos++;
+                }
+            }
+            CbGrain[y][x] = Clip3(GrainMin, GrainMax, CbGrain[y][x] + Round2(s0, shift));
+            CrGrain[y][x] = Clip3(GrainMin, GrainMax, CrGrain[y][x] + Round2(s1, shift));
+        }
+    }
+}
+void scalingLookupInitialization() {
+    for (int plane = 0; plane < NumPlanes; plane++) {
+        int numPoints;
+        if (plane == 0 || chroma_scaling_from_luma)
+            numPoints = num_y_points;
+        else if (plane == 1)
+            numPoints = num_cb_points;
+        else
+            numPoints = num_cr_points;
+
+        if (numPoints == 0) {
+            for (int x = 0; x < 256; x++) {
+                ScalingLut[plane][x] = 0;
+            }
+        } else {
+            for (int x = 0; x < get_x(plane, 0); x++) {
+                ScalingLut[plane][x] = get_y(plane, 0);
+            }
+            for (int i = 0; i < numPoints - 1; i++) {
+                int deltaY = get_y(plane, i + 1) - get_y(plane, i);
+                int deltaX = get_x(plane, i + 1) - get_x(plane, i);
+                int delta = deltaY * ((65536 + (deltaX >> 1)) / deltaX);
+                for (int x = 0; x < deltaX; x++) {
+                    int v = get_y(plane, i) + ((x * delta + 32768) >> 16);
+                    ScalingLut[plane][get_x(plane, i) + x] = v;
+                }
+            }
+            for (int x = get_x(plane, numPoints - 1); x < 256; x++) {
+                ScalingLut[plane][x] = get_y(plane, numPoints - 1);
+            }
+        }
+    }
+}
+
+int get_x(int plane, int i) {
+    if (plane == 0 || chroma_scaling_from_luma)
+        return point_y_value[i];
+    else if (plane == 1)
+        return point_cb_value[i];
+    else
+        return point_cr_value[i];
+}
+
+int get_y(int plane, int i) {
+    if (plane == 0 || chroma_scaling_from_luma)
+        return point_y_scaling[i];
+    else if (plane == 1)
+        return point_cb_scaling[i];
+    else
+        return point_cr_scaling[i];
+}
+//7.19
+void motionFieldMotionVectorStorage(){
+	for (int row = 0; row < MiRows; row++) {
+		for (int col = 0; col < MiCols; col++) {
+			MfRefFrames[row][col] = NONE;
+			MfMvs[row][col][0] = 0;
+			MfMvs[row][col][1] = 0;
+
+			for (int list = 0; list < 2; list++) {
+				int r = RefFrames[row][col][list];
+
+				if (r > INTRA_FRAME) {
+					int refIdx = ref_frame_idx[r - LAST_FRAME];
+					int dist = get_relative_dist(RefOrderHint[refIdx], OrderHint);
+
+					if (dist < 0) {
+						int mvRow = Mvs[row][col][list][0];
+						int mvCol = Mvs[row][col][list][1];
+
+						if (Abs(mvRow) <= REFMVS_LIMIT && Abs(mvCol) <= REFMVS_LIMIT) {
+							MfRefFrames[row][col] = r;
+							MfMvs[row][col][0] = mvRow;
+							MfMvs[row][col][1] = mvCol;
+						}
+					}
+				}
+			}
+		}
+	}
+
+}
+void referenceFrameUpdate(){
+	for (int i = 0; i < NUM_REF_FRAMES; i++) {
+		if ((refresh_frame_flags >> i) & 1) {
+			RefValid[i] = 1;
+			RefFrameId[i] = current_frame_id;
+			RefUpscaledWidth[i] = UpscaledWidth;
+			RefFrameWidth[i] = FrameWidth;
+			RefFrameHeight[i] = FrameHeight;
+			RefRenderWidth[i] = RenderWidth;
+			RefRenderHeight[i] = RenderHeight;
+			RefMiCols[i] = MiCols;
+			RefMiRows[i] = MiRows;
+			RefFrameType[i] = frame_type;
+			RefSubsamplingX[i] = subsampling_x;
+			RefSubsamplingY[i] = subsampling_y;
+			RefBitDepth[i] = BitDepth;
+
+			for (int j = 0; j < REFS_PER_FRAME; j++) {
+				SavedOrderHints[i][j + LAST_FRAME] = OrderHints[j + LAST_FRAME];
+			}
+
+			for (int y = 0; y < FrameHeight; y++) {
+				for (int x = 0; x < UpscaledWidth; x++) {
+					FrameStore[i][0][y][x] = LrFrame[0][y][x];
+				}
+			}
+
+			for (int plane = 1; plane <= 2; plane++) {
+				for (int y = 0; y < ((FrameHeight + subsampling_y) >> subsampling_y); y++) {
+					for (int x = 0; x < ((UpscaledWidth + subsampling_x) >> subsampling_x); x++) {
+						FrameStore[i][plane][y][x] = LrFrame[plane][y][x];
+					}
+				}
+			}
+
+			for (int row = 0; row < MiRows; row++) {
+				for (int col = 0; col < MiCols; col++) {
+					SavedRefFrames[i][row][col] = MfRefFrames[row][col];
+
+					for (int comp = 0; comp <= 1; comp++) {
+						SavedMvs[i][row][col][comp] = MfMvs[row][col][comp];
+					}
+				}
+			}
+
+			for (int ref = LAST_FRAME; ref <= ALTREF_FRAME; ref++) {
+				for (int j = 0; j < 6; j++) {
+					SavedGmParams[i][ref][j] = gm_params[ref][j];
+				}
+			}
+
+			for (int row = 0; row < MiRows; row++) {
+				for (int col = 0; col < MiCols; col++) {
+					SavedSegmentIds[i][row][col] = SegmentIds[row][col];
+				}
+			}
+
+			save_cdfs(i);
+
+			if (film_grain_params_present == 1) {
+				save_grain_params(i);
+			}
+
+			save_loop_filter_params(i);
+			save_segmentation_params(i);
+		}
+	}
+
+}
+void referenceFrameLoading(){
+	int frame_to_show_map_idx; // 通过语法元素 frame_to_show_map_idx 获取索引
+
+	current_frame_id = RefFrameId[frame_to_show_map_idx];
+	UpscaledWidth = RefUpscaledWidth[frame_to_show_map_idx];
+	FrameWidth = RefFrameWidth[frame_to_show_map_idx];
+	FrameHeight = RefFrameHeight[frame_to_show_map_idx];
+	RenderWidth = RefRenderWidth[frame_to_show_map_idx];
+	RenderHeight = RefRenderHeight[frame_to_show_map_idx];
+	MiCols = RefMiCols[frame_to_show_map_idx];
+	MiRows = RefMiRows[frame_to_show_map_idx];
+	subsampling_x = RefSubsamplingX[frame_to_show_map_idx];
+	subsampling_y = RefSubsamplingY[frame_to_show_map_idx];
+	BitDepth = RefBitDepth[frame_to_show_map_idx];
+	OrderHint = RefOrderHint[frame_to_show_map_idx];
+
+	for (int j = 0; j < REFS_PER_FRAME; j++) {
+		OrderHints[j + LAST_FRAME] = SavedOrderHints[frame_to_show_map_idx][j + LAST_FRAME];
+	}
+
+	for (int y = 0; y < FrameHeight; y++) {
+		for (int x = 0; x < UpscaledWidth; x++) {
+			LrFrame[0][y][x] = FrameStore[frame_to_show_map_idx][0][y][x];
+		}
+	}
+
+	for (int plane = 1; plane <= 2; plane++) {
+		for (int y = 0; y < ((FrameHeight + subsampling_y) >> subsampling_y); y++) {
+			for (int x = 0; x < ((UpscaledWidth + subsampling_x) >> subsampling_x); x++) {
+				LrFrame[plane][y][x] = FrameStore[frame_to_show_map_idx][plane][y][x];
+			}
+		}
+	}
+
+	for (int row = 0; row < MiRows; row++) {
+		for (int col = 0; col < MiCols; col++) {
+			MfRefFrames[row][col] = SavedRefFrames[frame_to_show_map_idx][row][col];
+
+			for (int comp = 0; comp <= 1; comp++) {
+				MfMvs[row][col][comp] = SavedMvs[frame_to_show_map_idx][row][col][comp];
+			}
+		}
+	}
+
+	for (int ref = LAST_FRAME; ref <= ALTREF_FRAME; ref++) {
+		for (int j = 0; j < 6; j++) {
+			gm_params[ref][j] = SavedGmParams[frame_to_show_map_idx][ref][j];
+		}
+	}
+
+	for (int row = 0; row < MiRows; row++) {
+		for (int col = 0; col < MiCols; col++) {
+			SegmentIds[row][col] = SavedSegmentIds[frame_to_show_map_idx][row][col];
+		}
+	}
+
+	load_cdfs(frame_to_show_map_idx);
+
+	if (film_grain_params_present == 1) {
+		load_grain_params(frame_to_show_map_idx);
+	}
+
+	load_loop_filter_params(frame_to_show_map_idx);
+	load_segmentation_params(frame_to_show_map_idx);
+
+
 }
