@@ -414,13 +414,12 @@ typedef struct FrameContext{
 	sizeInfo si;
 	frameHeader frameHdr;
 	CDFArrays cdfCtx;
-	uint16_t RefMiCols[NUM_REF_FRAMES];
-	uint16_t RefMiRows[NUM_REF_FRAMES];
-	//还有更多参数，7.20
+
 };
 typedef struct AV1DecodeContext{
 	FrameContext 	*ref_frames[NUM_REF_FRAMES];
 	FrameContext currentFrame;
+    CDFArrays cdfCtxs[NUM_REF_FRAMES];
 	uint8_t	RefValid[NUM_REF_FRAMES];
 	uint8_t RefFrameId[NUM_REF_FRAMES];
 	uint8_t	RefOrderHint[NUM_REF_FRAMES];
@@ -429,20 +428,25 @@ typedef struct AV1DecodeContext{
 	uint8_t RefFrameHeight[NUM_REF_FRAMES];
 	uint8_t RefRenderWidth[NUM_REF_FRAMES];
 	uint8_t RefRenderHeight[NUM_REF_FRAMES];
-	uint8_t RefMiCols[NUM_REF_FRAMES];
-	uint8_t RefMiRows[NUM_REF_FRAMES];
+	uint16_t RefMiCols[NUM_REF_FRAMES];
+	uint16_t RefMiRows[NUM_REF_FRAMES];
 	uint8_t RefFrameType[NUM_REF_FRAMES];
 	uint8_t RefSubsamplingX[NUM_REF_FRAMES];
 	uint8_t RefSubsamplingY[NUM_REF_FRAMES];
 	uint8_t RefBitDepth[NUM_REF_FRAMES];
-    CDFArrays cdfCtxs[NUM_REF_FRAMES];
+	uint8_t SavedOrderHints[NUM_REF_FRAMES][TOTAL_REFS_PER_FRAME];
+	uint8_t **FrameStore[NUM_REF_FRAMES][3];
+	uint8_t **SavedRefFrames[NUM_REF_FRAMES];
+	int ***SavedMvs[NUM_REF_FRAMES];
+	uint8_t SavedGmParams[NUM_REF_FRAMES][NUM_REF_FRAMES][8];
+	uint8_t **SavedSegmentIds[NUM_REF_FRAMES];
 
 	uint8_t		OrderHints[REFS_PER_FRAME]; //OrderHints specifies the expected output order for each reference frame.
 	frameHeader *curFrameHdr;
 	sequenceHeader *seqHdr;
 	uint8_t SeenFrameHeader;
 
-	uint16_t ***MotionFieldMvs[2]; 
+	int ***MotionFieldMvs[8]; 
 	uint8_t DeltaLF[4];	
 	uint8_t **PrevSegmentIds;
 
@@ -451,8 +455,9 @@ typedef struct AV1DecodeContext{
 	uint8_t RefMvContext;
 	uint8_t RefMvIdx;
 	uint8_t Mv[2][2];
-	uint8_t RefStackMv[8][2][2]; //consturct by find_mv_stack
-	uint8_t GlobalMvs[2][2];
+	int RefStackMv[8][2][2]; //consturct by find_mv_stack
+	int *WeightStack;
+	int GlobalMvs[2][2];
 	uint8_t NumMvFound;
 	uint8_t NewMvCount;
 	uint8_t FoundMatch;

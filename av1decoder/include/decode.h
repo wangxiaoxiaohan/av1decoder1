@@ -5,8 +5,7 @@ public:
     ~decode();
 	int find_mv_stack(int isCompound,SymbolContext *sbCtx, bitSt *bs, TileData *t_data,
 								 PartitionData *p_data, BlockData *b_data, AV1DecodeContext *av1ctx);
-	int setup_global_mv(int refList,int *mv,
-								 BlockData *b_data,AV1DecodeContext *av1Ctx);
+
 	int context_and_clamping(int isCompound, int numNew);
 
 	int find_warp_samples(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
@@ -21,9 +20,31 @@ public:
 	int load_previous(AV1DecodeContext *av1Ctx);
 	int load_segmentation_params(AV1DecodeContext *av1Ctx,int prevFrame);
 	int load_loop_filter_params(AV1DecodeContext *av1Ctx,int prevFrame);
-	int load_previous_segment_ids();
+	int load_previous_segment_ids(AV1DecodeContext *av1Ctx);
+	int set_frame_refs(AV1DecodeContext *av1Ctx);
+	int motion_field_estimation(AV1DecodeContext *av1Ctx);
+	int motion_filed_project(AV1DecodeContext *av1Ctx,int src,int dstSign);
+	int get_mv_projection(int *mv,int numerator,int denominator,int *projMv);
+	int get_block_position(AV1DecodeContext *av1Ctx,int *PosX8,int *PosY8, int x8, int y8, int dstSign, int *projMv );
+	int find_mv_stack(int isCompound,SymbolContext *sbCtx, bitSt *bs, TileData *t_data,
+								 PartitionData *p_data, BlockData *b_data, AV1DecodeContext *av1ctx);
+	int scan_row(int deltaRow,int isCompound,
+				TileData *t_data,PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx);
+	int scan_col(int deltaCol,int isCompound,
+			TileData *t_data,PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx);
 
-	int decode::predict_intra(int plane,int x,int y,int haveLeft,int haveAbove,
+	int scan_point(int deltaRow,int deltaCol,int isCompound,
+					TileData *t_data,PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx);
+	int add_ref_mv_candidate(int mvRow,int  mvCol,int  isCompound,int weight,
+								TileData *t_data,PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx);
+	int temporal_scan(int isCompound,BlockData *b_data);
+	int extra_search(int isCompound);
+	int setup_global_mv(int refList,int *mv,
+								 BlockData *b_data,AV1DecodeContext *av1Ctx);
+	int lower_mv_precision(AV1DecodeContext *av1Ctx,int *candMv);
+	int Sorting(int start,int end ,int isCompound);
+
+	int predict_intra(int plane,int x,int y,int haveLeft,int haveAbove,
 				int haveAboveRight,int haveBelowLeft,int mode,int log2W,int log2H,
 				PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1);
 

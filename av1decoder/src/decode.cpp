@@ -163,9 +163,11 @@ int decode::load_cdfs(AV1DecodeContext *av1Ctx,int ctx){
 }
 //加载主参考帧的一些参数
 int decode::load_previous(AV1DecodeContext *av1Ctx){
-	int prevFrame = ref_frame_idx[ primary_ref_frame ];
-	frameHdr->global_motion_params.PrevGmParams = SavedGmParams[ prevFrame ];
+	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	int prevFrame = frameHdr->ref_frame_idx[ frameHdr->primary_ref_frame ];
 	load_loop_filter_params(av1Ctx,prevFrame);
+	//frameHdr->global_motion_params.PrevGmParams = av1Ctx->SavedGmParams[ prevFrame ];
+	memcpy(frameHdr->global_motion_params.PrevGmParams,av1Ctx->SavedGmParams[ prevFrame ],sizeof(frameHdr->global_motion_params.PrevGmParams));
 	load_segmentation_params(av1Ctx,prevFrame);
 
 }
@@ -192,25 +194,32 @@ int decode::load_segmentation_params(AV1DecodeContext *av1Ctx,int prevFrame){
 		av1Ctx->ref_frames[prevFrame]->frameHdr.segmentation_params.FeatureData,
 		MAX_SEGMENTS * SEG_LVL_MAX * sizeof(int16_t));
 }
-int decode::load_previous_segment_ids(){
-	int prevFrame = ref_frame_idx[ primary_ref_frame ];
-	if(segmentation_enabled){
+int decode::load_previous_segment_ids(AV1DecodeContext *av1Ctx){
+	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	int prevFrame = frameHdr->ref_frame_idx[ frameHdr->primary_ref_frame ];
+	if(frameHdr->segmentation_params.segmentation_enabled){
 		//load参数，这里为什么是save动作？
 		//设置 RefMiCols 和 RefMiRows 的目的是为了在解码过程中保持块大小的一致性，以正确地引用之前帧的数据。
-		RefMiCols[ prevFrame ] = MiCols;
-		RefMiRows[ prevFrame ] = MiRows;
-		for(int row  = 0; row < MiRows  ; row ++ ){
-			for(int col  = 0; col < MiCols  ; col ++ ){
+		av1Ctx->RefMiCols[ prevFrame ] = frameHdr->MiCols;
+		av1Ctx->RefMiRows[ prevFrame ] = frameHdr->MiRows;
+		/*
+		for(int row  = 0; row < frameHdr->MiRows  ; row ++ ){
+			for(int col  = 0; col < frameHdr->MiCols  ; col ++ ){
 				PrevSegmentIds[ row ][ col ] = SavedSegmentIds[ prevFrame ][ row ][ col ];
 			}
 		}
+		*/
+		memcpy(av1Ctx->PrevSegmentIds,av1Ctx->SavedSegmentIds[ prevFrame ],sizeof(uint8_t) * frameHdr->MiRows * frameHdr->MiCols);
 
 	}else{
+		/*
 		for(int row  = 0; row < MiRows  ; row ++ ){
 			for(int col  = 0; col < MiCols  ; col ++ ){
 				PrevSegmentIds[ row ][ col ] = 0;
 			}
 		}
+		*/
+		memset(av1Ctx->PrevSegmentIds, 0,sizeof(uint8_t) * frameHdr->MiRows * frameHdr->MiCols);
 	}
 }
 int decode::init_coeff_cdfs(AV1DecodeContext *av1Ctx){
@@ -243,29 +252,32 @@ int decode::init_coeff_cdfs(AV1DecodeContext *av1Ctx){
 }
 
 //7.8
-int decode::set_frame_refs(){
+int decode::set_frame_refs(AV1DecodeContext *av1Ctx){
+	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	sequenceHeader *seqHdr = av1Ctx->seqHdr;
 	for (int i = 0; i < REFS_PER_FRAME; i++ )
-		ref_frame_idx[ i ] = -1;
-	ref_frame_idx[ LAST_FRAME - LAST_FRAME ] = last_frame_idx;
-	ref_frame_idx[ GOLDEN_FRAME - LAST_FRAME ] = gold_frame_idx;
+		frameHdr->ref_frame_idx[ i ] = -1;
+	frameHdr->ref_frame_idx[ LAST_FRAME - LAST_FRAME ] = frameHdr->last_frame_idx;
+	frameHdr->ref_frame_idx[ GOLDEN_FRAME - LAST_FRAME ] = frameHdr->gold_frame_idx;
 
 	int usedFrame[REFS_PER_FRAME];
 	for (int i = 0; i < NUM_REF_FRAMES; i++ )
 		usedFrame[ i ] = 0;
-	usedFrame[ last_frame_idx ] = 1;
-	usedFrame[ gold_frame_idx ] = 1;
-	int  curFrameHint = 1 << (OrderHintBits - 1);
+	usedFrame[ frameHdr->last_frame_idx ] = 1;
+	usedFrame[ frameHdr->gold_frame_idx ] = 1;
+	int  curFrameHint = 1 << (seqHdr->OrderHintBits - 1);
+	int shiftedOrderHints[NUM_REF_FRAMES];
 	for (int  i = 0; i < NUM_REF_FRAMES; i++ )
-		shiftedOrderHints[ i ] = curFrameHint + get_relative_dist( RefOrderHint[ i ], OrderHint );
+		shiftedOrderHints[ i ] = curFrameHint + get_relative_dist( seqHdr->enable_order_hint,seqHdr->OrderHintBits , av1Ctx->RefOrderHint[ i ], frameHdr->OrderHint );
 
-	int lastOrderHint = shiftedOrderHints[last_frame_idx ];
+	int lastOrderHint = shiftedOrderHints[frameHdr->last_frame_idx ];
 	//It is a requirement of bitstream conformance that lastOrderHint is strictly less than curFrameHint
 	if(!(lastOrderHint < curFrameHint)){
 		//如果不满足，该做什么？？ spec只是说需要确认。。。
 		//直接退出当前流程？？
 	}
 
-	int goldOrderHint = shiftedOrderHints[ gold_frame_idx ];
+	int goldOrderHint = shiftedOrderHints[ frameHdr->gold_frame_idx ];
 	if(!(goldOrderHint < curFrameHint) ){
 		//如果不满足，该做什么？？
 	}
@@ -284,7 +296,7 @@ int decode::set_frame_refs(){
 		}
 	}
 	if ( ref >= 0 ) {
-		ref_frame_idx[ ALTREF_FRAME - LAST_FRAME ] = ref;
+		frameHdr->ref_frame_idx[ ALTREF_FRAME - LAST_FRAME ] = ref;
 		usedFrame[ ref ] = 1;
 	}
 
@@ -302,7 +314,7 @@ int decode::set_frame_refs(){
 		}
 	}
 	if ( ref >= 0 ) {
-		ref_frame_idx[ BWDREF_FRAME - LAST_FRAME ] = ref;
+		frameHdr->ref_frame_idx[ BWDREF_FRAME - LAST_FRAME ] = ref;
 		usedFrame[ ref ] = 1;
 	}
 //ALTREF2_FRAME reference is set to the next closest backward reference
@@ -319,7 +331,7 @@ int decode::set_frame_refs(){
 		}
 	}
 	if ( ref >= 0 ) {
-		ref_frame_idx[ ALTREF2_FRAME - LAST_FRAME ] = ref;
+		frameHdr->ref_frame_idx[ ALTREF2_FRAME - LAST_FRAME ] = ref;
 		usedFrame[ ref ] = 1;
 	}
 
@@ -327,7 +339,7 @@ int decode::set_frame_refs(){
  //剩余的参考帧被设置为按反时间顺序的前向参考帧
 	for (int i = 0; i < REFS_PER_FRAME - 2; i++ ) {
 		int refFrame = Ref_Frame_List[ i ];
-		if ( ref_frame_idx[ refFrame - LAST_FRAME ] < 0 ) {
+		if ( frameHdr->ref_frame_idx[ refFrame - LAST_FRAME ] < 0 ) {
 			ref = -1;
 			latestOrderHint = INT_MIN;
 			for (int  i = 0; i < NUM_REF_FRAMES; i++ ) {
@@ -341,10 +353,10 @@ int decode::set_frame_refs(){
 			}
 
 
-		if ( ref >= 0 ) {
-			ref_frame_idx[ refFrame - LAST_FRAME ] = ref;
-			usedFrame[ ref ] = 1;
-		}
+			if ( ref >= 0 ) {
+				frameHdr->ref_frame_idx[ refFrame - LAST_FRAME ] = ref;
+				usedFrame[ ref ] = 1;
+			}
 		}
 	}
 //Finally, any remaining references are set to the reference frame with smallest output order
@@ -359,69 +371,121 @@ int decode::set_frame_refs(){
 		}
 	}
 	for (int i = 0; i < REFS_PER_FRAME; i++ ) {
-		if ( ref_frame_idx[ i ] < 0 ) {
-			ref_frame_idx[ i ] = ref;
+		if ( frameHdr->ref_frame_idx[ i ] < 0 ) {
+			frameHdr->ref_frame_idx[ i ] = ref;
 		}
 	}
 
 }
 //7.9
-int decode::motion_field_estimation(){
-	int w8 = MiCols >> 1;
-	int h8 = MiRows >> 1;
-//As the linear projection can create a field with holes, the motion fields are initialized to an invalid motion vector of -32768,-32768
-	for (int  ref = LAST_FRAME; ref <= ALTREF_FRAME; ref++ )
-		for (int  y = 0; y < h8 ; y++ )
-			for (int  x = 0; x < w8; x++ )
-				for (int  j = 0; j < 2; j++ )
-				MotionFieldMvs[ ref ][ y ][ x ][ j ] = -1 << 15;
+int decode::motion_field_estimation(AV1DecodeContext *av1Ctx){
+	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	sequenceHeader *seqHdr = av1Ctx->seqHdr;
+	int w8 = frameHdr->MiCols >> 1; // Width of motion field in 8x8 luma sample units
+	int h8 = frameHdr->MiRows >> 1; // Height of motion field in 8x8 luma sample units
 
-	int lastIdx = ref_frame_idx[ 0 ];
-	int curGoldOrderHint = OrderHints[ GOLDEN_FRAME ];
-	int lastAltOrderHint = SavedOrderHints[ lastIdx ][ ALTREF_FRAME ];
-	int useLast =  (lastAltOrderHint != curGoldOrderHint );
-	if(useLast == 1){
+	for (int ref = LAST_FRAME; ref <= ALTREF_FRAME; ref++) {
+		for (int y = 0; y < h8; y++) {
+			for (int x = 0; x < w8; x++) {
+				for (int j = 0; j < 2; j++) {
+					av1Ctx->MotionFieldMvs[ref][y][x][j] = -1 << 15; // Initialize to invalid motion vector
+				}
+			}
+		}
+	}
 
+	int lastIdx = frameHdr->ref_frame_idx[0]; // Reference frame index for LAST_FRAME
+	int curGoldOrderHint = av1Ctx->OrderHints[GOLDEN_FRAME]; // Expected output order for GOLDEN_FRAME of current frame
+	int lastAltOrderHint = av1Ctx->SavedOrderHints[lastIdx][ALTREF_FRAME]; // Expected output order for ALTREF_FRAME of LAST_FRAME
+	int useLast = (lastAltOrderHint != curGoldOrderHint) ? 1 : 0; // Whether to project motion vectors from LAST_FRAME
 
+	if (useLast == 1) {
+		// Invoke projection process for LAST_FRAME with dstSign = -1 (discard output)
+		motion_filed_project(av1Ctx,LAST_FRAME, -1);
+	}
+
+	int refStamp = MFMV_STACK_SIZE - 2; // Limit on how many reference frames need to be projected
+	int useBwd = (get_relative_dist(seqHdr->enable_order_hint,seqHdr->OrderHintBits,av1Ctx->OrderHints[BWDREF_FRAME], frameHdr->OrderHint) > 0) ? 1 : 0; // Whether to use BWDREF_FRAME
+
+	if (useBwd == 1) {
+		int projOutput = motion_filed_project(av1Ctx,BWDREF_FRAME, 1); // Invoke projection for BWDREF_FRAME with dstSign = 1
+		if (projOutput == 1) {
+			refStamp--;
+		}
+	}
+
+	int useAlt2 = (get_relative_dist(seqHdr->enable_order_hint,seqHdr->OrderHintBits,av1Ctx->OrderHints[ALTREF2_FRAME], frameHdr->OrderHint) > 0) ? 1 : 0; // Whether to use ALTREF2_FRAME
+
+	if (useAlt2 == 1) {
+		int projOutput = motion_filed_project(av1Ctx,ALTREF2_FRAME, 1); // Invoke projection for ALTREF2_FRAME with dstSign = 1
+		if (projOutput == 1) {
+			refStamp--;
+		}
+	}
+
+	int useAlt = (get_relative_dist(seqHdr->enable_order_hint,seqHdr->OrderHintBits,av1Ctx->OrderHints[ALTREF_FRAME], frameHdr->OrderHint) > 0) ? 1 : 0; // Whether to use ALTREF_FRAME
+
+	if (useAlt == 1 && refStamp >= 0) {
+		int projOutput = motion_filed_project(av1Ctx,ALTREF_FRAME, 1); // Invoke projection for ALTREF_FRAME with dstSign = 1
+		if (projOutput == 1) {
+			refStamp--;
+		}
+	}
+
+	if (refStamp >= 0) {
+		// Invoke projection process for LAST2_FRAME with dstSign = -1 (discard output)
+		motion_filed_project(av1Ctx,LAST2_FRAME, -1);
 	}
 
 }
 //The process projects the motion vectors from a whole reference frame and stores the results in MotionFieldMvs.
 //The process outputs a single boolean value representing whether the source frame was valid for this operation. If the
 //output is zero, no modification is made to MotionFieldMvs
-int decode::motion_filed_project(int src,int dstSign){
-	int srcIdx = ref_frame_idx[src - LAST_FRAME];
-	int w8 = MiCols >> 1;
-	int h8 = MiRows >> 1;
+int decode::motion_filed_project(AV1DecodeContext *av1Ctx,int src,int dstSign){
+	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	sequenceHeader *seqHdr = av1Ctx->seqHdr;
+	int srcIdx = frameHdr->ref_frame_idx[src - LAST_FRAME];
+	int w8 = frameHdr->MiCols >> 1;
+	int h8 = frameHdr->MiRows >> 1;
 
-	if (RefMiRows[srcIdx] != MiRows || RefMiCols[srcIdx] != MiCols || RefFrameType[srcIdx] == INTRA_ONLY_FRAME || RefFrameType[srcIdx] == KEY_FRAME) {
+	if (av1Ctx->RefMiRows[srcIdx] != frameHdr->MiRows || 
+		av1Ctx->RefMiCols[srcIdx] != frameHdr->MiCols || 
+		av1Ctx->RefFrameType[srcIdx] == INTRA_ONLY_FRAME || 
+		av1Ctx->RefFrameType[srcIdx] == KEY_FRAME) {
 		// Exit the process with output set to 0
-		// ...
 		return 0;
 	}
 	for (int y8 = 0; y8 < h8; y8++) {
 		for (int x8 = 0; x8 < w8; x8++) {
 			int row = 2 * y8 + 1; 
 			int col = 2 * x8 + 1;
-			int srcRef = SavedRefFrames[srcIdx][row][col];
+			int srcRef = av1Ctx->SavedRefFrames[srcIdx][row][col];
 			
 			if (srcRef > INTRA_FRAME) {
-				int refToCur = get_relative_dist(OrderHints[src], OrderHint);
-				int refOffset = get_relative_dist(OrderHints[src], SavedOrderHints[srcIdx][srcRef]);
+				int refToCur = get_relative_dist(seqHdr->enable_order_hint,seqHdr->OrderHintBits,av1Ctx->OrderHints[src], frameHdr->OrderHint);
+				int refOffset = get_relative_dist(seqHdr->enable_order_hint,seqHdr->OrderHintBits,av1Ctx->OrderHints[src], av1Ctx->SavedOrderHints[srcIdx][srcRef]);
 				int posValid = (Abs(refToCur) <= MAX_FRAME_DISTANCE) &&
 							(Abs(refOffset) <= MAX_FRAME_DISTANCE) &&
 							(refOffset > 0);
 				
 				if (posValid) {
-					int mv = SavedMvs[srcIdx][row][col];
-					int projMv = get_mv_projection(mv, refToCur * dstSign, refOffset);
-					posValid = get_block_position(x8, y8, dstSign, projMv);
+					int mv[2];
+					//mv = av1Ctx->SavedMvs[srcIdx][row][col];
+					mv[0] = av1Ctx->SavedMvs[srcIdx][row][col][0];
+					mv[1] = av1Ctx->SavedMvs[srcIdx][row][col][1];
+
+					int projMv[2];
+					get_mv_projection(mv, refToCur * dstSign, refOffset,projMv);
+					int PosY8,PosX8;
+					posValid = get_block_position(av1Ctx,&PosX8,&PosY8,x8, y8, dstSign, projMv);
 					
 					if (posValid) {
 						for (int dst = LAST_FRAME; dst <= ALTREF_FRAME; dst++) {
-							int refToDst = get_relative_dist(OrderHint, OrderHints[dst]);
-							projMv = get_mv_projection(mv, refToDst, refOffset);
-							MotionFieldMvs[dst][PosY8][PosX8] = projMv;
+							int refToDst = get_relative_dist(seqHdr->enable_order_hint,seqHdr->OrderHintBits,
+																		frameHdr->OrderHint, av1Ctx->OrderHints[dst]);
+							get_mv_projection(mv, refToDst, refOffset,projMv);
+							av1Ctx->MotionFieldMvs[dst][PosY8][PosX8][0] = projMv[0];
+							av1Ctx->MotionFieldMvs[dst][PosY8][PosX8][1] = projMv[1];
 						}
 					}
 				}
@@ -432,7 +496,7 @@ int decode::motion_filed_project(int src,int dstSign){
 //This process starts with a motion vector mv from a previous frame. This motion vector gives the displacement expected
 //when moving a certain number of frames (given by the variable denominator). In order to use the motion vector for
 //predictions using a different reference frame, the length of the motion vector must be scaled
-int decode::get_mv_projection(int *projMv, int *mv,int numerator,int denominator){
+int decode::get_mv_projection(int *mv,int numerator,int denominator,int *projMv){
 
 	int clippedDenominator = Min(MAX_FRAME_DISTANCE, denominator);
 	int clippedNumerator = Clip3(-MAX_FRAME_DISTANCE, MAX_FRAME_DISTANCE, numerator);
@@ -444,12 +508,12 @@ int decode::get_mv_projection(int *projMv, int *mv,int numerator,int denominator
 	}
 }
 //process returns a flag posValid that indicates if the position should be used
-int decode::get_block_position(int *PosX8,int *PosY8, int x8, int y8, int dstSign, int *projMv ){
-
+int decode::get_block_position(AV1DecodeContext *av1Ctx,int *PosX8,int *PosY8, int x8, int y8, int dstSign, int *projMv ){
+	frameHeader *frameHdr = av1Ctx->curFrameHdr;
 	int posValid = 1;
 
-	*PosY8 = project(&posValid,&y8, projMv[ 0 ], dstSign, MiRows >> 1, MAX_OFFSET_HEIGHT);
-	*PosX8 = project(&posValid,&x8, projMv[ 1 ], dstSign, MiCols >> 1, MAX_OFFSET_WIDTH);
+	*PosY8 = project(&posValid,&y8, projMv[ 0 ], dstSign, frameHdr->MiRows >> 1, MAX_OFFSET_HEIGHT);
+	*PosX8 = project(&posValid,&x8, projMv[ 1 ], dstSign, frameHdr->MiCols >> 1, MAX_OFFSET_WIDTH);
 
 	return posValid;
 }
@@ -459,7 +523,7 @@ int decode::get_block_position(int *PosX8,int *PosY8, int x8, int y8, int dstSig
 int decode::find_mv_stack(int isCompound,SymbolContext *sbCtx, bitSt *bs, TileData *t_data,
 								 PartitionData *p_data, BlockData *b_data, AV1DecodeContext *av1ctx){
 
-	frameHeader *frameHdr = av1ctx->frameHdr;
+	frameHeader *frameHdr = av1ctx->curFrameHdr;
 	sequenceHeader *seqHdr = av1ctx->seqHdr;
 									
 	av1ctx->NumMvFound = 0;
@@ -467,19 +531,19 @@ int decode::find_mv_stack(int isCompound,SymbolContext *sbCtx, bitSt *bs, TileDa
 	setup_global_mv(0,av1ctx->GlobalMvs[0],b_data,av1ctx);
 	setup_global_mv(1,av1ctx->GlobalMvs[1],b_data,av1ctx);
 	av1ctx->FoundMatch = 0;
-	scan_row(-1,isCompound,p_data,b_data);
+	scan_row(-1,isCompound,t_data, p_data,b_data,av1ctx);
 	int foundAboveMatch,foundLeftMatch;
 
 	foundAboveMatch = av1ctx->FoundMatch ;
 	av1ctx->FoundMatch = 0;
-	scan_col(-1,isCompound);
+	scan_col(-1,isCompound,t_data, p_data,b_data,av1ctx);
 	foundLeftMatch = av1ctx->FoundMatch ;
 	av1ctx->FoundMatch = 0;
 
 	int bh4 = Num_4x4_Blocks_High[ b_data->MiSize ];
 	int bw4 = Num_4x4_Blocks_Wide[ b_data->MiSize ];
 	if(Max( bw4, bh4 ) <= 16){
-		scan_point(-1,bw4,isCompound);
+		scan_point(-1,bw4,isCompound,t_data, p_data,b_data,av1ctx);
 	}
 
 	if(av1ctx->FoundMatch == 1){
@@ -490,27 +554,27 @@ int decode::find_mv_stack(int isCompound,SymbolContext *sbCtx, bitSt *bs, TileDa
 	int numNew = av1ctx->NewMvCount;
 	if(numNearest > 0){
 		for(int idx = 0 ;idx < numNearest - 1;idx ++ ){
-				WeightStack[ idx ] += REF_CAT_LEVEL;
+				av1ctx->WeightStack[ idx ] += REF_CAT_LEVEL;
 		}
 	}
 	av1ctx->ZeroMvContext = 0;
 	if(frameHdr->use_ref_frame_mvs == 1){
 
-		temporal_scan(isCompound);
+		temporal_scan(isCompound,b_data);
 	}
-	scan_point(-1,-1,isCompound);
+	scan_point(-1,-1,isCompound,t_data, p_data,b_data,av1ctx);
 	if(av1ctx->FoundMatch == 1){
 		foundAboveMatch = 1;
 	}
 
 	av1ctx->FoundMatch =0;
-	scan_row(-3,isCompound,p_data,b_data);
+	scan_row(-3,isCompound,t_data, p_data,b_data,av1ctx);
 	if(av1ctx->FoundMatch == 1){
 		foundAboveMatch = 1;
 	}
 	av1ctx->FoundMatch =0;
 
-	scan_col(-3,isCompound);
+	scan_col(-3,isCompound,t_data, p_data,b_data,av1ctx);
 	if(av1ctx->FoundMatch == 1){
 		foundLeftMatch = 1;
 	}
@@ -518,7 +582,7 @@ int decode::find_mv_stack(int isCompound,SymbolContext *sbCtx, bitSt *bs, TileDa
 
 
 	if(bh4 > 1){
-		scan_row(-5,isCompound);
+		scan_row(-5,isCompound,t_data, p_data,b_data,av1ctx);
 	}
 	if(av1ctx->FoundMatch == 1){
 		foundAboveMatch = 1;
@@ -526,7 +590,7 @@ int decode::find_mv_stack(int isCompound,SymbolContext *sbCtx, bitSt *bs, TileDa
 	av1ctx->FoundMatch = 0;
 
 	if(bw4 > 1){
-		scan_col(-5,isCompound);
+		scan_col(-5,isCompound,t_data, p_data,b_data,av1ctx);
 	}
 	if(av1ctx->FoundMatch == 1){
 		foundLeftMatch = 1;
@@ -548,7 +612,8 @@ int decode::setup_global_mv(int refList,int *mv,
 {
 	int ref,typ;
 	ref = b_data->RefFrame[ refList ];
-	frameHeader *frameHdr = av1Ctx->frameHdr;
+	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	sequenceHeader *seqHdr = av1Ctx->seqHdr;
 	if (ref == INTRA_FRAME || typ == IDENTITY)
 	{
 		mv[0] = 0;
@@ -580,14 +645,14 @@ int decode::setup_global_mv(int refList,int *mv,
 			mv[1] = Round2Signed(xc, WARPEDMODEL_PREC_BITS - 2) * 2;
 		}
 	}
-	lower_mv_precision(mv);
+	lower_mv_precision(av1Ctx, mv);
 }
-int decode::lower_mv_precision(int force_integer_mv,int *candMv){
-
-	if(low_high_precision_mv == 1)
+int decode::lower_mv_precision(AV1DecodeContext *av1Ctx,int *candMv){
+	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	if(frameHdr->allow_high_precision_mv == 1)
 		return;
 	for(int idx =0 ; idx < 2 ;idx ++){	
-		if ( force_integer_mv ) {
+		if ( frameHdr->force_integer_mv ) {
 			int a = Abs( candMv[ idx ] );
 			int aInt = (a + 3) >> 3;
 			if ( candMv[ idx ] > 0 )
@@ -605,7 +670,8 @@ int decode::lower_mv_precision(int force_integer_mv,int *candMv){
 	}
 }
 int decode::scan_row(int deltaRow,int isCompound,
-				TileData t_data,PartitionData p_data,BlockData *b_data,AV1DecodeContext *av1Ctx){
+				TileData *t_data,PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx){
+	frameHeader *frameHdr = av1Ctx->curFrameHdr;
 	int deltaCol = 0;
 	if(Abs(deltaRow) > 1){
 		deltaRow += b_data->MiRow & 1;
@@ -613,7 +679,7 @@ int decode::scan_row(int deltaRow,int isCompound,
 	}
 	int i = 0 ;
 	int bw4 = Num_4x4_Blocks_Wide[ b_data->MiSize ];
-	int end4 = Min( Min( bw4,p_data->MiCols - b_data->MiCol ), 16 );
+	int end4 = Min( Min( bw4,frameHdr->MiCols - b_data->MiCol ), 16 );
 	while (i < end4)
 	{
 		int mvRow = b_data->MiRow + deltaRow;
@@ -632,15 +698,16 @@ int decode::scan_row(int deltaRow,int isCompound,
 	}
 }
 int decode::scan_col(int deltaCol,int isCompound,
-			TileData t_data,PartitionData p_data,BlockData *b_data,AV1DecodeContext *av1Ctx){
+			TileData *t_data,PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx){
+	frameHeader *frameHdr = av1Ctx->curFrameHdr;
 	int deltaRow = 0;
 	if(Abs(deltaRow) > 1){	
 		deltaRow = 1 - (b_data->MiRow & 1);
-		deltaCol += b_data->MiCol & 1
+		deltaCol += b_data->MiCol & 1;
 	}
 	int i = 0;
 	int bh4 = Num_4x4_Blocks_High[ b_data->MiSize ];
-	int end4 = Min( Min( bh4,p_data->MiRows - b_data->MiRow ), 16 );
+	int end4 = Min( Min( bh4,frameHdr->MiRows - b_data->MiRow ), 16 );
 
 	while ( i < end4 ) {
 		int mvRow = b_data->MiRow + deltaRow + i;
@@ -661,7 +728,7 @@ int decode::scan_col(int deltaCol,int isCompound,
 }
 //This process examines the candidate to find matching reference frames.
 int decode::add_ref_mv_candidate(int mvRow,int  mvCol,int  isCompound,int weight,
-								TileData t_data,PartitionData p_data,BlockData *b_data,AV1DecodeContext *av1Ctx){
+								TileData *t_data,PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx){
 	if(IsInters[ mvRow ][ mvCol ] == 0){
 		return;
 	}
@@ -772,7 +839,7 @@ int decode::compound_search_stack(int  mvRow ,int  mvCol,int weight,
 }
 //7.10.2.4
 int decode::scan_point(int deltaRow,int deltaCol,int isCompound,
-					TileData t_data,PartitionData p_data,BlockData *b_data,AV1DecodeContext *av1Ctx){
+					TileData *t_data,PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx){
 	int mvRow = MiRow + deltaRow;
 	int mvCol = MiCol + deltaCol;
 	int weight = 4;
@@ -4452,13 +4519,13 @@ void wienerFilter(int plane ,int unitRow,int unitCol,int x,int y,int w,int h){
 	}
 }
 //7.17.5
-void wienerCoefficient(int *coeff,int **filter){
-	(*filter)[ 3 ] = 128;
+void wienerCoefficient(int *coeff,int *filter){
+	filter[ 3 ] = 128;
 	for (int i = 0; i < 3; i++ ) {
 		int c = coeff[ i ];
-		(*filter)[ i ] = c;
-		(*filter)[ 6 - i ] = c;
-		(*filter)[ 3 ] -= 2 * c;
+		filter[ i ] = c;
+		filter[ 6 - i ] = c;
+		filter[ 3 ] -= 2 * c;
 	}
 
 }

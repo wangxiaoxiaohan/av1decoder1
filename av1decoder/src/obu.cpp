@@ -329,9 +329,9 @@ int obu::parseObuInfo(FILE* fp,int fileOffset,uint8_t *buf,int sz,AV1DecodeConte
 				break;
 			} else {
 				ctx->SeenFrameHeader = 1;
-				frame::Instance().parseFrameHeader(sz, &bs,ctx, ctx->seqHdr, &obu_header,ctx->frameHdr);
+				frame::Instance().parseFrameHeader(sz, &bs,ctx, ctx->seqHdr, &obu_header,&ctx->frameHdr);
 				BitStreamAlign(&bs);//byte alignment
-				if ( ctx->frameHdr->show_existing_frame ) {
+				if ( ctx->frameHdr.show_existing_frame ) {
 					//decode_frame_wrapup();
 					ctx->SeenFrameHeader = 0;
 				} else {

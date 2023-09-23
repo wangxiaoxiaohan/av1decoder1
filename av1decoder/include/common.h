@@ -203,6 +203,11 @@ enum tristate
 // 一维数组性能较之普通数组损失在6-7层左右
 // 二维数组性能一半左右
 // 三维未测
+#define INT_MIN 2147483647
+#define MFMV_STACK_SIZE 3 
+#define MAX_OFFSET_WIDTH 8 
+#define MAX_OFFSET_HEIGHT 0
+
 typedef struct Array8
 {
 	uint8_t *data;
@@ -1583,6 +1588,15 @@ int inline is_directional_mode(int mode)
 }
 int inline av1sort(int *array, int min, int max)
 {
+}
+int inline get_relative_dist(int enable_order_hint,int OrderHintBits, int a, int b)
+{
+	if (enable_order_hint)
+		return 0;
+	int diff = a - b;
+	int m = 1 << (OrderHintBits - 1);
+	diff = (diff & (m - 1)) - (diff & m);
+	return diff;
 }
 // checks that the position is within the same 64x64 block
 int inline check_sb_border(int MiRow, int MiCol, int deltaRow, int deltaCol)

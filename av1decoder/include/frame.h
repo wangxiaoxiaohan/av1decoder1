@@ -27,7 +27,6 @@ public:
 	int readRenderSize(bitSt *bs,sequenceHeader *seqHdr,frameHeader *frameHdr,sizeInfo *out);
 	int readFrameSize(bitSt *bs,sequenceHeader *seqHdr,frameHeader *frameHdr,sizeInfo *out);
 	int parseFrameHeader(int sz,bitSt *bs,AV1DecodeContext * av1ctx,sequenceHeader *seqHdr,obuHeader *obuheader, frameHeader *out);
-	int get_relative_dist(sequenceHeader *seqHdr,int a,int b);
 	int read_delta_q(bitSt *bs);
 	int read_global_param(frameHeader *frameHdr,bitSt *bs, int type,int ref,int idx );
 

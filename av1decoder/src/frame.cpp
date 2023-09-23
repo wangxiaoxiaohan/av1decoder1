@@ -284,7 +284,7 @@ int frame::parseFrameHeader(int sz, bitSt *bs, AV1DecodeContext *av1ctx, sequenc
 			}
 			else
 			{
-				out->RefFrameSignBias[refFrame] = get_relative_dist(seqHdr, hint, out->OrderHint) > 0;
+				out->RefFrameSignBias[refFrame] = get_relative_dist(seqHdr->enable_order_hint,seqHdr->OrderHintBits , hint, out->OrderHint) > 0;
 			}
 		}
 	}
@@ -780,13 +780,13 @@ int frame::readSkipModeParams(bitSt *bs, frameHeader *frameHdr,AV1DecodeContext 
 		int secondForwardHint;
 		for (int  i = 0; i < REFS_PER_FRAME; i++ ) {
 			refHint = av1ctx->RefOrderHint[ frameHdr->ref_frame_idx[ i ] ];
-			if ( get_relative_dist( seqHeader, refHint, frameHdr->OrderHint ) < 0 ) {
-				if ( forwardIdx < 0 ||get_relative_dist(seqHeader,  refHint, forwardHint) > 0 ) {
+			if ( get_relative_dist( seqHeader->enable_order_hint,seqHeader->OrderHintBits ,refHint, frameHdr->OrderHint ) < 0 ) {
+				if ( forwardIdx < 0 ||get_relative_dist(seqHeader->enable_order_hint,seqHeader->OrderHintBits ,  refHint, forwardHint) > 0 ) {
 					forwardIdx = i;
 					forwardHint = refHint;
 				}
-			} else if ( get_relative_dist(seqHeader,  refHint, frameHdr->OrderHint) > 0 ) {
-				if ( backwardIdx < 0 || get_relative_dist(seqHeader,  refHint, backwardHint) < 0 ) {
+			} else if ( get_relative_dist(seqHeader->enable_order_hint,seqHeader->OrderHintBits ,  refHint, frameHdr->OrderHint) > 0 ) {
+				if ( backwardIdx < 0 || get_relative_dist(seqHeader->enable_order_hint,seqHeader->OrderHintBits ,  refHint, backwardHint) < 0 ) {
 					backwardIdx = i;
 					backwardHint = refHint;
 				}
@@ -802,8 +802,8 @@ int frame::readSkipModeParams(bitSt *bs, frameHeader *frameHdr,AV1DecodeContext 
 			secondForwardIdx = -1;
 			for (int i = 0; i < REFS_PER_FRAME; i++ ) {
 				refHint = av1ctx->RefOrderHint[ frameHdr->ref_frame_idx[ i ] ];
-				if ( get_relative_dist(seqHeader, refHint, forwardHint ) < 0 ) {
-					if ( secondForwardIdx < 0 || get_relative_dist(seqHeader, refHint, secondForwardHint ) > 0 ) {
+				if ( get_relative_dist(seqHeader->enable_order_hint,seqHeader->OrderHintBits , refHint, forwardHint ) < 0 ) {
+					if ( secondForwardIdx < 0 || get_relative_dist(seqHeader->enable_order_hint,seqHeader->OrderHintBits , refHint, secondForwardHint ) > 0 ) {
 						secondForwardIdx = i;
 						secondForwardHint = refHint;
 					}
@@ -891,7 +891,7 @@ int frame::readFilmGrainParams(bitSt *bs, frameHeader *frameHdr,sequenceHeader *
 	if ( !frameHdr->film_grain_params.update_grain ) {
 		frameHdr->film_grain_params.film_grain_params_ref_idx = readBits(bs, 3);// f(3)
 		int tempGrainSeed = frameHdr->film_grain_params.grain_seed;
-		//load_grain_params( film_grain_params_ref_idx );
+		//load_grain_params( film_grain_p`arams_ref_idx );
 		frameHdr->film_grain_params.grain_seed = tempGrainSeed;
 		return 0;
 	}
@@ -1071,15 +1071,7 @@ int frame::readRenderSize(bitSt *bs, sequenceHeader *seqHdr, frameHeader *frameH
 		out->RenderHeight = out->FrameHeight;
 	}
 }
-int frame::get_relative_dist(sequenceHeader *seqHdr, int a, int b)
-{
-	if (!seqHdr->enable_order_hint)
-		return 0;
-	int diff = a - b;
-	int m = 1 << (seqHdr->OrderHintBits - 1);
-	diff = (diff & (m - 1)) - (diff & m);
-	return diff;
-}
+
 int frame::read_delta_q(bitSt *bs)
 {
 	int delta_coded = readOneBit(bs);
@@ -2574,8 +2566,8 @@ int frame::read_compound_type(int isCompound,SymbolContext *sbCtx,bitSt *bs,Tile
 			if (seqHdr->enable_jnt_comp)
 			{
 
-				int fwd = Abs(get_relative_dist(seqHdr,av1ctx->OrderHints[b_data->RefFrame[0]], frameHdr->OrderHint));
-				int bck = Abs(get_relative_dist(seqHdr,av1ctx->OrderHints[b_data->RefFrame[1]], frameHdr->OrderHint));
+				int fwd = Abs(get_relative_dist(seqHdr->enable_order_hint,seqHdr->OrderHintBits ,av1ctx->OrderHints[b_data->RefFrame[0]], frameHdr->OrderHint));
+				int bck = Abs(get_relative_dist(seqHdr->enable_order_hint,seqHdr->OrderHintBits ,av1ctx->OrderHints[b_data->RefFrame[1]], frameHdr->OrderHint));
 				int ctx = (fwd == bck) ? 3 : 0;
 				if (b_data->AvailU)
 				{
