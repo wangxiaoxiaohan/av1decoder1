@@ -5,9 +5,6 @@ public:
     ~decode();
 	int find_mv_stack(int isCompound,SymbolContext *sbCtx, bitSt *bs, TileData *t_data,
 								 PartitionData *p_data, BlockData *b_data, AV1DecodeContext *av1ctx);
-
-	int context_and_clamping(int isCompound, int numNew);
-
 	int find_warp_samples(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
 							PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1ctx);
 	int has_overlappable_candidates(PartitionData *p_data, BlockData *b_data);
@@ -37,13 +34,31 @@ public:
 					TileData *t_data,PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int add_ref_mv_candidate(int mvRow,int  mvCol,int  isCompound,int weight,
 								TileData *t_data,PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx);
-	int temporal_scan(int isCompound,BlockData *b_data);
+	int search_stack(int mvRow,int mvCol,int candList,int weight,
+						TileData *t_data,PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx);
+	int compound_search_stack(int  mvRow ,int  mvCol,int weight,
+				TileData *t_data,PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx);
+	
+	int temporal_scan(int isCompound,TileData *t_data,BlockData *b_data,AV1DecodeContext *av1ctx);
 	int extra_search(int isCompound);
 	int setup_global_mv(int refList,int *mv,
 								 BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int lower_mv_precision(AV1DecodeContext *av1Ctx,int *candMv);
-	int Sorting(int start,int end ,int isCompound);
-
+	int lower_precision(int *candMv,AV1DecodeContext *av1Ctx);
+	int add_tpl_ref_mv(int deltaRow, int deltaCol, int isCompound,TileData *t_data,BlockData *b_data,AV1DecodeContext *av1Ctx);
+	int Sorting(int start,int end ,int isCompound,AV1DecodeContext *av1Ctx);
+	void swap_stack(int i, int j, int isCompound, int RefStackMv[][2][2], int WeightStack[],AV1DecodeContext *av1Ctx);
+	int extra_search(int isCompound,TileData *t_data,PartitionData* p_data, BlockData *b_data, AV1DecodeContext *av1Ctx);
+	int add_extra_mv_candidate(int mvRow, int mvCol, int isCompound,PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx);
+	int context_and_clamping(int isCompound, int numNew,BlockData *b_data,AV1DecodeContext *av1Ctx);
+	int clamp_mv_row(int  mvec, int border ,BlockData *b_data,AV1DecodeContext *av1Ctx);
+	int clamp_mv_col(int mvec,int border ,BlockData *b_data,AV1DecodeContext *av1Ctx);
+	int get_tx_size(int plane,int txSz,int subsampling_x, int subsampling_y,BlockData *b_data);
+	int residual(SymbolContext *sbCtx,bitSt *bs,PartitionData *p_data,BlockData *b_data, AV1DecodeContext *av1Ctx);
+	int transform_tree(int startX, int startY,int w,int h,
+					SymbolContext *sbCtx,bitSt *bs,PartitionData *p_data,BlockData *b_data, AV1DecodeContext *av1Ctx);
+	int transform_block(int plane,int baseX,int baseY,int txSz,int x,int y,
+							SymbolContext *sbCtx,bitSt *bs,PartitionData *p_data, BlockData *b_data, AV1DecodeContext *av1Ctx);
 	int predict_intra(int plane,int x,int y,int haveLeft,int haveAbove,
 				int haveAboveRight,int haveBelowLeft,int mode,int log2W,int log2H,
 				PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1);

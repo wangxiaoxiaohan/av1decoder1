@@ -312,7 +312,7 @@ typedef struct PartitionData{
 	uint8_t **CompGroupIdxs;
 	uint8_t **CompoundIdxs;
 	uint8_t **InterpFilters[2];
-	uint8_t ***Mvs[2];
+	int ****Mvs;
 	uint8_t **MiSizes;
 	uint8_t **SegmentIds;
 	uint8_t **IsInters;
@@ -454,10 +454,16 @@ typedef struct AV1DecodeContext{
 	uint8_t NewMvContext;
 	uint8_t RefMvContext;
 	uint8_t RefMvIdx;
-	uint8_t Mv[2][2];
+	uint8_t *RefIdCount;
+	uint8_t *RefDiffCount;
+	int ***RefIdMvs;
+	int ***RefDiffMvs;
 	int RefStackMv[8][2][2]; //consturct by find_mv_stack
 	int *WeightStack;
+	int *DrlCtxStack;
+
 	int GlobalMvs[2][2];
+	uint8_t Mv[2][2];
 	uint8_t NumMvFound;
 	uint8_t NewMvCount;
 	uint8_t FoundMatch;
@@ -488,7 +494,6 @@ typedef struct AV1DecodeContext{
 	uint8_t wedge_index;
 	uint8_t wedge_sign;
 
-	uint8_t *DrlCtxStack;
 	uint8_t NumSamples;
 	uint8_t NumSamplesScanned;
 	

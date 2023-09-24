@@ -207,7 +207,7 @@ enum tristate
 #define MFMV_STACK_SIZE 3 
 #define MAX_OFFSET_WIDTH 8 
 #define MAX_OFFSET_HEIGHT 0
-
+#define MV_BORDER 128 
 typedef struct Array8
 {
 	uint8_t *data;
