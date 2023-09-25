@@ -208,6 +208,10 @@ enum tristate
 #define MAX_OFFSET_WIDTH 8 
 #define MAX_OFFSET_HEIGHT 0
 #define MV_BORDER 128 
+
+#define TX_SET_TYPES_INTRA 3 
+#define TX_SET_TYPES_INTER 4
+#define TX_TYPES 16 
 typedef struct Array8
 {
 	uint8_t *data;
@@ -739,7 +743,26 @@ enum em_inverse_transform
 	FLIPADST_FLIPADST = 6 ,
 	ADST_FLIPADST = 7 ,
 	FLIPADST_ADST = 8,
+	IDTX = 9,
+	V_DCT = 10,
+	H_DCT = 11,
+	V_ADST = 12,
+	H_ADST = 13,
+	V_FLIPADST = 14,
+	H_FLIPADST = 15,
 };
+enum em_tx_set{
+	TX_SET_DCTONLY = 0,
+	TX_SET_INTRA_1,
+	TX_SET_INTRA_2,
+	TX_SET_INTER_1,
+	TX_SET_INTER_2,
+	TX_SET_INTER_3,
+};
+
+
+
+
 
 const static uint8_t Remap_Lr_Type[4] = {
 	RESTORE_NONE, RESTORE_SWITCHABLE, RESTORE_WIENER, RESTORE_SGRPROJ};
@@ -1456,6 +1479,94 @@ const static uint8_t  Sgr_Params[ (1 << SGRPROJ_PARAMS_BITS) ][ 4 ] = {
 { 2, 56, 1, 14 }, { 2, 68, 1, 15 }, { 0, 0, 1, 5 }, { 0, 0, 1, 8 },
 { 0, 0, 1, 11 }, { 0, 0, 1, 14 }, { 2, 30, 0, 0 }, { 2, 75, 0, 0 }
 };
+const static uint8_t Tx_Width_Log2[ TX_SIZES_ALL ] = {
+2, 3, 4, 5, 6, 2, 3, 3, 4, 4, 5, 5, 6, 2, 4, 3, 5, 4, 6
+};
+
+const static uint8_t Tx_Height_Log2[ TX_SIZES_ALL ] = {
+2, 3, 4, 5, 6, 3, 2, 4, 3, 5, 4, 6, 5, 4, 2, 5, 3, 6, 4
+};
+const static uint8_t Tx_Size_Sqr[ TX_SIZES_ALL ] = {
+TX_4X4,
+TX_8X8,
+TX_16X16,
+TX_32X32,
+TX_64X64,
+TX_4X4,
+TX_4X4,
+TX_8X8,
+TX_8X8,
+TX_16X16,
+TX_16X16,
+TX_32X32,
+TX_32X32,
+TX_4X4,
+TX_4X4,
+TX_8X8,
+TX_8X8,
+TX_16X16,
+TX_16X16
+};
+const static uint8_t Tx_Size_Sqr_Up[ TX_SIZES_ALL ] = {
+TX_4X4,
+TX_8X8,
+TX_16X16,
+TX_32X32,
+TX_64X64,
+TX_8X8,
+TX_8X8,
+TX_16X16,
+TX_16X16,
+TX_32X32,
+TX_32X32,
+TX_64X64,
+TX_64X64,
+TX_16X16,
+TX_16X16,
+TX_32X32,
+TX_32X32,
+TX_64X64,
+TX_64X64
+};
+const static uint8_t Tx_Type_In_Set_Intra[ TX_SET_TYPES_INTRA ][ TX_TYPES ] = {
+{
+1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+},
+{
+1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0,
+},
+{
+1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0,
+}
+};
+const static uint8_t Tx_Type_In_Set_Inter[ TX_SET_TYPES_INTER ][ TX_TYPES ] = {
+{
+1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+},
+{
+1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+},
+{
+1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0,
+},
+{
+1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0,
+}
+};
+const static uint8_t Tx_Type_Intra_Inv_Set1[ 7 ] = { IDTX, DCT_DCT, V_DCT, H_DCT, ADST_ADST, ADST_DCT, DCT_ADST };
+const static uint8_t Tx_Type_Intra_Inv_Set2[ 5 ] = { IDTX, DCT_DCT, ADST_ADST, ADST_DCT, DCT_ADST };
+const static uint8_t Tx_Type_Inter_Inv_Set1[ 16 ] = { IDTX, V_DCT, H_DCT, V_ADST, H_ADST, V_FLIPADST, H_FLIPADST,
+DCT_DCT, ADST_DCT, DCT_ADST, FLIPADST_DCT, DCT_FLIPADST, ADST_ADST,
+FLIPADST_FLIPADST, ADST_FLIPADST, FLIPADST_ADST };
+const static uint8_t Tx_Type_Inter_Inv_Set2[ 12 ] = { IDTX, V_DCT, H_DCT, DCT_DCT, ADST_DCT, DCT_ADST, FLIPADST_DCT,
+DCT_FLIPADST, ADST_ADST, FLIPADST_FLIPADST, ADST_FLIPADST,
+FLIPADST_ADST };
+const static uint8_t Tx_Type_Inter_Inv_Set3[ 2 ] = { IDTX, DCT_DCT };
+
+const static uint8_t  Filter_Intra_Mode_To_Intra_Dir[ INTRA_FILTER_MODES ] = {
+DC_PRED, V_PRED, H_PRED, D157_PRED, DC_PRED
+};
+
 int inline tile_log2(int blkSize, int target)
 {
 	int k;
@@ -1791,7 +1902,7 @@ void inline H(int a, int b, int flip, int r, int T[]) {
     }
 }
 
-int cos128(int angle) {
+int inline cos128(int angle) {
     int angle2 = angle & 255;
     if (angle2 >= 0 && angle2 <= 64)
         return Cos128_Lookup[angle2];
@@ -1804,11 +1915,39 @@ int cos128(int angle) {
 }
 
 // Sine function for integer angles
-int sin128(int angle) {
+int inline sin128(int angle) {
     return cos128(angle - 64);
 }
-int filter4_clamp( int value ,int BitDepth) {
+int inline filter4_clamp( int value ,int BitDepth) {
 	return Clip3( -(1 << (BitDepth - 1)), (1 << (BitDepth - 1)) - 1, value );
 }
-
+int inline is_tx_type_in_set(int txSet,int txType,int is_inter)
+{
+	return is_inter ? Tx_Type_In_Set_Inter[txSet][txType] : Tx_Type_In_Set_Intra[txSet][txType];
+}
+int inline get_tx_set(int txSz,int is_inter,int reduced_tx_set)
+{
+	int txSzSqr = Tx_Size_Sqr[txSz];
+	int txSzSqrUp = Tx_Size_Sqr_Up[txSz];
+	if (txSzSqrUp > TX_32X32)
+		return TX_SET_DCTONLY;
+	if (is_inter)
+	{
+		if (reduced_tx_set || txSzSqrUp == TX_32X32)
+			return TX_SET_INTER_3;
+		else if (txSzSqr == TX_16X16)
+			return TX_SET_INTER_2;
+		return TX_SET_INTER_1;
+	}
+	else
+	{
+		if (txSzSqrUp == TX_32X32)
+			return TX_SET_DCTONLY;
+		else if (reduced_tx_set)
+			return TX_SET_INTRA_2;
+		else if (txSzSqr == TX_16X16)
+			return TX_SET_INTRA_2;
+		return TX_SET_INTRA_1;
+	}
+}
 #endif

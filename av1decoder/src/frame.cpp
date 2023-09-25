@@ -2430,6 +2430,7 @@ int frame::intra_block_mode_info(SymbolContext *sbCtx, bitSt *bs, TileData *t_da
 
 		}
 		//uv_mode ;//S()
+		//标记 !! 这里 size 的计算是错的
 		b_data->UVMode = sb->decodeSymbol(sbCtx,bs,uv_mode_cdf,sizeof(uv_mode_cdf)/sizeof(uint16_t));
 
 		if (b_data->UVMode == UV_CFL_PRED)
@@ -2923,7 +2924,7 @@ int frame::palette_tokens(SymbolContext *sbCtx, bitSt *bs, TileData *t_data,
 					default:
 						break;
 				}
-
+				//标记 ，这里的size计算是错的
 				int palette_color_idx_y =  sb->decodeSymbol(sbCtx,bs,cdf, sizeof(cdf)); // S()
 				b_data->ColorMapY[i - j][j] = b_data->ColorOrder[palette_color_idx_y];
 			}
@@ -2979,7 +2980,7 @@ int frame::palette_tokens(SymbolContext *sbCtx, bitSt *bs, TileData *t_data,
 					default:
 						break;
 				}
-
+				// 标记 ，这里的size计算是错的
 				int palette_color_idx_uv = sb->decodeSymbol(sbCtx,bs,cdf, sizeof(cdf)); // S()
 				b_data->ColorMapUV[i - j][j] = b_data->ColorOrder[palette_color_idx_uv];
 			}
@@ -3116,7 +3117,7 @@ int frame::read_tx_size(int allowSelect, SymbolContext *sbCtx, bitSt *bs,Partiti
 				cdf = av1ctx->currentFrame.cdfCtx.Tx_8x8[ctx]; 
 				break;
 		}
-
+		//标记 ！！ 这里的size计算是错的
 		int tx_depth = sb->decodeSymbol(sbCtx,bs,cdf,sizeof(cdf)/sizeof(uint16_t)); // S()
 		for (int i = 0; i < tx_depth; i++)
 			b_data->TxSize = Split_Tx_Size[b_data->TxSize];

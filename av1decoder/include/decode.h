@@ -1,4 +1,7 @@
 #include "header_common.h"
+#include "cdf.h"
+#include "segmentation.h"
+
 class decode{
 public:
     decode();
@@ -54,17 +57,27 @@ public:
 	int clamp_mv_row(int  mvec, int border ,BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int clamp_mv_col(int mvec,int border ,BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int get_tx_size(int plane,int txSz,int subsampling_x, int subsampling_y,BlockData *b_data);
-	int residual(SymbolContext *sbCtx,bitSt *bs,PartitionData *p_data,BlockData *b_data, AV1DecodeContext *av1Ctx);
-	int transform_tree(int startX, int startY,int w,int h,
-					SymbolContext *sbCtx,bitSt *bs,PartitionData *p_data,BlockData *b_data, AV1DecodeContext *av1Ctx);
-	int transform_block(int plane,int baseX,int baseY,int txSz,int x,int y,
-							SymbolContext *sbCtx,bitSt *bs,PartitionData *p_data, BlockData *b_data, AV1DecodeContext *av1Ctx);
+	int residual(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,PartitionData *p_data,
+				BlockData *b_data, AV1DecodeContext *av1Ctx);
+	int transform_tree(int startX, int startY,int w,int h,SymbolContext *sbCtx,bitSt *bs,
+					TileData *t_data,PartitionData *p_data,BlockData *b_data, AV1DecodeContext *av1Ctx);
+	int transform_block(int plane,int baseX,int baseY,int txSz,int x,int y,SymbolContext *sbCtx,bitSt *bs,
+							TileData *t_data,PartitionData *p_data, BlockData *b_data, AV1DecodeContext *av1Ctx);
 	int predict_intra(int plane,int x,int y,int haveLeft,int haveAbove,
 				int haveAboveRight,int haveBelowLeft,int mode,int log2W,int log2H,
-				PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1);
-
+				PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx);
+	int predict_palette(int plane, int startX, int startY, int x, int y, int txSz);
+	int predict_chroma_from_luma(int plane, int startX, int startY, int txSz);
+	int coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx,bitSt *bs,
+							TileData *t_data,PartitionData *p_data, BlockData *b_data, AV1DecodeContext *av1Ctx);
+	int transform_type(int x4,int  y4,int txSz,SymbolContext *sbCtx,bitSt *bs,
+					BlockData *b_data, AV1DecodeContext *av1Ctx);
+	int cacluteAllZeroCtx(int plane,int txSz, int x4,int y4,int w4,int h4,BlockData *b_data,AV1DecodeContext *av1Ctx);
 	static decode& Instance() {
 		static decode m_pInstance;
 		return m_pInstance;
 	}
+private :
+	Symbol *sb;
+	segmentation *seg_instance;
 };

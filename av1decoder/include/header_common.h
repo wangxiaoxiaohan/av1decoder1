@@ -301,7 +301,7 @@ typedef struct TileData{
 	uint8_t **cdef_idx;
 	uint8_t *AboveSegPredContext;
 	uint8_t *LeftSegPredContext;
-
+	uint8_t **BlockDecoded[2];
 }TileData;
 typedef struct PartitionData{
 	uint8_t AvailU;
@@ -357,8 +357,6 @@ typedef struct BlockData{
 	uint8_t UVMode;
 	uint8_t motion_mode;
 	uint8_t compound_type;
-	uint8_t PaletteSizeY;
-	uint8_t PaletteSizeUV;
 	uint8_t interp_filter[2];
 
 
@@ -397,16 +395,22 @@ typedef struct BlockData{
 	uint8_t ColorOrder[PALETTE_COLORS];
 	uint8_t ColorContextHash;
 	uint8_t TxSize;
-	uint8_t **AboveLevelContext;
-	uint8_t **AboveDcContext;
-	uint8_t **LeftLevelContext;
-	uint8_t **LeftDcContext;
+	int **AboveLevelContext;
+	int **AboveDcContext;
+	int **LeftLevelContext;
+	int **LeftDcContext;
 
 	//块左边，上边的样本，是像素值
 	Array8 *AboveRow;
 	Array8 *LeftCol;
-
 	uint8_t **pred;
+
+//下面这几个是不是考虑专门做一个 block decode context的结构体？
+	int MaxLumaW;
+	int MaxLumaH;
+	uint8_t *Quant;
+	uint8_t **Dequant;
+	uint8_t **TxTypes;
 
 }BlockData;
 
@@ -489,7 +493,6 @@ typedef struct AV1DecodeContext{
 	uint8_t interintra_mode;
 	uint8_t AngleDeltaY;
 	uint8_t AngleDeltaUV;
-	uint8_t use_filter_intra;
 	uint8_t wedge_interintra;
 	uint8_t wedge_index;
 	uint8_t wedge_sign;
