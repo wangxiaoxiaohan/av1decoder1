@@ -1525,103 +1525,224 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 	{
 		if (plane == 0)
 			transform_type(x4, y4,txSz,sbCtx,bs,b_data,av1Ctx);
-		int PlaneTxType = compute_tx_type(plane, txSz, x4, y4);
-		int scan = get_scan(txSz);
+		int PlaneTxType = compute_tx_type(plane, txSz, x4, y4,b_data,av1Ctx);
+		uint16_t  *scan = get_scan(txSz,PlaneTxType);
 		int eobMultisize = Min(Tx_Width_Log2[txSz], 5) + Min(Tx_Height_Log2[txSz], 5) - 4;
+		int eobPt;
+		int txType = compute_tx_type( plane, txSz, x4, y4,b_data,av1Ctx);
+		int ctx = ( get_tx_class( txType ) == TX_CLASS_2D ) ? 0 : 1;
 		if (eobMultisize == 0)
 		{
-			eob_pt_16; // S()
+			int eob_pt_16 = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame.cdfCtx.Eob_Pt_16[ ptype ][ ctx ],6); // S()
 			eobPt = eob_pt_16 + 1;
 		}
 		else if (eobMultisize == 1)
 		{
-			eob_pt_32; // S()
+			int eob_pt_32  = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame.cdfCtx.Eob_Pt_32[ ptype ][ ctx ],7); // S()
 			eobPt = eob_pt_32 + 1;
 		}
 		else if (eobMultisize == 2)
 		{
-			eob_pt_64; // S()
+			int eob_pt_64  = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame.cdfCtx.Eob_Pt_64[ ptype ][ ctx ],8); // S()
 			eobPt = eob_pt_64 + 1;
 		}
 		else if (eobMultisize == 3)
 		{
-			eob_pt_128; // S()
+			int eob_pt_128 = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame.cdfCtx.Eob_Pt_128[ ptype ][ ctx ],9); // S()
 			eobPt = eob_pt_128 + 1;
 		}
 		else if (eobMultisize == 4)
 		{
-			eob_pt_256; // S()
+			int eob_pt_256 = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame.cdfCtx.Eob_Pt_256[ ptype ][ ctx ],10); // S()
 			eobPt = eob_pt_256 + 1;
 		}
 		else if (eobMultisize == 5)
 		{
-			eob_pt_512; // S()
+			int eob_pt_512 = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame.cdfCtx.Eob_Pt_512[ ptype ],11); // S()
 			eobPt = eob_pt_512 + 1;
 		}
 		else
 		{
-			eob_pt_1024; // S()
+			int eob_pt_1024 = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame.cdfCtx.Eob_Pt_1024[ ptype ],12); // S()
 			eobPt = eob_pt_1024 + 1;
 		}
 		eob = (eobPt < 2) ? eobPt : ((1 << (eobPt - 2)) + 1);
-		eobShift = Max(-1, eobPt - 3);
+		int eobShift = Max(-1, eobPt - 3);
 		if (eobShift >= 0)
 		{
-			eob_extra; // S()
+			int eob_extra = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame.cdfCtx.Eob_Extra[ txSzCtx ][ ptype ][ eobPt - 3 ],12); // S()
 			if (eob_extra)
 			{
 				eob += (1 << eobShift);
 			}
-			for (i = 1; i < Max(0, eobPt - 2); i++)
+			for (int i = 1; i < Max(0, eobPt - 2); i++)
 			{
 				eobShift = Max(0, eobPt - 2) - 1 - i;
-				eob_extra_bit; // L(1)
+				int eob_extra_bit = sb->read_literal(sbCtx,bs,1); // L(1)
 				if (eob_extra_bit)
 				{
 					eob += (1 << eobShift);
 				}
 			}
 		}
-		for (c = eob - 1; c >= 0; c--)
+		for (int c = eob - 1; c >= 0; c--)
 		{
-			pos = scan[c];
+			int pos = scan[c];
+			int level;
 			if (c == (eob - 1))
 			{
-				coeff_base_eob; // S()
+				ctx =  get_coeff_base_ctx(txSz, plane, x4, y4, scan[c], c, 1,b_data,av1Ctx) - SIG_COEF_CONTEXTS + SIG_COEF_CONTEXTS_EOB;
+				int coeff_base_eob = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame.cdfCtx.Coeff_Base_Eob[ txSzCtx ][ ptype ][ ctx ],4);// S()
 				level = coeff_base_eob + 1;
 			}
 			else
 			{
-				coeff_base; // S()
+				ctx = get_coeff_base_ctx(txSz, plane, x4, y4, scan[c], c, 0,b_data,av1Ctx);
+				int coeff_base =  sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame.cdfCtx.Coeff_Base[ txSzCtx ][ ptype ][ ctx ],5); // S()
 				level = coeff_base;
 			}
 			if (level > NUM_BASE_LEVELS)
 			{
-				for (idx = 0;
-					 idx < COEFF_BASE_RANGE / (BR_CDF_SIZE - 1);
-					 idx++)
+				for (int idx = 0; idx < COEFF_BASE_RANGE / (BR_CDF_SIZE - 1); idx++)
 				{
-					coeff_br; // S()
+				//--------
+					int adjTxSz = Adjusted_Tx_Size[txSz];
+					int bwl = Tx_Width_Log2[adjTxSz];
+					int txw = Tx_Width[adjTxSz];
+					int txh = Tx_Height[adjTxSz];
+					int row = pos >> bwl;
+					int col = pos - (row << bwl);
+					int mag = 0 ;
+					int txType = compute_tx_type(plane, txSz, x4, y4,b_data,av1Ctx);
+					int txClass = get_tx_class(txType);
+					for (idx = 0; idx < 3; idx++)
+					{
+						int refRow = row + Mag_Ref_Offset_With_Tx_Class[txClass][idx][0];
+						int refCol = col + Mag_Ref_Offset_With_Tx_Class[txClass][idx][1];
+						if ( refRow >= 0 &&
+						refCol >= 0 &&
+						refRow < txh &&
+						refCol < (1 << bwl) ) {
+							mag += Min( b_data->Quant[ refRow * txw + refCol ], COEFF_BASE_RANGE + NUM_BASE_LEVELS + 1 );
+						}
+
+					}
+					mag = Min((mag + 1) >> 1, 6) ;
+					if (pos == 0)
+					{
+						ctx = mag;
+					}
+					else if (txClass == 0)
+					{
+						if ((row < 2) && (col < 2))
+						{
+							ctx = mag + 7;
+						}
+						else
+						{
+							ctx = mag + 14;
+						}
+					}
+					else
+					{
+						if (txClass == 1)
+						{
+							if (col == 0)
+							{
+								ctx = mag + 7;
+							}
+							else
+							{
+								ctx = mag + 14;
+							}
+						}
+						else
+						{
+							if (row == 0)
+							{
+								ctx = mag + 7;
+							}
+							else
+							{
+								ctx = mag + 14;
+							}
+						}
+					}
+				//------
+					int coeff_br = sb->decodeSymbol(sbCtx, bs, av1Ctx->currentFrame.cdfCtx.Coeff_Br[Min(txSzCtx, TX_32X32)][ptype][ctx], BR_CDF_SIZE + 1); // S()
 					level += coeff_br;
 					if (coeff_br < (BR_CDF_SIZE - 1))
 						break;
 				}
 			}
-			Quant[pos] = level;
+			b_data->Quant[pos] = level;
 		}
-		for (c = 0; c < eob; c++)
+		for (int c = 0; c < eob; c++)
 		{
-			pos = scan[c];
-			if (Quant[pos] != 0)
+			int pos = scan[c];
+			int sign;
+			if (b_data->Quant[pos] != 0)
 			{
 				if (c == 0)
 				{
-					dc_sign; // S()
+				//-------- 
+					int maxX4 = frameHdr->MiCols;
+					int maxY4 = frameHdr->MiRows;
+					if (plane > 0)
+					{
+						maxX4 = maxX4 >> seqHdr->color_config.subsampling_x;
+						maxY4 = maxY4 >> seqHdr->color_config.subsampling_y;
+					}
+					int dcSign = 0;
+					for (int k = 0; k < w4; k++)
+					{
+						if (x4 + k < maxX4)
+						{
+							sign = b_data->AboveDcContext[plane][x4 + k];
+							if (sign == 1)
+							{
+								dcSign--;
+							}
+							else if (sign == 2)
+							{
+								dcSign++;
+							}
+						}
+					}
+					for (int k = 0; k < h4; k++)
+					{
+						if (y4 + k < maxY4)
+						{
+							sign = b_data->LeftDcContext[plane][y4 + k];
+							if (sign == 1)
+							{
+								dcSign--;
+							}
+							else if (sign == 2)
+							{
+								dcSign++;
+							}
+						}
+					}
+					if (dcSign < 0)
+					{
+						ctx = 1;
+					}
+					else if (dcSign > 0)
+					{
+						ctx = 2;
+					}
+					else
+					{
+						ctx = 0;
+					}
+				//---------
+					int dc_sign = sb->decodeSymbol(sbCtx, bs, av1Ctx->currentFrame.cdfCtx.Dc_Sign[ptype][ctx], BR_CDF_SIZE + 1); // S()
 					sign = dc_sign;
 				}
 				else
 				{
-					sign_bit; // L(1)
+					int sign_bit = sb->read_literal(sbCtx,bs,1); // L(1)
 					sign = sign_bit;
 				}
 			}
@@ -1629,43 +1750,44 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 			{
 				sign = 0;
 			}
-			if (Quant[pos] >
-				(NUM_BASE_LEVELS + COEFF_BASE_RANGE))
+			if (b_data->Quant[pos] > (NUM_BASE_LEVELS + COEFF_BASE_RANGE))
 			{
-				length = 0;
+				int length = 0;
+				int golomb_length_bit;
 				do
 				{
 					length++;
-					golomb_length_bit; // L(1)
-				} while (!golomb_length_bit)
-					x = 1;
-				for (i = length - 2; i >= 0; i--)
+					golomb_length_bit = sb->read_literal(sbCtx,bs,1); // L(1)
+				} while (!golomb_length_bit);
+				int x = 1;
+				int golomb_data_bit;
+				for (int i = length - 2; i >= 0; i--)
 				{
-					golomb_data_bit; // L(1)
+					golomb_data_bit = sb->read_literal(sbCtx,bs,1); // L(1)
 					x = (x << 1) | golomb_data_bit;
 				}
-				Quant[pos] = x + COEFF_BASE_RANGE + NUM_BASE_LEVELS;
+			 	b_data->Quant[pos] = x + COEFF_BASE_RANGE + NUM_BASE_LEVELS;
 			}
-			if (pos == 0 && Quant[pos] > 0)
+			if (pos == 0 && b_data->Quant[pos] > 0)
 			{
 				dcCategory = sign ? 1 : 2;
 			}
-			Quant[pos] = Quant[pos] & 0xFFFFF;
-			culLevel += Quant[pos];
+			b_data->Quant[pos] = b_data->Quant[pos] & 0xFFFFF;
+			culLevel += b_data->Quant[pos];
 			if (sign)
-				Quant[pos] = -Quant[pos];
+				b_data->Quant[pos] = -b_data->Quant[pos];
 		}
 		culLevel = Min(63, culLevel);
 	}
-	for (i = 0; i < w4; i++)
+	for (int i = 0; i < w4; i++)
 	{
-		AboveLevelContext[plane][x4 + i] = culLevel;
-		AboveDcContext[plane][x4 + i] = dcCategory;
+		b_data->AboveLevelContext[plane][x4 + i] = culLevel;
+		b_data->AboveDcContext[plane][x4 + i] = dcCategory;
 	}
-	for (i = 0; i < h4; i++)
+	for (int i = 0; i < h4; i++)
 	{
-		LeftLevelContext[plane][y4 + i] = culLevel;
-		LeftDcContext[plane][y4 + i] = dcCategory;
+		b_data->LeftLevelContext[plane][y4 + i] = culLevel;
+		b_data->LeftDcContext[plane][y4 + i] = dcCategory;
 	}
 	return eob;
 }
@@ -1821,51 +1943,104 @@ int decode::transform_type(int x4,int  y4,int txSz,SymbolContext *sbCtx,bitSt *b
 		}
 	}
 }
-int decode::compute_tx_type(plane, txSz, blockX, blockY)
+int decode::compute_tx_type(int plane, int txSz,int blockX,int blockY,BlockData *b_data,AV1DecodeContext *av1Ctx)
 {
-	txSzSqrUp = Tx_Size_Sqr_Up[txSz];
-	if (Lossless || txSzSqrUp > TX_32X32)
+	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	sequenceHeader *seqHdr = av1Ctx->seqHdr;
+	int txSzSqrUp = Tx_Size_Sqr_Up[txSz];
+	if (b_data->Lossless || txSzSqrUp > TX_32X32)
 		return DCT_DCT;
-	txSet = get_tx_set(txSz);
+	int txSet = get_tx_set(txSz,b_data->is_inter,frameHdr->reduced_tx_set);
 	if (plane == 0)
 	{
-		return TxTypes[blockY][blockX];
+		return b_data->TxTypes[blockY][blockX];
 	}
-	if (is_inter)
+	int txType;
+	if (b_data->is_inter)
 	{
-		x4 = Max(MiCol, blockX << subsampling_x);
-		y4 = Max(MiRow, blockY << subsampling_y);
-		txType = TxTypes[y4][x4];
-		if (!is_tx_type_in_set(txSet, txType))
+		int x4 = Max(b_data->MiCol, blockX << seqHdr->color_config.subsampling_x);
+		int y4 = Max(b_data->MiRow, blockY << seqHdr->color_config.subsampling_y);
+		txType = b_data->TxTypes[y4][x4];
+		if (!is_tx_type_in_set(txSet, txType,b_data->is_inter))
 			return DCT_DCT;
 		return txType;
 	}
-	txType = Mode_To_Txfm[UVMode];
-	if (!is_tx_type_in_set(txSet, txType)) 
+	txType = Mode_To_Txfm[b_data->UVMode];
+	if (!is_tx_type_in_set(txSet, txType,b_data->is_inter)) 
 		return DCT_DCT;
 	return txType;
 }
+int decode::get_coeff_base_ctx(int txSz, int plane, int blockX, int blockY, int pos, int c, int isEob,
+						BlockData *b_data,AV1DecodeContext *av1Ctx) {
+    int adjTxSz = Adjusted_Tx_Size[txSz];
+    int bwl = Tx_Width_Log2[adjTxSz];
+    int width = 1 << bwl;
+    int height = Tx_Height[adjTxSz];
+    int txType = compute_tx_type(plane, txSz, blockX, blockY,b_data,av1Ctx);
 
+    if (isEob) {
+        if (c == 0) {
+            return SIG_COEF_CONTEXTS - 4;
+        }
+        if (c <= (height << bwl) / 8) {
+            return SIG_COEF_CONTEXTS - 3;
+        }
+        if (c <= (height << bwl) / 4) {
+            return SIG_COEF_CONTEXTS - 2;
+        }
+        return SIG_COEF_CONTEXTS - 1;
+    }
+
+    int txClass = get_tx_class(txType);
+    int row = pos >> bwl;
+    int col = pos - (row << bwl);
+    int mag = 0;
+
+    for (int idx = 0; idx < SIG_REF_DIFF_OFFSET_NUM; idx++) {
+        int refRow = row + Sig_Ref_Diff_Offset[txClass][idx][0];
+        int refCol = col + Sig_Ref_Diff_Offset[txClass][idx][1];
+
+        if (refRow >= 0 &&
+            refCol >= 0 &&
+            refRow < height &&
+            refCol < width) {
+            mag += Min(Abs(b_data->Quant[(refRow << bwl) + refCol]), 3);
+        }
+    }
+
+    int ctx = Min((mag + 1) >> 1, 4);
+
+    if (txClass == TX_CLASS_2D) {
+        if (row == 0 && col == 0) {
+            return 0;
+        }
+        return ctx + Coeff_Base_Ctx_Offset[txSz][Min(row, 4)][Min(col, 4)];
+    }
+
+    int idx = (txClass == TX_CLASS_VERT) ? row : col;
+    return ctx + Coeff_Base_Pos_Ctx_Offset[Min(idx, 2)];
+}
 
 /*  find mv stack end ...*/
 //7.10.3
-int decode::has_overlappable_candidates(PartitionData *p_data, BlockData *b_data)
+int decode::has_overlappable_candidates(PartitionData *p_data, BlockData *b_data,AV1DecodeContext *av1Ctx)
 {
+	frameHeader *frameHdr = av1Ctx->curFrameHdr;
 	if (b_data->AvailU)
 	{
 		int w4 = Num_4x4_Blocks_Wide[b_data->MiSize];
-		for (int x4 = b_data->MiCol; x4 < Min(p_data->MiCols, b_data->MiCol + w4); x4 += 2)
+		for (int x4 = b_data->MiCol; x4 < Min(frameHdr->MiCols, b_data->MiCol + w4); x4 += 2)
 		{
-			if (RefFrames[b_data->MiRow - 1][x4 | 1][0] > INTRA_FRAME)
+			if (p_data->RefFrames[b_data->MiRow - 1][x4 | 1][0] > INTRA_FRAME)
 				return 1;
 		}
 	}
 	if (b_data->AvailL)
 	{
 		int h4 = Num_4x4_Blocks_High[b_data->MiSize];
-		for (int y4 = b_data->MiRow; y4 < Min(p_data->MiRows, b_data->MiRow + h4); y4 += 2)
+		for (int y4 = b_data->MiRow; y4 < Min(frameHdr->MiRows, b_data->MiRow + h4); y4 += 2)
 		{
-			if (RefFrames[y4 | 1][b_data->MiCol - 1][0] > INTRA_FRAME)
+			if (p_data->RefFrames[y4 | 1][b_data->MiCol - 1][0] > INTRA_FRAME)
 				return 1;
 		}
 	}
@@ -2000,6 +2175,7 @@ int decode::add_sample(int deltaRow,int deltaCol){
     }
 
 
+	}
 }
 int decode::get_above_tx_width(int row, int col,PartitionData *p_data,BlockData *b_data)
 {

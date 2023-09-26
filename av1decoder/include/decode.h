@@ -10,7 +10,7 @@ public:
 								 PartitionData *p_data, BlockData *b_data, AV1DecodeContext *av1ctx);
 	int find_warp_samples(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
 							PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1ctx);
-	int has_overlappable_candidates(PartitionData *p_data, BlockData *b_data);
+	int has_overlappable_candidates(PartitionData *p_data, BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int get_above_tx_width(int row, int col,PartitionData *p_data,BlockData *b_data);
 	int get_left_tx_height(int row,int col,PartitionData *p_data,BlockData *b_data);
 	int init_coeff_cdfs(AV1DecodeContext *av1Ctx);
@@ -73,6 +73,9 @@ public:
 	int transform_type(int x4,int  y4,int txSz,SymbolContext *sbCtx,bitSt *bs,
 					BlockData *b_data, AV1DecodeContext *av1Ctx);
 	int cacluteAllZeroCtx(int plane,int txSz, int x4,int y4,int w4,int h4,BlockData *b_data,AV1DecodeContext *av1Ctx);
+	int compute_tx_type(int plane, int txSz,int blockX,int blockY,BlockData *b_data,AV1DecodeContext *av1Ctx);
+	int get_coeff_base_ctx(int txSz, int plane, int blockX, int blockY, int pos, int c, int isEob,
+						BlockData *b_data,AV1DecodeContext *av1Ctx);
 	static decode& Instance() {
 		static decode m_pInstance;
 		return m_pInstance;

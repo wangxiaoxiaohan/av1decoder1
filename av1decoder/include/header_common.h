@@ -491,8 +491,6 @@ typedef struct AV1DecodeContext{
 
 	uint8_t interintra;
 	uint8_t interintra_mode;
-	uint8_t AngleDeltaY;
-	uint8_t AngleDeltaUV;
 	uint8_t wedge_interintra;
 	uint8_t wedge_index;
 	uint8_t wedge_sign;

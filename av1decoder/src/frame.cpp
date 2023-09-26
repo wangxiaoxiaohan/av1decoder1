@@ -1169,7 +1169,7 @@ int frame::decode_tile(SymbolContext *sbCtx,bitSt *bs, TileData *t_data,AV1Decod
 	frameHeader *frameHdr = av1ctx->curFrameHdr;
 	sequenceHeader *seqHdr = av1ctx->seqHdr;
 
-	//clear_above_context( ).....
+	//clear_above_context( ).....!!
 	for (int i = 0; i < FRAME_LF_COUNT; i++ )
 		av1ctx->DeltaLF[ i ] = 0;
 	for (int plane = 0; plane < seqHdr->color_config.NumPlanes; plane++ ) {
@@ -2462,9 +2462,9 @@ int frame::read_interintra_mode(int isCompound,SymbolContext *sbCtx,bitSt *bs,Ti
 		{
 			av1ctx->interintra_mode = sb->decodeSymbol(sbCtx,bs,av1ctx->currentFrame.cdfCtx.Inter_Intra_Mode[ctx],INTERINTRA_MODES + 1); //S()
 			b_data->RefFrame[1] = INTRA_FRAME;
-			av1ctx->AngleDeltaY = 0;
-			av1ctx->AngleDeltaUV = 0;
-			av1ctx->use_filter_intra = 0;
+			b_data->AngleDeltaY = 0;
+			b_data->AngleDeltaUV = 0;
+			b_data->use_filter_intra = 0;
 			av1ctx->wedge_interintra = sb->decodeSymbol(sbCtx,bs,av1ctx->currentFrame.cdfCtx.Wedge_Inter_Intra[b_data->MiSize],3); //S()
 			if (av1ctx->wedge_interintra)
 			{
@@ -2508,7 +2508,7 @@ int frame::read_motion_mode(int isCompound,SymbolContext *sbCtx,bitSt *bs,TileDa
 			return;
 		}
 	}
-	if (isCompound || b_data->RefFrame[1] == INTRA_FRAME || !decode_instance->has_overlappable_candidates(p_data,b_data))
+	if (isCompound || b_data->RefFrame[1] == INTRA_FRAME || !decode_instance->has_overlappable_candidates(p_data,b_data,av1ctx))
 	{
 		b_data->motion_mode = SIMPLE;
 		return;
