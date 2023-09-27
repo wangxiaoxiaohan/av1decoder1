@@ -220,6 +220,8 @@ enum tristate
 #define SIG_REF_DIFF_OFFSET_NUM 5 
 #define NUM_BASE_LEVELS 2 
 #define COEFF_BASE_RANGE 12
+#define LEAST_SQUARES_SAMPLES_MAX 8
+
 typedef struct Array8
 {
 	uint8_t *data;
@@ -2198,6 +2200,9 @@ const static uint8_t Tx_Type_Inter_Inv_Set3[ 2 ] = { IDTX, DCT_DCT };
 const static uint8_t  Filter_Intra_Mode_To_Intra_Dir[ INTRA_FILTER_MODES ] = {
 DC_PRED, V_PRED, H_PRED, D157_PRED, DC_PRED
 };
+
+const static uint8_t  Mode_To_Angle[ INTRA_MODES ] = { 0, 90, 180, 45, 135, 113, 157, 203, 67, 0, 0, 0, 0 };
+
 
 int inline tile_log2(int blkSize, int target)
 {

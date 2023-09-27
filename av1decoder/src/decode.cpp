@@ -2073,109 +2073,110 @@ int decode::find_warp_samples(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
 				doTopLeft = 0;
 			if (colOffset + srcW > w4)
 				doTopRight = 0;
-			add_sample(-1, 0);
+			add_sample(-1, 0,t_data,p_data,b_data,av1ctx);
 		}
 		else
 		{
 			int miStep = 0;//???
 			for (int i = 0; i < Min(w4,frameHdr->MiCols - b_data->MiCol); i += miStep)
 			{
-				srcSize = MiSizes[b_data->MiRow - 1][b_data->MiCol + i];
+				srcSize = p_data->MiSizes[b_data->MiRow - 1][b_data->MiCol + i];
 				srcW = Num_4x4_Blocks_Wide[srcSize];
 				miStep = Min(w4, srcW);
-				add_sample(-1, i);
+				add_sample(-1, i,t_data,p_data,b_data,av1ctx);
 			}
 		}
 	}
 	if (b_data->AvailL)
 	{
-		int srcSize = MiSizes[b_data->MiRow][b_data->MiCol - 1];
+		int srcSize = p_data->MiSizes[b_data->MiRow][b_data->MiCol - 1];
 		int srcH = Num_4x4_Blocks_High[srcSize];
 		if (h4 <= srcH)
 		{
 			int rowOffset = -(b_data->MiRow & (srcH - 1));
 			if (rowOffset < 0)
 				doTopLeft = 0;
-			add_sample(0, -1);
+			add_sample(0, -1,t_data,p_data,b_data,av1ctx);
 		}
 		else
 		{
 			int miStep = 0;//???
 			for (int i = 0; i < Min(h4, frameHdr->MiRows - b_data->MiRow); i += miStep)
 			{
-				srcSize = MiSizes[b_data->MiRow + i][b_data->MiCol - 1];
+				srcSize = p_data->MiSizes[b_data->MiRow + i][b_data->MiCol - 1];
 				srcH = Num_4x4_Blocks_High[srcSize];
 				miStep = Min(h4, srcH);
-				add_sample(i, -1);
+				add_sample(i, -1,t_data,p_data,b_data,av1ctx);
 			}
 		}
 	}
 	if (doTopLeft)
 	{
-		add_sample(-1, -1);
+		add_sample(-1, -1,t_data,p_data,b_data,av1ctx);
 	}
 	if (doTopRight)
 	{
 		if (Max(w4, h4) <= 16)
 		{
-			add_sample(-1, w4);
+			add_sample(-1, w4,t_data,p_data,b_data,av1ctx);
 		}
 	}
 	if (av1ctx->NumSamples == 0 && av1ctx->NumSamplesScanned > 0)
 		av1ctx->NumSamples = 1;
 }
-int decode::add_sample(int deltaRow,int deltaCol){
-    if (NumSamplesScanned >= LEAST_SQUARES_SAMPLES_MAX) {
+int decode::add_sample(int deltaRow,int deltaCol,TileData *t_data,PartitionData *p_data,
+				BlockData *b_data,AV1DecodeContext *av1Ctx){
+    if (av1Ctx->NumSamplesScanned >= LEAST_SQUARES_SAMPLES_MAX) {
         return; 
     }
 
-    int mvRow = MiRow + deltaRow;
-    int mvCol = MiCol + deltaCol;
+    int mvRow = b_data->MiRow + deltaRow;
+    int mvCol = b_data->MiCol + deltaCol;
 
     if (!is_inside(mvRow, mvCol,t_data->MiColStart,t_data->MiColEnd,t_data->MiRowStart,t_data->MiRowEnd)) {
         return; 
     }
-
-    if (!isWrittenFrame[mvRow][mvCol][0]) {
+		//has not been written for this frame 是否被写了  到底该怎么写 还要想想
+    if (p_data->RefFrames[mvRow][mvCol][0]  == 0) {
         return; 
     }
 
-    if (RefFrames[mvRow][mvCol][0] != RefFrame[0]) {
+    if (p_data->RefFrames[mvRow][mvCol][0] != b_data->RefFrame[0]) 
         return; 
 
-    if (RefFrames[mvRow][mvCol][1] != NONE) {
+    if (p_data->RefFrames[mvRow][mvCol][1] != NONE) {
         return; 
     }
 
-    int candSz = MiSizes[mvRow][mvCol];
+    int candSz = p_data->MiSizes[mvRow][mvCol];
     int candW4 = Num_4x4_Blocks_Wide[candSz];
     int candH4 = Num_4x4_Blocks_High[candSz];
     int candRow = mvRow & ~(candH4 - 1);
     int candCol = mvCol & ~(candW4 - 1);
     int midY = candRow * 4 + candH4 * 2 - 1;
     int midX = candCol * 4 + candW4 * 2 - 1;
-    int threshold = Clip3(16, 112, max(Block_Width[MiSize], Block_Height[MiSize]));
-    int mvDiffRow = abs(Mvs[candRow][candCol][0][0] - Mv[0][0]);
-    int mvDiffCol = abs(Mvs[candRow][candCol][0][1] - Mv[0][1]);
+    int threshold = Clip3(16, 112, Max(4 * Num_4x4_Blocks_Wide[MiSize], 4 * Num_4x4_Blocks_High[MiSize]));
+    int mvDiffRow = Abs(p_data->Mvs[candRow][candCol][0][0] - b_data->Mv[0][0]);
+    int mvDiffCol = Abs(p_data->Mvs[candRow][candCol][0][1] - b_data->Mv[0][1]);
     int valid = ((mvDiffRow + mvDiffCol) <= threshold);
 
-    CandList[NumSamples][0] = midY * 8;
-    CandList[NumSamples][1] = midX * 8;
-    CandList[NumSamples][2] = midY * 8 + Mvs[candRow][candCol][0][0];
-    CandList[NumSamples][3] = midX * 8 + Mvs[candRow][candCol][0][1];
+	av1Ctx->NumSamplesScanned++;
 
-    NumSamplesScanned++;
 
-    if (valid == 1) {
-        NumSamples++;
-    }
-
-    if (valid == 0 && NumSamplesScanned > 1) {
+    if (valid == 0 && av1Ctx->NumSamplesScanned > 1) {
         return;
     }
 
+    av1Ctx->CandList[av1Ctx->NumSamples][0] = midY * 8;
+    av1Ctx->CandList[av1Ctx->NumSamples][1] = midX * 8;
+    av1Ctx->CandList[av1Ctx->NumSamples][2] = midY * 8 + p_data->Mvs[candRow][candCol][0][0];
+    av1Ctx->CandList[av1Ctx->NumSamples][3] = midX * 8 + p_data->Mvs[candRow][candCol][0][1];
 
-	}
+
+    if (valid == 1) {
+        av1Ctx->NumSamples++;
+    }
+
 }
 int decode::get_above_tx_width(int row, int col,PartitionData *p_data,BlockData *b_data)
 {
@@ -2185,12 +2186,12 @@ int decode::get_above_tx_width(int row, int col,PartitionData *p_data,BlockData 
 		{
 			return 64;
 		}
-		else if (Skips[row - 1][col] && IsInters[row - 1][col])
+		else if (p_data->Skips[row - 1][col] && p_data->IsInters[row - 1][col])
 		{
 			return 4 * Num_4x4_Blocks_Wide[p_data->MiSizes[row - 1][col]];
 		}
 	}
-	return Tx_Width[InterTxSizes[row - 1][col]];
+	return Tx_Width[p_data->InterTxSizes[row - 1][col]];
 }
 int decode::get_left_tx_height(int row,int col,PartitionData *p_data,BlockData *b_data)
 {
@@ -2214,62 +2215,73 @@ int decode::get_left_tx_height(int row,int col,PartitionData *p_data,BlockData *
 
 int decode::predict_intra(int plane,int x,int y,int haveLeft,int haveAbove,
 				int haveAboveRight,int haveBelowLeft,int mode,int log2W,int log2H,
-				PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx){
+				TileData *t_data, PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx){
 
+	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	sequenceHeader *seqHdr = av1Ctx->seqHdr;
 	int w = 1 << log2W;
 	int h = 1 << log2H;
-	int maxX = ( MiCols * MI_SIZE ) - 1;
-	int maxY = ( MiRows * MI_SIZE ) - 1;
+	int maxX = ( frameHdr->MiCols * MI_SIZE ) - 1;
+	int maxY = ( frameHdr->MiRows * MI_SIZE ) - 1;
 
 	if(plane > 0){
-		maxX = ( ( MiCols * MI_SIZE ) >> subsampling_x ) - 1;
-		maxY = ( ( MiRows * MI_SIZE ) >> subsampling_y ) - 1;
+		maxX = ( ( frameHdr->MiCols * MI_SIZE ) >> seqHdr->color_config.subsampling_x ) - 1;
+		maxY = ( ( frameHdr->MiRows * MI_SIZE ) >> seqHdr->color_config.subsampling_y ) - 1;
 	}
 
     for (int i = 0; i < w + h - 1; i++) {
         if (haveAbove == 0 && haveLeft == 1) {
             // 如果haveAbove为0且haveLeft为1，设置AboveRow[i]等于左侧的像素值
-            AboveRow[i] = CurrFrame[y][x - 1];
+            (*b_data->AboveRow)[i] = av1Ctx->currentFrame.CurrFrame[plane][y][x - 1];
         } else if (haveAbove == 0 && haveLeft == 0) {
             // 如果haveAbove和haveLeft都为0，设置AboveRow[i]为(1 << (BitDepth - 1)) - 1
-            AboveRow[i] = (1 << (BitDepth - 1)) - 1;
+            (*b_data->AboveRow)[i] = (1 << (seqHdr->color_config.BitDepth - 1)) - 1;
         } else {
             // 如果以上两个条件都不满足
             int aboveLimit = x + (haveAboveRight ? 2 * w : w) - 1;
-            AboveRow[i] = CurrFrame[plane][y - 1][Min(aboveLimit, x+i)];
+            (*b_data->AboveRow)[i] = av1Ctx->currentFrame.CurrFrame[plane][y - 1][Min(aboveLimit, x+i)];
         }
 
     }
     for (int i = 0; i < w + h - 1; i++) {
         if (haveLeft == 0 && haveAbove == 1) {
             // 如果haveLeft为0且haveAbove为1，设置LeftCol[i]等于上方的像素值
-            LeftCol[i] = CurrFrame[y - 1][x];
+            (*b_data->LeftCol)[i] = av1Ctx->currentFrame.CurrFrame[plane][y - 1][x];
         } else if (haveLeft == 0 && haveAbove == 0) {
             // 如果haveLeft和haveAbove都为0，设置LeftCol[i]为(1 << (BitDepth - 1)) + 1
-            LeftCol[i] = (1 << (BitDepth - 1)) + 1;
+            (*b_data->LeftCol)[i] = (1 << (seqHdr->color_config.BitDepth - 1)) + 1;
         } else {
             // 如果以上两个条件都不满足
             int leftLimit = y + (haveBelowLeft ? 2 * h : h) - 1;
-            LeftCol[i] = CurrFrame[plane][Min(leftLimit, y+i)][x - 1];
+            (*b_data->LeftCol)[i] = av1Ctx->currentFrame.CurrFrame[plane][Min(leftLimit, y+i)][x - 1];
         }
     }
 	if(haveAbove == 1 && haveLeft == 1){
-		AboveRow[ -1 ] == [ plane ][ y-1 ][x-1 ];
+		(*b_data->AboveRow)[ -1 ] = av1Ctx->currentFrame.CurrFrame[ plane ][ y-1 ][x-1 ];
 	}else if(haveAbove == 1){
-		AboveRow[ -1 ] == [ plane ][ y-1 ][x ];
+		(*b_data->AboveRow)[ -1 ] = av1Ctx->currentFrame.CurrFrame[ plane ][ y-1 ][x ];
 	}else if(haveLeft == 1) {
-		AboveRow[ -1 ] == [ plane ][ y ][x-1 ];
+		(*b_data->AboveRow)[ -1 ] = av1Ctx->currentFrame.CurrFrame[ plane ][ y ][x-1 ];
 	}else{
-		AboveRow[ -1 ] == 1 << ( BitDepth - 1 ).;
+		(*b_data->AboveRow)[ -1 ] = 1 << ( seqHdr->color_config.BitDepth - 1 );
 	}
-	LeftCol[ -1 ] = AboveRow[ -1 ];
+	(*b_data->LeftCol)[ -1 ] = (*b_data->AboveRow)[ -1 ];
 
-	if(plane == 0 && use_filter_intra){
-		recursiveIntraPrdiction();
+	if(plane == 0 && b_data->use_filter_intra){
+		recursiveIntraPrdiction(w,h,b_data->pred,b_data);
 	}else if( is_directional_mode( mode ) ){
-		DCIntraPrediction();
+		directionalIntraPrediction();
 	}else if(mode == SMOOTH_PRED || mode == SMOOTH_V_PRED  || mode == SMOOTH_H_PRED ){
 		smoothIntraPrediction(); 
+	}else if(mode == DC_PRED){
+		DCIntraPrediction();
+	}else if(mode == PAETH_PRED){
+		DCIntraPrediction();
+	}
+	for(int i = 0 ; i < h ;i ++){
+		for(int j = 0 ; j < w ;j ++){
+			av1Ctx->currentFrame.CurrFrame[ plane ][ y + i ][ x + j ] = b_data->pred[ i ][ j ];
+		}	
 	}
 }
 //7.11.2.3
@@ -2277,7 +2289,7 @@ int decode::predict_intra(int plane,int x,int y,int haveLeft,int haveAbove,
 //output block by filtering this array
 //输入指定的区域，将之分割为一个一个的 4 * 2小块，进行一系列操作(预测，滤波)生成帧内预测样本
 //输出在 pred数组中
-int decode::recursiveIntraPrdiction(int w, int h,uint8_t **pred)
+int decode::recursiveIntraPrdiction(int w, int h,uint8_t **pred,BlockData *b_data)
 {
 	int w4 = w >> 2;
 	int h2 = h >> 1;
@@ -2297,26 +2309,26 @@ int decode::recursiveIntraPrdiction(int w, int h,uint8_t **pred)
 				{
 					if (i2 == 0)
 					{
-						p[i][j4 * 4 + i] = AboveRow[(j4 << 2) + i - (i + 1)];
+						p[i] = (*b_data->AboveRow)[( j4 << 2 ) + i - 1 )];
 					}
 					else if (j4 == 0 && i == 0)
 					{
-						p[i][j4 * 4 + i] = LeftCol[(i2 << 1) - 1];
+						p[i] = (*b_data->LeftCol)[(i2 << 1) - 1];
 					}
 					else
 					{
-						p[i][j4 * 4 + i] = pred[(i + 1) * 4][(j4 << 2) + i - (i + 1)];
+						p[i] =  pred[ ( i2 << 1 ) - 1 ][ ( j4 << 2 ) + i - 1 ];
 					}
 				}
 				else
 				{
 					if (j4 == 0)
 					{
-						p[i][j4 * 4 + i] = LeftCol[(i2 << 1) + i - 4];
+						p[i] = (*b_data->LeftCol)[(i2 << 1) + i - 5];
 					}
 					else
 					{
-						p[i][j4 * 4 + i] = pred[(i + 1) * 4 + 1][(j4 << 2) - (i + 1)];
+						p[i] = pred[ ( i2 << 1 ) + i - 5 ][ ( j4 << 2 ) - 1 ];
 					}
 				}
 			}
@@ -2328,9 +2340,9 @@ int decode::recursiveIntraPrdiction(int w, int h,uint8_t **pred)
 					int pr = 0;
 					for (int i = 0; i < 7; i++)
 					{
-						pr += Intra_Filter_Taps[filter_intra_mode][i1][j1][i] * pred[i][(j4 << 2) + i];
+						pr += Intra_Filter_Taps[b_data->filter_intra_mode][( i1 << 2 ) + j1 ][i] * p[i];
 					}
-					pred[(i2 << 1) + i1][(j4 << 2) + j1] = Clip1(Round2Signed(pr / INTRA_FILTER_SCALE_BITS));
+					pred[(i2 << 1) + i1][(j4 << 2) + j1] = Clip1(Round2Signed(pr,INTRA_FILTER_SCALE_BITS));
 				}
 			}
 		}
@@ -2593,10 +2605,10 @@ int decode::smoothIntraPrediction(int mode, int log2W, int log2H, int w, int h, 
 		}
         for (int i = 0; i < h; i++) {
             for (int j = 0; j < w; j++) {
-                int smoothPred = smWeightsY[i] * AboveRow[j] +
+                int smoothPred = smWeightsY[i] * (*b_data->AboveRow)[j] +
                                  (256 - smWeightsY[i]) * LeftCol[h - 1] +
                                  smWeightsX[j] * LeftCol[i] +
-                                 (256 - smWeightsX[j]) * AboveRow[w - 1];
+                                 (256 - smWeightsX[j]) * (*b_data->AboveRow)[w - 1];
                 pred[i][j] = Round2(smoothPred, 9);
             }
         }
@@ -2615,7 +2627,7 @@ int decode::smoothIntraPrediction(int mode, int log2W, int log2H, int w, int h, 
 		}
         for (int i = 0; i < h; i++) {
             for (int j = 0; j < w; j++) {
-                int smoothPred = smWeights[i] * AboveRow[j] +
+                int smoothPred = smWeights[i] * (*b_data->AboveRow)[j] +
                                  (256 - smWeights[i]) * LeftCol[h - 1];
                 pred[i][j] = Round2(smoothPred, 8);
             }
@@ -2636,7 +2648,7 @@ int decode::smoothIntraPrediction(int mode, int log2W, int log2H, int w, int h, 
         for (int i = 0; i < h; i++) {
             for (int j = 0; j < w; j++) {
                 int smoothPred = smWeights[j] * LeftCol[i] +
-                                 (256 - smWeights[j]) * AboveRow[w - 1];
+                                 (256 - smWeights[j]) * (*b_data->AboveRow)[w - 1];
                 pred[i][j] = Round2(smoothPred, 8);
             }
         }

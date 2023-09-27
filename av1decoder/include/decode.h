@@ -65,7 +65,7 @@ public:
 							TileData *t_data,PartitionData *p_data, BlockData *b_data, AV1DecodeContext *av1Ctx);
 	int predict_intra(int plane,int x,int y,int haveLeft,int haveAbove,
 				int haveAboveRight,int haveBelowLeft,int mode,int log2W,int log2H,
-				PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx);
+				TileData *t_data,PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int predict_palette(int plane, int startX, int startY, int x, int y, int txSz);
 	int predict_chroma_from_luma(int plane, int startX, int startY, int txSz);
 	int coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx,bitSt *bs,
@@ -76,6 +76,9 @@ public:
 	int compute_tx_type(int plane, int txSz,int blockX,int blockY,BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int get_coeff_base_ctx(int txSz, int plane, int blockX, int blockY, int pos, int c, int isEob,
 						BlockData *b_data,AV1DecodeContext *av1Ctx);
+	int add_sample(int deltaRow,int deltaCol,TileData *t_data,PartitionData *p_data,
+				BlockData *b_data,AV1DecodeContext *av1Ctx);
+	int recursiveIntraPrdiction(int w, int h,uint8_t **pred,BlockData *b_data);
 	static decode& Instance() {
 		static decode m_pInstance;
 		return m_pInstance;

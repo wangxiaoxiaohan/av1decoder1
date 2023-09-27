@@ -1665,16 +1665,17 @@ int frame::read_segment_id(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
 	else 
 		b_data->prevL = -1 ;
 
+	int pred;
 	if (b_data->prevU == -1)
-		b_data->pred = (b_data->prevL == -1) ? 0 : b_data->prevL ;
+		pred = (b_data->prevL == -1) ? 0 : b_data->prevL ;
 	else if (b_data->prevL == -1) 
-		b_data->pred = b_data->prevU ;
+		pred = b_data->prevU ;
 	else 
-		b_data->pred = (b_data->prevUL == b_data->prevU) ? b_data->prevU : b_data->prevL; 
+		pred = (b_data->prevUL == b_data->prevU) ? b_data->prevU : b_data->prevL; 
 
 	if (b_data->skip)
 	{
-		b_data->segment_id = b_data->pred;
+		b_data->segment_id = pred;
 	}
 	else
 	{
@@ -1688,7 +1689,7 @@ int frame::read_segment_id(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
 		else
 			ctx = 0;
 		b_data->segment_id = sb->decodeSymbol(sbCtx,bs,av1ctx->currentFrame.cdfCtx.Segment_Id[ctx],MAX_SEGMENTS + 1);//S() 
-		neg_deinterleave( b_data->segment_id, b_data->pred,
+		neg_deinterleave( b_data->segment_id, pred,
 						frameHdr->segmentation_params.LastActiveSegId + 1);
 	}
 }

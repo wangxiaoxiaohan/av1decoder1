@@ -74,6 +74,9 @@ uint64_t inline readUlvc(bitSt *bs)
 	}
 	return readBits(bs,leadingZeros) + ( 1 << leadingZeros ) - 1;
 }
+//The abbreviation ns stands for non-symmetric. This encoding is non-symmetric because the values are not all coded with
+//the same number of bits.
+//非对称编码 ，因为不是所有值都编码同样长的比特数
 uint64_t inline readns(bitSt *bs,int n){
 	int w = FloorLog2(n) + 1;
 	int m = (1 << w) - n;

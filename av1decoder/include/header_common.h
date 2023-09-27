@@ -339,7 +339,6 @@ typedef struct BlockData{
 	uint8_t prevU;
 	uint8_t prevL;
 	uint8_t segment_id;
-	uint8_t pred;
 	uint8_t Lossless;
 	uint8_t delta_q_abs;
 	uint8_t delta_q_rem_bits;
@@ -411,14 +410,14 @@ typedef struct BlockData{
 	uint8_t *Quant;
 	uint8_t **Dequant;
 	uint8_t **TxTypes;
-
+	uint8_t Mv[2][2];
 }BlockData;
 
 typedef struct FrameContext{
 	sizeInfo si;
 	frameHeader frameHdr;
 	CDFArrays cdfCtx;
-
+	uint8_t ***CurrFrame;
 };
 typedef struct AV1DecodeContext{
 	FrameContext 	*ref_frames[NUM_REF_FRAMES];
@@ -467,7 +466,6 @@ typedef struct AV1DecodeContext{
 	int *DrlCtxStack;
 
 	int GlobalMvs[2][2];
-	uint8_t Mv[2][2];
 	uint8_t NumMvFound;
 	uint8_t NewMvCount;
 	uint8_t FoundMatch;
@@ -497,6 +495,7 @@ typedef struct AV1DecodeContext{
 
 	uint8_t NumSamples;
 	uint8_t NumSamplesScanned;
+	int **CandList;
 	
 }AV1DecodeContext;
 
