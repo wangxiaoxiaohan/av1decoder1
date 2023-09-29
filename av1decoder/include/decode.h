@@ -78,7 +78,33 @@ public:
 						BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int add_sample(int deltaRow,int deltaCol,TileData *t_data,PartitionData *p_data,
 				BlockData *b_data,AV1DecodeContext *av1Ctx);
-	int recursiveIntraPrdiction(int w, int h,uint8_t **pred,BlockData *b_data);
+	void basicIntraPrediction(int w, int h, uint8_t** pred,BlockData *b_data) ;
+	int recursiveIntraPrdiction(int w, int h,uint8_t **pred,BlockData *b_data,AV1DecodeContext *av1Ctx);
+	int directionalIntraPrediction(int plane,int x,int y,int haveLeft,int haveAbove,
+									int mode ,int w ,int h ,int maxX,int maxY,uint8_t **pred,
+									BlockData *b_data ,AV1DecodeContext *av1Ctx);
+	int filterCornor(Array8 *LeftCol,Array8 *AboveRow);
+	int intrafilterType(int plane,PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx);
+	int is_smooth(int row, int col, int plane,PartitionData *p_data) ;
+	int get_filter_type(int plane,PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx) ;
+	int intraEdgeFilterStrengthSelection(int w, int h, int filterType, int delta);
+	int intraEdgeFilter(int sz, int strength, int left,BlockData *b_data);
+	int intraEdgeUpsampleSelection(int w, int h, int filterType, int delta);
+	int intraEdgeUpsample(int numPx,int dir,BlockData *b_data,AV1DecodeContext *av1Ctx);
+	int smoothIntraPrediction(int mode, int log2W, int log2H, int w, int h, uint8_t **pred,BlockData *b_data);
+	int DCIntraPrediction(int haveLeft ,int haveAbove,int log2W,int log2H,int w,int h,uint8_t **pred,
+									BlockData *b_data,AV1DecodeContext *av1Ctx);
+	int predict_inter(int plane, int x, int y,int w ,int h ,int candRow,int candCol,
+							TileData *t_data,PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx);
+	int roundingVariablesDerivation(int isCompound,BlockData *b_data,AV1DecodeContext *av1Ctx);
+	int warpEstimation(int **CandList, int LocalWarpParams[6], int *LocalValid,BlockData *b_data,AV1DecodeContext *av1Ctx);
+	int setupShear(int *warpParams,int *warpValid,int *alpha,int *beta,int *gamma,int *delta);
+	int resolveDivisor(int d, int *divShift, int *divFactor);
+	int motionVectorScaling(int plane, int refIdx, int x, int y, int mv[2],
+								int *startX,int *startY, int *stepX,int *stepY, AV1DecodeContext *av1Ctx);
+	int blockWarp(int useWarp,int plane,int refList,int x,int y,
+						int i8,int j8,int w,int h,uint8_t **pred,int LocalWarpParams[6],AV1DecodeContext *av1Ctx);
+	int setupShear(int *warpParams,int *warpValid,int *alpha,int *beta,int *gamma,int *delta);
 	static decode& Instance() {
 		static decode m_pInstance;
 		return m_pInstance;

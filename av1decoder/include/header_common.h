@@ -239,8 +239,8 @@ typedef struct frameHeader{
 		uint8_t is_global;
 		uint8_t is_rot_zoom;
 		uint8_t is_translation;
-		uint8_t gm_params[NUM_REF_FRAMES][6];
-		uint8_t PrevGmParams[NUM_REF_FRAMES][6];
+		int gm_params[NUM_REF_FRAMES][6];
+		int PrevGmParams[NUM_REF_FRAMES][6];
 		
 	}global_motion_params;
 	struct {
@@ -411,6 +411,10 @@ typedef struct BlockData{
 	uint8_t **Dequant;
 	uint8_t **TxTypes;
 	uint8_t Mv[2][2];
+
+	int InterPostRound ;//representing the amount to round by at the end of the prediction process
+	int InterRound0; //representing the amount to round by after horizontal filtering
+	int InterRound1; //representing the amount to round by after vertical filtering
 }BlockData;
 
 typedef struct FrameContext{
@@ -426,11 +430,11 @@ typedef struct AV1DecodeContext{
 	uint8_t	RefValid[NUM_REF_FRAMES];
 	uint8_t RefFrameId[NUM_REF_FRAMES];
 	uint8_t	RefOrderHint[NUM_REF_FRAMES];
-	uint8_t	RefUpscaledWidth[NUM_REF_FRAMES];
-	uint8_t RefFrameHeight[NUM_REF_FRAMES];
-	uint8_t RefFrameHeight[NUM_REF_FRAMES];
-	uint8_t RefRenderWidth[NUM_REF_FRAMES];
-	uint8_t RefRenderHeight[NUM_REF_FRAMES];
+	Array16* RefUpscaledWidth;// size NUM_REF_FRAMES
+	Array16* RefFrameWidth;// size NUM_REF_FRAMES
+	Array16* RefFrameHeight;// size NUM_REF_FRAMES
+	Array16* RefRenderWidth;// size NUM_REF_FRAMES
+	Array16* RefRenderHeight;// size NUM_REF_FRAMES
 	uint16_t RefMiCols[NUM_REF_FRAMES];
 	uint16_t RefMiRows[NUM_REF_FRAMES];
 	uint8_t RefFrameType[NUM_REF_FRAMES];

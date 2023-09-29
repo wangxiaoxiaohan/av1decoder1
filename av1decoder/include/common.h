@@ -221,7 +221,13 @@ enum tristate
 #define NUM_BASE_LEVELS 2 
 #define COEFF_BASE_RANGE 12
 #define LEAST_SQUARES_SAMPLES_MAX 8
-
+#define ANGLE_STEP 3
+#define FILTER_BITS 7
+#define LS_MV_MAX 256
+#define WARP_PARAM_REDUCE_BITS 6
+#define SUBPEL_BITS 4 
+#define SUBPEL_MASK 15 
+#define SCALE_SUBPEL_BITS 10
 typedef struct Array8
 {
 	uint8_t *data;
@@ -2184,6 +2190,14 @@ const static uint8_t Mag_Ref_Offset_With_Tx_Class[ 3 ][ 3 ][ 2 ] = {
 { { 0, 1 }, { 1, 0 }, { 1, 1 } },
 { { 0, 1 }, { 1, 0 }, { 0, 2 } },
 { { 0, 1 }, { 1, 0 }, { 2, 0 } }
+};
+const static uint8_t Dr_Intra_Derivative[ 90 ] = {
+0, 0, 0, 1023, 0, 0, 547, 0, 0, 372, 0, 0, 0, 0,
+273, 0, 0, 215, 0, 0, 178, 0, 0, 151, 0, 0, 132, 0, 0,
+116, 0, 0, 102, 0, 0, 0, 90, 0, 0, 80, 0, 0, 71, 0, 0,
+64, 0, 0, 57, 0, 0, 51, 0, 0, 45, 0, 0, 0, 40, 0, 0,
+35, 0, 0, 31, 0, 0, 27, 0, 0, 23, 0, 0, 19, 0, 0,
+15, 0, 0, 0, 0, 11, 0, 0, 7, 0, 0, 3, 0, 0
 };
 
 
