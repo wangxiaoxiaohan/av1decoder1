@@ -105,6 +105,13 @@ public:
 	int blockWarp(int useWarp,int plane,int refList,int x,int y,
 						int i8,int j8,int w,int h,uint8_t **pred,int LocalWarpParams[6],AV1DecodeContext *av1Ctx);
 	int setupShear(int *warpParams,int *warpValid,int *alpha,int *beta,int *gamma,int *delta);
+	int blockWarp(int useWarp,int plane,int refList,int x,int y,
+						int i8,int j8,int w,int h,uint8_t **pred,int LocalWarpParams[6],
+						BlockData *b_data,AV1DecodeContext *av1Ctx);
+	int block_inter_prediction(int plane, int refIdx, int x, int y, int xStep, int yStep, 
+						int w, int h, int candRow, int candCol,PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx);
+	int wedgeMask(int w,int h,BlockData *b_data,AV1DecodeContext *av1Ctx);
+	int intraModeVariantMask(int w, int h,BlockData *b_data,AV1DecodeContext *av1Ctx);
 	static decode& Instance() {
 		static decode m_pInstance;
 		return m_pInstance;

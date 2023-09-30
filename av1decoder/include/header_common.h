@@ -415,6 +415,8 @@ typedef struct BlockData{
 	int InterPostRound ;//representing the amount to round by at the end of the prediction process
 	int InterRound0; //representing the amount to round by after horizontal filtering
 	int InterRound1; //representing the amount to round by after vertical filtering
+
+	int **Mask;
 }BlockData;
 
 typedef struct FrameContext{

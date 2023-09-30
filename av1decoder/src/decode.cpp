@@ -627,8 +627,8 @@ int decode::setup_global_mv(int refList,int *mv,
 	}
 	else
 	{
-		int x = b_data->MiCol * MI_SIZE + 4 * Num_4x4_Blocks_Wide[ b_data->MiSize ] / 2 - 1;
-		int y = b_data->MiRow * MI_SIZE + 4 * Num_4x4_Blocks_High[ b_data->MiSize ] / 2 - 1;
+		int x = b_data->MiCol * MI_SIZE + Block_Width[ b_data->MiSize ] / 2 - 1;
+		int y = b_data->MiRow * MI_SIZE + Block_Height[ b_data->MiSize ] / 2 - 1;
 		int xc = (frameHdr->global_motion_params.gm_params[ref][2] - (1 << WARPEDMODEL_PREC_BITS)) * x +
 			 frameHdr->global_motion_params.gm_params[ref][3] * y +
 			 frameHdr->global_motion_params.gm_params[ref][0];
@@ -759,7 +759,7 @@ int decode::search_stack(int mvRow,int mvCol,int candList,int weight,
 	int candSize = p_data->MiSizes[ mvRow ][ mvCol ];
 	int candMode;
 	int candMv[2];
-	int large =  Min( 4 * Num_4x4_Blocks_Wide[ candSize ],4 * Num_4x4_Blocks_High[ candSize ] ) >= 8;
+	int large =  Min( Block_Width[ candSize ],Block_Height[ candSize ] ) >= 8;
 	if(( candMode == GLOBALMV && candMode == GLOBAL_GLOBALMV) && 
 				( frameHdr->global_motion_params.GmType[ b_data->RefFrame[ 0 ] ] > TRANSLATION )  && ( large == 1 ))
 	{
@@ -1209,8 +1209,8 @@ int decode::add_extra_mv_candidate(int mvRow, int mvCol, int isCompound,
 //This process computes contexts to be used when decoding syntax elements, and clamps the candidates in RefStackMv
 int decode::context_and_clamping(int isCompound, int numNew,BlockData *b_data,AV1DecodeContext *av1Ctx)
 {
-	int bw = 4 * Num_4x4_Blocks_Wide[b_data->MiSize];
-	int bh = 4 * Num_4x4_Blocks_High[b_data->MiSize];
+	int bw = Block_Width[b_data->MiSize];
+	int bh = Block_Height[b_data->MiSize];
 	int numLists = isCompound ? 2 : 1;
 	for (int idx = 0; idx < av1Ctx->NumMvFound; idx++)
 	{
@@ -1322,8 +1322,8 @@ int decode::residual(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,PartitionDa
 	frameHeader *frameHdr = av1Ctx->curFrameHdr;
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
 	int sbMask = seqHdr->use_128x128_superblock ? 31 : 15;
-	int widthChunks = Max(1, 4 * Num_4x4_Blocks_Wide[b_data->MiSize] >> 6);
-	int	heightChunks = Max(1, 4 * Num_4x4_Blocks_High[b_data->MiSize] >> 6);
+	int widthChunks = Max(1, Block_Width[b_data->MiSize] >> 6);
+	int	heightChunks = Max(1, Block_Height[b_data->MiSize] >> 6);
 	int	miSizeChunk = (widthChunks > 1 || heightChunks > 1) ? BLOCK_64X64 : b_data->MiSize;
 	for (int chunkY = 0; chunkY < heightChunks; chunkY++)
 	{
@@ -1806,8 +1806,8 @@ int decode::cacluteAllZeroCtx(int plane,int txSz, int x4,int y4,int w4,int h4,Bl
 	int w = Tx_Width[txSz];
 	int h = Tx_Height[txSz];
 	int bsize = get_plane_residual_size(b_data->MiSize, plane,seqHdr->color_config.subsampling_x,seqHdr->color_config.subsampling_y);
-	int bw = 4 * Num_4x4_Blocks_Wide[bsize];
-	int bh = 4 * Num_4x4_Blocks_High[bsize];
+	int bw = Block_Width[bsize];
+	int bh = Block_Height[bsize];
 	if (plane == 0)
 	{
 		int top = 0;
@@ -2155,7 +2155,7 @@ int decode::add_sample(int deltaRow,int deltaCol,TileData *t_data,PartitionData 
     int candCol = mvCol & ~(candW4 - 1);
     int midY = candRow * 4 + candH4 * 2 - 1;
     int midX = candCol * 4 + candW4 * 2 - 1;
-    int threshold = Clip3(16, 112, Max(4 * Num_4x4_Blocks_Wide[MiSize], 4 * Num_4x4_Blocks_High[MiSize]));
+    int threshold = Clip3(16, 112, Max(Block_Width[MiSize], Block_Height[MiSize]));
     int mvDiffRow = Abs(p_data->Mvs[candRow][candCol][0][0] - b_data->Mv[0][0]);
     int mvDiffCol = Abs(p_data->Mvs[candRow][candCol][0][1] - b_data->Mv[0][1]);
     int valid = ((mvDiffRow + mvDiffCol) <= threshold);
@@ -2188,7 +2188,7 @@ int decode::get_above_tx_width(int row, int col,PartitionData *p_data,BlockData 
 		}
 		else if (p_data->Skips[row - 1][col] && p_data->IsInters[row - 1][col])
 		{
-			return 4 * Num_4x4_Blocks_Wide[p_data->MiSizes[row - 1][col]];
+			return Block_Width[p_data->MiSizes[row - 1][col]];
 		}
 	}
 	return Tx_Width[p_data->InterTxSizes[row - 1][col]];
@@ -2203,7 +2203,7 @@ int decode::get_left_tx_height(int row,int col,PartitionData *p_data,BlockData *
 		}
 		else if (p_data->Skips[row][col - 1] && p_data->IsInters[row][col - 1])
 		{
-			return 4 * Num_4x4_Blocks_Wide[p_data->MiSizes[row][col - 1]];
+			return Block_Width[p_data->MiSizes[row][col - 1]];
 		}
 	}
 	return Tx_Height[p_data->InterTxSizes[row][col - 1]];
@@ -2965,7 +2965,7 @@ genArray:
 
 	}
 	if(useWarp == 0){
-		blockInterPrediction(plane, refIdx,startX, startY, stepX, stepY, w, h, candRow, candCol );
+		block_inter_prediction(plane, refIdx,startX, startY, stepX, stepY, w, h, candRow, candCol );
 	}
 
 	if(isCompound == 1){
@@ -3185,14 +3185,15 @@ int decode::motionVectorScaling(int plane, int refIdx, int x, int y, int mv[2],
 }
 ////7.11.3.5
 int decode::blockWarp(int useWarp,int plane,int refList,int x,int y,
-						int i8,int j8,int w,int h,uint8_t **pred,int LocalWarpParams[6],BlockData *b_data,AV1DecodeContext *av1Ctx)
+						int i8,int j8,int w,int h,uint8_t **pred,int LocalWarpParams[6],
+						BlockData *b_data,AV1DecodeContext *av1Ctx)
 {
 	frameHeader *frameHdr = av1Ctx->curFrameHdr;
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
     int refIdx = frameHdr->ref_frame_idx[b_data->RefFrame[refList] - LAST_FRAME];
 
     // Calculate ref
-    int **ref[3] = av1Ctx->FrameStore[refIdx];
+    uint8_t ***ref = av1Ctx->FrameStore[refIdx];
 
     // Calculate subX and subY
     int subX, subY;
@@ -3249,7 +3250,7 @@ int decode::blockWarp(int useWarp,int plane,int refList,int x,int y,
                 s += Warped_Filters[offs][i3] *
                      ref[plane][Clip3(0, lastY, iy4 + i1)][Clip3(0, lastX, ix4 + i2 - 3 + i3)];
             }
-            intermediate[i1 + 7][i2 + 4] = Round2(s, InterRound0);
+            intermediate[i1 + 7][i2 + 4] = Round2(s, b_data->InterRound0);
         }
     }
 	
@@ -3263,7 +3264,7 @@ int decode::blockWarp(int useWarp,int plane,int refList,int x,int y,
             for (int i3 = 0; i3 < 8; i3++) {
                 s += Warped_Filters[offs][i3] * intermediate[i1 + i3 + 4][i2 + 4];
             }
-            pred[i8 * 8 + i1 + 4][j8 * 8 + i2 + 4] = Round2(s, InterRound1);
+            pred[i8 * 8 + i1 + 4][j8 * 8 + i2 + 4] = Round2(s, b_data->InterRound1);
         }
     }
 }
@@ -3272,13 +3273,15 @@ int decode::blockWarp(int useWarp,int plane,int refList,int x,int y,
 //temporary array, and then this array is vertically filtered to obtain the final prediction. The fractional parts of the motion
 //vectors determine the filtering process. If the fractional part is zero, then the filtering is equivalent to a straight sample
 //copy
-int decode::block_inter_prediction(int plane, int refIdx, int x, int y, int xStep, int yStep, int w, int h, int candRow, int candCol, int ref[plane][lastY + 1][lastX + 1]) {
-    // Calculate ref
-    int ref[plane][lastY + 1][lastX + 1];
+int decode::block_inter_prediction(int plane, int refIdx, int x, int y, int xStep, int yStep, 
+						int w, int h, int candRow, int candCol,PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx) {
+	frameHeader *frameHdr = av1Ctx->curFrameHdr;		
+	sequenceHeader *seqHdr = av1Ctx->seqHdr;
+    uint8_t ***ref;
     if (refIdx == -1) {
-        ref = CurrFrame;
+        ref = av1Ctx->currentFrame.CurrFrame;
     } else if (refIdx >= 0) {
-        ref = FrameStore[refIdx];
+        ref = av1Ctx->FrameStore[refIdx];
     }
 
     // Calculate subX and subY
@@ -3287,19 +3290,19 @@ int decode::block_inter_prediction(int plane, int refIdx, int x, int y, int xSte
         subX = 0;
         subY = 0;
     } else {
-        subX = subsampling_x;
-        subY = subsampling_y;
+        subX = seqHdr->color_config.subsampling_x;
+        subY = seqHdr->color_config.subsampling_y;
     }
 
     // Calculate lastX and lastY
-    int lastX = ((RefUpscaledWidth[refIdx] + subX) >> subX) - 1;
-    int lastY = ((RefFrameHeight[refIdx] + subY) >> subY) - 1;
+    int lastX = (((*av1Ctx->RefUpscaledWidth)[refIdx] + subX) >> subX) - 1;
+    int lastY = (((*av1Ctx->RefFrameHeight)[refIdx] + subY) >> subY) - 1;
 
     // Calculate intermediateHeight
     int intermediateHeight = (((h - 1) * yStep + (1 << SCALE_SUBPEL_BITS) - 1) >> SCALE_SUBPEL_BITS) + 8;
 
     // Sub-sample interpolation - Horizontal filter
-    int interpFilter = InterpFilters[candRow][candCol][1];
+    int interpFilter = p_data->InterpFilters[candRow][candCol][1];
     if (w <= 4) {
         if (interpFilter == EIGHTTAP || interpFilter == EIGHTTAP_SHARP) {
             interpFilter = 4;
@@ -3316,12 +3319,12 @@ int decode::block_inter_prediction(int plane, int refIdx, int x, int y, int xSte
                 s += Subpel_Filters[interpFilter][(p >> 6) & SUBPEL_MASK][t] *
                      ref[plane][Clip3(0, lastY, (y >> 10) + r - 3)][Clip3(0, lastX, (p >> 10) + t - 3)];
             }
-            intermediate[r][c] = Round2(s, InterRound0);
+            intermediate[r][c] = Round2(s, b_data->InterRound0);
         }
     }
 
     // Sub-sample interpolation - Vertical filter
-    interpFilter = InterpFilters[candRow][candCol][0];
+    interpFilter = p_data->InterpFilters[candRow][candCol][0];
     if (h <= 4) {
         if (interpFilter == EIGHTTAP || interpFilter == EIGHTTAP_SHARP) {
             interpFilter = 4;
@@ -3337,25 +3340,17 @@ int decode::block_inter_prediction(int plane, int refIdx, int x, int y, int xSte
             for (int t = 0; t < 8; t++) {
                 s += Subpel_Filters[interpFilter][(p >> 6) & SUBPEL_MASK][t] * intermediate[(p >> 10) + t][c];
             }
-            pred[r][c] = Round2(s, InterRound1);
+            b_data->pred[r][c] = Round2(s, b_data->InterRound1);
         }
     }
 }
 //7.11.3.11
-int decode::wedgeMask(int w,int h){
-	initializeWedgeMaskTable();
-	for ( i = 0; i < h; i++ ) {
-		for ( j = 0; j < w; j++ ) {
-			Mask[ i ][ j ] = WedgeMasks[ MiSize ][ wedge_sign ][ wedge_index ][ i ][ j ];
-		}
-	}
-}
-int decode::initializeWedgeMaskTable() {
-    int w, h,shift, sum, avg, flipSign, msk;
-    
+int decode::wedgeMask(int w,int h,BlockData *b_data,AV1DecodeContext *av1Ctx){
+	int w, h,shift, sum, avg, flipSign, msk;
     w = MASK_MASTER_SIZE;
 	h = MASK_MASTER_SIZE;
 
+	uint8_t MasterMask[6][w][h];
 	for (int j = 0; j < w; j++)
 	{
 		shift = MASK_MASTER_SIZE / 4;
@@ -3382,6 +3377,7 @@ int decode::initializeWedgeMaskTable() {
 		}
 	}
 	// Populate WedgeMasks for different block sizes and wedge types
+	uint8_t WedgeMasks[BLOCK_SIZES][2][WEDGE_TYPES][h][w];
     for (int bsize = BLOCK_8X8; bsize < BLOCK_SIZES; bsize++) {
         if (Wedge_Bits[bsize] > 0) {
             w = Block_Width[bsize];
@@ -3406,31 +3402,36 @@ int decode::initializeWedgeMaskTable() {
             }
         }
     }
+	for (int  i = 0; i < h; i++ ) {
+		for (int  j = 0; j < w; j++ ) {
+			b_data->Mask[ i ][ j ] = WedgeMasks[ MiSize ][ av1Ctx->wedge_sign ][ av1Ctx->wedge_index ][ i ][ j ];
+		}
+	}
 }
 //7.11.3.13
 //This process prepares an array Mask containing the blending weights for the luma samples.
-int decode::intraModeVariantMask(int w, int h)
+int decode::intraModeVariantMask(int w, int h,BlockData *b_data,AV1DecodeContext *av1Ctx)
 {
 	int sizeScale = MAX_SB_SIZE / Max(h, w);
-	for (i = 0; i < h; i++)
+	for (int i = 0; i < h; i++)
 	{
-		for (j = 0; j < w; j++)
+		for (int j = 0; j < w; j++)
 		{
-			if (interintra_mode == II_V_PRED)
+			if (av1Ctx->interintra_mode == II_V_PRED)
 			{
-				Mask[i][j] = Ii_Weights_1d[i * sizeScale];
+				b_data->Mask[i][j] = Ii_Weights_1d[i * sizeScale];
 			}
-			else if (interintra_mode == II_H_PRED)
+			else if (av1Ctx->interintra_mode == II_H_PRED)
 			{
-				Mask[i][j] = Ii_Weights_1d[j * sizeScale];
+				b_data->Mask[i][j] = Ii_Weights_1d[j * sizeScale];
 			}
-			else if (interintra_mode == II_SMOOTH_PRED)
+			else if (av1Ctx->interintra_mode == II_SMOOTH_PRED)
 			{
-				Mask[i][j] = Ii_Weights_1d[Min(i, j) * sizeScale];
+				b_data->Mask[i][j] = Ii_Weights_1d[Min(i, j) * sizeScale];
 			}
 			else
 			{
-				Mask[i][j] = 32;
+				b_data->Mask[i][j] = 32;
 			}
 		}
 	}
@@ -3445,7 +3446,7 @@ int decode::differenceWeightMask(int ***preds, int w, int h)
 		{
 			int diff = Abs(preds[0][i][j] - preds[1][i][j]);
 			diff = Round2(diff, (BitDepth - 8) + InterPostRound);
-			m = Clip3(0, 64, 38 + diff / 16);
+			int m = Clip3(0, 64, 38 + diff / 16);
 			if (mask_type)
 				Mask[i][j] = 64 - m;
 			else

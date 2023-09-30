@@ -1540,7 +1540,7 @@ int frame::intra_frame_mode_info(SymbolContext *sbCtx,bitSt *bs,TileData *t_data
 					uv_mode_cdf = av1ctx->currentFrame.cdfCtx.Uv_Mode_Cfl_Allowed[b_data->YMode];
 			// Block_Width[ x ] is defined to be equal to 4 * Num_4x4_Blocks_Wide[ x ].
 			//Block_Height[ x ] is defined to be equal to 4 * Num_4x4_Blocks_High[ x ].
-			}else if(!b_data->Lossless && Max( 4 * Num_4x4_Blocks_Wide[ b_data->MiSize ], 4 * Num_4x4_Blocks_High[ b_data->MiSize ] ) <= 32){
+			}else if(!b_data->Lossless && Max( Block_Width[ b_data->MiSize ], Block_Height[ b_data->MiSize ] ) <= 32){
 					uv_mode_cdf = av1ctx->currentFrame.cdfCtx.Uv_Mode_Cfl_Allowed[b_data->YMode];
 
 			}else{
@@ -1557,8 +1557,8 @@ int frame::intra_frame_mode_info(SymbolContext *sbCtx,bitSt *bs,TileData *t_data
 		b_data->PaletteSizeY = 0 ;
 		b_data->PaletteSizeUV = 0 ;
 		if (b_data->MiSize >= BLOCK_8X8 &&
-			4 * Num_4x4_Blocks_Wide[b_data->MiSize] <= 64 &&
-			4 * Num_4x4_Blocks_High[b_data->MiSize] <= 64 &&
+			Block_Width[b_data->MiSize] <= 64 &&
+			Block_Height[b_data->MiSize] <= 64 &&
 			frameHdr->allow_screen_content_tools){
 				palette_mode_info(sbCtx,bs,p_data,b_data,av1ctx);
 			} 
@@ -1586,8 +1586,8 @@ int frame::inter_frame_mode_info(SymbolContext *sbCtx, bitSt *bs, TileData *t_da
 		seg_instance->seg_feature_active( b_data->segment_id,SEG_LVL_REF_FRAME ,frameHdr) ||
 		seg_instance->seg_feature_active( b_data->segment_id,SEG_LVL_GLOBALMV ,frameHdr) ||
 		!frameHdr->skip_mode_present ||
-		4 * Num_4x4_Blocks_Wide[ b_data->MiSize ] < 8 ||
-		4 * Num_4x4_Blocks_High[ b_data->MiSize ] < 8 )
+		Block_Width[ b_data->MiSize ] < 8 ||
+		Block_Height[ b_data->MiSize ] < 8 )
 	{
 		b_data->skip_mode = 0;
 	} else {
@@ -2135,7 +2135,7 @@ int frame::filter_intra_mode_info(SymbolContext *sbCtx,bitSt *bs,BlockData *b_da
 	b_data->use_filter_intra = 0;
 	if (seqHdr->enable_filter_intra &&
 		b_data->YMode == DC_PRED && b_data->PaletteSizeY == 0 &&
-		Max(4 * Num_4x4_Blocks_Wide[b_data->MiSize], 4 * Num_4x4_Blocks_High[b_data->MiSize]) <= 32)
+		Max(Block_Width[b_data->MiSize], Block_Height[b_data->MiSize]) <= 32)
 	{
 		b_data->use_filter_intra = sb->decodeSymbol(sbCtx,bs,av1ctx->currentFrame.cdfCtx.Filter_Intra[b_data->MiSize],3); // S()
 		if (b_data->use_filter_intra)
@@ -2422,8 +2422,8 @@ int frame::intra_block_mode_info(SymbolContext *sbCtx, bitSt *bs, TileData *t_da
 				BLOCK_4X4 == get_plane_residual_size( b_data->MiSize, 1 ,seqHdr->color_config.subsampling_x,seqHdr->color_config.subsampling_y)){
 				uv_mode_cdf = av1ctx->currentFrame.cdfCtx.Uv_Mode_Cfl_Allowed[b_data->YMode];
 		// Block_Width[ x ] is defined to be equal to 4 * Num_4x4_Blocks_Wide[ x ].
-		//Block_Height[ x ] is defined to be equal to 4 * Num_4x4_Blocks_High[ x ].
-		}else if(!b_data->Lossless && Max( 4 * Num_4x4_Blocks_Wide[ b_data->MiSize ], 4 * Num_4x4_Blocks_High[ b_data->MiSize ] ) <= 32){
+		//Block_Height[ x ] is defined to be equal to Block_Height[ x ].
+		}else if(!b_data->Lossless && Max( Block_Width[ b_data->MiSize ], Block_Height[ b_data->MiSize ] ) <= 32){
 				uv_mode_cdf = av1ctx->currentFrame.cdfCtx.Uv_Mode_Cfl_Allowed[b_data->YMode];
 
 		}else{
@@ -2443,8 +2443,8 @@ int frame::intra_block_mode_info(SymbolContext *sbCtx, bitSt *bs, TileData *t_da
 	b_data->PaletteSizeY = 0;
 	b_data->PaletteSizeUV = 0;
 	if (b_data->MiSize >= BLOCK_8X8 &&
-		4 * Num_4x4_Blocks_Wide[b_data->MiSize] <= 64 &&
-		4 * Num_4x4_Blocks_Wide[b_data->MiSize] <= 64 &&
+		Block_Width[b_data->MiSize] <= 64 &&
+		Block_Height[b_data->MiSize] <= 64 &&
 		frameHdr->allow_screen_content_tools)
 		palette_mode_info(sbCtx,bs,p_data,b_data,av1ctx);
 	filter_intra_mode_info(sbCtx,bs,b_data,av1ctx);
@@ -2494,8 +2494,8 @@ int frame::read_motion_mode(int isCompound,SymbolContext *sbCtx,bitSt *bs,TileDa
 		b_data->motion_mode = SIMPLE;
 		return;
 	}
-	if (Min(4 * Num_4x4_Blocks_Wide[b_data->MiSize],
-			4 * Num_4x4_Blocks_High[b_data->MiSize]) < 8)
+	if (Min(Block_Width[b_data->MiSize],
+			Block_Height[b_data->MiSize]) < 8)
 	{
 		b_data->motion_mode = SIMPLE;
 		return;
@@ -2897,8 +2897,8 @@ int frame::palette_tokens(SymbolContext *sbCtx, bitSt *bs, TileData *t_data,
 {
 	frameHeader *frameHdr = av1ctx->curFrameHdr;
 	sequenceHeader *seqHdr = av1ctx->seqHdr;
-	int blockHeight = 4 * Num_4x4_Blocks_High[b_data->MiSize];
-	int blockWidth = 4 * Num_4x4_Blocks_Wide[b_data->MiSize];
+	int blockHeight = Block_Height[b_data->MiSize];
+	int blockWidth = Block_Width[b_data->MiSize];
 	int onscreenHeight = Min(blockHeight, (frameHdr->MiRows - b_data->MiRow) * MI_SIZE);
 	int onscreenWidth = Min(blockWidth, (frameHdr->MiCols - b_data->MiCol) * MI_SIZE);
 	if (b_data->PaletteSizeY)
@@ -3084,7 +3084,7 @@ int frame::read_tx_size(int allowSelect, SymbolContext *sbCtx, bitSt *bs,Partiti
 		int leftH;
 		if (b_data->AvailU && p_data->IsInters[b_data->MiRow - 1][b_data->MiCol])
 		{
-			aboveW = 4 * Num_4x4_Blocks_Wide[p_data->MiSizes[b_data->MiRow - 1][b_data->MiCol]];
+			aboveW = Block_Width[p_data->MiSizes[b_data->MiRow - 1][b_data->MiCol]];
 		}
 		else if (b_data->AvailU)
 		{
@@ -3096,7 +3096,7 @@ int frame::read_tx_size(int allowSelect, SymbolContext *sbCtx, bitSt *bs,Partiti
 		}
 		if (b_data->AvailL && p_data->IsInters[b_data->MiRow][b_data->MiCol - 1])
 		{
-			leftH = 4 * Num_4x4_Blocks_High[p_data->MiSizes[b_data->MiRow][b_data->MiCol - 1]];
+			leftH = Block_Height[p_data->MiSizes[b_data->MiRow][b_data->MiCol - 1]];
 		}
 		else if (b_data->AvailL)
 		{
@@ -3192,8 +3192,8 @@ int frame::compute_prediction(SymbolContext *sbCtx, bitSt *bs,
 		}
 		if (b_data->is_inter)
 		{
-			int predW = 4 * Num_4x4_Blocks_Wide[b_data->MiSize] >> subX;
-			int predH = 4 * Num_4x4_Blocks_High[b_data->MiSize] >> subY;
+			int predW = Block_Width[b_data->MiSize] >> subX;
+			int predH = Block_Height[b_data->MiSize] >> subY;
 			int someUseIntra = 0;
 			for (int r = 0; r < (num4x4H << subY); r++)
 				for (int c = 0; c < (num4x4W << subX); c++)
@@ -3226,7 +3226,7 @@ int frame::compute_prediction(SymbolContext *sbCtx, bitSt *bs,
 int frame::needs_interp_filter(BlockData *b_data,AV1DecodeContext *av1ctx)
 {
 	frameHeader *frameHdr = av1ctx->curFrameHdr;
-	int large = (Min(4 * Num_4x4_Blocks_Wide[b_data->MiSize], 4 * Num_4x4_Blocks_High[b_data->MiSize]) >= 8);
+	int large = (Min(Block_Width[b_data->MiSize], Block_Height[b_data->MiSize]) >= 8);
 	if (b_data->skip_mode || b_data->motion_mode == LOCALWARP)
 	{
 		return 0;

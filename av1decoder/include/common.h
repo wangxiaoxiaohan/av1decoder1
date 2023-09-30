@@ -228,6 +228,10 @@ enum tristate
 #define SUBPEL_BITS 4 
 #define SUBPEL_MASK 15 
 #define SCALE_SUBPEL_BITS 10
+#define WEDGE_TYPES 16
+
+#define Block_Width 4 * Num_4x4_Blocks_Wide
+#define Block_Height 4 * Num_4x4_Blocks_High
 typedef struct Array8
 {
 	uint8_t *data;
