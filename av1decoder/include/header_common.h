@@ -402,7 +402,7 @@ typedef struct BlockData{
 	//块左边，上边的样本，是像素值
 	Array8 *AboveRow;
 	Array8 *LeftCol;
-	uint8_t **pred;
+//	uint8_t **pred;
 
 //下面这几个是不是考虑专门做一个 block decode context的结构体？
 	int MaxLumaW;

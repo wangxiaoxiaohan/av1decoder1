@@ -2489,28 +2489,28 @@ return Wedge_Codebook[block_shape(bsize)][index][2];
 inline uint8_t* get_obmc_mask(int length)
 {
 	uint8_t *ret = NULL;
-if (length == 2)
-{
-	ret = (uint8_t *)Obmc_Mask_2;
-}
-else if (length == 4)
-{
-	ret = (uint8_t *)Obmc_Mask_4;
-}
-else if (length == 8)
-{
-	ret = (uint8_t *)Obmc_Mask_8;
-}
-else if (length == 16)
-{
-	ret = (uint8_t *)Obmc_Mask_16;
-}
-else
-{
-	ret = (uint8_t *)Obmc_Mask_32;
-}
+	if (length == 2)
+	{
+		ret = (uint8_t *)Obmc_Mask_2;
+	}
+	else if (length == 4)
+	{
+		ret = (uint8_t *)Obmc_Mask_4;
+	}
+	else if (length == 8)
+	{
+		ret = (uint8_t *)Obmc_Mask_8;
+	}
+	else if (length == 16)
+	{
+		ret = (uint8_t *)Obmc_Mask_16;
+	}
+	else
+	{
+		ret = (uint8_t *)Obmc_Mask_32;
+	}
 
-return ret;
+	return ret;
 }
 //获取量化参数
 int inline dc_q(int b ,int BitDepth){

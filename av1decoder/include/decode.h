@@ -109,9 +109,18 @@ public:
 						int i8,int j8,int w,int h,uint8_t **pred,int LocalWarpParams[6],
 						BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int block_inter_prediction(int plane, int refIdx, int x, int y, int xStep, int yStep, 
-						int w, int h, int candRow, int candCol,PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx);
+							int w, int h, int candRow, int candCol,uint8_t **pred,
+							PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int wedgeMask(int w,int h,BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int intraModeVariantMask(int w, int h,BlockData *b_data,AV1DecodeContext *av1Ctx);
+	int differenceWeightMask(uint8_t ***preds, int w, int h,BlockData *b_data,  AV1DecodeContext *av1Ctx);
+	int distanceWeights(int candRow,int candCol,int *FwdWeight,int *BckWeight,  
+							PartitionData *p_data, AV1DecodeContext *av1Ctx);
+	int maskBlend(uint8_t ***preds,int plane , int dstX,int dstY,int w,int h,BlockData *b_data,AV1DecodeContext *av1Ctx);
+	int overlappedMotionCompensation(int plane, int w ,int h,PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx);
+	int predict_overlap(int MiSize,int plane ,int x4,int y4,int predW,int predH,int subX,int subY ,
+				int candRow,int candCol ,int pass,uint8_t *mask,PartitionData *p_data,BlockData *b_data, AV1DecodeContext *av1Ctx);
+	int OverlapBlending(int plane ,int predX,int predY,int predW,int predH ,int pass,int **obmcPred,int *mask);
 	static decode& Instance() {
 		static decode m_pInstance;
 		return m_pInstance;
