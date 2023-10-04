@@ -66,7 +66,6 @@ public:
 	int predict_intra(int plane,int x,int y,int haveLeft,int haveAbove,
 				int haveAboveRight,int haveBelowLeft,int mode,int log2W,int log2H,
 				TileData *t_data,PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx);
-	int predict_palette(int plane, int startX, int startY, int x, int y, int txSz);
 	int predict_chroma_from_luma(int plane, int startX, int startY, int txSz);
 	int coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx,bitSt *bs,
 							TileData *t_data,PartitionData *p_data, BlockData *b_data, AV1DecodeContext *av1Ctx);
@@ -120,7 +119,38 @@ public:
 	int overlappedMotionCompensation(int plane, int w ,int h,PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int predict_overlap(int MiSize,int plane ,int x4,int y4,int predW,int predH,int subX,int subY ,
 				int candRow,int candCol ,int pass,uint8_t *mask,PartitionData *p_data,BlockData *b_data, AV1DecodeContext *av1Ctx);
-	int OverlapBlending(int plane ,int predX,int predY,int predW,int predH ,int pass,int **obmcPred,int *mask);
+	int OverlapBlending(int plane ,int predX,int predY,int predW,int predH ,int pass,uint8_t **obmcPred,uint8_t *mask);
+	int predict_palette(int plane, int startX, int startY, int x, int y, int txSz,BlockData *b_data);
+	int predict_chroma_from_luma(int plane, int startX, int startY, int txSz,BlockData *b_data,AV1DecodeContext *av1Ctx);
+	int get_dc_quant(int plane,BlockData *b_data,AV1DecodeContext *av1Ctx);
+	int get_ac_quant(int plane,BlockData *b_data,AV1DecodeContext *av1Ctx);
+	int reconstruct(int plane, int x, int y, int txSz,BlockData *b_data,AV1DecodeContext *av1Ctx);
+
+
+	int inverseDCTArrayPermutation(int T[],int n);
+	int inverseDCT(int T[], int n, int r);
+	void inverseADSTInputArrayPermutation(int* T, int n);
+	void inverseADSTOutputArrayPermutation(int* T, int n);
+	void inverseADST4(int* T, int r);
+	void inverseADST8(int* T, int r);
+	void inverseADST16(int* T, int r);
+	void inverseADST(int T[],int n,int r);
+	void inverseWalshHadamardTransform(int* T, int shift) ;
+	void inverseIdentityTransform4(int* T);
+	void inverseIdentityTransform8(int* T);
+	void inverseIdentityTransform16(int* T);
+	void inverseIdentityTransform32(int* T);
+	void inverseIdentityTransform(int *T,int n);
+	void twoDInverseTransformBlock(int txSz,int **Residual,BlockData *b_data,AV1DecodeContext *av1Ctx) ;
+
+
+	void loopFilter(int **CurrFrame,TileData *t_data, PartitionData *p_data,BlockData *b_data, AV1DecodeContext *av1Ctx);
+	void edgeLoopFilter(int plane, int pass, int row, int col,TileData *t_data, PartitionData *p_data,BlockData *b_data, AV1DecodeContext *av1Ctx);
+	int filterSize(int txSz, int prevTxSz, int pass, int plane);
+	void adaptiveFilterStrength(int row, int col, int plane, int pass, int* lvl, int* limit, int* blimit, int* thresh,
+							PartitionData *p_data ,AV1DecodeContext *av1Ctx) ;
+	int adaptiveFilterStrengthSelection(int segment, int ref, int modeType, int deltaLF, int plane, int pass,
+										PartitionData *p_data ,AV1DecodeContext *av1Ctx);
 	static decode& Instance() {
 		static decode m_pInstance;
 		return m_pInstance;

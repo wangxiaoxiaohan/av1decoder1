@@ -301,7 +301,8 @@ typedef struct TileData{
 	uint8_t **cdef_idx;
 	uint8_t *AboveSegPredContext;
 	uint8_t *LeftSegPredContext;
-	uint8_t **BlockDecoded[2];
+	uint8_t **BlockDecoded[3];
+	uint8_t **LoopfilterTxSizes[3];
 }TileData;
 typedef struct PartitionData{
 	uint8_t AvailU;
@@ -405,6 +406,8 @@ typedef struct BlockData{
 //	uint8_t **pred;
 
 //下面这几个是不是考虑专门做一个 block decode context的结构体？
+	int PlaneTxType;
+
 	int MaxLumaW;
 	int MaxLumaH;
 	uint8_t *Quant;

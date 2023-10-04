@@ -1525,8 +1525,8 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 	{
 		if (plane == 0)
 			transform_type(x4, y4,txSz,sbCtx,bs,b_data,av1Ctx);
-		int PlaneTxType = compute_tx_type(plane, txSz, x4, y4,b_data,av1Ctx);
-		uint16_t  *scan = get_scan(txSz,PlaneTxType);
+		b_data->PlaneTxType = compute_tx_type(plane, txSz, x4, y4,b_data,av1Ctx);
+		uint16_t  *scan = get_scan(txSz,b_data->PlaneTxType);
 		int eobMultisize = Min(Tx_Width_Log2[txSz], 5) + Min(Tx_Height_Log2[txSz], 5) - 4;
 		int eobPt;
 		int txType = compute_tx_type( plane, txSz, x4, y4,b_data,av1Ctx);
@@ -3643,12 +3643,12 @@ int decode::predict_overlap(int MiSize,int plane ,int x4,int y4,int predW,int pr
 			obmcPred[ i ][ j ] = Clip1( obmcPred[ i ][ j ] ,seqHdr->color_config.BitDepth);
 		}
 	}
-	OverlapBlending(plane, predX, predY, predW, predH, pass, obmcPred,mask);
+	OverlapBlending(plane, predX, predY, predW, predH, pass,(uint8_t **)obmcPred,mask);
 
 }
 //7.11.3.10
 
-int decode::OverlapBlending(int plane ,int predX,int predY,int predW,int predH ,int pass,int **obmcPred,int *mask){
+int decode::OverlapBlending(int plane ,int predX,int predY,int predW,int predH ,int pass,uint8_t **obmcPred,uint8_t *mask){
 	int m;
 	for(int i = 0; i < predH;i++){
 		for(int j = 0; j < predW;j++){
@@ -3666,18 +3666,18 @@ int decode::OverlapBlending(int plane ,int predX,int predY,int predW,int predH ,
 } 
 
 //7.11.4
-int decode::predict_palette(int plane, int startX, int startY, int x, int y, int txSz) {
+int decode::predict_palette(int plane, int startX, int startY, int x, int y, int txSz,BlockData *b_data) {
     int w = Tx_Width[txSz]; // 获取变换块的宽度
     int h = Tx_Height[txSz]; // 获取变换块的高度
-    int palette; // 调色板数组
-    int map; // 颜色映射数组
+    uint8_t *palette; // 调色板数组
+    uint8_t **map; // 颜色映射数组
 
     if (plane == 0) {
-        palette = palette_colors_y;
-        map = ColorMapY;
+        palette =  b_data->palette_colors_y;
+        map = b_data->ColorMapY;
     } else {
-        palette = (plane == 1) ? palette_colors_u : palette_colors_v;
-        map = ColorMapUV;
+        palette = (plane == 1) ? b_data->palette_colors_u : b_data->palette_colors_v;
+        map = b_data->ColorMapUV;
     }
 
     for (int i = 0; i < h; i++) {
@@ -3687,22 +3687,23 @@ int decode::predict_palette(int plane, int startX, int startY, int x, int y, int
     }
 }
 //7.11.5
-int decode::predict_chroma_from_luma(int plane, int startX, int startY, int txSz) {
-    int w = 1 << Tx_Width_Log2[txSz];
+int decode::predict_chroma_from_luma(int plane, int startX, int startY, int txSz,BlockData *b_data,AV1DecodeContext *av1Ctx) {
+    sequenceHeader *seqHdr = av1Ctx->seqHdr;
+	int w = 1 << Tx_Width_Log2[txSz];
     int h = 1 << Tx_Height_Log2[txSz];
-    int subX = subsampling_x;
-    int subY = subsampling_y;
-    int alpha = (plane == 1) ? CflAlphaU : CflAlphaV;
+    int subX = seqHdr->color_config.subsampling_x;
+    int subY = seqHdr->color_config.subsampling_y;
+    int alpha = (plane == 1) ? b_data->CflAlphaU : b_data->CflAlphaV;
     int L[h][w];
     int lumaAvg = 0;
 
     for (int i = 0; i < h; i++) {
         int lumaY = (startY + i) << subY;
-        lumaY = (lumaY < MaxLumaH - (1 << subY)) ? lumaY : MaxLumaH - (1 << subY);
+        lumaY = (lumaY < b_data->MaxLumaH - (1 << subY)) ? lumaY : b_data->MaxLumaH - (1 << subY);
 
         for (int j = 0; j < w; j++) {
             int lumaX = (startX + j) << subX;
-            lumaX = (lumaX < MaxLumaW - (1 << subX)) ? lumaX : MaxLumaW - (1 << subX);
+            lumaX = (lumaX < b_data->MaxLumaW - (1 << subX)) ? lumaX : b_data->MaxLumaW - (1 << subX);
 
             int t = 0;
             for (int dy = 0; dy <= subY; dy += 1) {
@@ -3723,37 +3724,43 @@ int decode::predict_chroma_from_luma(int plane, int startX, int startY, int txSz
         for (int j = 0; j < w; j++) {
             int dc = CurrFrame[plane][startY + i][startX + j];
             int scaledLuma = (int)((alpha * (L[i][j] - lumaAvg)) * 64);
-            CurrFrame[plane][startY + i][startX + j] = Clip1(dc + scaledLuma);
+            CurrFrame[plane][startY + i][startX + j] = Clip1(dc + scaledLuma,seqHdr->color_config.BitDepth);
         }
     }
-}
+}                                                                                                                                                                                                                                              
 
 //7.12
-int decode::get_dc_quant(int plane) {
-    int qindex = get_qindex(0, segment_id,  FeatureData);
+int decode::get_dc_quant(int plane,BlockData *b_data,AV1DecodeContext *av1Ctx) {
+	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	sequenceHeader *seqHdr = av1Ctx->seqHdr;
     
+    int qindex = seg_instance->get_qindex(0, b_data->segment_id,frameHdr);
     if (plane == 0) {
-        return dc_q(qindex + DeltaQYDc);
+        return dc_q(qindex + frameHdr->quantization_params.DeltaQYDc,seqHdr->color_config.BitDepth);
     } else if (plane == 1) {
-        return dc_q(qindex + DeltaQUDc);
+        return dc_q(qindex + frameHdr->quantization_params.DeltaQUDc,seqHdr->color_config.BitDepth);
     } else {
-        return dc_q(qindex + DeltaQVDc);
+        return dc_q(qindex + frameHdr->quantization_params.DeltaQVDc,seqHdr->color_config.BitDepth);
     }
 }
 
 // Function to calculate the quantizer value for the ac coefficient for a given plane.
-int decode::get_ac_quant(int plane) {
-    int qindex = get_qindex(0, segment_id, FeatureData);
+int decode::get_ac_quant(int plane,BlockData *b_data,AV1DecodeContext *av1Ctx) {
+	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	sequenceHeader *seqHdr = av1Ctx->seqHdr;
+    int qindex = seg_instance->get_qindex(0, b_data->segment_id,frameHdr);
     
     if (plane == 0) {
-        return ac_q(qindex);
+        return ac_q(qindex,seqHdr->color_config.BitDepth);
     } else if (plane == 1) {
-        return ac_q(qindex + DeltaQUAc);
+        return ac_q(qindex + frameHdr->quantization_params.DeltaQUAc,seqHdr->color_config.BitDepth);
     } else {
-        return ac_q(qindex + DeltaQVAc);
+        return ac_q(qindex + frameHdr->quantization_params.DeltaQVAc,seqHdr->color_config.BitDepth);
     }
 }
-int decode::reconstruct(int plane, int x, int y, int txSz) {
+int decode::reconstruct(int plane, int x, int y, int txSz,BlockData *b_data,AV1DecodeContext *av1Ctx) {
+	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	sequenceHeader *seqHdr = av1Ctx->seqHdr;
     int dqDenom;
 	if (txSz == TX_32X32 || txSz == TX_16X32 || txSz == TX_32X16 || txSz == TX_16X64 || txSz == TX_64X16) {
         dqDenom = 2;
@@ -3768,28 +3775,28 @@ int decode::reconstruct(int plane, int x, int y, int txSz) {
     int h = 1 << log2H;
     int tw = Min(32, w);
     int th = Min(32, h);
-    int flipUD = (PlaneTxType == FLIPADST_DCT || PlaneTxType == FLIPADST_ADST || PlaneTxType == V_FLIPADST || PlaneTxType == FLIPADST_FLIPADST) ? 1 : 0;
-    int flipLR = (PlaneTxType == DCT_FLIPADST || PlaneTxType == ADST_FLIPADST || PlaneTxType == H_FLIPADST || PlaneTxType == FLIPADST_FLIPADST) ? 1 : 0;
+    int flipUD = (b_data->PlaneTxType == FLIPADST_DCT || b_data->PlaneTxType == FLIPADST_ADST || b_data->PlaneTxType == V_FLIPADST || b_data->PlaneTxType == FLIPADST_FLIPADST) ? 1 : 0;
+    int flipLR = (b_data->PlaneTxType == DCT_FLIPADST || b_data->PlaneTxType == ADST_FLIPADST || b_data->PlaneTxType == H_FLIPADST || b_data->PlaneTxType == FLIPADST_FLIPADST) ? 1 : 0;
     
     for (int i = 0; i < th; i++) {
         for (int j = 0; j < tw; j++) {
             int q = (i == 0 && j == 0) ? 
-					get_dc_quant(plane, segment_id, DeltaQYDc, DeltaQUDc, DeltaQVDc, quant_idx[plane][segment_id], 0, 0, 0, FeatureData) : 
-					get_ac_quant(plane, segment_id, DeltaQUAc, DeltaQVAc, quant_idx[plane][segment_id], 0, 0, 0, FeatureData);
+					get_dc_quant(plane,b_data,av1Ctx) : 
+					get_ac_quant(plane,b_data,av1Ctx);
             
-            int q2 = using_qmatrix ? Round2(q * Quantizer_Matrix[SegQMLevel[plane][segment_id]][plane > 0][Qm_Offset[txSz] + i * tw + j], 5) : q;
+            int q2 = frameHdr->quantization_params.using_qmatrix ?
+			 Round2(q * Quantizer_Matrix[frameHdr->quantization_params.SegQMLevel[plane][b_data->segment_id]][plane > 0][Qm_Offset[txSz] + i * tw + j], 5) : q;
             
-            int dq = Quant[i * tw + j] * q2;
+            int dq = b_data->Quant[i * tw + j] * q2;
             int sign = (dq < 0) ? -1 : 1;
             int dq2 = sign * (Abs(dq) & 0xFFFFFF) / dqDenom;
             
-			Dequant[ i ][ j ] = Clip3( - ( 1 << ( 7 + BitDepth ) ), ( 1 << ( 7 + BitDepth ) ) - 1, dq2 );
+			b_data->Dequant[ i ][ j ] = Clip3( - ( 1 << ( 7 + seqHdr->color_config.BitDepth ) ), ( 1 << ( 7 + seqHdr->color_config.BitDepth ) ) - 1, dq2 );
 
         }
     }
-    
-    // Invoke the 2D inverse transform block process here (not shown in this code).
-	twoDInverseTransformBlock();
+    int Residual[h][w];
+	twoDInverseTransformBlock(txSz,(int **)Residual,b_data,av1Ctx);
 
     for (int i = 0; i < h; i++) {
         for (int j = 0; j < w; j++) {
@@ -3801,7 +3808,7 @@ int decode::reconstruct(int plane, int x, int y, int txSz) {
     }
     // 无损模式下 需要完全无损 ，因此 Residual 内的每个像素 用 1 + BitDepth位来表示，即比位深度还多一位
 	//确保不会溢出 ，保证数据 无损
-    if (Lossless == 1) {
+    if (b_data->Lossless == 1) {
         // Ensure values in the Residual array are representable by a signed integer with 1 + BitDepth bits (not shown in this code).
     }
 }
@@ -3821,70 +3828,160 @@ int decode::inverseDCT(int T[], int n, int r) {
     // 步骤1：执行逆 DCT 排列
     inverseDCTArrayPermutation(T, n);
 
-    if (n == 6) {
+	if(n == 6){
+		for(int i = 0 ; i < 16 ; i++){
+			B( 32 + i, 63 - i, 63 - 4 * brev( 4, i ), 0, r ,T);
+		}
+	}
+	if(n >= 5){
+		for(int i = 0 ; i < 8 ; i++){
+			 B( 16 + i, 31 - i, 6 + ( brev( 3, 7 - i ) << 3 ), 0, r ,T);
+		}
+	}
+	if(n == 6){
+		for(int i = 0 ; i < 16 ; i++){
+			H( 32 + i * 2, 33 + i * 2, i & 1, r ,T );
+		}
+	}
+	if(n >= 4){
+		for(int i = 0 ; i < 4 ; i++){
+			 B( 8 + i, 15 - i, 12 + ( brev( 2, 3 - i ) << 4 ), 0, r ,T);
+		}
+	}
+	if(n >= 5){
+		for(int i = 0 ; i < 8 ; i++){
+			 H( 16 + 2 * i, 17 + 2 * i, i & 1, r  ,T) ;
+		}
+	}
+	if(n == 6){
+		for(int i = 0 ; i < 4 ; i++){
+			for(int j = 0 ; j < 2 ; j++)
+				B( 62 - i * 4 - j, 33 + i * 4 + j, 60 - 16 * brev( 2, i ) + 64 * j, 1, r  ,T);
+		}
+	}
+	if(n >= 3){
+		for(int i = 0 ; i < 2 ; i++){
+			 B( 4 + i, 7 - i, 56 - 32 * i, 0, r ,T );
+		}
+	}
+	if(n >= 4){
+		for(int i = 0 ; i < 4; i++){
+			H( 8 + 2 * i, 9 + 2 * i, i & 1, r  ,T);
+		}
+	}
+	if(n >= 5){
+		for(int i = 0 ;i < 2 ; i++ )
+			for(int j = 0 ; j < 2 ;j ++)
+				B( 30 - 4 * i - j, 17 + 4 * i + j, 24 + (j << 6) + ( ( 1 - i ) << 5 ), 1, r ,T );
+	}
+	if(n == 6){
+		for(int i = 0 ; i < 8 ; i++){
+			for(int j = 0 ; j < 2 ; j++)
+				H( 32 + i * 4 + j, 35 + i * 4 - j, i & 1, r ,T );
+		}
+	}
+	for(int i = 0 ; i < 2 ; i ++)
+		B( 2 * i, 2 * i + 1, 32 + 16 * i, 1 - i, r ,T );
 
-        for (int i = 0; i < 16; i++) {
-            B(32 + i, 63 - i, 63 - 4 * brev(4, i), 0, r ,T);
-        }
+	if(n >= 3){
+		for(int i = 0 ; i < 2; i++){
+			H( 4 + 2 * i, 5 + 2 * i, i, r  ,T);
+		}
+	}
+	if(n >= 4){
+		for(int i = 0 ; i < 2; i++){
+			B( 14 - i, 9 + i, 48 + 64 * i, 1, r ,T );
+		}
+	}
+	if(n >= 5){
+		for(int i = 0 ; i < 4 ; i++){
+			for(int j = 0 ; j < 2 ; j++)
+				H( 16 + 4 * i + j, 19 + 4 * i - j, i & 1, r ,T );
+		}
+	}
+	if(n == 6){
+		for(int i = 0 ; i < 2 ; i++){
+			for(int j = 0 ; j < 4 ; j++)
+				B( 61 - i * 8 - j, 34 + i * 8 + j, 56 - i * 32 + ( j >> 1 ) * 64, 1, r ,T );
+		}
+	}
+	for(int i = 0 ; i < 2 ; i ++)
+		H( i, 3 - i, 0, r  ,T);
+	
 
-        for (int i = 0; i < 16; i++) {
-            H(32 + i * 2, 33 + i * 2, i & 1, r ,T);
-        }
+	if(n >= 3){
+		B( 6, 5, 32, 1, r  ,T);
+	}
+	if(n >= 4){
+		for(int i = 0 ; i < 2; i++){
+			for(int j = 0 ; j < 2 ; j++)
+				H( 8 + 4 * i + j, 11 + 4 * i - j, i, r  ,T);
+		}
+	}
+	if(n >= 5){
+		for(int i = 0 ; i < 4 ; i++){
+			B( 29 - i, 18 + i, 48 + ( i >> 1 ) * 64, 1, r  ,T);
+		}
+	}
+	if(n == 6){
+		for(int i = 0 ; i < 4 ; i++){
+			for(int j = 0 ; j < 4 ; j++)
+				H( 32 + 8 * i + j, 39 + 8 * i - j, i & 1, r  ,T) ;
+		}
+	}
 
-
-        for (int i = 0; i < 4; i++) {
-            for (int j = 0; j < 2; j++) {
-                B(62 - i * 4 - j, 33 + i * 4 + j, 60 - 16 * brev(2, i) + 64 * j, 1, r ,T);
-            }
-        }
-
-        for (int i = 0; i < 8; i++) {
-            for (int j = 0; j < 2; j++) {
-                B(32 + i * 4 + j, 35 + i * 4 - j, i & 1, r ,T);
-            }
-        }
-    } else if (n >= 5) {
-
-        for (int i = 0; i < 8; i++) {
-            B(16 + i, 31 - i, 6 + (brev(3, 7 - i) << 3), 0, r ,T);
-        }
-
-
-        for (int i = 0; i < 4; i++) {
-            B(8 + i, 15 - i, 12 + (brev(2, 3 - i) << 4), 0, r ,T);
-        }
-
-        for (int i = 0; i < 2; i++) {
-            for (int j = 0; j < 2; j++) {
-                B(30 - 4 * i - j, 17 + 4 * i + j, 24 + (j << 6) + ((1 - i) << 5), 1, r ,T);
-            }
-        }
-    } else if (n >= 4) {
-
-        for (int i = 0; i < 4; i++) {
-            B(8 + i, 9 + i, i & 1, r ,T);
-        }
-
-        for (int i = 0; i < 4; i++) {
-            H(8 + 2 * i, 9 + 2 * i, i & 1, r ,T);
-        }
-    }
-
-    for (int i = 0; i < 2; i++) {
-        B(2 * i, 2 * i + 1, 32 + 16 * i, 1 - i, r ,T);
-    }
-
-    for (int i = 0; i < 2; i++) {
-        H(4 + 2 * i, 5 + 2 * i, i, r ,T);
-    }
-
-    for (int i = 0; i < 2; i++) {
-        B(6, 5, 32, 1, r ,T);
-    }
-
-    for (int i = 0; i < 2; i++) {
-        B(13 - i, 10 + i, 32, 1, r ,T);
-    }
+	if(n >= 3){
+		for(int i = 0 ; i < 4; i++){
+			H( i, 7 - i, 0, r ,T ) ;
+		}
+	}
+	if(n >= 4){
+		for(int i = 0 ; i < 2; i++){
+			B( 13 - i, 10 + i, 32, 1, r ,T ) ;
+		}
+	}
+	if(n >= 5){
+		for(int i = 0 ; i < 2 ; i++){
+			for(int j = 0 ; j < 4 ; j++)
+				H( 16 + i * 8 + j, 23 + i * 8 - j, i, r ,T );
+		}
+	}
+	if(n == 6){
+		for(int i = 0 ; i < 8 ; i++){
+			B( 59 - i, 36 + i, i < 4 ? 48 : 112, 1, r ,T );
+		}
+	}
+	if(n >= 4){
+		for(int i = 0 ; i < 8; i++){
+			H( i, 15 - i, 0, r  ,T);
+		}
+	}
+	if(n >= 5){
+		for(int i = 0 ; i < 5; i++){
+			B( 27 - i, 20 + i, 32, 1, r ,T );
+		}
+	}
+	if(n == 6){
+		for(int i = 0 ; i < 8 ; i++){
+			H( 32 + i, 47 - i, 0, r  ,T);
+			H( 48 + i, 63 - i, 1, r ,T );
+		}
+	}
+	if(n == 5){
+		for(int i = 0 ; i < 16 ; i++){
+			H( i, 31 - i, 0, r ,T );
+		}
+	}
+	if(n == 6){
+		for(int i = 0 ; i < 8 ; i++){
+			B( 55 - i, 40 + i, 32, 1, r ,T ) ;
+		}
+	}
+	if(n == 6){
+		for(int i = 0 ; i < 32 ; i++){
+			H( i, 63 - i, 0, r ,T);
+		}
+	}
 }
 //7.13.2.4
 void decode::inverseADSTInputArrayPermutation(int* T, int n) {
@@ -3918,11 +4015,7 @@ void decode::inverseADSTOutputArrayPermutation(int* T, int n) {
     }
 }
 //7.13.2.6
-void inverseADST4(int* T, int r) {
-    const int SINPI_1_9 = 1321;
-    const int SINPI_2_9 = 2482;
-    const int SINPI_3_9 = 3344;
-    const int SINPI_4_9 = 3803;
+void decode::inverseADST4(int* T, int r) {
 
     int s[7];
     int x[4];
@@ -4002,7 +4095,7 @@ void decode::inverseADST8(int* T, int r) {
 	inverseADSTOutputArrayPermutation(T,3);
 }
 //7.13.2.8
-void inverseADST16(int* T, int r) {
+void decode::inverseADST16(int* T, int r) {
     // Step 1: Invoke the ADST input array permutation process with n = 4
     int n = 4;
     int copyT[16];
@@ -4140,21 +4233,23 @@ void decode::inverseIdentityTransform(int *T,int n){
 		inverseIdentityTransform32(T);
 	}
 }
-void decode::twoDinverseTransform(int txSz,int T[];) {
-    int log2W = Tx_Width_Log2[txSz];
+void decode::twoDInverseTransformBlock(int txSz,int **Residual,BlockData *b_data, AV1DecodeContext *av1Ctx) {
+	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	sequenceHeader *seqHdr = av1Ctx->seqHdr;
+	int log2W = Tx_Width_Log2[ txSz ];
     int log2H = Tx_Height_Log2[txSz];
     int w = 1 << log2W;
     int h = 1 << log2H;
-    int rowShift = Lossless ? 0 : Transform_Row_Shift[txSz];
-    int colShift = Lossless ? 0 : 4;
-    int rowClampRange = BitDepth + 8;
-    int colClampRange = Max(BitDepth + 6, 16);
+    int rowShift = b_data->Lossless ? 0 : Transform_Row_Shift[txSz];
+    int colShift = b_data->Lossless ? 0 : 4;
+    int rowClampRange = seqHdr->color_config.BitDepth + 8;
+    int colClampRange = Max(seqHdr->color_config.BitDepth + 6, 16);
 
-
+	int T[w];
     for (int i = 0; i < h; i++) {
         for (int j = 0; j < w; j++) {
             if (i < 32 && j < 32) {
-                T[j] = Dequant[i][j];
+                T[j] = b_data->Dequant[i][j];
             } else {
                 T[j] = 0;
             }
@@ -4166,13 +4261,13 @@ void decode::twoDinverseTransform(int txSz,int T[];) {
             }
         }
 
-        if (Lossless) {
+        if (b_data->Lossless) {
             inverseWalshHadamardTransform(T, 2);
-        } else if (PlaneTxType == DCT_DCT || PlaneTxType == ADST_DCT || PlaneTxType == FLIPADST_DCT || PlaneTxType == H_DCT) {
+        } else if (b_data->PlaneTxType == DCT_DCT || b_data->PlaneTxType == ADST_DCT || b_data->PlaneTxType == FLIPADST_DCT || b_data->PlaneTxType == H_DCT) {
             inverseDCT(T, log2W, rowClampRange);
-        } else if (PlaneTxType == DCT_ADST || PlaneTxType == ADST_ADST || PlaneTxType == DCT_FLIPADST ||
-                   PlaneTxType == FLIPADST_FLIPADST || PlaneTxType == ADST_FLIPADST || PlaneTxType == FLIPADST_ADST ||
-                   PlaneTxType == H_ADST || PlaneTxType == H_FLIPADST) {
+        } else if (b_data->PlaneTxType == DCT_ADST || b_data->PlaneTxType == ADST_ADST || b_data->PlaneTxType == DCT_FLIPADST ||
+                   b_data->PlaneTxType == FLIPADST_FLIPADST || b_data->PlaneTxType == ADST_FLIPADST || b_data->PlaneTxType == FLIPADST_ADST ||
+                   b_data->PlaneTxType == H_ADST || b_data->PlaneTxType == H_FLIPADST) {
             inverseADST(T, log2W, rowClampRange);
         } else {
             inverseIdentityTransform(T, log2W);
@@ -4195,13 +4290,13 @@ void decode::twoDinverseTransform(int txSz,int T[];) {
             T[i] = Residual[i][j];
         }
 
-        if (Lossless) {
+        if (b_data->Lossless) {
             inverseWalshHadamardTransform(T, 0);
-        } else if (PlaneTxType == DCT_DCT || PlaneTxType == DCT_ADST || PlaneTxType == DCT_FLIPADST || PlaneTxType == V_DCT) {
+        } else if (b_data->PlaneTxType == DCT_DCT || b_data->PlaneTxType == DCT_ADST || b_data->PlaneTxType == DCT_FLIPADST || b_data->PlaneTxType == V_DCT) {
             inverseDCT(T, log2H, colClampRange);
-        } else if (PlaneTxType == ADST_DCT || PlaneTxType == ADST_ADST || PlaneTxType == FLIPADST_DCT ||
-                   PlaneTxType == FLIPADST_FLIPADST || PlaneTxType == ADST_FLIPADST || PlaneTxType == FLIPADST_ADST ||
-                   PlaneTxType == V_ADST || PlaneTxType == V_FLIPADST) {
+        } else if (b_data->PlaneTxType == ADST_DCT || b_data->PlaneTxType == ADST_ADST || b_data->PlaneTxType == FLIPADST_DCT ||
+                   b_data->PlaneTxType == FLIPADST_FLIPADST || b_data->PlaneTxType == ADST_FLIPADST || b_data->PlaneTxType == FLIPADST_ADST ||
+                   b_data->PlaneTxType == V_ADST || b_data->PlaneTxType == V_FLIPADST) {
             inverseADST(T, log2H, colClampRange);
         } else {
             inverseIdentityTransform(T, log2H);
@@ -4213,21 +4308,25 @@ void decode::twoDinverseTransform(int txSz,int T[];) {
     }
 }
 //7.14
-void decode::loopFilter(int **CurrFrame){
-	for ( plane = 0; plane < NumPlanes; plane++ ) {
-		if ( plane == 0 || loop_filter_level[ 1 + plane ] ) {
-			for ( pass = 0; pass < 2; pass++ ) {
-				rowStep = ( plane == 0 ) ? 1 : ( 1 << subsampling_y );
-				colStep = ( plane == 0 ) ? 1 : ( 1 << subsampling_x );
-				for ( row = 0; row < MiRows; row += rowStep )
-				for ( col = 0; col < MiCols; col += colStep )
-				loop_filter_edge( plane, pass, row, col );
+void decode::loopFilter(int **CurrFrame,TileData *t_data, PartitionData *p_data,BlockData *b_data, AV1DecodeContext *av1Ctx){
+	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	sequenceHeader *seqHdr = av1Ctx->seqHdr;
+	for (int  plane = 0; plane < seqHdr->color_config.NumPlanes; plane++ ) {
+		if ( plane == 0 || frameHdr->loop_filter_params.loop_filter_level[ 1 + plane ] ) {
+			for (int pass = 0; pass < 2; pass++ ) {
+				int rowStep = ( plane == 0 ) ? 1 : ( 1 << seqHdr->color_config.subsampling_y );
+				int colStep = ( plane == 0 ) ? 1 : ( 1 << seqHdr->color_config.subsampling_x );
+				for (int row = 0; row < frameHdr->MiRows; row += rowStep )
+					for (int col = 0; col < frameHdr->MiCols; col += colStep )
+						edgeLoopFilter( plane, pass, row, col,t_data, p_data,b_data,av1Ctx);
 			}
 		}
 	}
 }
-void decode::edgeLoopFilter(int plane, int pass, int row, int col) {
-    int subX, subY, dx, dy, x, y, onScreen, xP, yP, prevRow, prevCol, MiSize, txSz, planeSize, skip, isIntra, prevTxSz;
+void decode::edgeLoopFilter(int plane, int pass, int row, int col,TileData *t_data,PartitionData *p_data,BlockData *b_data, AV1DecodeContext *av1Ctx) {
+   	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	sequenceHeader *seqHdr = av1Ctx->seqHdr;
+    int subX, subY, dx, dy, x, y, onScreen, xP, yP, prevRow, prevCol;
     int isBlockEdge, isTxEdge, applyFilter, filterSize;
     int lvl, limit, blimit, thresh;
 
@@ -4235,8 +4334,8 @@ void decode::edgeLoopFilter(int plane, int pass, int row, int col) {
     if (plane == 0) {
         subX = subY = 0;
     } else {
-        subX = subsampling_x;
-        subY = subsampling_y;
+        subX = seqHdr->color_config.subsampling_x;
+        subY = seqHdr->color_config.subsampling_y;
     }
 
     // Derive dx and dy
@@ -4258,7 +4357,7 @@ void decode::edgeLoopFilter(int plane, int pass, int row, int col) {
 
     // Derive onScreen
     onScreen = 1;
-    if (x >= FrameWidth || y >= FrameHeight || (pass == 0 && x == 0) || (pass == 1 && y == 0)) {
+    if (x >= frameHdr->si.FrameWidth || y >= frameHdr->si.FrameHeight || (pass == 0 && x == 0) || (pass == 1 && y == 0)) {
         onScreen = 0;
     }
 
@@ -4276,12 +4375,12 @@ void decode::edgeLoopFilter(int plane, int pass, int row, int col) {
 
 
     // Set MiSize, txSz, planeSize, skip, isIntra, and prevTxSz
-    int MiSize = MiSizes[row][col];
-    int txSz = LoopfilterTxSizes[plane][row >> subY][col >> subX];
-    int planeSize = get_plane_residual_size(MiSize, plane);
-    int skip = Skips[row][col];
-    int isIntra = RefFrames[row][col][0] <= INTRA_FRAME;
-    int prevTxSz = LoopfilterTxSizes[plane][prevRow >> subY][prevCol >> subX];
+    int MiSize = p_data->MiSizes[row][col];
+    int txSz = t_data->LoopfilterTxSizes[plane][row >> subY][col >> subX];
+    int planeSize = get_plane_residual_size(MiSize, plane,seqHdr->color_config.subsampling_x,seqHdr->color_config.subsampling_y);
+    int skip = p_data->Skips[row][col];
+    int isIntra = p_data->RefFrames[row][col][0] <= INTRA_FRAME;
+    int prevTxSz = t_data->LoopfilterTxSizes[plane][prevRow >> subY][prevCol >> subX];
 
     // Derive isBlockEdge
     isBlockEdge = 0;
@@ -4304,7 +4403,7 @@ void decode::edgeLoopFilter(int plane, int pass, int row, int col) {
     } else {
         applyFilter = 0;
     }
-//注意这里没写完
+//注意这里没写完!!!!!!!!!!!!!!!!
     // Invoke filter size process (section 7.14.3) to calculate filterSize
 
     // Invoke adaptive filter strength process (section 7.14.4) to calculate lvl, limit, blimit, and thresh
@@ -4321,27 +4420,30 @@ int decode::filterSize(int txSz, int prevTxSz, int pass, int plane) {
 
     // Derive baseSize based on pass
     if (pass == 0) {
-        baseSize = min(Tx_Width[prevTxSz], Tx_Width[txSz]);
+        baseSize = Min(Tx_Width[prevTxSz], Tx_Width[txSz]);
     } else {
-        baseSize = min(Tx_Height[prevTxSz], Tx_Height[txSz]);
+        baseSize = Min(Tx_Height[prevTxSz], Tx_Height[txSz]);
     }
 
     // Derive filterSize based on plane
     int filterSize;
     if (plane == 0) {
-        filterSize = min(16, baseSize);
+        filterSize = Min(16, baseSize);
     } else {
-        filterSize = min(8, baseSize);
+        filterSize = Min(8, baseSize);
     }
 
     return filterSize;
 }
 //7.14.4
-void adaptiveFilterStrength(int row, int col, int plane, int pass, int& lvl, int& limit, int& blimit, int& thresh) {
-    // Derive segment, ref, mode, modeType, and deltaLF
-    int segment = SegmentIds[row][col];
-    int ref = RefFrames[row][col][0];
-    int mode = YModes[row][col];
+void decode::adaptiveFilterStrength(int row, int col, int plane, int pass, int* lvl, int* limit, int* blimit, int* thresh,
+							PartitionData *p_data ,AV1DecodeContext *av1Ctx) {
+	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	sequenceHeader *seqHdr = av1Ctx->seqHdr;
+
+    int segment = p_data->SegmentIds[row][col];
+    int ref = p_data->RefFrames[row][col][0];
+    int mode = p_data->YModes[row][col];
     int modeType;
 
     if (mode >= NEARESTMV && mode != GLOBALMV && mode != GLOBAL_GLOBALMV) {
@@ -4351,58 +4453,62 @@ void adaptiveFilterStrength(int row, int col, int plane, int pass, int& lvl, int
     }
 
     int deltaLF;
-    if (delta_lf_multi == 0) {
-        deltaLF = DeltaLFs[row][col][0];
+    if (frameHdr->delta_lf_params.delta_lf_multi == 0) {
+        deltaLF = p_data->DeltaLFs[row][col][0];
     } else {
-        deltaLF = DeltaLFs[row][col][plane == 0 ? pass : (plane + 1)];
+        deltaLF = p_data->DeltaLFs[row][col][plane == 0 ? pass : (plane + 1)];
     }
 
     // Invoke the adaptive filter strength selection process
-    lvl = adaptiveFilterStrengthSelection(segment, ref, modeType, deltaLF, plane, pass);
+    *lvl = adaptiveFilterStrengthSelection(segment, ref, modeType, deltaLF, plane, pass);
 
     // Derive shift
     int shift;
-    if (loop_filter_sharpness > 4) {
+    if (frameHdr->loop_filter_params.loop_filter_sharpness > 4) {
         shift = 2;
-    } else if (loop_filter_sharpness > 0) {
+    } else if (frameHdr->loop_filter_params.loop_filter_sharpness > 0) {
         shift = 1;
     } else {
         shift = 0;
     }
 
     // Derive limit
-    if (loop_filter_sharpness > 0) {
-        limit = Clip3(1, 9 - loop_filter_sharpness, lvl >> shift);
+    if (frameHdr->loop_filter_params.loop_filter_sharpness > 0) {
+        *limit = Clip3(1, 9 - frameHdr->loop_filter_params.loop_filter_sharpness, (*lvl)  >> shift);
     } else {
-        limit = max(1, lvl >> shift);
+        *limit = Max(1, (*lvl) >> shift);
     }
 
     // Derive blimit and thresh
-    blimit = 2 * (lvl + 2) + limit;
-    thresh = lvl >> 4;
+    *blimit = 2 * ((*lvl)  + 2) + *limit;
+    *thresh = (*lvl)  >> 4;
 }
 //7.14.5
-int AdaptiveFilterStrengthSelection(int segment, int ref, int modeType, int deltaLF, int plane, int pass) {
+int decode::adaptiveFilterStrengthSelection(int segment, int ref, int modeType, int deltaLF, int plane, int pass,
+									PartitionData *p_data ,AV1DecodeContext *av1Ctx) {
+	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	sequenceHeader *seqHdr = av1Ctx->seqHdr;
     // 初始化变量
     int i = (plane == 0) ? pass : (plane + 1);
-    int baseFilterLevel = Clip3(0, MAX_LOOP_FILTER, deltaLF + loop_filter_level[i]);
+    int baseFilterLevel = Clip3(0, MAX_LOOP_FILTER, deltaLF + frameHdr->loop_filter_params.loop_filter_level[i]);
     int lvlSeg = baseFilterLevel;
     int feature = SEG_LVL_ALT_LF_Y_V + i;
 
     // 检查segment特征是否激活
-    if (seg_feature_active_idx(segment, feature) == 1) {
-        lvlSeg += FeatureData[segment][feature];
+    if (seg_instance->seg_feature_active_idx(segment, feature,frameHdr) == 1) {
+        lvlSeg += frameHdr->segmentation_params.FeatureData[segment][feature];
         lvlSeg = Clip3(0, MAX_LOOP_FILTER, lvlSeg);
     }
 
     // 如果loop_filter_delta_enabled为1，应用delta值
-    if (loop_filter_delta_enabled == 1) {
+    if (frameHdr->loop_filter_params.loop_filter_delta_enabled == 1) {
         int nShift = lvlSeg >> 5;
         
         if (ref == INTRA_FRAME) {
-            lvlSeg += (loop_filter_ref_deltas[INTRA_FRAME] << nShift);
+            lvlSeg += (frameHdr->loop_filter_params.loop_filter_ref_deltas[INTRA_FRAME] << nShift);
         } else {
-            lvlSeg += (loop_filter_ref_deltas[ref] << nShift) + (loop_filter_mode_deltas[modeType] << nShift);
+            lvlSeg += (frameHdr->loop_filter_params.loop_filter_ref_deltas[ref] << nShift) +
+			(frameHdr->loop_filter_params.loop_filter_mode_deltas[modeType] << nShift);
         }
         
         lvlSeg = Clip3(0, MAX_LOOP_FILTER, lvlSeg);
@@ -4411,7 +4517,7 @@ int AdaptiveFilterStrengthSelection(int segment, int ref, int modeType, int delt
     return lvlSeg;
 }
 //7.14.6
-void sampleFiltering(int x,int  y,int  plane, int limit,int  blimit,int  thresh,int  dx,int  dy,int  filterSize){
+void decode::sampleFiltering(int x,int  y,int  plane, int limit,int  blimit,int  thresh,int  dx,int  dy,int  filterSize){
 
 	// 调用Filter Mask生成过程
 	int hevMask, filterMask, flatMask, flatMask2;
@@ -4432,7 +4538,7 @@ void sampleFiltering(int x,int  y,int  plane, int limit,int  blimit,int  thresh,
 	}
 }
 ////7.14.6.2
-void filterMask(int x,int y.int plane,int limit,int blimit,int thresh,int dx,int dy,int filterSize)
+void decode::filterMask(int x,int y.int plane,int limit,int blimit,int thresh,int dx,int dy,int filterSize)
 {
 	int q0 = CurrFrame[ plane ][ y ][ x ];
 	int q1 = CurrFrame[ plane ][ y + dy ][ x + dx ];
@@ -4516,7 +4622,7 @@ void filterMask(int x,int y.int plane,int limit,int blimit,int thresh,int dx,int
 }
 //This process modifies up to two samples on each side of the 
 //specified boundary depending on the value of hevMask 
-void narrowFilter(int hevMask,int x,int y,int plane,int dx ,int dy){
+void decode::narrowFilter(int hevMask,int x,int y,int plane,int dx ,int dy){
 	int q0 = CurrFrame[ plane ][ y ][ x ];
 	int q1 = CurrFrame[ plane ][ y + dy ][ x + dx ];
 	int p0 = CurrFrame[ plane ][ y - dy ][ x - dx ];
@@ -4542,7 +4648,7 @@ void narrowFilter(int hevMask,int x,int y,int plane,int dx ,int dy){
 	}
 
 }
-void wideFilter(int x,int y,int plane,int dx ,int dy,int log2Size){
+void decode::wideFilter(int x,int y,int plane,int dx ,int dy,int log2Size){
 	//specifying the number of filter taps on each side of the central sample
 	int n;
 	
@@ -4578,7 +4684,7 @@ void wideFilter(int x,int y,int plane,int dx ,int dy,int log2Size){
 	}
 }
 //7.15
-void cdef(){
+void decode::cdef(){
 	int step4 = Num_4x4_Blocks_Wide[ BLOCK_8X8 ];
 	int cdefSize4 = Num_4x4_Blocks_Wide[ BLOCK_64X64 ];
 	cdefMask4 = ~(cdefSize4 - 1);
@@ -4591,7 +4697,7 @@ void cdef(){
 		}
 	}
 }
-void cdefBlock(int r, int c, int idx) {
+void decode::cdefBlock(int r, int c, int idx) {
     int startY = r * MI_SIZE;
     int endY = startY + MI_SIZE * 2;
     int startX = c * MI_SIZE;
@@ -4650,7 +4756,7 @@ void cdefBlock(int r, int c, int idx) {
     }
 }
 //7.15.2
-void cdefDirectionProcess(int r, int c, int *yDir, int *var) {
+void decode::cdefDirectionProcess(int r, int c, int *yDir, int *var) {
     int cost[8];
     int partial[8][15];
     int bestCost = 0;
@@ -4716,7 +4822,7 @@ void cdefDirectionProcess(int r, int c, int *yDir, int *var) {
     *var = (bestCost - cost[(*yDir + 4) & 7]) >> 10;
 }
 //7.15.3
-void cdefFilter(int plane, int r, int c, int priStr, int secStr, int damping, int dir) {
+void decode::cdefFilter(int plane, int r, int c, int priStr, int secStr, int damping, int dir) {
     int subX = (plane > 0) ? subsampling_x : 0;
     int subY = (plane > 0) ? subsampling_y : 0;
     int x0 = (c * MI_SIZE) >> subX;
@@ -4760,7 +4866,7 @@ void cdefFilter(int plane, int r, int c, int priStr, int secStr, int damping, in
 
 
 
-int cdef_get_at(plane, x0, y0, i, j, dir, k, sign, subX, subY,int * CdefAvailable,int CurrFrame[][][]) {
+int decode::cdef_get_at(plane, x0, y0, i, j, dir, k, sign, subX, subY,int * CdefAvailable,int CurrFrame[][][]) {
 	int y = y0 + i + sign * Cdef_Directions[dir][k][0];
 	int x = x0 + j + sign * Cdef_Directions[dir][k][1];
 	int candidateR = (y << subY) >> MI_SIZE_LOG2;
@@ -4773,7 +4879,7 @@ int cdef_get_at(plane, x0, y0, i, j, dir, k, sign, subX, subY,int * CdefAvailabl
 		return 0;
 	}
 }
-void upscalingProcess() {
+void decode::upscalingProcess() {
     for (int plane = 0; plane < NumPlanes; plane++) {
         int subX, subY;
 
@@ -4815,7 +4921,7 @@ void upscalingProcess() {
     }
 }
 //7.17
-void loopRestoration(){
+void decode::loopRestoration(){
 
 	uint8_t LrFrame[3][FrameHeight][UpscaledWidth];
 	memcpy(LrFrame,UpscaledCdefFrame,sizeof(uint8_t) * 3 * FrameHeight * UpscaledWidth);
@@ -4841,7 +4947,7 @@ void loopRestoration(){
 	}
 }
 //7.17.1
-void loopRestoreBlock(int plane,int row ,int col){
+void decode::loopRestoreBlock(int plane,int row ,int col){
 	int lumaY = row * MI_SIZE;
 
 	int stripeNum = (lumaY + 8) / 64;
@@ -4890,7 +4996,7 @@ void loopRestoreBlock(int plane,int row ,int col){
 	}
 }
 //7.17.2
-void selfGuidedFilter(int plane,int unitRow,int unitCol, int x,int y,int w,int h){
+void decode::selfGuidedFilter(int plane,int unitRow,int unitCol, int x,int y,int w,int h){
 	int set = LrSgrSet[plane][unitRow][unitCol];
 	int pass = 0;
 	int[][] flt0 = boxFilter(plane, x, y, w, h, set, pass);
@@ -4928,7 +5034,7 @@ void selfGuidedFilter(int plane,int unitRow,int unitCol, int x,int y,int w,int h
 	}
 }
 //7.17.3
-void boxFilter(int plane,int x,int y,int w,int h,int set ,int pass){
+void decode::boxFilter(int plane,int x,int y,int w,int h,int set ,int pass){
 
 	// 输出数组
 	int[][] F;      // 2D数组，用于存储过滤结果
@@ -4999,7 +5105,7 @@ void boxFilter(int plane,int x,int y,int w,int h,int set ,int pass){
 	}
 }
 //7.17.4
-void wienerFilter(int plane ,int unitRow,int unitCol,int x,int y,int w,int h){
+void decode::wienerFilter(int plane ,int unitRow,int unitCol,int x,int y,int w,int h){
 
 	int[][] LrFrame;  
 
@@ -5038,7 +5144,7 @@ void wienerFilter(int plane ,int unitRow,int unitCol,int x,int y,int w,int h){
 	}
 }
 //7.17.5
-void wienerCoefficient(int *coeff,int *filter){
+void decode::wienerCoefficient(int *coeff,int *filter){
 	filter[ 3 ] = 128;
 	for (int i = 0; i < 3; i++ ) {
 		int c = coeff[ i ];
@@ -5049,7 +5155,7 @@ void wienerCoefficient(int *coeff,int *filter){
 
 }
 //7.17.6
-void getSourceSample(int plane ,int x,int y){
+void decode::getSourceSample(int plane ,int x,int y){
 
 	int PlaneEndX;   // 当前平面的水平边界
 	int PlaneEndY;   // 当前平面的垂直边界
@@ -5082,7 +5188,7 @@ void getSourceSample(int plane ,int x,int y){
 	}
 }
 //7.18
-void filmGrainSynthesis(int w, int h, int subX, int subY) {
+void decode::filmGrainSynthesis(int w, int h, int subX, int subY) {
     // 设置随机数生成器的初始状态
     int RandomRegister = grain_seed;
     
@@ -5101,7 +5207,7 @@ void filmGrainSynthesis(int w, int h, int subX, int subY) {
     AddNoise(w, h, subX, subY);
 
 }
-int get_random_number( int bits ) {
+int decode::get_random_number( int bits ) {
 	int r = RandomRegister;
 	int bit = ((r >> 0) ^ (r >> 1) ^ (r >> 3) ^ (r >> 12)) & 1;
 	r = (r >> 1) | (bit << 15);
@@ -5109,7 +5215,7 @@ int get_random_number( int bits ) {
 	RandomRegister = r;
 	return result;
 }
-void generateGrain() {
+void decode::generateGrain() {
     // 生成白噪声
     int shift = 12 - BitDepth + grain_scale_shift;
     for (int y = 0; y < 73; y++) {
@@ -5205,7 +5311,7 @@ void generateGrain() {
         }
     }
 }
-void scalingLookupInitialization() {
+void decode::scalingLookupInitialization() {
     for (int plane = 0; plane < NumPlanes; plane++) {
         int numPoints;
         if (plane == 0 || chroma_scaling_from_luma)
@@ -5239,7 +5345,7 @@ void scalingLookupInitialization() {
     }
 }
 
-int get_x(int plane, int i) {
+int decode::get_x(int plane, int i) {
     if (plane == 0 || chroma_scaling_from_luma)
         return point_y_value[i];
     else if (plane == 1)
@@ -5248,7 +5354,7 @@ int get_x(int plane, int i) {
         return point_cr_value[i];
 }
 
-int get_y(int plane, int i) {
+int decode::get_y(int plane, int i) {
     if (plane == 0 || chroma_scaling_from_luma)
         return point_y_scaling[i];
     else if (plane == 1)
@@ -5257,7 +5363,7 @@ int get_y(int plane, int i) {
         return point_cr_scaling[i];
 }
 //7.19
-void motionFieldMotionVectorStorage(){
+void decode::motionFieldMotionVectorStorage(){
 	for (int row = 0; row < MiRows; row++) {
 		for (int col = 0; col < MiCols; col++) {
 			MfRefFrames[row][col] = NONE;
@@ -5287,7 +5393,7 @@ void motionFieldMotionVectorStorage(){
 	}
 
 }
-void referenceFrameUpdate(){
+void decode::referenceFrameUpdate(){
 	for (int i = 0; i < NUM_REF_FRAMES; i++) {
 		if ((refresh_frame_flags >> i) & 1) {
 			RefValid[i] = 1;
@@ -5356,7 +5462,7 @@ void referenceFrameUpdate(){
 	}
 
 }
-void referenceFrameLoading(){
+void decode::referenceFrameLoading(){
 	int frame_to_show_map_idx; // 通过语法元素 frame_to_show_map_idx 获取索引
 
 	current_frame_id = RefFrameId[frame_to_show_map_idx];
