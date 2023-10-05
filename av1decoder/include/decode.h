@@ -146,11 +146,28 @@ public:
 
 	void loopFilter(int **CurrFrame,TileData *t_data, PartitionData *p_data,BlockData *b_data, AV1DecodeContext *av1Ctx);
 	void edgeLoopFilter(int plane, int pass, int row, int col,TileData *t_data, PartitionData *p_data,BlockData *b_data, AV1DecodeContext *av1Ctx);
-	int filterSize(int txSz, int prevTxSz, int pass, int plane);
+	int filterSizeProcess(int txSz, int prevTxSz, int pass, int plane);
 	void adaptiveFilterStrength(int row, int col, int plane, int pass, int* lvl, int* limit, int* blimit, int* thresh,
 							PartitionData *p_data ,AV1DecodeContext *av1Ctx) ;
 	int adaptiveFilterStrengthSelection(int segment, int ref, int modeType, int deltaLF, int plane, int pass,
 										PartitionData *p_data ,AV1DecodeContext *av1Ctx);
+	void sampleFiltering(int x,int  y,int  plane, int limit,int  blimit,int  thresh,int  dx,int  dy,
+						int  filterSize ,AV1DecodeContext *av1Ctx);
+	void filterMaskProcess(int x,int y,int plane,int limit,int blimit,int thresh,int dx,int dy,int filterSize,
+						int *hevMask,int *filterMask,int *flatMask ,int *flatMask2,AV1DecodeContext *av1Ctx);
+	void narrowFilter(int x,int y,int plane,int dx ,int dy,int *hevMask,AV1DecodeContext *av1Ctx);
+	void wideFilter(int x,int y,int plane,int dx ,int dy,int log2Size,AV1DecodeContext *av1Ctx);
+
+	void cdef(TileData *t_data, PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx);
+	void cdefBlock(int r, int c, int idx,PartitionData *p_data, BlockData *b_data,AV1DecodeContext *av1Ctx);
+	void cdefDirectionProcess(int r, int c, int *yDir, int *var,
+									PartitionData *p_data, BlockData *b_data,AV1DecodeContext *av1Ctx);
+	void cdefFilter(int plane, int r, int c, int priStr, int secStr, int damping, int dir,
+							PartitionData *p_data, BlockData *b_data,AV1DecodeContext *av1Ctx );
+
+	int cdef_get_at(int plane,int x0,int y0,int i, int j,int dir,int k,int sign,int subX,int subY,
+							int * CdefAvailable,uint8_t ***CurrFrame,AV1DecodeContext *av1Ctx);
+
 	static decode& Instance() {
 		static decode m_pInstance;
 		return m_pInstance;

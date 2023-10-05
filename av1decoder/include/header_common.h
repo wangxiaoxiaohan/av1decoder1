@@ -298,7 +298,6 @@ typedef struct TileData{
 	uint8_t RefLrWiener[3][2][3];
 	uint8_t ReadDeltas;
 	uint8_t CurrentQIndex;
-	uint8_t **cdef_idx;
 	uint8_t *AboveSegPredContext;
 	uint8_t *LeftSegPredContext;
 	uint8_t **BlockDecoded[3];
@@ -420,6 +419,7 @@ typedef struct BlockData{
 	int InterRound1; //representing the amount to round by after vertical filtering
 
 	int **Mask;
+	uint8_t **cdef_idx;
 }BlockData;
 
 typedef struct FrameContext{
@@ -427,6 +427,7 @@ typedef struct FrameContext{
 	frameHeader frameHdr;
 	CDFArrays cdfCtx;
 	uint8_t ***CurrFrame;
+	uint8_t ***CdefFrame;
 };
 typedef struct AV1DecodeContext{
 	FrameContext 	*ref_frames[NUM_REF_FRAMES];

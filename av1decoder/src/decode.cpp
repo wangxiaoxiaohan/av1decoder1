@@ -2391,7 +2391,7 @@ int decode::directionalIntraPrediction(int plane,int x,int y,int haveLeft,int ha
 				filterCornor(b_data->LeftCol,b_data->AboveRow);
 			}
 			//7.11.2.8
-			filterType = intrafilterType(plane); 
+			filterType = intrafilterType(plane,p_data,b_data,av1Ctx); 
 			if(haveAbove == 1){
 				//7.11.2.9
 				int strength = intraEdgeFilterStrengthSelection(w,h,filterType,pAngle - 90 );
@@ -4327,7 +4327,7 @@ void decode::edgeLoopFilter(int plane, int pass, int row, int col,TileData *t_da
    	frameHeader *frameHdr = av1Ctx->curFrameHdr;
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
     int subX, subY, dx, dy, x, y, onScreen, xP, yP, prevRow, prevCol;
-    int isBlockEdge, isTxEdge, applyFilter, filterSize;
+    int isBlockEdge, isTxEdge, applyFilter;
     int lvl, limit, blimit, thresh;
 
     // Derive subX and subY
@@ -4403,19 +4403,24 @@ void decode::edgeLoopFilter(int plane, int pass, int row, int col,TileData *t_da
     } else {
         applyFilter = 0;
     }
-//注意这里没写完!!!!!!!!!!!!!!!!
-    // Invoke filter size process (section 7.14.3) to calculate filterSize
+	int filterSize = filterSizeProcess(txSz,prevTxSz,pass,plane);
 
-    // Invoke adaptive filter strength process (section 7.14.4) to calculate lvl, limit, blimit, and thresh
+	int lvl,limit,blimit,thresh;
+	adaptiveFilterStrength(row,col,plane,pass,&lvl,&limit,&blimit,&thresh,p_data,av1Ctx);
 
-    // If lvl is equal to 0, invoke adaptive filter strength process for prevRow, prevCol
-
-    // Apply sample filtering process (section 7.14.6) for each sample if applyFilter is 1 and lvl is greater than 0
+	if(lvl == 0){
+		adaptiveFilterStrength(prevRow,prevCol,plane,pass,&lvl,&limit,&blimit,&thresh,p_data,av1Ctx);
+	}
+	for(int i = 0 ; i < MI_SIZE ; i++){
+		if(applyFilter == 1 && lvl > 0){
+			sampleFiltering(xP + dy * i,yP + dx * i,plane, limit, blimit, thresh, dx, dy,filterSize,av1Ctx);
+		}
+	}
 }
 //7.14.3
 //The purpose of this process is to reduce the width of the chroma filters and to ensure that different boundaries can be
 //filtered in parallel.
-int decode::filterSize(int txSz, int prevTxSz, int pass, int plane) {
+int decode::filterSizeProcess(int txSz, int prevTxSz, int pass, int plane) {
     int baseSize;
 
     // Derive baseSize based on pass
@@ -4460,7 +4465,7 @@ void decode::adaptiveFilterStrength(int row, int col, int plane, int pass, int* 
     }
 
     // Invoke the adaptive filter strength selection process
-    *lvl = adaptiveFilterStrengthSelection(segment, ref, modeType, deltaLF, plane, pass);
+    *lvl = adaptiveFilterStrengthSelection(segment, ref, modeType, deltaLF, plane, pass,p_data,av1Ctx);
 
     // Derive shift
     int shift;
@@ -4517,48 +4522,53 @@ int decode::adaptiveFilterStrengthSelection(int segment, int ref, int modeType, 
     return lvlSeg;
 }
 //7.14.6
-void decode::sampleFiltering(int x,int  y,int  plane, int limit,int  blimit,int  thresh,int  dx,int  dy,int  filterSize){
+void decode::sampleFiltering(int x,int  y,int  plane, int limit,int  blimit,int  thresh,
+							int  dx,int  dy,int  filterSize,AV1DecodeContext *av1Ctx){
 
 	// 调用Filter Mask生成过程
 	int hevMask, filterMask, flatMask, flatMask2;
-	GenerateFilterMasks(x, y, plane, limit, blimit, thresh, dx, dy, filterSize, hevMask, filterMask, flatMask, flatMask2);
+	filterMaskProcess(x, y, plane, limit, blimit, thresh, dx, dy, filterSize, 
+						&hevMask, &filterMask, &flatMask, &flatMask2,av1Ctx);
 
 	// 根据Filter Mask和Filter Size选择适当的Filter过程
 	if (filterMask == 0) {
 		// 不需要滤波
 	} else if (filterSize == 4 || flatMask == 0) {
 		// 使用狭窄滤波过程
-		NarrowFilterProcess(x, y, plane, dx, dy, hevMask);
+		narrowFilter(x, y, plane, dx, dy, &hevMask,av1Ctx);
 	} else if (filterSize == 8 || flatMask2 == 0) {
 		// 使用宽滤波过程，log2Size为3
-		WideFilterProcess(x, y, plane, dx, dy, 3);
+		wideFilter(x, y, plane, dx, dy, 3,av1Ctx);
 	} else {
 		// 使用宽滤波过程，log2Size为4
-		WideFilterProcess(x, y, plane, dx, dy, 4);
+		wideFilter(x, y, plane, dx, dy, 4,av1Ctx);
 	}
 }
 ////7.14.6.2
-void decode::filterMask(int x,int y.int plane,int limit,int blimit,int thresh,int dx,int dy,int filterSize)
+void decode::filterMaskProcess(int x,int y,int plane,int limit,int blimit,int thresh,int dx,int dy,int filterSize,
+						int *hevMask,int *filterMask,int *flatMask ,int *flatMask2,
+						AV1DecodeContext *av1Ctx)
 {
-	int q0 = CurrFrame[ plane ][ y ][ x ];
-	int q1 = CurrFrame[ plane ][ y + dy ][ x + dx ];
-	int q2 = CurrFrame[ plane ][ y + dy * 2 ][ x + dx * 2 ];
-	int q3 = CurrFrame[ plane ][ y + dy * 3 ][ x + dx * 3 ];
-	int q4 = CurrFrame[ plane ][ y + dy * 4 ][ x + dx * 4 ];
-	int q5 = CurrFrame[ plane ][ y + dy * 5 ][ x + dx * 5 ];
-	int q6 = CurrFrame[ plane ][ y + dy * 6 ][ x + dx * 6 ];
-	int p0 = CurrFrame[ plane ][ y - dy ][ x - dx ];
-	int p1 = CurrFrame[ plane ][ y - dy * 2 ][ x - dx * 2 ];
-	int p2 = CurrFrame[ plane ][ y - dy * 3 ][ x - dx * 3 ];
-	int p3 = CurrFrame[ plane ][ y - dy * 4 ][ x - dx * 4 ];
-	int p4 = CurrFrame[ plane ][ y - dy * 5 ][ x - dx * 5 ];
-	int p5 = CurrFrame[ plane ][ y - dy * 6 ][ x - dx * 6 ];
-	int p6 = CurrFrame[ plane ][ y - dy * 7 ][ x - dx * 7 ];
+	sequenceHeader *seqHdr = av1Ctx->seqHdr;
+	int q0 = av1Ctx->currentFrame.CurrFrame[ plane ][ y ][ x ];
+	int q1 = av1Ctx->currentFrame.CurrFrame[ plane ][ y + dy ][ x + dx ];
+	int q2 = av1Ctx->currentFrame.CurrFrame[ plane ][ y + dy * 2 ][ x + dx * 2 ];
+	int q3 = av1Ctx->currentFrame.CurrFrame[ plane ][ y + dy * 3 ][ x + dx * 3 ];
+	int q4 = av1Ctx->currentFrame.CurrFrame[ plane ][ y + dy * 4 ][ x + dx * 4 ];
+	int q5 = av1Ctx->currentFrame.CurrFrame[ plane ][ y + dy * 5 ][ x + dx * 5 ];
+	int q6 = av1Ctx->currentFrame.CurrFrame[ plane ][ y + dy * 6 ][ x + dx * 6 ];
+	int p0 = av1Ctx->currentFrame.CurrFrame[ plane ][ y - dy ][ x - dx ];
+	int p1 = av1Ctx->currentFrame.CurrFrame[ plane ][ y - dy * 2 ][ x - dx * 2 ];
+	int p2 = av1Ctx->currentFrame.CurrFrame[ plane ][ y - dy * 3 ][ x - dx * 3 ];
+	int p3 = av1Ctx->currentFrame.CurrFrame[ plane ][ y - dy * 4 ][ x - dx * 4 ];
+	int p4 = av1Ctx->currentFrame.CurrFrame[ plane ][ y - dy * 5 ][ x - dx * 5 ];
+	int p5 = av1Ctx->currentFrame.CurrFrame[ plane ][ y - dy * 6 ][ x - dx * 6 ];
+	int p6 = av1Ctx->currentFrame.CurrFrame[ plane ][ y - dy * 7 ][ x - dx * 7 ];
 	// hev : means |high| edge| variance|
-	hevMask = 0 ;
-	int threshBd = thresh << (BitDepth - 8)；
-	hevMask |= (Abs( p1 - p0 ) > threshBd)；
-	hevMask |= (Abs( q1 - q0 ) > threshBd)；
+	*hevMask = 0 ;
+	int threshBd = thresh << (seqHdr->color_config.BitDepth - 8);
+	*hevMask |= (Abs( p1 - p0 ) > threshBd);
+	*hevMask |= (Abs( q1 - q0 ) > threshBd);
 
 	int filterLen;//滤波器抽头(taps)数
 	if(filterSize == 4){
@@ -4572,8 +4582,8 @@ void decode::filterMask(int x,int y.int plane,int limit,int blimit,int thresh,in
 	}
 //filterMask的值指示靠近边缘的相邻样本(在指定边界两侧的四个样本内)
 //的差异是否小于由limit和blimit给出的限制。它用于确定是否应该执行某种过滤，
-	int limitBd = limit << (BitDepth - 8);
-	int blimitBd = blimit << (BitDepth - 8);
+	int limitBd = limit << (seqHdr->color_config.BitDepth - 8);
+	int blimitBd = blimit << (seqHdr->color_config.BitDepth - 8);
 	int mask = 0;
 	mask |= (Abs( p1 - p0 ) > limitBd);
 	mask |= (Abs( q1 - q0 ) > limitBd);
@@ -4587,14 +4597,14 @@ void decode::filterMask(int x,int y.int plane,int limit,int blimit,int thresh,in
 		mask |= (Abs( q3 - q2 ) > limitBd);
 	}
 
-	filterMask = (mask == 0);
+	*filterMask = (mask == 0);
 
 	//只有当filterSize >= 8时才需要flatMask的值。
 	//它测量来自指定边界两侧的样本是否在一个平坦区域内。
 	//即这些样本与边界上的样本是否最多存在(1 << (BitDepth - 8))的差异。计算方法如下:
-	int thresholdBd = 1 << (BitDepth - 8);
+	int thresholdBd = 1 << (seqHdr->color_config.BitDepth - 8);
 	if ( filterSize >= 8 ) {
-		 mask = 0
+		mask = 0;
 		mask |= (Abs( p1 - p0 ) > thresholdBd);
 		mask |= (Abs( q1 - q0 ) > thresholdBd);
 		mask |= (Abs( p2 - p0 ) > thresholdBd);
@@ -4603,11 +4613,11 @@ void decode::filterMask(int x,int y.int plane,int limit,int blimit,int thresh,in
 			mask |= (Abs( p3 - p0 ) > thresholdBd);
 			mask |= (Abs( q3 - q0 ) > thresholdBd);
 		}
-		flatMask = (mask == 0);
+		*flatMask = (mask == 0);
 	}
 	//假设前面四个点(0,1,2,3)都在同一个平坦区域， flatMask2 代表后面3个点也在同一个平坦区域
 	// 如果 flatMask & flatMask2 == 0 ,则所有点都在一个平坦区域
-	thresholdBd = 1 << (BitDepth - 8);
+	thresholdBd = 1 << (seqHdr->color_config.BitDepth - 8);
 	if ( filterSize >= 16 ) {
 		mask = 0;
 		mask |= (Abs( p6 - p0 ) > thresholdBd);
@@ -4616,39 +4626,41 @@ void decode::filterMask(int x,int y.int plane,int limit,int blimit,int thresh,in
 		mask |= (Abs( q5 - q0 ) > thresholdBd);
 		mask |= (Abs( p4 - p0 ) > thresholdBd);
 		mask |= (Abs( q4 - q0 ) > thresholdBd);
-		flatMask2 = (mask == 0);
+		*flatMask2 = (mask == 0);
 	}
 
 }
 //This process modifies up to two samples on each side of the 
 //specified boundary depending on the value of hevMask 
-void decode::narrowFilter(int hevMask,int x,int y,int plane,int dx ,int dy){
-	int q0 = CurrFrame[ plane ][ y ][ x ];
-	int q1 = CurrFrame[ plane ][ y + dy ][ x + dx ];
-	int p0 = CurrFrame[ plane ][ y - dy ][ x - dx ];
-	int p1 = CurrFrame[ plane ][ y - dy * 2 ][ x - dx * 2 ];
-	int ps1 = p1 - (0x80 << (BitDepth - 8));
-	int ps0 = p0 - (0x80 << (BitDepth - 8));
-	int qs0 = q0 - (0x80 << (BitDepth - 8));
-	int qs1 = q1 - (0x80 << (BitDepth - 8));
-	int filter = hevMask ? filter4_clamp( ps1 - qs1 ) : 0;
-	filter = filter4_clamp( filter + 3 * (qs0 - ps0) );
-	int filter1 = filter4_clamp( filter + 4 ) >> 3;
-	int filter2 = filter4_clamp( filter + 3 ) >> 3;
-	int oq0 = filter4_clamp( qs0 - filter1 ) + (0x80 << (BitDepth - 8));
-	int op0 = filter4_clamp( ps0 + filter2 ) + (0x80 << (BitDepth - 8));
-	CurrFrame[ plane ][ y ][ x ] = oq0;
-	CurrFrame[ plane ][ y - dy ][ x - dx ] = op0;
-	if ( !hevMask ) {
+void decode::narrowFilter(int x,int y,int plane,int dx ,int dy,int *hevMask,AV1DecodeContext *av1Ctx){
+	sequenceHeader *seqHdr = av1Ctx->seqHdr;
+	int q0 = av1Ctx->currentFrame.CurrFrame[ plane ][ y ][ x ];
+	int q1 = av1Ctx->currentFrame.CurrFrame[ plane ][ y + dy ][ x + dx ];
+	int p0 = av1Ctx->currentFrame.CurrFrame[ plane ][ y - dy ][ x - dx ];
+	int p1 = av1Ctx->currentFrame.CurrFrame[ plane ][ y - dy * 2 ][ x - dx * 2 ];
+	int ps1 = p1 - (0x80 << (seqHdr->color_config.BitDepth - 8));
+	int ps0 = p0 - (0x80 << (seqHdr->color_config.BitDepth - 8));
+	int qs0 = q0 - (0x80 << (seqHdr->color_config.BitDepth - 8));
+	int qs1 = q1 - (0x80 << (seqHdr->color_config.BitDepth - 8));
+	int filter = *hevMask ? filter4_clamp( ps1 - qs1,seqHdr->color_config.BitDepth ) : 0;
+	filter = filter4_clamp( filter + 3 * (qs0 - ps0) ,seqHdr->color_config.BitDepth);
+	int filter1 = filter4_clamp( filter + 4  ,seqHdr->color_config.BitDepth) >> 3;
+	int filter2 = filter4_clamp( filter + 3  ,seqHdr->color_config.BitDepth) >> 3;
+	int oq0 = filter4_clamp( qs0 - filter1 ,seqHdr->color_config.BitDepth ) + (0x80 << (seqHdr->color_config.BitDepth - 8));
+	int op0 = filter4_clamp( ps0 + filter2  ,seqHdr->color_config.BitDepth) + (0x80 << (seqHdr->color_config. BitDepth - 8));
+	av1Ctx->currentFrame.CurrFrame[ plane ][ y ][ x ] = oq0;
+	av1Ctx->currentFrame.CurrFrame[ plane ][ y - dy ][ x - dx ] = op0;
+	if ( !*hevMask ) {
 		filter = Round2( filter1, 1 );
-		int oq1 = filter4_clamp( qs1 - filter ) + (0x80 << (BitDepth - 8));
-		int op1 = filter4_clamp( ps1 + filter ) + (0x80 << (BitDepth - 8));
-		CurrFrame[ plane ][ y + dy ][ x + dx ] = oq1;
-		CurrFrame[ plane ][ y - dy * 2 ][ x - dx * 2 ] = op1;
+		int oq1 = filter4_clamp( qs1 - filter,seqHdr->color_config.BitDepth ) + (0x80 << (seqHdr->color_config.BitDepth - 8));
+		int op1 = filter4_clamp( ps1 + filter,seqHdr->color_config.BitDepth ) + (0x80 << (seqHdr->color_config.BitDepth - 8));
+		av1Ctx->currentFrame.CurrFrame[ plane ][ y + dy ][ x + dx ] = oq1;
+		av1Ctx->currentFrame.CurrFrame[ plane ][ y - dy * 2 ][ x - dx * 2 ] = op1;
 	}
 
 }
-void decode::wideFilter(int x,int y,int plane,int dx ,int dy,int log2Size){
+void decode::wideFilter(int x,int y,int plane,int dx ,int dy,int log2Size,AV1DecodeContext *av1Ctx){
+	sequenceHeader *seqHdr = av1Ctx->seqHdr;
 	//specifying the number of filter taps on each side of the central sample
 	int n;
 	
@@ -4666,38 +4678,42 @@ void decode::wideFilter(int x,int y,int plane,int dx ,int dy,int log2Size){
 	}else{
 		n2 = 1;
 	}
+	int F[2 * n];
 	for (int i = -n; i < n; i++) {
 		int t = 0;
 		for (int j = -n; j <= n; j++) {
 			int p = Clip3(-(n + 1), n, i + j);
 			int tap = (Abs(j) <= n2) ? 2 : 1;
-			t += CurrFrame[plane][y + p * dy][x + p * dx] * tap;
+			t += av1Ctx->currentFrame.CurrFrame[plane][y + p * dy][x + p * dx] * tap;
 		}
 		
 		// 将滤波结果保存到数组 F
-		F[i] = Round2(t, log2Size);
+		F[i + n] = Round2(t, log2Size);
 	}
 
 	// 应用滤波结果到当前帧
 	for (int i = -n; i < n; i++) {
-		CurrFrame[plane][y + i * dy][x + i * dx] = F[i];
+		av1Ctx->currentFrame.CurrFrame[plane][y + i * dy][x + i * dx] = F[i];
 	}
 }
 //7.15
-void decode::cdef(){
+void decode::cdef(TileData *t_data, PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx){
+	frameHeader *frameHdr = av1Ctx->curFrameHdr;
 	int step4 = Num_4x4_Blocks_Wide[ BLOCK_8X8 ];
 	int cdefSize4 = Num_4x4_Blocks_Wide[ BLOCK_64X64 ];
-	cdefMask4 = ~(cdefSize4 - 1);
-	for (int r = 0; r < MiRows; r += step4 ) {
-		for (int c = 0; c < MiCols; c += step4 ) {
+	int   cdefMask4 = ~(cdefSize4 - 1);
+	for (int r = 0; r < frameHdr->MiRows; r += step4 ) {
+		for (int c = 0; c < frameHdr->MiCols; c += step4 ) {
 			int baseR = r & cdefMask4;
 			int baseC = c & cdefMask4;
-			int idx = cdef_idx[ baseR ][ baseC ];
-			cdefBlock(r, c, idx);
+			int idx = b_data->cdef_idx[ baseR ][ baseC ];
+			cdefBlock(r, c, idx,p_data,b_data,av1Ctx);
 		}
 	}
 }
-void decode::cdefBlock(int r, int c, int idx) {
+void decode::cdefBlock(int r, int c, int idx,PartitionData *p_data, BlockData *b_data,AV1DecodeContext *av1Ctx) {
+	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	sequenceHeader *seqHdr = av1Ctx->seqHdr;
     int startY = r * MI_SIZE;
     int endY = startY + MI_SIZE * 2;
     int startX = c * MI_SIZE;
@@ -4705,20 +4721,20 @@ void decode::cdefBlock(int r, int c, int idx) {
 
     for (int y = startY; y < endY; y++) {
         for (int x = startX; x < endX; x++) {
-            CdefFrame[0][y][x] = CurrFrame[0][y][x];
+            av1Ctx->currentFrame.CdefFrame[0][y][x] = av1Ctx->currentFrame.CurrFrame[0][y][x];
         }
     }
 
-    if (NumPlanes > 1) {
-        startY >>= subsampling_y;
-        endY >>= subsampling_y;
-        startX >>= subsampling_x;
-        endX >>= subsampling_x;
+    if (seqHdr->color_config.NumPlanes > 1) {
+        startY >>= seqHdr->color_config.subsampling_y;
+        endY >>= seqHdr->color_config.subsampling_y;
+        startX >>= seqHdr->color_config.subsampling_x;
+        endX >>= seqHdr->color_config.subsampling_x;
 
         for (int y = startY; y < endY; y++) {
             for (int x = startX; x < endX; x++) {
-                CdefFrame[1][y][x] = CurrFrame[1][y][x];
-                CdefFrame[2][y][x] = CurrFrame[2][y][x];
+                av1Ctx->currentFrame.CdefFrame[1][y][x] = av1Ctx->currentFrame.CurrFrame[1][y][x];
+                av1Ctx->currentFrame.CdefFrame[2][y][x] = av1Ctx->currentFrame.CurrFrame[2][y][x];
             }
         }
     }
@@ -4727,36 +4743,40 @@ void decode::cdefBlock(int r, int c, int idx) {
         return;
     }
 
-    int coeffShift = BitDepth - 8;
-    int skip = (Skips[r][c] && Skips[r + 1][c] && Skips[r][c + 1] && Skips[r + 1][c + 1]);
+    int coeffShift = seqHdr->color_config.BitDepth - 8;
+    int skip = (p_data->Skips[r][c] && p_data->Skips[r + 1][c] && 
+				p_data->Skips[r][c + 1] && p_data->Skips[r + 1][c + 1]);
 
     if (skip == 0) {
         int yDir, var;
         cdefDirectionProcess(r, c, &yDir, &var);
-        int priStr = cdef_y_pri_strength[idx] << coeffShift;
-        int secStr = cdef_y_sec_strength[idx] << coeffShift;
+        int priStr = frameHdr->cdef_params.cdef_y_pri_strength[idx] << coeffShift;
+        int secStr = frameHdr->cdef_params.cdef_y_sec_strength[idx] << coeffShift;
         int dir = (priStr == 0) ? 0 : yDir;
         int varStr = (var >> 6) ? Min(FloorLog2(var >> 6), 12) : 0;
         priStr = (var ? (priStr * (4 + varStr) + 8) >> 4 : 0);
-        int damping = CdefDamping + coeffShift;
+        int damping = frameHdr->cdef_params.CdefDamping + coeffShift;
 
         CDEF_filter_process(0, r, c, priStr, secStr, damping, dir);
 
-        if (NumPlanes == 1) {
+        if (seqHdr->color_config.NumPlanes == 1) {
             return;
         }
 
-        priStr = cdef_uv_pri_strength[idx] << coeffShift;
-        secStr = cdef_uv_sec_strength[idx] << coeffShift;
-        dir = (priStr == 0) ? 0 : Cdef_Uv_Dir[subsampling_x][subsampling_y][yDir];
-        damping = CdefDamping + coeffShift - 1;
+        priStr = frameHdr->cdef_params.cdef_uv_pri_strength[idx] << coeffShift;
+        secStr = frameHdr->cdef_params.cdef_uv_sec_strength[idx] << coeffShift;
+        dir = (priStr == 0) ? 0 : Cdef_Uv_Dir[seqHdr->color_config.subsampling_x][seqHdr->color_config.subsampling_y][yDir];
+        damping = frameHdr->cdef_params.CdefDamping + coeffShift - 1;
 
         CDEF_filter_process(1, r, c, priStr, secStr, damping, dir);
         CDEF_filter_process(2, r, c, priStr, secStr, damping, dir);
     }
 }
 //7.15.2
-void decode::cdefDirectionProcess(int r, int c, int *yDir, int *var) {
+void decode::cdefDirectionProcess(int r, int c, int *yDir, int *var,
+								PartitionData *p_data, BlockData *b_data,AV1DecodeContext *av1Ctx) {
+	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	sequenceHeader *seqHdr = av1Ctx->seqHdr;
     int cost[8];
     int partial[8][15];
     int bestCost = 0;
@@ -4773,7 +4793,7 @@ void decode::cdefDirectionProcess(int r, int c, int *yDir, int *var) {
 
     for (int i = 0; i < 8; i++) {
         for (int j = 0; j < 8; j++) {
-            int x = (CurrFrame[0][y0 + i][x0 + j] >> (BitDepth - 8)) - 128;
+            int x = (av1Ctx->currentFrame.CurrFrame[0][y0 + i][x0 + j] >> (seqHdr->color_config.BitDepth - 8)) - 128;
             partial[0][i + j] += x;
             partial[1][i + j / 2] += x;
             partial[2][i] += x;
@@ -4822,9 +4842,12 @@ void decode::cdefDirectionProcess(int r, int c, int *yDir, int *var) {
     *var = (bestCost - cost[(*yDir + 4) & 7]) >> 10;
 }
 //7.15.3
-void decode::cdefFilter(int plane, int r, int c, int priStr, int secStr, int damping, int dir) {
-    int subX = (plane > 0) ? subsampling_x : 0;
-    int subY = (plane > 0) ? subsampling_y : 0;
+void decode::cdefFilter(int plane, int r, int c, int priStr, int secStr, int damping, int dir,
+						PartitionData *p_data, BlockData *b_data,AV1DecodeContext *av1Ctx ){
+	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	sequenceHeader *seqHdr = av1Ctx->seqHdr;
+    int subX = (plane > 0) ? seqHdr->color_config.subsampling_x : 0;
+    int subY = (plane > 0) ? seqHdr->color_config.subsampling_y : 0;
     int x0 = (c * MI_SIZE) >> subX;
     int y0 = (r * MI_SIZE) >> subY;
     int w = 8 >> subX;
@@ -4833,16 +4856,17 @@ void decode::cdefFilter(int plane, int r, int c, int priStr, int secStr, int dam
     for (int i = 0; i < h; i++) {
         for (int j = 0; j < w; j++) {
             int sum = 0;
-            int x = CurrFrame[plane][y0 + i][x0 + j];
+            int x = av1Ctx->currentFrame.CurrFrame[plane][y0 + i][x0 + j];
             int max = x;
             int min = x;
 
             for (int k = 0; k < 2; k++) {
                 for (int sign = -1; sign <= 1; sign += 2) {
-                    int p = cdef_get_at(plane, x0, y0, i, j, dir, k, sign, subX, subY);
+					int CdefAvailable;
+                    int p = cdef_get_at(plane, x0, y0, i, j, dir, k, sign, subX, subY,&CdefAvailable,av1Ctx->currentFrame.CurrFrame);
 
                     if (CdefAvailable) {
-                        sum += Cdef_Pri_Taps[(priStr >> (BitDepth - 8)) & 1][k] * constrain(p - x, priStr, damping);
+                        sum += Cdef_Pri_Taps[(priStr >> (seqHdr->color_config.BitDepth - 8)) & 1][k] * constrain(p - x, priStr, damping);
                         max = Max(p, max);
                         min = Min(p, min);
                     }
@@ -4851,7 +4875,7 @@ void decode::cdefFilter(int plane, int r, int c, int priStr, int secStr, int dam
                         int s = cdef_get_at(plane, x0, y0, i, j, (dir + dirOff) & 7, k, sign, subX, subY);
 
                         if (CdefAvailable) {
-                            sum += Cdef_Sec_Taps[(priStr >> (BitDepth - 8)) & 1][k] * constrain(s - x, secStr, damping);
+                            sum += Cdef_Sec_Taps[(priStr >> (seqHdr->color_config.BitDepth - 8)) & 1][k] * constrain(s - x, secStr, damping);
                             max = Max(s, max);
                             min = Min(s, min);
                         }
@@ -4859,26 +4883,29 @@ void decode::cdefFilter(int plane, int r, int c, int priStr, int secStr, int dam
                 }
             }
 
-            CurrFrame[plane][y0 + i][x0 + j] = Clip3(min, max, x + ((8 + sum - (sum < 0)) >> 4));
+            av1Ctx->currentFrame.CurrFrame[plane][y0 + i][x0 + j] = Clip3(min, max, x + ((8 + sum - (sum < 0)) >> 4));
         }
     }
 }
 
 
 
-int decode::cdef_get_at(plane, x0, y0, i, j, dir, k, sign, subX, subY,int * CdefAvailable,int CurrFrame[][][]) {
+int decode::cdef_get_at(int plane,int x0,int y0,int i, int j,int dir,int k,int sign,int subX,int subY,
+						int * CdefAvailable,uint8_t ***CurrFrame,AV1DecodeContext *av1Ctx) {
+	frameHeader *frameHdr = av1Ctx->curFrameHdr;
 	int y = y0 + i + sign * Cdef_Directions[dir][k][0];
 	int x = x0 + j + sign * Cdef_Directions[dir][k][1];
 	int candidateR = (y << subY) >> MI_SIZE_LOG2;
 	int candidateC = (x << subX) >> MI_SIZE_LOG2;
-	if ( is_inside_filter_region( candidateR, candidateC ) ) {
-		CdefAvailable = 1;
-		return CurrFrame[ plane ][ y ][ x ]
+	if ( is_inside_filter_region( candidateR, candidateC,frameHdr->MiCols, frameHdr->MiRows) ) {
+		*CdefAvailable = 1;
+		return CurrFrame[ plane ][ y ][ x ];
 	} else {
-		CdefAvailable = 0;
+		*CdefAvailable = 0;
 		return 0;
 	}
 }
+//7.16
 void decode::upscalingProcess() {
     for (int plane = 0; plane < NumPlanes; plane++) {
         int subX, subY;
