@@ -2302,6 +2302,9 @@ public:
   int decodeSymbolBool(SymbolContext *sbCtx,bitSt *bs); 
   int readNS(SymbolContext *sbCtx,bitSt *bs,int n );
   int decodeSymbol(SymbolContext *sbCtx,bitSt *bs,uint16_t *cdfArray,int N);
+  int decode_signed_subexp_with_ref_bool(SymbolContext *sbCtx,bitSt *bs,int low, int high, int k, int r);
+  int decode_unsigned_subexp_with_ref_bool(SymbolContext *sbCtx,bitSt *bs,int mx, int k, int r);
+  int decode_subexp_bool(SymbolContext *sbCtx,bitSt *bs,int numSyms,int k);
 	static Symbol& Instance() {
 		static Symbol m_pInstance;
 		return m_pInstance;

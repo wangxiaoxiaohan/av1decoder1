@@ -90,3 +90,49 @@ int Symbol::decodeSymbol(SymbolContext *sbCtx,bitSt *bs,uint16_t *cdfArray,int N
     }
     return symbol;
 }
+int Symbol::decode_signed_subexp_with_ref_bool(SymbolContext *sbCtx,bitSt *bs,int low, int high, int k, int r)
+{
+	int x = decode_unsigned_subexp_with_ref_bool(sbCtx,bs, high - low, k, r - low);
+	return x + low;
+}
+int Symbol::decode_unsigned_subexp_with_ref_bool(SymbolContext *sbCtx,bitSt *bs,int mx, int k, int r)
+{
+	int v = decode_subexp_bool(sbCtx,bs,mx, k);
+	if ((r << 1) <= mx)
+	{
+		return inverse_recenter(r, v);
+	}
+	else
+	{
+		return mx - 1 - inverse_recenter(mx - 1 - r, v);
+	}
+}
+int Symbol::decode_subexp_bool(SymbolContext *sbCtx,bitSt *bs,int numSyms,int k)
+{
+    int i = 0;
+    int mk = 0;
+    while (1)
+    {
+        int b2 = i ? k + i - 1 : k;
+        int a = 1 << b2;
+        if (numSyms <= mk + 3 * a)
+        {
+            int subexp_unif_bools = readNS(sbCtx,bs,numSyms - mk); // NS(numSyms - mk);
+            return subexp_unif_bools + mk;
+        }
+        else
+        {
+            int subexp_more_bools = read_literal(sbCtx,bs,1); // L(1)
+            if (subexp_more_bools)
+            {
+                i++ ;
+                mk += a;
+            }
+            else
+            {
+                int subexp_bools = read_literal(sbCtx,bs,b2); // L(b2)
+                return subexp_bools + mk;
+            }
+        }
+    }
+}

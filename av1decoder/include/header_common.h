@@ -298,8 +298,6 @@ typedef struct TileData{
 	uint8_t RefLrWiener[3][2][3];
 	uint8_t ReadDeltas;
 	uint8_t CurrentQIndex;
-	uint8_t *AboveSegPredContext;
-	uint8_t *LeftSegPredContext;
 	uint8_t **BlockDecoded[3];
 	uint8_t **LoopfilterTxSizes[3];
 }TileData;
@@ -398,7 +396,8 @@ typedef struct BlockData{
 	int **AboveDcContext;
 	int **LeftLevelContext;
 	int **LeftDcContext;
-
+	uint8_t *AboveSegPredContext;
+	uint8_t *LeftSegPredContext;
 	//块左边，上边的样本，是像素值
 	Array8 *AboveRow;
 	Array8 *LeftCol;
@@ -420,6 +419,14 @@ typedef struct BlockData{
 
 	int **Mask;
 	uint8_t **cdef_idx;
+
+	int ***UpscaledCdefFrame;
+	int ***UpscaledCurrFrame;
+
+	int ***LrType;
+	int *****LrWiener;
+	int ***LrSgrSet;
+	int ****LrSgrXqd;
 }BlockData;
 
 typedef struct FrameContext{

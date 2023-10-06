@@ -233,6 +233,15 @@ enum tristate
 #define Block_Height 4 * Num_4x4_Blocks_High
 
 #define QM_TOTAL_SIZE 3344
+
+#define SGRPROJ_PARAMS_BITS 4 
+#define SGRPROJ_PRJ_SUBEXP_K 4 
+#define SGRPROJ_PRJ_BITS 7 
+#define SGRPROJ_RST_BITS 4 
+#define SGRPROJ_MTABLE_BITS 20 
+#define SGRPROJ_RECIP_BITS 12 
+#define SGRPROJ_SGR_BITS 8 
+
 typedef struct Array8
 {
 	uint8_t *data;
@@ -8646,6 +8655,12 @@ const static uint8_t Quantizer_Matrix[15][2][QM_TOTAL_SIZE] = {
 const static uint16_t Qm_Offset[ TX_SIZES_ALL ] = { 0, 16, 80, 336, 336, 1360, 1392, 1424, 1552, 1680, 2192,
 336, 336, 2704, 2768, 2832, 3088, 1680, 2192 };
 
+const static int8_t Wiener_Taps_Min[3] = { -5, -23, -17 };
+const static int8_t Wiener_Taps_Max[3] = { 10, 8, 46 };
+const static int8_t Wiener_Taps_K[3] = { 1, 2, 3 };
+const static int8_t Sgrproj_Xqd_Min[2] = { -96, -32 };
+const static int8_t Sgrproj_Xqd_Max[2] = { 31, 95 };
+
 int inline tile_log2(int blkSize, int target)
 {
 	int k;
@@ -9167,4 +9182,8 @@ inline uint16_t *get_scan(int txSz, int PlaneTxType)
 	}
 	return get_default_scan(txSz);
 }
+int inline count_units_in_frame(int unitSize, int frameSize) {
+	return Max((frameSize + (unitSize >> 1)) / unitSize, 1);
+}
+
 #endif

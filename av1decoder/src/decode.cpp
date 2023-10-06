@@ -1432,7 +1432,7 @@ int decode::transform_block(int plane,int baseX,int baseY,int txSz,int x,int y,S
 		if (((plane == 0) && b_data->PaletteSizeY) ||
 			((plane != 0) && b_data->PaletteSizeUV))
 		{
-			predict_palette(plane, startX, startY, x, y, txSz);
+			predict_palette(plane, startX, startY, x, y, txSz,b_data,av1Ctx);
 		}
 		else
 		{
@@ -1453,7 +1453,7 @@ int decode::transform_block(int plane,int baseX,int baseY,int txSz,int x,int y,S
 						(plane == 0 ? b_data->AvailU : b_data->AvailUChroma) || y > 0,
 						t_data->BlockDecoded[plane][(subBlockMiRow >> subY) - 1][(subBlockMiCol >> subX) + stepX],
 						t_data->BlockDecoded[plane][(subBlockMiRow >> subY) + stepY][(subBlockMiCol >> subX) - 1],
-						mode,log2W, log2H,p_data,b_data,av1Ctx);
+						mode,log2W, log2H, t_data, p_data,b_data,av1Ctx);
 			if (isCfl)
 			{
 				predict_chroma_from_luma(plane, startX, startY, txSz);
@@ -1467,18 +1467,18 @@ int decode::transform_block(int plane,int baseX,int baseY,int txSz,int x,int y,S
 	}
 	if (!b_data->skip)
 	{
-		int eob = coeffs(plane, startX, startY, txSz);
+		int eob = coeffs(plane, startX, startY, txSz,sbCtx,bs,t_data,p_data,b_data,av1Ctx);
 		if (eob > 0)
-			reconstruct(plane, startX, startY, txSz);
+			reconstruct(plane, startX, startY, txSz,b_data,av1Ctx);
 	}
 	for (int i = 0; i < stepY; i++)
 	{
 		for (int j = 0; j < stepX; j++)
 		{
-			LoopfilterTxSizes[plane]
+			t_data->LoopfilterTxSizes[plane]
 							 [(row >> subY) + i]
 							 [(col >> subX) + j] = txSz;
-			BlockDecoded[plane]
+			t_data->BlockDecoded[plane]
 						[(subBlockMiRow >> subY) + i]
 						[(subBlockMiCol >> subX) + j] = 1;
 		}
@@ -2155,7 +2155,7 @@ int decode::add_sample(int deltaRow,int deltaCol,TileData *t_data,PartitionData 
     int candCol = mvCol & ~(candW4 - 1);
     int midY = candRow * 4 + candH4 * 2 - 1;
     int midX = candCol * 4 + candW4 * 2 - 1;
-    int threshold = Clip3(16, 112, Max(Block_Width[MiSize], Block_Height[MiSize]));
+    int threshold = Clip3(16, 112, Max(Block_Width[b_data->MiSize], Block_Height[b_data->MiSize]));
     int mvDiffRow = Abs(p_data->Mvs[candRow][candCol][0][0] - b_data->Mv[0][0]);
     int mvDiffCol = Abs(p_data->Mvs[candRow][candCol][0][1] - b_data->Mv[0][1]);
     int valid = ((mvDiffRow + mvDiffCol) <= threshold);
@@ -3090,8 +3090,8 @@ int decode::warpEstimation(int **CandList, int LocalWarpParams[6], int *LocalVal
     int Bx[2] = {0};
     int By[2] = {0};
 
-    int w4 = Num_4x4_Blocks_Wide[MiSize];
-    int h4 = Num_4x4_Blocks_High[MiSize];
+    int w4 = Num_4x4_Blocks_Wide[b_data->MiSize];
+    int h4 = Num_4x4_Blocks_High[b_data->MiSize];
     int midY = b_data->MiRow * 4 + h4 * 2 - 1;
     int midX = b_data->MiCol * 4 + w4 * 2 - 1;
     int suy = midY * 8;
@@ -3314,7 +3314,7 @@ int decode::block_inter_prediction(int plane, int refIdx, int x, int y, int xSte
             interpFilter = 5;
         }
     }
-    
+    int intermediate[intermediateHeight][w];
     for (int r = 0; r < intermediateHeight; r++) {
         for (int c = 0; c < w; c++) {
             int s = 0;
@@ -3408,7 +3408,7 @@ int decode::wedgeMask(int w,int h,BlockData *b_data,AV1DecodeContext *av1Ctx){
     }
 	for (int  i = 0; i < h; i++ ) {
 		for (int  j = 0; j < w; j++ ) {
-			b_data->Mask[ i ][ j ] = WedgeMasks[ MiSize ][ av1Ctx->wedge_sign ][ av1Ctx->wedge_index ][ i ][ j ];
+			b_data->Mask[ i ][ j ] = WedgeMasks[ b_data->MiSize ][ av1Ctx->wedge_sign ][ av1Ctx->wedge_index ][ i ][ j ];
 		}
 	}
 }
@@ -3536,12 +3536,12 @@ int decode::maskBlend(uint8_t ***preds,int plane , int dstX,int dstY,int w,int h
   
             if (av1Ctx->interintra) {  
                 pred0 = Clip1(Round2(preds[0][y][x], b_data->InterPostRound),seqHdr->color_config.BitDepth);  
-                pred1 = CurrFrame[plane][y+dstY][x+dstX];  
-                CurrFrame[plane][y+dstY][x+dstX] = Round2(m * pred1 + (64 - m) * pred0, 6);  
+                pred1 = av1Ctx->currentFrame.CurrFrame[plane][y+dstY][x+dstX];  
+                av1Ctx->currentFrame.CurrFrame[plane][y+dstY][x+dstX] = Round2(m * pred1 + (64 - m) * pred0, 6);  
             } else {  
                 pred0 = preds[0][y][x];  
                 pred1 = preds[1][y][x];  
-                CurrFrame[plane][y+dstY][x+dstX] = Clip1(Round2(m * pred0 + (64 - m) * pred1, 6 + b_data->InterPostRound),seqHdr->color_config.BitDepth);  
+                av1Ctx->currentFrame.CurrFrame[plane][y+dstY][x+dstX] = Clip1(Round2(m * pred0 + (64 - m) * pred1, 6 + b_data->InterPostRound),seqHdr->color_config.BitDepth);  
             }  
         }  
     }  
@@ -3553,7 +3553,8 @@ int decode::maskBlend(uint8_t ***preds,int plane , int dstX,int dstY,int w,int h
 //For small blocks, only the left neighbor will be used to form the prediction
 //7.11.3.9
 
-int decode::overlappedMotionCompensation(int plane, int w ,int h,PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx) {
+int decode::overlappedMotionCompensation(int plane, int w ,int h,PartitionData *p_data,
+					BlockData *b_data,AV1DecodeContext *av1Ctx) {
 	frameHeader *frameHdr = av1Ctx->curFrameHdr;
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
 
@@ -3566,13 +3567,13 @@ int decode::overlappedMotionCompensation(int plane, int w ,int h,PartitionData *
 
 	int subX,subY;
     if (AvailU) {
-        if (get_plane_residual_size(MiSize, plane,seqHdr->color_config.subsampling_x,seqHdr->color_config.subsampling_y) >= BLOCK_8X8) {
+        if (get_plane_residual_size(b_data->MiSize, plane,seqHdr->color_config.subsampling_x,seqHdr->color_config.subsampling_y) >= BLOCK_8X8) {
             pass = 0;
-            w4 = Num_4x4_Blocks_Wide[MiSize];
+            w4 = Num_4x4_Blocks_Wide[b_data->MiSize];
             x4 = b_data->MiCol;
             y4 = b_data->MiRow;
             nCount = 0;
-            nLimit = Min(4, Mi_Width_Log2[MiSize]);
+            nLimit = Min(4, Mi_Width_Log2[b_data->MiSize]);
 
             while (nCount < nLimit && x4 < Min(frameHdr->MiCols, b_data->MiCol + w4)) {
                 candRow = b_data->MiRow - 1;
@@ -3585,7 +3586,7 @@ int decode::overlappedMotionCompensation(int plane, int w ,int h,PartitionData *
                     predW = Min(w, (step4 * MI_SIZE) >> subX);
                     predH = Min(h >> 1, 32 >> subY);
                     mask = get_obmc_mask(predH);
-                    predict_overlap(MiSize, plane, x4, y4, predW, predH, subX, subY, candRow,candCol,pass,
+                    predict_overlap(b_data->MiSize, plane, x4, y4, predW, predH, subX, subY, candRow,candCol,pass,
 								mask,p_data,b_data,av1Ctx);
                 }
 
@@ -3596,11 +3597,11 @@ int decode::overlappedMotionCompensation(int plane, int w ,int h,PartitionData *
 
     if (AvailL) {
         pass = 1;
-        h4 = Num_4x4_Blocks_High[MiSize];
+        h4 = Num_4x4_Blocks_High[b_data->MiSize];
         x4 = b_data->MiCol;
         y4 = b_data->MiRow;
         nCount = 0;
-        nLimit = Min(4, Mi_Height_Log2[MiSize]);
+        nLimit = Min(4, Mi_Height_Log2[b_data->MiSize]);
 
         while (nCount < nLimit && y4 < Min(frameHdr->MiRows, b_data->MiRow + h4)) {
             candCol = b_data->MiCol - 1;
@@ -3613,7 +3614,7 @@ int decode::overlappedMotionCompensation(int plane, int w ,int h,PartitionData *
                 predW = Min(w >> 1, 32 >> subX);
                 predH = Min(h, (step4 * MI_SIZE) >> subY);
                 mask = get_obmc_mask(predW);
-                predict_overlap(MiSize, plane, x4, y4, predW, predH, subX, subY, candRow,candCol,pass,
+                predict_overlap(b_data->MiSize, plane, x4, y4, predW, predH, subX, subY, candRow,candCol,pass,
 								mask,p_data,b_data,av1Ctx);
             }
 
@@ -3643,12 +3644,13 @@ int decode::predict_overlap(int MiSize,int plane ,int x4,int y4,int predW,int pr
 			obmcPred[ i ][ j ] = Clip1( obmcPred[ i ][ j ] ,seqHdr->color_config.BitDepth);
 		}
 	}
-	OverlapBlending(plane, predX, predY, predW, predH, pass,(uint8_t **)obmcPred,mask);
+	OverlapBlending(plane, predX, predY, predW, predH, pass,(uint8_t **)obmcPred,mask,av1Ctx);
 
 }
 //7.11.3.10
 
-int decode::OverlapBlending(int plane ,int predX,int predY,int predW,int predH ,int pass,uint8_t **obmcPred,uint8_t *mask){
+int decode::OverlapBlending(int plane ,int predX,int predY,int predW,int predH ,int pass,
+						uint8_t **obmcPred,uint8_t *mask,AV1DecodeContext *av1Ctx){
 	int m;
 	for(int i = 0; i < predH;i++){
 		for(int j = 0; j < predW;j++){
@@ -3659,14 +3661,15 @@ int decode::OverlapBlending(int plane ,int predX,int predY,int predW,int predH ,
 				//blend from left
 				m = mask[ j ];
 			}
-			CurrFrame[ plane ][ predY + i ][ predX + j ] = Round2( m * CurrFrame[ plane ][ predY + i ][ predX + j ]
-					+ (64 - m) * obmcPred[ i ][ j ], 6);
+			av1Ctx->currentFrame.CurrFrame[ plane ][ predY + i ][ predX + j ] = 
+					Round2( m * av1Ctx->currentFrame.CurrFrame[ plane ][ predY + i ][ predX + j ] + (64 - m) * obmcPred[ i ][ j ], 6);
 		}
 	}
 } 
 
 //7.11.4
-int decode::predict_palette(int plane, int startX, int startY, int x, int y, int txSz,BlockData *b_data) {
+int decode::predict_palette(int plane, int startX, int startY, int x, int y, int txSz,
+							BlockData *b_data,AV1DecodeContext *av1Ctx) {
     int w = Tx_Width[txSz]; // 获取变换块的宽度
     int h = Tx_Height[txSz]; // 获取变换块的高度
     uint8_t *palette; // 调色板数组
@@ -3682,7 +3685,7 @@ int decode::predict_palette(int plane, int startX, int startY, int x, int y, int
 
     for (int i = 0; i < h; i++) {
         for (int j = 0; j < w; j++) {
-            CurrFrame[plane][startY + i][startX + j] = palette[map[y * 4 + i][x * 4 + j]];
+            av1Ctx->currentFrame.CurrFrame[plane][startY + i][startX + j] = palette[map[y * 4 + i][x * 4 + j]];
         }
     }
 }
@@ -3708,7 +3711,7 @@ int decode::predict_chroma_from_luma(int plane, int startX, int startY, int txSz
             int t = 0;
             for (int dy = 0; dy <= subY; dy += 1) {
                 for (int dx = 0; dx <= subX; dx += 1) {
-                    t += CurrFrame[0][lumaY + dy][lumaX + dx];
+                    t += av1Ctx->currentFrame.CurrFrame[0][lumaY + dy][lumaX + dx];
                 }
             }
 
@@ -3722,9 +3725,9 @@ int decode::predict_chroma_from_luma(int plane, int startX, int startY, int txSz
 
     for (int i = 0; i < h; i++) {
         for (int j = 0; j < w; j++) {
-            int dc = CurrFrame[plane][startY + i][startX + j];
+            int dc = av1Ctx->currentFrame.CurrFrame[plane][startY + i][startX + j];
             int scaledLuma = (int)((alpha * (L[i][j] - lumaAvg)) * 64);
-            CurrFrame[plane][startY + i][startX + j] = Clip1(dc + scaledLuma,seqHdr->color_config.BitDepth);
+            av1Ctx->currentFrame.CurrFrame[plane][startY + i][startX + j] = Clip1(dc + scaledLuma,seqHdr->color_config.BitDepth);
         }
     }
 }                                                                                                                                                                                                                                              
@@ -3803,7 +3806,7 @@ int decode::reconstruct(int plane, int x, int y, int txSz,BlockData *b_data,AV1D
             int xx = flipLR ? (w - j - 1) : j;
             int yy = flipUD ? (h - i - 1) : i;
             
-            CurrFrame[plane][y + yy][x + xx] = Clip1(CurrFrame[plane][y + yy][x + xx] + Residual[i][j]);
+            av1Ctx->currentFrame.CurrFrame[plane][y + yy][x + xx] = Clip1(av1Ctx->currentFrame.CurrFrame[plane][y + yy][x + xx] + Residual[i][j],seqHdr->color_config.BitDepth);
         }
     }
     // 无损模式下 需要完全无损 ，因此 Residual 内的每个像素 用 1 + BitDepth位来表示，即比位深度还多一位
@@ -4749,7 +4752,7 @@ void decode::cdefBlock(int r, int c, int idx,PartitionData *p_data, BlockData *b
 
     if (skip == 0) {
         int yDir, var;
-        cdefDirectionProcess(r, c, &yDir, &var);
+        cdefDirectionProcess(r, c, &yDir, &var,p_data,b_data,av1Ctx);
         int priStr = frameHdr->cdef_params.cdef_y_pri_strength[idx] << coeffShift;
         int secStr = frameHdr->cdef_params.cdef_y_sec_strength[idx] << coeffShift;
         int dir = (priStr == 0) ? 0 : yDir;
@@ -4757,7 +4760,7 @@ void decode::cdefBlock(int r, int c, int idx,PartitionData *p_data, BlockData *b
         priStr = (var ? (priStr * (4 + varStr) + 8) >> 4 : 0);
         int damping = frameHdr->cdef_params.CdefDamping + coeffShift;
 
-        CDEF_filter_process(0, r, c, priStr, secStr, damping, dir);
+        cdefFilter(0, r, c, priStr, secStr, damping, dir,p_data,b_data,av1Ctx);
 
         if (seqHdr->color_config.NumPlanes == 1) {
             return;
@@ -4768,8 +4771,8 @@ void decode::cdefBlock(int r, int c, int idx,PartitionData *p_data, BlockData *b
         dir = (priStr == 0) ? 0 : Cdef_Uv_Dir[seqHdr->color_config.subsampling_x][seqHdr->color_config.subsampling_y][yDir];
         damping = frameHdr->cdef_params.CdefDamping + coeffShift - 1;
 
-        CDEF_filter_process(1, r, c, priStr, secStr, damping, dir);
-        CDEF_filter_process(2, r, c, priStr, secStr, damping, dir);
+        cdefFilter(1, r, c, priStr, secStr, damping, dir,p_data,b_data,av1Ctx);
+        cdefFilter(2, r, c, priStr, secStr, damping, dir,p_data,b_data,av1Ctx);
     }
 }
 //7.15.2
@@ -4863,7 +4866,8 @@ void decode::cdefFilter(int plane, int r, int c, int priStr, int secStr, int dam
             for (int k = 0; k < 2; k++) {
                 for (int sign = -1; sign <= 1; sign += 2) {
 					int CdefAvailable;
-                    int p = cdef_get_at(plane, x0, y0, i, j, dir, k, sign, subX, subY,&CdefAvailable,av1Ctx->currentFrame.CurrFrame);
+                    int p = cdef_get_at(plane, x0, y0, i, j, dir, k, sign, subX, subY,
+								&CdefAvailable,av1Ctx->currentFrame.CurrFrame,av1Ctx);
 
                     if (CdefAvailable) {
                         sum += Cdef_Pri_Taps[(priStr >> (seqHdr->color_config.BitDepth - 8)) & 1][k] * constrain(p - x, priStr, damping);
@@ -4872,7 +4876,8 @@ void decode::cdefFilter(int plane, int r, int c, int priStr, int secStr, int dam
                     }
 
                     for (int dirOff = -2; dirOff <= 2; dirOff += 4) {
-                        int s = cdef_get_at(plane, x0, y0, i, j, (dir + dirOff) & 7, k, sign, subX, subY);
+                        int s = cdef_get_at(plane, x0, y0, i, j, (dir + dirOff) & 7, k, sign, subX, subY,
+						&CdefAvailable,av1Ctx->currentFrame.CurrFrame,av1Ctx);
 
                         if (CdefAvailable) {
                             sum += Cdef_Sec_Taps[(priStr >> (seqHdr->color_config.BitDepth - 8)) & 1][k] * constrain(s - x, secStr, damping);
@@ -4906,26 +4911,28 @@ int decode::cdef_get_at(int plane,int x0,int y0,int i, int j,int dir,int k,int s
 	}
 }
 //7.16
-void decode::upscalingProcess() {
-    for (int plane = 0; plane < NumPlanes; plane++) {
+void decode::upscalingProcess(int ***inputFrame,int ***outputFrame,AV1DecodeContext *av1Ctx) {
+	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	sequenceHeader *seqHdr = av1Ctx->seqHdr;
+    for (int plane = 0; plane < seqHdr->color_config.NumPlanes; plane++) {
         int subX, subY;
 
         if (plane > 0) {
-            subX = subsampling_x;
-            subY = subsampling_y;
+            subX = seqHdr->color_config.subsampling_x;
+            subY = seqHdr->color_config.subsampling_y;
         } else {
             subX = 0;
             subY = 0;
         }
 
-        int downscaledPlaneW = Round2(FrameWidth, subX);
-        int upscaledPlaneW = Round2(UpscaledWidth, subX);
-        int planeH = Round2(FrameHeight, subY);
+        int downscaledPlaneW = Round2(frameHdr->si.FrameWidth, subX);
+        int upscaledPlaneW = Round2(frameHdr->si.UpscaledWidth, subX);
+        int planeH = Round2(frameHdr->si.FrameHeight, subY);
         int stepX = ((downscaledPlaneW << SUPERRES_SCALE_BITS) + (upscaledPlaneW / 2)) / upscaledPlaneW;
         int err = (upscaledPlaneW * stepX) - (downscaledPlaneW << SUPERRES_SCALE_BITS);
         int initialSubpelX = (-((upscaledPlaneW - downscaledPlaneW) << (SUPERRES_SCALE_BITS - 1)) + upscaledPlaneW / 2) / upscaledPlaneW + (1 << (SUPERRES_EXTRA_BITS - 1)) - err / 2;
         initialSubpelX &= SUPERRES_SCALE_MASK;
-        int miW = MiCols >> subX;
+        int miW = frameHdr->MiCols >> subX;
         int minX = 0;
         int maxX = miW * 4 - 1;
 
@@ -4937,8 +4944,8 @@ void decode::upscalingProcess() {
                 int sum = 0;
 
                 for (int k = 0; k < SUPERRES_FILTER_TAPS; k++) {
-                    int sampleX = Clip1(srcXPx + k - SUPERRES_FILTER_OFFSET);
-                    int px = frame[plane][y][sampleX];
+                    int sampleX = Clip1(srcXPx + k - SUPERRES_FILTER_OFFSET,seqHdr->color_config.BitDepth);
+                    int px = inputFrame[plane][y][sampleX];
                     sum += px * Upscale_Filter[srcXSubpel][k];
                 }
 
@@ -4948,22 +4955,23 @@ void decode::upscalingProcess() {
     }
 }
 //7.17
-void decode::loopRestoration(){
-
-	uint8_t LrFrame[3][FrameHeight][UpscaledWidth];
-	memcpy(LrFrame,UpscaledCdefFrame,sizeof(uint8_t) * 3 * FrameHeight * UpscaledWidth);
+void decode::loopRestoration(BlockData *b_data,AV1DecodeContext *av1Ctx){
+	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	sequenceHeader *seqHdr = av1Ctx->seqHdr;
+	uint8_t LrFrame[3][frameHdr->si.FrameHeight][frameHdr->si.UpscaledWidth];
+	memcpy(LrFrame,b_data->UpscaledCdefFrame,sizeof(uint8_t) * 3 * frameHdr->si.FrameHeight * frameHdr->si.UpscaledWidth);
 
 	// 如果不需要循环恢复，直接返回
-	if (UsesLr == 0) {
+	if (frameHdr->lr_params.UsesLr == 0) {
 		return;
 	}
 
 	// 循环遍历图像块 以 4*4块为单位 
-	for (int y = 0; y < FrameHeight; y += MI_SIZE) {
-		for (int x = 0; x < UpscaledWidth; x += MI_SIZE) {
-			for (int plane = 0; plane < NumPlanes; plane++) {
+	for (int y = 0; y < frameHdr->si.FrameHeight; y += MI_SIZE) {
+		for (int x = 0; x < frameHdr->si.UpscaledWidth; x += MI_SIZE) {
+			for (int plane = 0; plane < seqHdr->color_config.NumPlanes; plane++) {
 				// 检查是否需要进行循环恢复
-				if (FrameRestorationType[plane] != RESTORE_NONE) {
+				if (frameHdr->lr_params.FrameRestorationType[plane] != RESTORE_NONE) {
 					int row = y >> MI_SIZE_LOG2;
 					int col = x >> MI_SIZE_LOG2;
 					// 调用循环恢复块过程
@@ -4974,7 +4982,9 @@ void decode::loopRestoration(){
 	}
 }
 //7.17.1
-void decode::loopRestoreBlock(int plane,int row ,int col){
+void decode::loopRestoreBlock(int plane,int row ,int col,BlockData *b_data,AV1DecodeContext *av1Ctx){
+	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	sequenceHeader *seqHdr = av1Ctx->seqHdr;
 	int lumaY = row * MI_SIZE;
 
 	int stripeNum = (lumaY + 8) / 64;
@@ -4984,24 +4994,24 @@ void decode::loopRestoreBlock(int plane,int row ,int col){
 		subX = 0;
 		subY = 0;
 	} else {
-		subX = subsampling_x;
-		subY = subsampling_y;
+		subX = seqHdr->color_config.subsampling_x;
+		subY = seqHdr->color_config.subsampling_y;
 	}
 
 	int StripeStartY = (-8 + stripeNum * 64) >> subY;
 	int StripeEndY = StripeStartY + (64 >> subY) - 1;
 
 
-	int unitSize = LoopRestorationSize[plane];
-	int unitRows = count_units_in_frame(unitSize, Round2(FrameHeight, subY));
-	int unitCols = count_units_in_frame(unitSize, Round2(UpscaledWidth, subX));
+	int unitSize = frameHdr->lr_params.LoopRestorationSize[plane];
+	int unitRows = count_units_in_frame(unitSize, Round2(frameHdr->si.FrameHeight, subY));
+	int unitCols = count_units_in_frame(unitSize, Round2(frameHdr->si.UpscaledWidth, subX));
 
 
 	int unitRow = Min(unitRows - 1, ((row * MI_SIZE + 8) >> subY) / unitSize);
 	int unitCol = Min(unitCols - 1, (col * MI_SIZE >> subX) / unitSize);
 
-	int PlaneEndX = Round2(UpscaledWidth, subX) - 1;
-	int PlaneEndY = Round2(FrameHeight, subY) - 1;
+	int PlaneEndX = Round2(frameHdr->si.UpscaledWidth, subX) - 1;
+	int PlaneEndY = Round2(frameHdr->si.FrameHeight, subY) - 1;
 
 
 	int x = col * MI_SIZE >> subX;
@@ -5009,7 +5019,7 @@ void decode::loopRestoreBlock(int plane,int row ,int col){
 	int w = Min(MI_SIZE >> subX, PlaneEndX - x + 1);
 	int h = Min(MI_SIZE >> subY, PlaneEndY - y + 1);
 
-	int rType = LrType[plane][unitRow][unitCol];
+	int rType = b_data->LrType[plane][unitRow][unitCol];
 
 	// 根据rType选择滤波器
 	if (rType == RESTORE_WIENER) {

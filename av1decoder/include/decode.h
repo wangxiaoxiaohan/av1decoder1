@@ -119,8 +119,10 @@ public:
 	int overlappedMotionCompensation(int plane, int w ,int h,PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int predict_overlap(int MiSize,int plane ,int x4,int y4,int predW,int predH,int subX,int subY ,
 				int candRow,int candCol ,int pass,uint8_t *mask,PartitionData *p_data,BlockData *b_data, AV1DecodeContext *av1Ctx);
-	int OverlapBlending(int plane ,int predX,int predY,int predW,int predH ,int pass,uint8_t **obmcPred,uint8_t *mask);
-	int predict_palette(int plane, int startX, int startY, int x, int y, int txSz,BlockData *b_data);
+	int OverlapBlending(int plane ,int predX,int predY,int predW,int predH ,int pass,
+							uint8_t **obmcPred,uint8_t *mask,AV1DecodeContext *av1Ctx);
+	int predict_palette(int plane, int startX, int startY, int x, int y, int txSz,
+						BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int predict_chroma_from_luma(int plane, int startX, int startY, int txSz,BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int get_dc_quant(int plane,BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int get_ac_quant(int plane,BlockData *b_data,AV1DecodeContext *av1Ctx);
@@ -158,15 +160,22 @@ public:
 	void narrowFilter(int x,int y,int plane,int dx ,int dy,int *hevMask,AV1DecodeContext *av1Ctx);
 	void wideFilter(int x,int y,int plane,int dx ,int dy,int log2Size,AV1DecodeContext *av1Ctx);
 
+
+
 	void cdef(TileData *t_data, PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx);
 	void cdefBlock(int r, int c, int idx,PartitionData *p_data, BlockData *b_data,AV1DecodeContext *av1Ctx);
 	void cdefDirectionProcess(int r, int c, int *yDir, int *var,
 									PartitionData *p_data, BlockData *b_data,AV1DecodeContext *av1Ctx);
 	void cdefFilter(int plane, int r, int c, int priStr, int secStr, int damping, int dir,
 							PartitionData *p_data, BlockData *b_data,AV1DecodeContext *av1Ctx );
-
 	int cdef_get_at(int plane,int x0,int y0,int i, int j,int dir,int k,int sign,int subX,int subY,
 							int * CdefAvailable,uint8_t ***CurrFrame,AV1DecodeContext *av1Ctx);
+
+
+	void upscalingProcess(int ***inputFrame,int ***outputFrame,AV1DecodeContext *av1Ctx);
+
+	void loopRestoration(BlockData *b_data,AV1DecodeContext *av1Ctx);
+	void loopRestoreBlock(int plane,int row ,int col,BlockData *b_data,AV1DecodeContext *av1Ctx);
 
 	static decode& Instance() {
 		static decode m_pInstance;

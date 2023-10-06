@@ -97,6 +97,12 @@ public:
 	int reset_block_context(int bw4, int bh4,SymbolContext *sbCtx, bitSt *bs,
 							PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1ctx);
 	int needs_interp_filter(BlockData *b_data,AV1DecodeContext *av1ctx);
+
+	int clear_cdef(int r, int c,BlockData *b_data,AV1DecodeContext *av1Ctx);
+	int read_lr(SymbolContext *sbCtx, bitSt *bs,int r,int c, int bSize,AV1DecodeContext *av1Ctx);
+	int read_lr_unit(SymbolContext *sbCtx, bitSt *bs,int plane,int unitRow,int unitCol,
+						TileData *t_data, BlockData *b_data,AV1DecodeContext  *av1Ctx);
+	int clear_block_decoded_flags(int r, int c, int sbSize4,TileData *t_data, AV1DecodeContext *av1Ctx);
 	static frame& Instance() {
 		static frame m_pInstance;
 		return m_pInstance;
