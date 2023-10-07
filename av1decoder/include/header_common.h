@@ -356,7 +356,6 @@ typedef struct BlockData{
 	uint8_t compound_type;
 	uint8_t interp_filter[2];
 
-
 	uint8_t comp_mode;
 
 	uint8_t AngleDeltaY;
@@ -423,10 +422,6 @@ typedef struct BlockData{
 	int ***UpscaledCdefFrame;
 	int ***UpscaledCurrFrame;
 
-	int ***LrType;
-	int *****LrWiener;
-	int ***LrSgrSet;
-	int ****LrSgrXqd;
 }BlockData;
 
 typedef struct FrameContext{
@@ -435,6 +430,18 @@ typedef struct FrameContext{
 	CDFArrays cdfCtx;
 	uint8_t ***CurrFrame;
 	uint8_t ***CdefFrame;
+	LoopRestorationContext *lrCtx;
+};
+typedef struct LoopRestorationContext{
+	int *****LrWiener;
+	uint8_t ***LrFrame;
+	int ***LrType;
+	int ***LrSgrSet;
+	int ****LrSgrXqd;	
+	int PlaneEndX;   // 当前平面的水平边界
+	int PlaneEndY;   // 当前平面的垂直边界
+	int StripeStartY; // 当前条带的起始y坐标
+	int StripeEndY;   // 当前条带的结束y坐标
 };
 typedef struct AV1DecodeContext{
 	FrameContext 	*ref_frames[NUM_REF_FRAMES];

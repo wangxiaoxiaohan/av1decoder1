@@ -4958,8 +4958,10 @@ void decode::upscalingProcess(int ***inputFrame,int ***outputFrame,AV1DecodeCont
 void decode::loopRestoration(BlockData *b_data,AV1DecodeContext *av1Ctx){
 	frameHeader *frameHdr = av1Ctx->curFrameHdr;
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
-	uint8_t LrFrame[3][frameHdr->si.FrameHeight][frameHdr->si.UpscaledWidth];
-	memcpy(LrFrame,b_data->UpscaledCdefFrame,sizeof(uint8_t) * 3 * frameHdr->si.FrameHeight * frameHdr->si.UpscaledWidth);
+	int size = sizeof(uint8_t) * 3 * frameHdr->si.FrameHeight * frameHdr->si.UpscaledWidth;
+	av1Ctx->currentFrame.LrFrame = (uint8_t *)malloc(size);
+	memcpy(av1Ctx->currentFrame.LrFrame,b_data->UpscaledCdefFrame,size);
+
 
 	// 如果不需要循环恢复，直接返回
 	if (frameHdr->lr_params.UsesLr == 0) {
@@ -5023,18 +5025,19 @@ void decode::loopRestoreBlock(int plane,int row ,int col,BlockData *b_data,AV1De
 
 	// 根据rType选择滤波器
 	if (rType == RESTORE_WIENER) {
-		// 调用Wiener filter process，传入plane、unitRow、unitCol、x、y、w和h作为输入
-		WienerFilter(plane, unitRow, unitCol, x, y, w, h);
+		wienerFilter(plane, unitRow, unitCol, x, y, w, h,b_data,av1Ctx);
 	} else if (rType == RESTORE_SGRPROJ) {
-		// 调用self guided filter process，传入plane、unitRow、unitCol、x、y、w和h作为输入
 		selfGuidedFilter(plane, unitRow, unitCol, x, y, w, h);
 	} else {
 		// 不应用滤波
 	}
 }
 //7.17.2
-void decode::selfGuidedFilter(int plane,int unitRow,int unitCol, int x,int y,int w,int h){
-	int set = LrSgrSet[plane][unitRow][unitCol];
+void decode::selfGuidedFilter(int plane,int unitRow,int unitCol, int x,int y,int w,int h,
+							BlockData *b_data,AV1DecodeContext *av1Ctx){
+	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	sequenceHeader *seqHdr = av1Ctx->seqHdr;
+	int set = av1Ctx->currentFrame.lrCtx->LrSgrSet[plane][unitRow][unitCol];
 	int pass = 0;
 	int[][] flt0 = boxFilter(plane, x, y, w, h, set, pass);
 	pass = 1;
@@ -5071,10 +5074,12 @@ void decode::selfGuidedFilter(int plane,int unitRow,int unitCol, int x,int y,int
 	}
 }
 //7.17.3
-void decode::boxFilter(int plane,int x,int y,int w,int h,int set ,int pass){
-
+void decode::boxFilter(int plane,int x,int y,int w,int h,int set ,int pass,
+				BlockData *b_data,AV1DecodeContext *av1Ctx){
+	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	sequenceHeader *seqHdr = av1Ctx->seqHdr;
 	// 输出数组
-	int[][] F;      // 2D数组，用于存储过滤结果
+	int F[h][w];      // 2D数组，用于存储过滤结果
 
 	// 计算r和eps
 	int r = Sgr_Params[set][pass * 2];
@@ -5087,22 +5092,23 @@ void decode::boxFilter(int plane,int x,int y,int w,int h,int set ,int pass){
 	int n = (2 * r + 1) * (2 * r + 1);
 	int n2e = n * n * eps;
 	int s = (((1 << SGRPROJ_MTABLE_BITS) + n2e / 2) / n2e);
-	int[][] A = new int[h + 2][w + 2];
-	int[][] B = new int[h + 2][w + 2];
-
+	//int[][] A = new int[h + 2][w + 2];
+	//int[][] B = new int[h + 2][w + 2];
+	int A[h + 2][w + 2];
+	int B[h + 2][w + 2];
 	for (int i = -1; i < h + 1; i++) {
 		for (int j = -1; j < w + 1; j++) {
 			int a = 0;
 			int b = 0;
 			for (int dy = -r; dy <= r; dy++) {
 				for (int dx = -r; dx <= r; dx++) {
-					int c = get_source_sample(plane, x + j + dx, y + i + dy);
+					int c = getSourceSample(plane, x + j + dx, y + i + dy);
 					a += c * c;
 					b += c;
 				}
 			}
-			a = Round2(a, 2 * (BitDepth - 8));
-			int d = Round2(b, BitDepth - 8);
+			a = Round2(a, 2 * (seqHdr->color_config.BitDepth - 8));
+			int d = Round2(b, seqHdr->color_config.BitDepth - 8);
 			int p = Max(0, a * n - d * d);
 			int z = Round2(p * s, SGRPROJ_MTABLE_BITS);
 			int a2 = 0;
@@ -5142,29 +5148,31 @@ void decode::boxFilter(int plane,int x,int y,int w,int h,int set ,int pass){
 	}
 }
 //7.17.4
-void decode::wienerFilter(int plane ,int unitRow,int unitCol,int x,int y,int w,int h){
-
-	int[][] LrFrame;  
-
+void decode::wienerFilter(int plane ,int unitRow,int unitCol,int x,int y,int w,int h,
+							BlockData *b_data, AV1DecodeContext *av1Ctx){
+	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	sequenceHeader *seqHdr = av1Ctx->seqHdr;
 	int isCompound = 0;
-	roundingVariablesDerivation(isCompound);
+	roundingVariablesDerivation(isCompound,b_data,av1Ctx);
 	
 
-	int[] vfilter = Wiener_coefficient_process(LrWiener[plane][unitRow][unitCol][0]);
-	int[] hfilter = Wiener_coefficient_process(LrWiener[plane][unitRow][unitCol][1]);
+	int vfilter[7];
+	int hfilter[7];
+	wienerCoefficient(av1Ctx->currentFrame.lrCtx->LrWiener[plane][unitRow][unitCol][0],vfilter);
+	wienerCoefficient(av1Ctx->currentFrame.lrCtx->LrWiener[plane][unitRow][unitCol][1],hfilter);
 
 
-	int[][] intermediate = new int[h + 6][w];
-	int offset = (1 << (BitDepth + FILTER_BITS - InterRound0 - 1));
-	int limit = (1 << (BitDepth + 1 + FILTER_BITS - InterRound0)) - 1;
+	int intermediate[h + 6][ w ];
+	int offset = (1 << (seqHdr->color_config.BitDepth + FILTER_BITS - b_data->InterRound0 - 1));
+	int limit = (1 << (seqHdr->color_config.BitDepth + 1 + FILTER_BITS - b_data->InterRound0)) - 1;
 
 	for (int r = 0; r < h + 6; r++) {
 		for (int c = 0; c < w; c++) {
 			int s = 0;
 			for (int t = 0; t < 7; t++) {
-				s += hfilter[t] * get_source_sample(plane, x + c + t - 3, y + r - 3);
+				s += hfilter[t] * getSourceSample(plane, x + c + t - 3, y + r - 3,b_data,av1Ctx);
 			}
-			int v = Round2(s, InterRound0);
+			int v = Round2(s, b_data->InterRound0);
 			intermediate[r][c] = Clip3(-offset, limit - offset, v);
 		}
 	}
@@ -5175,13 +5183,13 @@ void decode::wienerFilter(int plane ,int unitRow,int unitCol,int x,int y,int w,i
 			for (int t = 0; t < 7; t++) {
 				s += vfilter[t] * intermediate[r + t][c];
 			}
-			int v = Round2(s, InterRound1);
-			LrFrame[plane][y + r][x + c] = Clip1(v);
+			int v = Round2(s, b_data->InterRound1);
+			av1Ctx->currentFrame.lrCtx->LrFrame[plane][y + r][x + c] = Clip1(v,seqHdr->color_config.BitDepth);
 		}
 	}
 }
 //7.17.5
-void decode::wienerCoefficient(int *coeff,int *filter){
+void decode::wienerCoefficient(int coeff[3],int filter[7]){
 	filter[ 3 ] = 128;
 	for (int i = 0; i < 3; i++ ) {
 		int c = coeff[ i ];
@@ -5192,36 +5200,22 @@ void decode::wienerCoefficient(int *coeff,int *filter){
 
 }
 //7.17.6
-void decode::getSourceSample(int plane ,int x,int y){
-
-	int PlaneEndX;   // 当前平面的水平边界
-	int PlaneEndY;   // 当前平面的垂直边界
-	int StripeStartY; // 当前条带的起始y坐标
-	int StripeEndY;   // 当前条带的结束y坐标
-
-	// 获取当前平面的边界
-	PlaneEndX = Round2(UpscaledWidth, subX) - 1;
-	PlaneEndY = Round2(FrameHeight, subY) - 1;
-
-	// 获取当前条带的边界
-	StripeStartY = (-8 + stripeNum * 64) >> subY;
-	StripeEndY = StripeStartY + (64 >> subY) - 1;
-
+int decode::getSourceSample(int plane ,int x,int y,BlockData *b_data, AV1DecodeContext *av1Ctx){
 	// 确保x和y在合法范围内
-	x = Min(PlaneEndX, x);
+	x = Min(av1Ctx->currentFrame.lrCtx->PlaneEndX, x);
 	x = Max(0, x);
-	y = Min(PlaneEndY, y);
+	y = Min(av1Ctx->currentFrame.lrCtx->PlaneEndY, y);
 	y = Max(0, y);
 
 	// 根据y的位置确定样本来源
-	if (y < StripeStartY) {
-		y = Max(StripeStartY - 2, y);
-		return UpscaledCurrFrame[plane][y][x];
-	} else if (y > StripeEndY) {
-		y = Min(StripeEndY + 2, y);
-		return UpscaledCurrFrame[plane][y][x];
+	if (y < av1Ctx->currentFrame.lrCtx->StripeStartY) {
+		y = Max(av1Ctx->currentFrame.lrCtx->StripeStartY - 2, y);
+		return b_data->UpscaledCurrFrame[plane][y][x];
+	} else if (y > av1Ctx->currentFrame.lrCtx->StripeEndY) {
+		y = Min(av1Ctx->currentFrame.lrCtx->StripeEndY + 2, y);
+		return b_data->UpscaledCurrFrame[plane][y][x];
 	} else {
-		return UpscaledCdefFrame[plane][y][x];
+		return b_data->UpscaledCdefFrame[plane][y][x];
 	}
 }
 //7.18

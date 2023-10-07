@@ -176,7 +176,10 @@ public:
 
 	void loopRestoration(BlockData *b_data,AV1DecodeContext *av1Ctx);
 	void loopRestoreBlock(int plane,int row ,int col,BlockData *b_data,AV1DecodeContext *av1Ctx);
-
+	void wienerFilter(int plane ,int unitRow,int unitCol,int x,int y,int w,int h,
+								BlockData *b_data, AV1DecodeContext *av1Ctx);
+	void wienerCoefficient(int coeff[3],int filter[7]);
+	int getSourceSample(int plane ,int x,int y,BlockData *b_data, AV1DecodeContext *av1Ctx);
 	static decode& Instance() {
 		static decode m_pInstance;
 		return m_pInstance;
