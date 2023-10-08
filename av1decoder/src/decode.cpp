@@ -5021,7 +5021,7 @@ void decode::loopRestoreBlock(int plane,int row ,int col,BlockData *b_data,AV1De
 	int w = Min(MI_SIZE >> subX, PlaneEndX - x + 1);
 	int h = Min(MI_SIZE >> subY, PlaneEndY - y + 1);
 
-	int rType = b_data->LrType[plane][unitRow][unitCol];
+	int rType = av1Ctx->currentFrame.lrCtx->LrType[plane][unitRow][unitCol];
 
 	// 根据rType选择滤波器
 	if (rType == RESTORE_WIENER) {
@@ -5039,13 +5039,15 @@ void decode::selfGuidedFilter(int plane,int unitRow,int unitCol, int x,int y,int
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
 	int set = av1Ctx->currentFrame.lrCtx->LrSgrSet[plane][unitRow][unitCol];
 	int pass = 0;
-	int[][] flt0 = boxFilter(plane, x, y, w, h, set, pass);
+	int flt0[h][w];
+	boxFilter(plane, x, y, w, h, set, pass,(int **)flt0,b_data,av1Ctx);
 	pass = 1;
-	int[][] flt1 = boxFilter(plane, x, y, w, h, set, pass);
+	int flt1[h][w];
+	boxFilter(plane, x, y, w, h, set, pass,(int **)flt1,b_data,av1Ctx);
 
 	// 计算权重和参数
-	int w0 = LrSgrXqd[plane][unitRow][unitCol][0];
-	int w1 = LrSgrXqd[plane][unitRow][unitCol][1];
+	int w0 = av1Ctx->currentFrame.lrCtx->LrSgrXqd[plane][unitRow][unitCol][0];
+	int w1 = av1Ctx->currentFrame.lrCtx->LrSgrXqd[plane][unitRow][unitCol][1];
 	int w2 = (1 << SGRPROJ_PRJ_BITS) - w0 - w1;
 	int r0 = Sgr_Params[set][0];
 	int r1 = Sgr_Params[set][2];
@@ -5053,7 +5055,7 @@ void decode::selfGuidedFilter(int plane,int unitRow,int unitCol, int x,int y,int
 	// 应用恢复过程
 	for (int i = 0; i < h; i++) {
 		for (int j = 0; j < w; j++) {
-			int u = UpscaledCdefFrame[plane][y + i][x + j] << SGRPROJ_RST_BITS;
+			int u = b_data->UpscaledCdefFrame[plane][y + i][x + j] << SGRPROJ_RST_BITS;
 			int v = w1 * u;
 			
 			if (r0 != 0) {
@@ -5069,17 +5071,15 @@ void decode::selfGuidedFilter(int plane,int unitRow,int unitCol, int x,int y,int
 			}
 			
 			int s = Round2(v, SGRPROJ_RST_BITS + SGRPROJ_PRJ_BITS);
-			LrFrame[plane][y + i][x + j] = Clip1(s);
+			av1Ctx->currentFrame.lrCtx->LrFrame[plane][y + i][x + j] = Clip1(s);
 		}
 	}
 }
 //7.17.3
-void decode::boxFilter(int plane,int x,int y,int w,int h,int set ,int pass,
+void decode::boxFilter(int plane,int x,int y,int w,int h,int set ,int pass,int **F,
 				BlockData *b_data,AV1DecodeContext *av1Ctx){
 	frameHeader *frameHdr = av1Ctx->curFrameHdr;
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
-	// 输出数组
-	int F[h][w];      // 2D数组，用于存储过滤结果
 
 	// 计算r和eps
 	int r = Sgr_Params[set][pass * 2];
@@ -5102,7 +5102,7 @@ void decode::boxFilter(int plane,int x,int y,int w,int h,int set ,int pass,
 			int b = 0;
 			for (int dy = -r; dy <= r; dy++) {
 				for (int dx = -r; dx <= r; dx++) {
-					int c = getSourceSample(plane, x + j + dx, y + i + dy);
+					int c = getSourceSample(plane, x + j + dx, y + i + dy,b_data,av1Ctx);
 					a += c * c;
 					b += c;
 				}
@@ -5142,7 +5142,7 @@ void decode::boxFilter(int plane,int x,int y,int w,int h,int set ,int pass,
 					b += weight * B[i + dy + 1][j + dx + 1];
 				}
 			}
-			int v = a * UpscaledCdefFrame[plane][y + i][x + j] + b;
+			int v = a * b_data->UpscaledCdefFrame[plane][y + i][x + j] + b;
 			F[i][j] = Round2(v, SGRPROJ_SGR_BITS + shift - SGRPROJ_RST_BITS);
 		}
 	}
@@ -5218,59 +5218,119 @@ int decode::getSourceSample(int plane ,int x,int y,BlockData *b_data, AV1DecodeC
 		return b_data->UpscaledCdefFrame[plane][y][x];
 	}
 }
-//7.18
-void decode::filmGrainSynthesis(int w, int h, int subX, int subY) {
+//7.18.2
+void decode::output(AV1DecodeContext *av1Ctx){
+	int bitDepth;
+	intermediateOutputPreparation(&bitDepth,av1Ctx);
+	filmGrainSynthesis();
+
+}
+void decode::intermediateOutputPreparation(int *bitDepth,AV1DecodeContext *av1Ctx){
+	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	sequenceHeader *seqHdr = av1Ctx->seqHdr;
+	int w,h,subX,subY,BitDepth;//输出的 bitdepth 以此为准
+	if (frameHdr->show_existing_frame == 1) {
+		// Copy from a previously decoded frame
+		w = (*av1Ctx->RefUpscaledWidth)[frameHdr->frame_to_show_map_idx];
+		h = (*av1Ctx->RefFrameHeight)[frameHdr->frame_to_show_map_idx];
+		subX = av1Ctx->RefSubsamplingX[frameHdr->frame_to_show_map_idx];
+		subY = av1Ctx->RefSubsamplingY[frameHdr->frame_to_show_map_idx];
+
+		for (int y = 0; y < h; y++) {
+			for (int x = 0; x < w; x++) {
+				av1Ctx->currentFrame.OutY[y][x] = av1Ctx->FrameStore[frameHdr->frame_to_show_map_idx][0][y][x];
+			}
+		}
+
+		for (int y = 0; y < ((h + subY) >> subY); y++) {
+			for (int x = 0; x < ((w + subX) >> subX); x++) {
+				av1Ctx->currentFrame.OutU[y][x] = av1Ctx->FrameStore[frameHdr->frame_to_show_map_idx][1][y][x];
+				av1Ctx->currentFrame.OutV[y][x] = av1Ctx->FrameStore[frameHdr->frame_to_show_map_idx][2][y][x];
+			}
+		}
+		BitDepth = av1Ctx->RefBitDepth[frameHdr->frame_to_show_map_idx];
+	} else {
+		// Copy from the current frame
+		w = av1Ctx->currentFrame.si.UpscaledWidth;
+		h = av1Ctx->currentFrame.si.FrameHeight;
+		subX = seqHdr->color_config.subsampling_x;
+		subY = seqHdr->color_config.subsampling_y;
+
+		for (int y = 0; y < h; y++) {
+			for (int x = 0; x < w; x++) {
+				av1Ctx->currentFrame.OutY[y][x] = av1Ctx->currentFrame.lrCtx->LrFrame[0][y][x];
+			}
+		}
+
+		for (int y = 0; y < ((h + subY) >> subY); y++) {
+			for (int x = 0; x < ((w + subX) >> subX); x++) {
+				av1Ctx->currentFrame.OutU[y][x] = av1Ctx->currentFrame.lrCtx->LrFrame[1][y][x];
+				av1Ctx->currentFrame.OutV[y][x] = av1Ctx->currentFrame.lrCtx->LrFrame[2][y][x];
+			}
+		}
+
+		BitDepth = av1Ctx->RefBitDepth[0];  // BitDepth for each sample
+	}
+
+}
+//7.18.3
+//这里的bitdepth 到底是 用 序列参数集中的 还是 intermediateOutputPreparation中修改过的？？ 标记
+void decode::filmGrainSynthesis(int w, int h, int subX, int subY,AV1DecodeContext *av1Ctx) {
+	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	sequenceHeader *seqHdr = av1Ctx->seqHdr;
     // 设置随机数生成器的初始状态
-    int RandomRegister = grain_seed;
+    int RandomRegister = frameHdr->film_grain_params.grain_seed;
     
     // 计算常数值
-    int GrainCenter = 128 << (BitDepth - 8);
+    int GrainCenter = 128 << (seqHdr->color_config.BitDepth - 8);
     int GrainMin = -GrainCenter;
-    int GrainMax = (256 << (BitDepth - 8)) - 1 - GrainCenter;
+    int GrainMax = (256 << (seqHdr->color_config.BitDepth - 8)) - 1 - GrainCenter;
     
-    GenerateGrain(w, h, subX, subY);
+    generateGrain();
 
     
     // 初始化缩放查找表
-    InitializeScalingLookup(BitDepth);
+    initializeScalingLookup(seqHdr->color_config.BitDepth);
     
     // 添加噪音
     AddNoise(w, h, subX, subY);
 
 }
-int decode::get_random_number( int bits ) {
-	int r = RandomRegister;
+int decode::get_random_number( int bits ,int *RandomRegister) {
+	int r = *RandomRegister;
 	int bit = ((r >> 0) ^ (r >> 1) ^ (r >> 3) ^ (r >> 12)) & 1;
 	r = (r >> 1) | (bit << 15);
 	int result = (r >> (16 - bits)) & ((1 << bits) - 1);
-	RandomRegister = r;
+	*RandomRegister = r;
 	return result;
 }
-void decode::generateGrain() {
+void decode::generateGrain(int GrainMin,int GrainMax, int *RandomRegister ,AV1DecodeContext *av1Ctx) {
+	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	sequenceHeader *seqHdr = av1Ctx->seqHdr;
     // 生成白噪声
-    int shift = 12 - BitDepth + grain_scale_shift;
+    int shift = 12 - seqHdr->color_config.BitDepth + frameHdr->film_grain_params.grain_scale_shift;
     for (int y = 0; y < 73; y++) {
         for (int x = 0; x < 82; x++) {
             int g = 0;
-            if (num_y_points > 0) {
-                g = Gaussian_Sequence[get_random_number(11)];
+            if (frameHdr->film_grain_params.num_y_points > 0) {
+                g = Gaussian_Sequence[get_random_number(11,RandomRegister)];
             }
             LumaGrain[y][x] = Round2(g, shift);
         }
     }
 
     // 应用自回归滤波
-    shift = ar_coeff_shift_minus_6 + 6;
+    shift = frameHdr->film_grain_params.ar_coeff_shift;
     for (int y = 3; y < 73; y++) {
         for (int x = 3; x < 82 - 3; x++) {
             int s = 0;
             int pos = 0;
-            for (int deltaRow = -ar_coeff_lag; deltaRow <= 0; deltaRow++) {
-                for (int deltaCol = -ar_coeff_lag; deltaCol <= ar_coeff_lag; deltaCol++) {
+            for (int deltaRow = -frameHdr->film_grain_params.ar_coeff_lag; deltaRow <= 0; deltaRow++) {
+                for (int deltaCol = -frameHdr->film_grain_params.ar_coeff_lag; deltaCol <= frameHdr->film_grain_params.ar_coeff_lag; deltaCol++) {
                     if (deltaRow == 0 && deltaCol == 0) {
                         break;
                     }
-                    int c = ar_coeffs_y_plus_128[pos] - 128;
+                    int c = frameHdr->film_grain_params.ar_coeffs_y_plus_128[pos] - 128;
                     s += LumaGrain[y + deltaRow][x + deltaCol] * c;
                     pos++;
                 }
@@ -5278,55 +5338,55 @@ void decode::generateGrain() {
             LumaGrain[y][x] = Clip3(GrainMin, GrainMax, LumaGrain[y][x] + Round2(s, shift));
         }
     }
-
+	if(seqHdr->color_config.mono_chrome == 1) return;
     // 生成色度噪声
-    int chromaW = (subX ? 44 : 82);
-    int chromaH = (subY ? 38 : 73);
-    shift = 12 - BitDepth + grain_scale_shift;
-    int RandomRegister = grain_seed ^ 0xb524;
+    int chromaW = (seqHdr->color_config.subsampling_x ? 44 : 82);
+    int chromaH = (seqHdr->color_config.subsampling_y ? 38 : 73);
+    shift = 12 - seqHdr->color_config.BitDepth + frameHdr->film_grain_params.grain_scale_shift;
+    *RandomRegister = frameHdr->film_grain_params.grain_seed ^ 0xb524;
     for (int y = 0; y < chromaH; y++) {
         for (int x = 0; x < chromaW; x++) {
             int g = 0;
-            if (num_cb_points > 0 || chroma_scaling_from_luma) {
-                g = Gaussian_Sequence[get_random_number(11)];
+            if (frameHdr->film_grain_params.num_cb_points > 0 || frameHdr->film_grain_params.chroma_scaling_from_luma) {
+                g = Gaussian_Sequence[get_random_number(11,RandomRegister)];
             }
             CbGrain[y][x] = Round2(g, shift);
         }
     }
 
-    RandomRegister = grain_seed ^ 0x49d8;
+    *RandomRegister = frameHdr->film_grain_params.grain_seed ^ 0x49d8;
     for (int y = 0; y < chromaH; y++) {
         for (int x = 0; x < chromaW; x++) {
             int g = 0;
-            if (num_cr_points > 0 || chroma_scaling_from_luma) {
-                g = Gaussian_Sequence[get_random_number(11)];
+            if (frameHdr->film_grain_params.num_cr_points > 0 || frameHdr->film_grain_params.chroma_scaling_from_luma) {
+                g = Gaussian_Sequence[get_random_number(11,RandomRegister)];
             }
             CrGrain[y][x] = Round2(g, shift);
         }
     }
 
     // 应用自回归滤波到色度噪声
-    shift = ar_coeff_shift_minus_6 + 6;
+    shift = frameHdr->film_grain_params.ar_coeff_shift;
     for (int y = 3; y < chromaH; y++) {
         for (int x = 3; x < chromaW - 3; x++) {
             int s0 = 0;
             int s1 = 0;
             int pos = 0;
-            for (int deltaRow = -ar_coeff_lag; deltaRow <= 0; deltaRow++) {
-                for (int deltaCol = -ar_coeff_lag; deltaCol <= ar_coeff_lag; deltaCol++) {
-                    int c0 = ar_coeffs_cb_plus_128[pos] - 128;
-                    int c1 = ar_coeffs_cr_plus_128[pos] - 128;
+            for (int deltaRow = -frameHdr->film_grain_params.ar_coeff_lag; deltaRow <= 0; deltaRow++) {
+                for (int deltaCol = -frameHdr->film_grain_params.ar_coeff_lag; deltaCol <= frameHdr->film_grain_params.ar_coeff_lag; deltaCol++) {
+                    int c0 = frameHdr->film_grain_params.ar_coeffs_cb_plus_128[pos] - 128;
+                    int c1 = frameHdr->film_grain_params.ar_coeffs_cr_plus_128[pos] - 128;
                     if (deltaRow == 0 && deltaCol == 0) {
-                        if (num_y_points > 0) {
+                        if (frameHdr->film_grain_params.num_y_points > 0) {
                             int luma = 0;
-                            int lumaX = ((x - 3) << subX) + 3;
-                            int lumaY = ((y - 3) << subY) + 3;
-                            for (int i = 0; i <= subY; i++) {
-                                for (int j = 0; j <= subX; j++) {
+                            int lumaX = ((x - 3) << seqHdr->color_config.subsampling_x) + 3;
+                            int lumaY = ((y - 3) << seqHdr->color_config.subsampling_y) + 3;
+                            for (int i = 0; i <= seqHdr->color_config.subsampling_y; i++) {
+                                for (int j = 0; j <= seqHdr->color_config.subsampling_x; j++) {
                                     luma += LumaGrain[lumaY + i][lumaX + j];
                                 }
                             }
-                            luma = Round2(luma, subX + subY);
+                            luma = Round2(luma, seqHdr->color_config.subsampling_x + seqHdr->color_config.subsampling_y);
                             s0 += luma * c0;
                             s1 += luma * c1;
                         }

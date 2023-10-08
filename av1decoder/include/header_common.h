@@ -431,7 +431,11 @@ typedef struct FrameContext{
 	uint8_t ***CurrFrame;
 	uint8_t ***CdefFrame;
 	LoopRestorationContext *lrCtx;
+	int **OutY;
+	int **OutU;
+	int **OutV;
 };
+
 typedef struct LoopRestorationContext{
 	int *****LrWiener;
 	uint8_t ***LrFrame;

@@ -180,6 +180,16 @@ public:
 								BlockData *b_data, AV1DecodeContext *av1Ctx);
 	void wienerCoefficient(int coeff[3],int filter[7]);
 	int getSourceSample(int plane ,int x,int y,BlockData *b_data, AV1DecodeContext *av1Ctx);
+	void selfGuidedFilter(int plane,int unitRow,int unitCol, int x,int y,int w,int h,
+								BlockData *b_data,AV1DecodeContext *av1Ctx);
+	void boxFilter(int plane,int x,int y,int w,int h,int set ,int pass,int **F,
+					BlockData *b_data,AV1DecodeContext *av1Ctx);
+
+	void output(AV1DecodeContext *av1Ctx);
+	void intermediateOutputPreparation(int *bidepth,AV1DecodeContext *av1Ctx);
+	void filmGrainSynthesis(int w, int h, int subX, int subY,AV1DecodeContext *av1Ctx);
+	int get_random_number( int bits ,int *RandomRegister);
+	void generateGrain(int *RandomRegister ,AV1DecodeContext *av1Ctx);
 	static decode& Instance() {
 		static decode m_pInstance;
 		return m_pInstance;
