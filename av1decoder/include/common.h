@@ -9076,12 +9076,12 @@ int inline has_nearmv(int YMode)
 {
 	return (YMode == NEARMV || YMode == NEAR_NEARMV || YMode == NEAR_NEWMV || YMode == NEW_NEARMV);
 }
-int inline is_scaled(int refFrame, uint8_t *ref_frame_idx, uint8_t *RefUpscaledWidth, uint8_t *RefFrameHeight,
+int inline is_scaled(int refFrame, uint8_t *ref_frame_idx, Array16 *RefUpscaledWidth, Array16 *RefFrameHeight,
 					 int FrameWidth, int FrameHeight)
 {
 	int refIdx = ref_frame_idx[refFrame - LAST_FRAME];
-	int xScale = ((RefUpscaledWidth[refIdx] << REF_SCALE_SHIFT) + (FrameWidth / 2)) / FrameWidth;
-	int yScale = ((RefFrameHeight[refIdx] << REF_SCALE_SHIFT) + (FrameHeight / 2)) / FrameHeight;
+	int xScale = (((*RefUpscaledWidth)[refIdx] << REF_SCALE_SHIFT) + (FrameWidth / 2)) / FrameWidth;
+	int yScale = (((*RefFrameHeight)[refIdx] << REF_SCALE_SHIFT) + (FrameHeight / 2)) / FrameHeight;
 	int noScale = 1 << REF_SCALE_SHIFT;
 	return xScale != noScale || yScale != noScale;
 }

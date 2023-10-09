@@ -418,10 +418,6 @@ typedef struct BlockData{
 	int InterRound1; //representing the amount to round by after vertical filtering
 
 	int **Mask;
-	uint8_t **cdef_idx;
-
-	int ***UpscaledCdefFrame;
-	int ***UpscaledCurrFrame;
 
 }BlockData;
 typedef struct LoopRestorationContext{
@@ -445,14 +441,17 @@ typedef struct FrameContext{
 	sizeInfo si;
 	frameHeader frameHdr;
 	CDFArrays cdfCtx;
-	uint8_t ***CurrFrame;
-	uint8_t ***CdefFrame;
+	int ***CurrFrame;
+	int ***CdefFrame;
+	int ***UpscaledCdefFrame;
+	int ***UpscaledCurrFrame;
 	LoopRestorationContext *lrCtx;
 	int **OutY;
 	int **OutU;
 	int **OutV;
 	FilmGainContext *fgCtx;
 	MFMVContext *mfmvCtx;
+	uint8_t **cdef_idx;
 };
 typedef struct MFMVContext{
 	int **MfRefFrames;

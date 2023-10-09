@@ -93,7 +93,7 @@ public:
 	int smoothIntraPrediction(int mode, int log2W, int log2H, int w, int h, uint8_t **pred,BlockData *b_data);
 	int DCIntraPrediction(int haveLeft ,int haveAbove,int log2W,int log2H,int w,int h,uint8_t **pred,
 									BlockData *b_data,AV1DecodeContext *av1Ctx);
-	int predict_inter(int plane, int x, int y,int w ,int h ,int candRow,int candCol,
+	int predict_inter(int plane, int x, int y,int w ,int h ,int candRow,int candCol,int IsInterIntra,
 							TileData *t_data,PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int roundingVariablesDerivation(int isCompound,BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int warpEstimation(int **CandList, int LocalWarpParams[6], int *LocalValid,BlockData *b_data,AV1DecodeContext *av1Ctx);
@@ -193,7 +193,10 @@ public:
 	void scalingLookupInitialization(AV1DecodeContext *av1Ctx);
 	int get_x(int plane, int i,AV1DecodeContext *av1Ctx);
 	int get_y(int plane, int i,AV1DecodeContext *av1Ctx);
+	void addNoiseSynthesis(int GrainMin,int GrainMax,int * RandomRegister,int w, int h, int subX, int subY, AV1DecodeContext *av1Ctx);
 	void motionFieldMotionVectorStorage(PartitionData *p_data, AV1DecodeContext *av1Ctx);
+	void referenceFrameUpdate(PartitionData *p_data, AV1DecodeContext *av1Ctx);
+	void referenceFrameLoading(PartitionData *p_data, AV1DecodeContext *av1Ctx);
 	static decode& Instance() {
 		static decode m_pInstance;
 		return m_pInstance;

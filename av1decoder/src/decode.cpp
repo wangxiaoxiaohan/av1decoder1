@@ -2894,9 +2894,10 @@ int decode::intraEdgeFilter(int sz, int strength, int left,BlockData *b_data){
 /*帧内预测结束*/
 /*帧间预测*/
 
-int decode::predict_inter(int plane, int x, int y,int w ,int h ,int candRow,int candCol,
+int decode::predict_inter(int plane, int x, int y,int w ,int h ,int candRow,int candCol,int IsInterIntra,
 							TileData *t_data,PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx){
 	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	sequenceHeader *seqHdr = av1Ctx->seqHdr;
 	int isCompound =  p_data->RefFrames[ candRow ][ candCol ][ 1 ] > INTRA_FRAME;
 	roundingVariablesDerivation(isCompound,b_data,av1Ctx);
 	int LocalValid;
@@ -2985,25 +2986,25 @@ genArray:
 
 	int FwdWeight,BckWeight;
 	if(b_data->compound_type == COMPOUND_DISTANCE){
-		distanceWeights(candRow,candCol,&FwdWeight,&BckWeight);
+		distanceWeights(candRow,candCol,&FwdWeight,&BckWeight,p_data,av1Ctx);
 	}
 
 	if(isCompound == 0 && IsInterIntra == 0){
 		for(int i = 0 ; i < h ; i ++){
 			for(int j = 0 ; j < w ; j ++){
-				CurrFrame[ plane ][ y + i ][ x + j ] = Clip1(preds[ 0 ][ i ][ j ] ,seqHdr->color_config.BitDepth);
+			    av1Ctx->currentFrame.CurrFrame[ plane ][ y + i ][ x + j ] = Clip1(preds[ 0 ][ i ][ j ] ,seqHdr->color_config.BitDepth);
 			}
 		}
 	}else if(b_data->compound_type == COMPOUND_AVERAGE){
 		for(int i = 0 ; i < h ; i ++){
 			for(int j = 0 ; j < w ; j ++){
-				CurrFrame[ plane ][ y + i ][ x + j ] = Clip1( Round2( preds[ 0 ][ i ][ j ] + preds[ 1 ][ i ][ j ], 1 + InterPostRound ),seqHdr->color_config.BitDepth );
+				av1Ctx->currentFrame.CurrFrame[ plane ][ y + i ][ x + j ] = Clip1( Round2( preds[ 0 ][ i ][ j ] + preds[ 1 ][ i ][ j ], 1 + b_data->InterPostRound ),seqHdr->color_config.BitDepth );
 			}
 		}
 	}else if(b_data->compound_type == COMPOUND_DISTANCE){
 		for(int i = 0 ; i < h ; i ++){
 			for(int j = 0 ; j < w ; j ++){
-				CurrFrame[ plane ][ y + i ][ x + j ] = Clip1( Round2( FwdWeight * preds[ 0 ][ i ][ j ] + BckWeight * preds[ 1 ][ i ][ j ], 4 + InterPostRound ) ,seqHdr->color_config.BitDepth);
+				av1Ctx->currentFrame.CurrFrame[ plane ][ y + i ][ x + j ] = Clip1( Round2( FwdWeight * preds[ 0 ][ i ][ j ] + BckWeight * preds[ 1 ][ i ][ j ], 4 + b_data->InterPostRound ) ,seqHdr->color_config.BitDepth);
 			}
 		}
 	}else{
@@ -3011,7 +3012,7 @@ genArray:
 	}
 
 	if(b_data->motion_mode == OBMC ){
-		overlappedMotionCompensation();
+		overlappedMotionCompensation(plane,w,h,p_data,b_data,av1Ctx);
 	}
 
 }
@@ -3475,7 +3476,7 @@ int decode::distanceWeights(int candRow,int candCol,int *FwdWeight,int *BckWeigh
     int i;  
   
     for (refList = 0; refList < 2; refList++) {  
-		h = av1Ctx->OrderHints[ p_data->RefFrames[ candRow ][ candCol ][ refList ] ];
+		h = frameHdr->OrderHints[ p_data->RefFrames[ candRow ][ candCol ][ refList ] ];
 		dist[ refList ] = Clip3( 0, MAX_FRAME_DISTANCE, Abs( get_relative_dist( seqHdr->enable_order_hint,seqHdr->OrderHintBits,h, frameHdr->OrderHint ) ) );
     }  
   
@@ -4959,7 +4960,8 @@ void decode::loopRestoration(BlockData *b_data,AV1DecodeContext *av1Ctx){
 	frameHeader *frameHdr = av1Ctx->curFrameHdr;
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
 	int size = sizeof(uint8_t) * 3 * frameHdr->si.FrameHeight * frameHdr->si.UpscaledWidth;
-	av1Ctx->currentFrame.lrCtx->LrFrame = (uint8_t *)malloc(size);
+	//记得delete 这个
+	av1Ctx->currentFrame.lrCtx->LrFrame = new uint8_t[3][frameHdr->si.FrameHeight][frameHdr->si.UpscaledWidth];
 	memcpy(av1Ctx->currentFrame.lrCtx->LrFrame,b_data->UpscaledCdefFrame,size);
 
 
@@ -5290,7 +5292,7 @@ void decode::filmGrainSynthesis(int w, int h, int subX, int subY,AV1DecodeContex
     scalingLookupInitialization(av1Ctx);
     
     // 添加噪音
-    AddNoise(w, h, subX, subY);
+    addNoiseSynthesis(GrainMin,GrainMax,&RandomRegister, w, h, subX, subY,av1Ctx);
 
 }
 int decode::get_random_number( int bits ,int *RandomRegister) {
@@ -5454,9 +5456,78 @@ int decode::get_y(int plane, int i,AV1DecodeContext *av1Ctx) {
     else
         return frameHdr->film_grain_params.point_cr_scaling[i];
 }
+//This process combines the film grain with the image data.
+void decode::addNoiseSynthesis(int GrainMin,int GrainMax,int * RandomRegister,int w, int h, int subX, int subY, AV1DecodeContext *av1Ctx)
+{
+	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	sequenceHeader *seqHdr = av1Ctx->seqHdr;
+	int lumaNum = 0;
+	int noiseStripe[(h + 1) / 2][3][34][w];
+	int rand,offsetX,offsetY,planeSubX,planeSubY,planeOffsetX,planeOffsetY,g,old;
+	for (int y = 0; y < (h + 1) / 2; y += 16)
+	{
+		*RandomRegister = frameHdr->film_grain_params.grain_seed;
+		*RandomRegister ^= ((lumaNum * 37 + 178) & 255) << 8;
+		*RandomRegister ^= ((lumaNum * 173 + 105) & 255);
+		for (int x = 0; x < (w + 1) / 2; x += 16)
+		{
+			rand = get_random_number(8,RandomRegister);
+			offsetX = rand >> 4;
+			offsetY = rand & 15;
+			for (int plane = 0; plane < seqHdr->color_config.NumPlanes; plane++)
+			{
+				planeSubX = (plane > 0) ? subX : 0;
+				planeSubY = (plane > 0) ? subY : 0;
+				planeOffsetX = planeSubX ? 6 + offsetX : 9 + offsetX * 2;
+				planeOffsetY = planeSubY ? 6 + offsetY : 9 + offsetY * 2;
+				for (int i = 0; i < 34 >> planeSubY; i++)
+				{
+					for (int j = 0; j < 34 >> planeSubX; j++)
+					{
+						if (plane == 0)
+							g = av1Ctx->currentFrame.fgCtx->LumaGrain[planeOffsetY + i][planeOffsetX + j];
+						else if (plane == 1)
+							g = av1Ctx->currentFrame.fgCtx->CbGrain[planeOffsetY + i][planeOffsetX + j];
+						else
+							g = av1Ctx->currentFrame.fgCtx->CrGrain[planeOffsetY + i][planeOffsetX + j];
+						if (planeSubX == 0)
+						{
+							if (j < 2 && frameHdr->film_grain_params.overlap_flag && x > 0)
+							{
+								old = noiseStripe[lumaNum][plane][i][x * 2 + j];
+								if (j == 0)
+								{
+									g = old * 27 + g * 17;
+								}
+								else
+								{
+									g = old * 17 + g * 27;
+								}
+								g = Clip3(GrainMin, GrainMax, Round2(g, 5));
+							}
+							noiseStripe[lumaNum][plane][i][x * 2 + j] = g;
+						}
+						else
+						{
+							if (j == 0 && frameHdr->film_grain_params.overlap_flag && x > 0)
+							{
+								old = noiseStripe[lumaNum][plane][i][x + j];
+								g = old * 23 + g * 22;
+								g = Clip3(GrainMin, GrainMax, Round2(g, 5));
+							}
+							noiseStripe[lumaNum][plane][i][x + j] = g;
+						}
+					}
+				}
+			}
+		}
+		lumaNum++;
+	}
+}
 //7.19
 void decode::motionFieldMotionVectorStorage(PartitionData *p_data, AV1DecodeContext *av1Ctx){
 	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	sequenceHeader *seqHdr = av1Ctx->seqHdr;
 	for (int row = 0; row < frameHdr->MiRows; row++) {
 		for (int col = 0; col < frameHdr->MiCols; col++) {
 			av1Ctx->currentFrame.mfmvCtx->MfRefFrames[row][col] = NONE;
@@ -5468,7 +5539,7 @@ void decode::motionFieldMotionVectorStorage(PartitionData *p_data, AV1DecodeCont
 
 				if (r > INTRA_FRAME) {
 					int refIdx = frameHdr->ref_frame_idx[r - LAST_FRAME];
-					int dist = get_relative_dist(av1Ctx->RefOrderHint[refIdx], frameHdr->OrderHint);
+					int dist = get_relative_dist(seqHdr->enable_order_hint,seqHdr->OrderHintBits, av1Ctx->RefOrderHint[refIdx], frameHdr->OrderHint);
 
 					if (dist < 0) {
 						int mvRow = p_data->Mvs[row][col][list][0];
@@ -5614,7 +5685,7 @@ void decode::referenceFrameLoading(PartitionData *p_data, AV1DecodeContext *av1C
 		}
 	}
 
-	load_cdfs(frameHdr->frame_to_show_map_idx);
+	load_cdfs(av1Ctx, frameHdr->frame_to_show_map_idx);
 
 	if (seqHdr->film_grain_params_present == 1) {
 		load_grain_params(frameHdr->frame_to_show_map_idx);
