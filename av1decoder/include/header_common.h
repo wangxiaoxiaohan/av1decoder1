@@ -127,6 +127,7 @@ typedef struct frameHeader{
 	uint8_t current_frame_id;
 	uint8_t frame_size_override_flag;
 	uint8_t OrderHint; //order_hint
+	uint8_t	OrderHints[REFS_PER_FRAME]; //OrderHints specifies the expected output order for each reference frame.
 	uint8_t primary_ref_frame;
 	uint8_t buffer_removal_time_present_flag;
 	struct frameHeaderOperatingPoint {
@@ -423,19 +424,6 @@ typedef struct BlockData{
 	int ***UpscaledCurrFrame;
 
 }BlockData;
-
-typedef struct FrameContext{
-	sizeInfo si;
-	frameHeader frameHdr;
-	CDFArrays cdfCtx;
-	uint8_t ***CurrFrame;
-	uint8_t ***CdefFrame;
-	LoopRestorationContext *lrCtx;
-	int **OutY;
-	int **OutU;
-	int **OutV;
-};
-
 typedef struct LoopRestorationContext{
 	int *****LrWiener;
 	uint8_t ***LrFrame;
@@ -446,6 +434,29 @@ typedef struct LoopRestorationContext{
 	int PlaneEndY;   // 当前平面的垂直边界
 	int StripeStartY; // 当前条带的起始y坐标
 	int StripeEndY;   // 当前条带的结束y坐标
+};
+typedef struct FilmGainContext{
+	int **LumaGrain;
+	int **CbGrain;
+	int **CrGrain;
+	int **ScalingLut;
+};
+typedef struct FrameContext{
+	sizeInfo si;
+	frameHeader frameHdr;
+	CDFArrays cdfCtx;
+	uint8_t ***CurrFrame;
+	uint8_t ***CdefFrame;
+	LoopRestorationContext *lrCtx;
+	int **OutY;
+	int **OutU;
+	int **OutV;
+	FilmGainContext *fgCtx;
+	MFMVContext *mfmvCtx;
+};
+typedef struct MFMVContext{
+	int **MfRefFrames;
+	int ***MfMvs;
 };
 typedef struct AV1DecodeContext{
 	FrameContext 	*ref_frames[NUM_REF_FRAMES];
@@ -472,7 +483,6 @@ typedef struct AV1DecodeContext{
 	uint8_t SavedGmParams[NUM_REF_FRAMES][NUM_REF_FRAMES][8];
 	uint8_t **SavedSegmentIds[NUM_REF_FRAMES];
 
-	uint8_t		OrderHints[REFS_PER_FRAME]; //OrderHints specifies the expected output order for each reference frame.
 	frameHeader *curFrameHdr;
 	sequenceHeader *seqHdr;
 	uint8_t SeenFrameHeader;

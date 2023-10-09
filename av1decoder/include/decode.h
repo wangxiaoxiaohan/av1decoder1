@@ -80,7 +80,7 @@ public:
 	void basicIntraPrediction(int w, int h, uint8_t** pred,BlockData *b_data) ;
 	int recursiveIntraPrdiction(int w, int h,uint8_t **pred,BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int directionalIntraPrediction(int plane,int x,int y,int haveLeft,int haveAbove,
-									int mode ,int w ,int h ,int maxX,int maxY,uint8_t **pred,
+									int mode ,int w ,int h ,int maxX,int maxY,uint8_t **pred,PartitionData *p_data,
 									BlockData *b_data ,AV1DecodeContext *av1Ctx);
 	int filterCornor(Array8 *LeftCol,Array8 *AboveRow);
 	int intrafilterType(int plane,PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx);
@@ -186,10 +186,14 @@ public:
 					BlockData *b_data,AV1DecodeContext *av1Ctx);
 
 	void output(AV1DecodeContext *av1Ctx);
-	void intermediateOutputPreparation(int *bidepth,AV1DecodeContext *av1Ctx);
+	void intermediateOutputPreparation(int *w,int *h,int *subX,int *subY,int *bidepth,AV1DecodeContext *av1Ctx);
 	void filmGrainSynthesis(int w, int h, int subX, int subY,AV1DecodeContext *av1Ctx);
 	int get_random_number( int bits ,int *RandomRegister);
-	void generateGrain(int *RandomRegister ,AV1DecodeContext *av1Ctx);
+	void generateGrain(int GrainMin,int GrainMax, int *RandomRegister ,AV1DecodeContext *av1Ctx) ;
+	void scalingLookupInitialization(AV1DecodeContext *av1Ctx);
+	int get_x(int plane, int i,AV1DecodeContext *av1Ctx);
+	int get_y(int plane, int i,AV1DecodeContext *av1Ctx);
+	void motionFieldMotionVectorStorage(PartitionData *p_data, AV1DecodeContext *av1Ctx);
 	static decode& Instance() {
 		static decode m_pInstance;
 		return m_pInstance;

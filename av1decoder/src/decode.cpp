@@ -396,7 +396,7 @@ int decode::motion_field_estimation(AV1DecodeContext *av1Ctx){
 	}
 
 	int lastIdx = frameHdr->ref_frame_idx[0]; // Reference frame index for LAST_FRAME
-	int curGoldOrderHint = av1Ctx->OrderHints[GOLDEN_FRAME]; // Expected output order for GOLDEN_FRAME of current frame
+	int curGoldOrderHint = frameHdr->OrderHints[GOLDEN_FRAME]; // Expected output order for GOLDEN_FRAME of current frame
 	int lastAltOrderHint = av1Ctx->SavedOrderHints[lastIdx][ALTREF_FRAME]; // Expected output order for ALTREF_FRAME of LAST_FRAME
 	int useLast = (lastAltOrderHint != curGoldOrderHint) ? 1 : 0; // Whether to project motion vectors from LAST_FRAME
 
@@ -406,7 +406,7 @@ int decode::motion_field_estimation(AV1DecodeContext *av1Ctx){
 	}
 
 	int refStamp = MFMV_STACK_SIZE - 2; // Limit on how many reference frames need to be projected
-	int useBwd = (get_relative_dist(seqHdr->enable_order_hint,seqHdr->OrderHintBits,av1Ctx->OrderHints[BWDREF_FRAME], frameHdr->OrderHint) > 0) ? 1 : 0; // Whether to use BWDREF_FRAME
+	int useBwd = (get_relative_dist(seqHdr->enable_order_hint,seqHdr->OrderHintBits,frameHdr->OrderHints[BWDREF_FRAME], frameHdr->OrderHint) > 0) ? 1 : 0; // Whether to use BWDREF_FRAME
 
 	if (useBwd == 1) {
 		int projOutput = motion_filed_project(av1Ctx,BWDREF_FRAME, 1); // Invoke projection for BWDREF_FRAME with dstSign = 1
@@ -415,7 +415,7 @@ int decode::motion_field_estimation(AV1DecodeContext *av1Ctx){
 		}
 	}
 
-	int useAlt2 = (get_relative_dist(seqHdr->enable_order_hint,seqHdr->OrderHintBits,av1Ctx->OrderHints[ALTREF2_FRAME], frameHdr->OrderHint) > 0) ? 1 : 0; // Whether to use ALTREF2_FRAME
+	int useAlt2 = (get_relative_dist(seqHdr->enable_order_hint,seqHdr->OrderHintBits,frameHdr->OrderHints[ALTREF2_FRAME], frameHdr->OrderHint) > 0) ? 1 : 0; // Whether to use ALTREF2_FRAME
 
 	if (useAlt2 == 1) {
 		int projOutput = motion_filed_project(av1Ctx,ALTREF2_FRAME, 1); // Invoke projection for ALTREF2_FRAME with dstSign = 1
@@ -424,7 +424,7 @@ int decode::motion_field_estimation(AV1DecodeContext *av1Ctx){
 		}
 	}
 
-	int useAlt = (get_relative_dist(seqHdr->enable_order_hint,seqHdr->OrderHintBits,av1Ctx->OrderHints[ALTREF_FRAME], frameHdr->OrderHint) > 0) ? 1 : 0; // Whether to use ALTREF_FRAME
+	int useAlt = (get_relative_dist(seqHdr->enable_order_hint,seqHdr->OrderHintBits,frameHdr->OrderHints[ALTREF_FRAME], frameHdr->OrderHint) > 0) ? 1 : 0; // Whether to use ALTREF_FRAME
 
 	if (useAlt == 1 && refStamp >= 0) {
 		int projOutput = motion_filed_project(av1Ctx,ALTREF_FRAME, 1); // Invoke projection for ALTREF_FRAME with dstSign = 1
@@ -463,8 +463,8 @@ int decode::motion_filed_project(AV1DecodeContext *av1Ctx,int src,int dstSign){
 			int srcRef = av1Ctx->SavedRefFrames[srcIdx][row][col];
 			
 			if (srcRef > INTRA_FRAME) {
-				int refToCur = get_relative_dist(seqHdr->enable_order_hint,seqHdr->OrderHintBits,av1Ctx->OrderHints[src], frameHdr->OrderHint);
-				int refOffset = get_relative_dist(seqHdr->enable_order_hint,seqHdr->OrderHintBits,av1Ctx->OrderHints[src], av1Ctx->SavedOrderHints[srcIdx][srcRef]);
+				int refToCur = get_relative_dist(seqHdr->enable_order_hint,seqHdr->OrderHintBits,frameHdr->OrderHints[src], frameHdr->OrderHint);
+				int refOffset = get_relative_dist(seqHdr->enable_order_hint,seqHdr->OrderHintBits,frameHdr->OrderHints[src], av1Ctx->SavedOrderHints[srcIdx][srcRef]);
 				int posValid = (Abs(refToCur) <= MAX_FRAME_DISTANCE) &&
 							(Abs(refOffset) <= MAX_FRAME_DISTANCE) &&
 							(refOffset > 0);
@@ -483,7 +483,7 @@ int decode::motion_filed_project(AV1DecodeContext *av1Ctx,int src,int dstSign){
 					if (posValid) {
 						for (int dst = LAST_FRAME; dst <= ALTREF_FRAME; dst++) {
 							int refToDst = get_relative_dist(seqHdr->enable_order_hint,seqHdr->OrderHintBits,
-																		frameHdr->OrderHint, av1Ctx->OrderHints[dst]);
+																		frameHdr->OrderHint, frameHdr->OrderHints[dst]);
 							get_mv_projection(mv, refToDst, refOffset,projMv);
 							av1Ctx->MotionFieldMvs[dst][PosY8][PosX8][0] = projMv[0];
 							av1Ctx->MotionFieldMvs[dst][PosY8][PosX8][1] = projMv[1];
@@ -2271,7 +2271,7 @@ int decode::predict_intra(int plane,int x,int y,int haveLeft,int haveAbove,
 	if(plane == 0 && b_data->use_filter_intra){
 		recursiveIntraPrdiction(w,h,pred,b_data,av1Ctx);
 	}else if( is_directional_mode( mode ) ){
-		directionalIntraPrediction( plane, x, y, haveLeft, haveAbove, mode, w, h, maxX, maxY,pred,b_data,av1Ctx);
+		directionalIntraPrediction( plane, x, y, haveLeft, haveAbove, mode, w, h, maxX, maxY,pred,p_data, b_data,av1Ctx);
 	}else if(mode == SMOOTH_PRED || mode == SMOOTH_V_PRED  || mode == SMOOTH_H_PRED ){
 		smoothIntraPrediction(mode, log2W, log2H, w,h,pred,b_data); 
 	}else if(mode == DC_PRED){
@@ -2376,7 +2376,7 @@ int decode::recursiveIntraPrdiction(int w, int h,uint8_t **pred,BlockData *b_dat
 //使用“方向滤波器”和左侧、上边的像素进行帧内预测，生成帧内预测样本
 //这就是最常见的帧内预测模式
 int decode::directionalIntraPrediction(int plane,int x,int y,int haveLeft,int haveAbove,
-								int mode ,int w ,int h ,int maxX,int maxY,uint8_t **pred,
+								int mode ,int w ,int h ,int maxX,int maxY,uint8_t **pred,PartitionData *p_data,
 								BlockData *b_data ,AV1DecodeContext *av1Ctx){
 	int angleDelta = plane == 0 ? b_data->AngleDeltaY : b_data->AngleDeltaUV;
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
@@ -4949,7 +4949,7 @@ void decode::upscalingProcess(int ***inputFrame,int ***outputFrame,AV1DecodeCont
                     sum += px * Upscale_Filter[srcXSubpel][k];
                 }
 
-                outputFrame[plane][y][x] = Clip1(sum >> 8);
+                outputFrame[plane][y][x] = Clip1(sum >> 8,seqHdr->color_config.BitDepth);
             }
         }
     }
@@ -4959,8 +4959,8 @@ void decode::loopRestoration(BlockData *b_data,AV1DecodeContext *av1Ctx){
 	frameHeader *frameHdr = av1Ctx->curFrameHdr;
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
 	int size = sizeof(uint8_t) * 3 * frameHdr->si.FrameHeight * frameHdr->si.UpscaledWidth;
-	av1Ctx->currentFrame.LrFrame = (uint8_t *)malloc(size);
-	memcpy(av1Ctx->currentFrame.LrFrame,b_data->UpscaledCdefFrame,size);
+	av1Ctx->currentFrame.lrCtx->LrFrame = (uint8_t *)malloc(size);
+	memcpy(av1Ctx->currentFrame.lrCtx->LrFrame,b_data->UpscaledCdefFrame,size);
 
 
 	// 如果不需要循环恢复，直接返回
@@ -4977,7 +4977,7 @@ void decode::loopRestoration(BlockData *b_data,AV1DecodeContext *av1Ctx){
 					int row = y >> MI_SIZE_LOG2;
 					int col = x >> MI_SIZE_LOG2;
 					// 调用循环恢复块过程
-					loopRestoreBlock(plane, row, col);
+					loopRestoreBlock(plane, row, col,b_data,av1Ctx);
 				}
 			}
 		}
@@ -5027,7 +5027,7 @@ void decode::loopRestoreBlock(int plane,int row ,int col,BlockData *b_data,AV1De
 	if (rType == RESTORE_WIENER) {
 		wienerFilter(plane, unitRow, unitCol, x, y, w, h,b_data,av1Ctx);
 	} else if (rType == RESTORE_SGRPROJ) {
-		selfGuidedFilter(plane, unitRow, unitCol, x, y, w, h);
+		selfGuidedFilter(plane, unitRow, unitCol, x, y, w, h,b_data,av1Ctx);
 	} else {
 		// 不应用滤波
 	}
@@ -5071,7 +5071,7 @@ void decode::selfGuidedFilter(int plane,int unitRow,int unitCol, int x,int y,int
 			}
 			
 			int s = Round2(v, SGRPROJ_RST_BITS + SGRPROJ_PRJ_BITS);
-			av1Ctx->currentFrame.lrCtx->LrFrame[plane][y + i][x + j] = Clip1(s);
+			av1Ctx->currentFrame.lrCtx->LrFrame[plane][y + i][x + j] = Clip1(s,seqHdr->color_config.BitDepth);
 		}
 	}
 }
@@ -5126,7 +5126,6 @@ void decode::boxFilter(int plane,int x,int y,int w,int h,int set ,int pass,int *
 		}
 	}
 
-	// 生成输出数组F
 	for (int i = 0; i < h; i++) {
 		int shift = 5;
 		if (pass == 0 && (i & 1) != 0) {
@@ -5220,56 +5219,55 @@ int decode::getSourceSample(int plane ,int x,int y,BlockData *b_data, AV1DecodeC
 }
 //7.18.2
 void decode::output(AV1DecodeContext *av1Ctx){
-	int bitDepth;
-	intermediateOutputPreparation(&bitDepth,av1Ctx);
-	filmGrainSynthesis();
+	int w,h,subX,subY,bitDepth;
+	intermediateOutputPreparation(&w,&h,&subX,&subY,&bitDepth,av1Ctx);
+	filmGrainSynthesis(w,h,subX,subY,av1Ctx);
 
 }
-void decode::intermediateOutputPreparation(int *bitDepth,AV1DecodeContext *av1Ctx){
+void decode::intermediateOutputPreparation(int *w,int *h,int *subX,int *subY,int *bitDepth,AV1DecodeContext *av1Ctx){
 	frameHeader *frameHdr = av1Ctx->curFrameHdr;
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
-	int w,h,subX,subY,BitDepth;//输出的 bitdepth 以此为准
 	if (frameHdr->show_existing_frame == 1) {
 		// Copy from a previously decoded frame
-		w = (*av1Ctx->RefUpscaledWidth)[frameHdr->frame_to_show_map_idx];
-		h = (*av1Ctx->RefFrameHeight)[frameHdr->frame_to_show_map_idx];
-		subX = av1Ctx->RefSubsamplingX[frameHdr->frame_to_show_map_idx];
-		subY = av1Ctx->RefSubsamplingY[frameHdr->frame_to_show_map_idx];
+		*w = (*av1Ctx->RefUpscaledWidth)[frameHdr->frame_to_show_map_idx];
+		*h = (*av1Ctx->RefFrameHeight)[frameHdr->frame_to_show_map_idx];
+		*subX = av1Ctx->RefSubsamplingX[frameHdr->frame_to_show_map_idx];
+		*subY = av1Ctx->RefSubsamplingY[frameHdr->frame_to_show_map_idx];
 
-		for (int y = 0; y < h; y++) {
-			for (int x = 0; x < w; x++) {
+		for (int y = 0; y < *h; y++) {
+			for (int x = 0; x < *w; x++) {
 				av1Ctx->currentFrame.OutY[y][x] = av1Ctx->FrameStore[frameHdr->frame_to_show_map_idx][0][y][x];
 			}
 		}
 
-		for (int y = 0; y < ((h + subY) >> subY); y++) {
-			for (int x = 0; x < ((w + subX) >> subX); x++) {
+		for (int y = 0; y < ((*h + *subY) >> *subY); y++) {
+			for (int x = 0; x < ((*w + *subX) >> *subX); x++) {
 				av1Ctx->currentFrame.OutU[y][x] = av1Ctx->FrameStore[frameHdr->frame_to_show_map_idx][1][y][x];
 				av1Ctx->currentFrame.OutV[y][x] = av1Ctx->FrameStore[frameHdr->frame_to_show_map_idx][2][y][x];
 			}
 		}
-		BitDepth = av1Ctx->RefBitDepth[frameHdr->frame_to_show_map_idx];
+		*bitDepth = av1Ctx->RefBitDepth[frameHdr->frame_to_show_map_idx];
 	} else {
 		// Copy from the current frame
-		w = av1Ctx->currentFrame.si.UpscaledWidth;
-		h = av1Ctx->currentFrame.si.FrameHeight;
-		subX = seqHdr->color_config.subsampling_x;
-		subY = seqHdr->color_config.subsampling_y;
+		*w = av1Ctx->currentFrame.si.UpscaledWidth;
+		*h = av1Ctx->currentFrame.si.FrameHeight;
+		*subX = seqHdr->color_config.subsampling_x;
+		*subY = seqHdr->color_config.subsampling_y;
 
-		for (int y = 0; y < h; y++) {
-			for (int x = 0; x < w; x++) {
+		for (int y = 0; y < *h; y++) {
+			for (int x = 0; x < *w; x++) {
 				av1Ctx->currentFrame.OutY[y][x] = av1Ctx->currentFrame.lrCtx->LrFrame[0][y][x];
 			}
 		}
 
-		for (int y = 0; y < ((h + subY) >> subY); y++) {
-			for (int x = 0; x < ((w + subX) >> subX); x++) {
+		for (int y = 0; y < ((*h + *subY) >> *subY); y++) {
+			for (int x = 0; x < ((*w + *subX) >> *subX); x++) {
 				av1Ctx->currentFrame.OutU[y][x] = av1Ctx->currentFrame.lrCtx->LrFrame[1][y][x];
 				av1Ctx->currentFrame.OutV[y][x] = av1Ctx->currentFrame.lrCtx->LrFrame[2][y][x];
 			}
 		}
 
-		BitDepth = av1Ctx->RefBitDepth[0];  // BitDepth for each sample
+		*bitDepth = av1Ctx->RefBitDepth[0];  // BitDepth for each sample
 	}
 
 }
@@ -5286,11 +5284,10 @@ void decode::filmGrainSynthesis(int w, int h, int subX, int subY,AV1DecodeContex
     int GrainMin = -GrainCenter;
     int GrainMax = (256 << (seqHdr->color_config.BitDepth - 8)) - 1 - GrainCenter;
     
-    generateGrain();
+    generateGrain(GrainMin,GrainMax,&RandomRegister,av1Ctx);
 
-    
     // 初始化缩放查找表
-    initializeScalingLookup(seqHdr->color_config.BitDepth);
+    scalingLookupInitialization(av1Ctx);
     
     // 添加噪音
     AddNoise(w, h, subX, subY);
@@ -5315,7 +5312,7 @@ void decode::generateGrain(int GrainMin,int GrainMax, int *RandomRegister ,AV1De
             if (frameHdr->film_grain_params.num_y_points > 0) {
                 g = Gaussian_Sequence[get_random_number(11,RandomRegister)];
             }
-            LumaGrain[y][x] = Round2(g, shift);
+            av1Ctx->currentFrame.fgCtx->LumaGrain[y][x] = Round2(g, shift);
         }
     }
 
@@ -5331,11 +5328,11 @@ void decode::generateGrain(int GrainMin,int GrainMax, int *RandomRegister ,AV1De
                         break;
                     }
                     int c = frameHdr->film_grain_params.ar_coeffs_y_plus_128[pos] - 128;
-                    s += LumaGrain[y + deltaRow][x + deltaCol] * c;
+                    s += av1Ctx->currentFrame.fgCtx->LumaGrain[y + deltaRow][x + deltaCol] * c;
                     pos++;
                 }
             }
-            LumaGrain[y][x] = Clip3(GrainMin, GrainMax, LumaGrain[y][x] + Round2(s, shift));
+            av1Ctx->currentFrame.fgCtx->LumaGrain[y][x] = Clip3(GrainMin, GrainMax, av1Ctx->currentFrame.fgCtx->LumaGrain[y][x] + Round2(s, shift));
         }
     }
 	if(seqHdr->color_config.mono_chrome == 1) return;
@@ -5350,7 +5347,7 @@ void decode::generateGrain(int GrainMin,int GrainMax, int *RandomRegister ,AV1De
             if (frameHdr->film_grain_params.num_cb_points > 0 || frameHdr->film_grain_params.chroma_scaling_from_luma) {
                 g = Gaussian_Sequence[get_random_number(11,RandomRegister)];
             }
-            CbGrain[y][x] = Round2(g, shift);
+            av1Ctx->currentFrame.fgCtx->CbGrain[y][x] = Round2(g, shift);
         }
     }
 
@@ -5361,7 +5358,7 @@ void decode::generateGrain(int GrainMin,int GrainMax, int *RandomRegister ,AV1De
             if (frameHdr->film_grain_params.num_cr_points > 0 || frameHdr->film_grain_params.chroma_scaling_from_luma) {
                 g = Gaussian_Sequence[get_random_number(11,RandomRegister)];
             }
-            CrGrain[y][x] = Round2(g, shift);
+            av1Ctx->currentFrame.fgCtx->CrGrain[y][x] = Round2(g, shift);
         }
     }
 
@@ -5383,7 +5380,7 @@ void decode::generateGrain(int GrainMin,int GrainMax, int *RandomRegister ,AV1De
                             int lumaY = ((y - 3) << seqHdr->color_config.subsampling_y) + 3;
                             for (int i = 0; i <= seqHdr->color_config.subsampling_y; i++) {
                                 for (int j = 0; j <= seqHdr->color_config.subsampling_x; j++) {
-                                    luma += LumaGrain[lumaY + i][lumaX + j];
+                                    luma += av1Ctx->currentFrame.fgCtx->LumaGrain[lumaY + i][lumaX + j];
                                 }
                             }
                             luma = Round2(luma, seqHdr->color_config.subsampling_x + seqHdr->color_config.subsampling_y);
@@ -5392,90 +5389,95 @@ void decode::generateGrain(int GrainMin,int GrainMax, int *RandomRegister ,AV1De
                         }
                         break;
                     }
-                    s0 += CbGrain[y + deltaRow][x + deltaCol] * c0;
-                    s1 += CrGrain[y + deltaRow][x + deltaCol] * c1;
+                    s0 += av1Ctx->currentFrame.fgCtx->CbGrain[y + deltaRow][x + deltaCol] * c0;
+                    s1 += av1Ctx->currentFrame.fgCtx->CrGrain[y + deltaRow][x + deltaCol] * c1;
                     pos++;
                 }
             }
-            CbGrain[y][x] = Clip3(GrainMin, GrainMax, CbGrain[y][x] + Round2(s0, shift));
-            CrGrain[y][x] = Clip3(GrainMin, GrainMax, CrGrain[y][x] + Round2(s1, shift));
+            av1Ctx->currentFrame.fgCtx->CbGrain[y][x] = Clip3(GrainMin, GrainMax, av1Ctx->currentFrame.fgCtx->CbGrain[y][x] + Round2(s0, shift));
+            av1Ctx->currentFrame.fgCtx->CrGrain[y][x] = Clip3(GrainMin, GrainMax, av1Ctx->currentFrame.fgCtx->CrGrain[y][x] + Round2(s1, shift));
         }
     }
 }
-void decode::scalingLookupInitialization() {
-    for (int plane = 0; plane < NumPlanes; plane++) {
+void decode::scalingLookupInitialization(AV1DecodeContext *av1Ctx) {
+	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	sequenceHeader *seqHdr = av1Ctx->seqHdr;
+    for (int plane = 0; plane < seqHdr->color_config.NumPlanes; plane++) {
         int numPoints;
-        if (plane == 0 || chroma_scaling_from_luma)
-            numPoints = num_y_points;
+        if (plane == 0 || frameHdr->film_grain_params.chroma_scaling_from_luma)
+            numPoints = frameHdr->film_grain_params.num_y_points;
         else if (plane == 1)
-            numPoints = num_cb_points;
+            numPoints = frameHdr->film_grain_params.num_cb_points;
         else
-            numPoints = num_cr_points;
+            numPoints = frameHdr->film_grain_params.num_cr_points;
 
         if (numPoints == 0) {
             for (int x = 0; x < 256; x++) {
-                ScalingLut[plane][x] = 0;
+                av1Ctx->currentFrame.fgCtx->ScalingLut[plane][x] = 0;
             }
         } else {
-            for (int x = 0; x < get_x(plane, 0); x++) {
-                ScalingLut[plane][x] = get_y(plane, 0);
+            for (int x = 0; x < get_x(plane, 0,av1Ctx); x++) {
+                av1Ctx->currentFrame.fgCtx->ScalingLut[plane][x] = get_y(plane, 0,av1Ctx);
             }
             for (int i = 0; i < numPoints - 1; i++) {
-                int deltaY = get_y(plane, i + 1) - get_y(plane, i);
-                int deltaX = get_x(plane, i + 1) - get_x(plane, i);
+                int deltaY = get_y(plane, i + 1,av1Ctx) - get_y(plane, i,av1Ctx);
+                int deltaX = get_x(plane, i + 1,av1Ctx) - get_x(plane, i,av1Ctx);
                 int delta = deltaY * ((65536 + (deltaX >> 1)) / deltaX);
                 for (int x = 0; x < deltaX; x++) {
-                    int v = get_y(plane, i) + ((x * delta + 32768) >> 16);
-                    ScalingLut[plane][get_x(plane, i) + x] = v;
+                    int v = get_y(plane, i,av1Ctx) + ((x * delta + 32768) >> 16);
+                    av1Ctx->currentFrame.fgCtx->ScalingLut[plane][get_x(plane, i,av1Ctx) + x] = v;
                 }
             }
-            for (int x = get_x(plane, numPoints - 1); x < 256; x++) {
-                ScalingLut[plane][x] = get_y(plane, numPoints - 1);
+            for (int x = get_x(plane, numPoints - 1,av1Ctx); x < 256; x++) {
+                av1Ctx->currentFrame.fgCtx->ScalingLut[plane][x] = get_y(plane, numPoints - 1,av1Ctx);
             }
         }
     }
 }
 
-int decode::get_x(int plane, int i) {
-    if (plane == 0 || chroma_scaling_from_luma)
-        return point_y_value[i];
+int decode::get_x(int plane, int i,AV1DecodeContext *av1Ctx) {
+	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+    if (plane == 0 || frameHdr->film_grain_params.chroma_scaling_from_luma)
+        return frameHdr->film_grain_params.point_y_value[i];
     else if (plane == 1)
-        return point_cb_value[i];
+        return frameHdr->film_grain_params.point_cb_value[i];
     else
-        return point_cr_value[i];
+        return frameHdr->film_grain_params.point_cr_value[i];
 }
 
-int decode::get_y(int plane, int i) {
-    if (plane == 0 || chroma_scaling_from_luma)
-        return point_y_scaling[i];
+int decode::get_y(int plane, int i,AV1DecodeContext *av1Ctx) {
+	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+    if (plane == 0 || frameHdr->film_grain_params.chroma_scaling_from_luma)
+        return frameHdr->film_grain_params.point_y_scaling[i];
     else if (plane == 1)
-        return point_cb_scaling[i];
+        return frameHdr->film_grain_params.point_cb_scaling[i];
     else
-        return point_cr_scaling[i];
+        return frameHdr->film_grain_params.point_cr_scaling[i];
 }
 //7.19
-void decode::motionFieldMotionVectorStorage(){
-	for (int row = 0; row < MiRows; row++) {
-		for (int col = 0; col < MiCols; col++) {
-			MfRefFrames[row][col] = NONE;
-			MfMvs[row][col][0] = 0;
-			MfMvs[row][col][1] = 0;
+void decode::motionFieldMotionVectorStorage(PartitionData *p_data, AV1DecodeContext *av1Ctx){
+	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	for (int row = 0; row < frameHdr->MiRows; row++) {
+		for (int col = 0; col < frameHdr->MiCols; col++) {
+			av1Ctx->currentFrame.mfmvCtx->MfRefFrames[row][col] = NONE;
+			av1Ctx->currentFrame.mfmvCtx->MfMvs[row][col][0] = 0;
+			av1Ctx->currentFrame.mfmvCtx->MfMvs[row][col][1] = 0;
 
 			for (int list = 0; list < 2; list++) {
-				int r = RefFrames[row][col][list];
+				int r = p_data->RefFrames[row][col][list];
 
 				if (r > INTRA_FRAME) {
-					int refIdx = ref_frame_idx[r - LAST_FRAME];
-					int dist = get_relative_dist(RefOrderHint[refIdx], OrderHint);
+					int refIdx = frameHdr->ref_frame_idx[r - LAST_FRAME];
+					int dist = get_relative_dist(av1Ctx->RefOrderHint[refIdx], frameHdr->OrderHint);
 
 					if (dist < 0) {
-						int mvRow = Mvs[row][col][list][0];
-						int mvCol = Mvs[row][col][list][1];
+						int mvRow = p_data->Mvs[row][col][list][0];
+						int mvCol = p_data->Mvs[row][col][list][1];
 
 						if (Abs(mvRow) <= REFMVS_LIMIT && Abs(mvCol) <= REFMVS_LIMIT) {
-							MfRefFrames[row][col] = r;
-							MfMvs[row][col][0] = mvRow;
-							MfMvs[row][col][1] = mvCol;
+							av1Ctx->currentFrame.mfmvCtx->MfRefFrames[row][col] = r;
+							av1Ctx->currentFrame.mfmvCtx->MfMvs[row][col][0] = mvRow;
+							av1Ctx->currentFrame.mfmvCtx->MfMvs[row][col][1] = mvCol;
 						}
 					}
 				}
@@ -5484,66 +5486,68 @@ void decode::motionFieldMotionVectorStorage(){
 	}
 
 }
-void decode::referenceFrameUpdate(){
+void decode::referenceFrameUpdate(PartitionData *p_data, AV1DecodeContext *av1Ctx){
+	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	sequenceHeader *seqHdr = av1Ctx->seqHdr;
 	for (int i = 0; i < NUM_REF_FRAMES; i++) {
-		if ((refresh_frame_flags >> i) & 1) {
-			RefValid[i] = 1;
-			RefFrameId[i] = current_frame_id;
-			RefUpscaledWidth[i] = UpscaledWidth;
-			RefFrameWidth[i] = FrameWidth;
-			RefFrameHeight[i] = FrameHeight;
-			RefRenderWidth[i] = RenderWidth;
-			RefRenderHeight[i] = RenderHeight;
-			RefMiCols[i] = MiCols;
-			RefMiRows[i] = MiRows;
-			RefFrameType[i] = frame_type;
-			RefSubsamplingX[i] = subsampling_x;
-			RefSubsamplingY[i] = subsampling_y;
-			RefBitDepth[i] = BitDepth;
+		if ((frameHdr->refresh_frame_flags >> i) & 1) {
+			av1Ctx->RefValid[i] = 1;
+			av1Ctx->RefFrameId[i] = frameHdr->current_frame_id;
+			(*av1Ctx->RefUpscaledWidth)[i] = av1Ctx->currentFrame.si.UpscaledWidth;
+			(*av1Ctx->RefFrameWidth)[i] = av1Ctx->currentFrame.si.FrameWidth;
+			(*av1Ctx->RefFrameHeight)[i] = av1Ctx->currentFrame.si.FrameHeight;
+			(*av1Ctx->RefRenderWidth)[i] = av1Ctx->currentFrame.si.RenderWidth;
+			(*av1Ctx->RefRenderHeight)[i] = av1Ctx->currentFrame.si.RenderHeight;
+			av1Ctx->RefMiCols[i] = frameHdr->MiCols;
+			av1Ctx->RefMiRows[i] = frameHdr->MiRows;
+			av1Ctx->RefFrameType[i] = frameHdr->frame_type;
+			av1Ctx->RefSubsamplingX[i] = seqHdr->color_config.subsampling_x;
+			av1Ctx->RefSubsamplingY[i] = seqHdr->color_config.subsampling_y;
+			av1Ctx->RefBitDepth[i] = seqHdr->color_config.BitDepth;
 
 			for (int j = 0; j < REFS_PER_FRAME; j++) {
-				SavedOrderHints[i][j + LAST_FRAME] = OrderHints[j + LAST_FRAME];
+				av1Ctx->SavedOrderHints[i][j + LAST_FRAME] = frameHdr->OrderHints[j + LAST_FRAME];
 			}
 
-			for (int y = 0; y < FrameHeight; y++) {
-				for (int x = 0; x < UpscaledWidth; x++) {
-					FrameStore[i][0][y][x] = LrFrame[0][y][x];
+			for (int y = 0; y < av1Ctx->currentFrame.si.FrameHeight; y++) {
+				for (int x = 0; x < av1Ctx->currentFrame.si.UpscaledWidth; x++) {
+					av1Ctx->FrameStore[i][0][y][x] = av1Ctx->currentFrame.lrCtx->LrFrame[0][y][x];
 				}
 			}
 
 			for (int plane = 1; plane <= 2; plane++) {
-				for (int y = 0; y < ((FrameHeight + subsampling_y) >> subsampling_y); y++) {
-					for (int x = 0; x < ((UpscaledWidth + subsampling_x) >> subsampling_x); x++) {
-						FrameStore[i][plane][y][x] = LrFrame[plane][y][x];
+				for (int y = 0; y < ((av1Ctx->currentFrame.si.FrameHeight + seqHdr->color_config.subsampling_y) >> seqHdr->color_config.subsampling_y); y++) {
+					for (int x = 0; x < ((av1Ctx->currentFrame.si.UpscaledWidth + seqHdr->color_config.subsampling_x) >> seqHdr->color_config.subsampling_x); x++) {
+						av1Ctx->FrameStore[i][plane][y][x] = av1Ctx->currentFrame.lrCtx->LrFrame[plane][y][x];
 					}
 				}
 			}
 
-			for (int row = 0; row < MiRows; row++) {
-				for (int col = 0; col < MiCols; col++) {
-					SavedRefFrames[i][row][col] = MfRefFrames[row][col];
+			for (int row = 0; row < frameHdr->MiRows; row++) {
+				for (int col = 0; col < frameHdr->MiCols; col++) {
+					av1Ctx->SavedRefFrames[i][row][col] = av1Ctx->currentFrame.mfmvCtx->MfRefFrames[row][col];
 
 					for (int comp = 0; comp <= 1; comp++) {
-						SavedMvs[i][row][col][comp] = MfMvs[row][col][comp];
+						av1Ctx->SavedMvs[i][row][col][comp] = av1Ctx->currentFrame.mfmvCtx->MfMvs[row][col][comp];
 					}
 				}
 			}
 
 			for (int ref = LAST_FRAME; ref <= ALTREF_FRAME; ref++) {
 				for (int j = 0; j < 6; j++) {
-					SavedGmParams[i][ref][j] = gm_params[ref][j];
+					av1Ctx->SavedGmParams[i][ref][j] = frameHdr->global_motion_params.gm_params[ref][j];
 				}
 			}
 
-			for (int row = 0; row < MiRows; row++) {
-				for (int col = 0; col < MiCols; col++) {
-					SavedSegmentIds[i][row][col] = SegmentIds[row][col];
+			for (int row = 0; row < frameHdr->MiRows; row++) {
+				for (int col = 0; col < frameHdr->MiCols; col++) {
+					av1Ctx->SavedSegmentIds[i][row][col] = p_data->SegmentIds[row][col];
 				}
 			}
 
 			save_cdfs(i);
 
-			if (film_grain_params_present == 1) {
+			if (seqHdr->film_grain_params_present == 1) {
 				save_grain_params(i);
 			}
 
@@ -5553,70 +5557,71 @@ void decode::referenceFrameUpdate(){
 	}
 
 }
-void decode::referenceFrameLoading(){
-	int frame_to_show_map_idx; // 通过语法元素 frame_to_show_map_idx 获取索引
+void decode::referenceFrameLoading(PartitionData *p_data, AV1DecodeContext *av1Ctx){
+	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	sequenceHeader *seqHdr = av1Ctx->seqHdr;
 
-	current_frame_id = RefFrameId[frame_to_show_map_idx];
-	UpscaledWidth = RefUpscaledWidth[frame_to_show_map_idx];
-	FrameWidth = RefFrameWidth[frame_to_show_map_idx];
-	FrameHeight = RefFrameHeight[frame_to_show_map_idx];
-	RenderWidth = RefRenderWidth[frame_to_show_map_idx];
-	RenderHeight = RefRenderHeight[frame_to_show_map_idx];
-	MiCols = RefMiCols[frame_to_show_map_idx];
-	MiRows = RefMiRows[frame_to_show_map_idx];
-	subsampling_x = RefSubsamplingX[frame_to_show_map_idx];
-	subsampling_y = RefSubsamplingY[frame_to_show_map_idx];
-	BitDepth = RefBitDepth[frame_to_show_map_idx];
-	OrderHint = RefOrderHint[frame_to_show_map_idx];
+	frameHdr->current_frame_id = av1Ctx->RefFrameId[frameHdr->frame_to_show_map_idx];//这里， spec 是不是写错了？？
+	av1Ctx->currentFrame.si.UpscaledWidth = (*av1Ctx->RefUpscaledWidth)[frameHdr->frame_to_show_map_idx];
+	av1Ctx->currentFrame.si.FrameWidth = (*av1Ctx->RefFrameWidth)[frameHdr->frame_to_show_map_idx];
+	av1Ctx->currentFrame.si.FrameHeight = (*av1Ctx->RefFrameHeight)[frameHdr->frame_to_show_map_idx];
+	av1Ctx->currentFrame.si.RenderWidth = (*av1Ctx->RefRenderWidth)[frameHdr->frame_to_show_map_idx];
+	av1Ctx->currentFrame.si.RenderHeight = (*av1Ctx->RefRenderHeight)[frameHdr->frame_to_show_map_idx];
+	frameHdr->MiCols = av1Ctx->RefMiCols[frameHdr->frame_to_show_map_idx];
+	frameHdr->MiRows = av1Ctx->RefMiRows[frameHdr->frame_to_show_map_idx];
+	seqHdr->color_config.subsampling_x = av1Ctx->RefSubsamplingX[frameHdr->frame_to_show_map_idx];
+	seqHdr->color_config.subsampling_y = av1Ctx->RefSubsamplingY[frameHdr->frame_to_show_map_idx];
+	seqHdr->color_config.BitDepth = av1Ctx->RefBitDepth[frameHdr->frame_to_show_map_idx];
+	frameHdr->OrderHint = av1Ctx->RefOrderHint[frameHdr->frame_to_show_map_idx];
 
 	for (int j = 0; j < REFS_PER_FRAME; j++) {
-		OrderHints[j + LAST_FRAME] = SavedOrderHints[frame_to_show_map_idx][j + LAST_FRAME];
+		frameHdr->OrderHints[j + LAST_FRAME] = av1Ctx->SavedOrderHints[frameHdr->frame_to_show_map_idx][j + LAST_FRAME];
 	}
 
-	for (int y = 0; y < FrameHeight; y++) {
-		for (int x = 0; x < UpscaledWidth; x++) {
-			LrFrame[0][y][x] = FrameStore[frame_to_show_map_idx][0][y][x];
+	for (int y = 0; y < av1Ctx->currentFrame.si.FrameHeight; y++) {
+		for (int x = 0; x < av1Ctx->currentFrame.si.UpscaledWidth; x++) {
+			av1Ctx->currentFrame.lrCtx->LrFrame[0][y][x] = av1Ctx->FrameStore[frameHdr->frame_to_show_map_idx][0][y][x];
 		}
 	}
 
 	for (int plane = 1; plane <= 2; plane++) {
-		for (int y = 0; y < ((FrameHeight + subsampling_y) >> subsampling_y); y++) {
-			for (int x = 0; x < ((UpscaledWidth + subsampling_x) >> subsampling_x); x++) {
-				LrFrame[plane][y][x] = FrameStore[frame_to_show_map_idx][plane][y][x];
+		for (int y = 0; y < ((av1Ctx->currentFrame.si.FrameHeight + seqHdr->color_config.subsampling_y) >> seqHdr->color_config.subsampling_y); y++) {
+			for (int x = 0; x < ((av1Ctx->currentFrame.si.UpscaledWidth + seqHdr->color_config.subsampling_x) >> seqHdr->color_config.subsampling_x); x++) {
+				av1Ctx->currentFrame.lrCtx->LrFrame[plane][y][x] = av1Ctx->FrameStore[frameHdr->frame_to_show_map_idx][plane][y][x];
 			}
 		}
 	}
 
-	for (int row = 0; row < MiRows; row++) {
-		for (int col = 0; col < MiCols; col++) {
-			MfRefFrames[row][col] = SavedRefFrames[frame_to_show_map_idx][row][col];
+	for (int row = 0; row < frameHdr->MiRows; row++) {
+		for (int col = 0; col < frameHdr->MiCols; col++) {
+			av1Ctx->currentFrame.mfmvCtx->MfRefFrames[row][col] = av1Ctx->SavedRefFrames[frameHdr->frame_to_show_map_idx][row][col];
 
 			for (int comp = 0; comp <= 1; comp++) {
-				MfMvs[row][col][comp] = SavedMvs[frame_to_show_map_idx][row][col][comp];
+				av1Ctx->currentFrame.mfmvCtx->MfMvs[row][col][comp] = av1Ctx->SavedMvs[frameHdr->frame_to_show_map_idx][row][col][comp];
 			}
 		}
 	}
 
 	for (int ref = LAST_FRAME; ref <= ALTREF_FRAME; ref++) {
 		for (int j = 0; j < 6; j++) {
-			gm_params[ref][j] = SavedGmParams[frame_to_show_map_idx][ref][j];
+			frameHdr->global_motion_params.gm_params[ref][j] = av1Ctx->SavedGmParams[frameHdr->frame_to_show_map_idx][ref][j];
 		}
 	}
 
-	for (int row = 0; row < MiRows; row++) {
-		for (int col = 0; col < MiCols; col++) {
-			SegmentIds[row][col] = SavedSegmentIds[frame_to_show_map_idx][row][col];
+	for (int row = 0; row < frameHdr->MiRows; row++) {
+		for (int col = 0; col < frameHdr->MiCols; col++) {
+			p_data->SegmentIds[row][col] = av1Ctx->SavedSegmentIds[frameHdr->frame_to_show_map_idx][row][col];
 		}
 	}
 
-	load_cdfs(frame_to_show_map_idx);
+	load_cdfs(frameHdr->frame_to_show_map_idx);
 
-	if (film_grain_params_present == 1) {
-		load_grain_params(frame_to_show_map_idx);
+	if (seqHdr->film_grain_params_present == 1) {
+		load_grain_params(frameHdr->frame_to_show_map_idx);
 	}
 
-	load_loop_filter_params(frame_to_show_map_idx);
-	load_segmentation_params(frame_to_show_map_idx);
+	load_loop_filter_params(frameHdr->frame_to_show_map_idx);
+	load_segmentation_params(frameHdr->frame_to_show_map_idx);
 
 
 }
