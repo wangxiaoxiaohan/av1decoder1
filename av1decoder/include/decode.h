@@ -7,9 +7,9 @@ public:
     decode();
     ~decode();
 	int find_mv_stack(int isCompound,SymbolContext *sbCtx, bitSt *bs, TileData *t_data,
-								 PartitionData *p_data, BlockData *b_data, AV1DecodeContext *av1ctx);
+								 PartitionData *p_data, BlockData *b_data, AV1DecodeContext *av1Ctx);
 	int find_warp_samples(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
-							PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1ctx);
+							PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int has_overlappable_candidates(PartitionData *p_data, BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int get_above_tx_width(int row, int col,PartitionData *p_data,BlockData *b_data);
 	int get_left_tx_height(int row,int col,PartitionData *p_data,BlockData *b_data);
@@ -27,7 +27,7 @@ public:
 	int get_mv_projection(int *mv,int numerator,int denominator,int *projMv);
 	int get_block_position(AV1DecodeContext *av1Ctx,int *PosX8,int *PosY8, int x8, int y8, int dstSign, int *projMv );
 	int find_mv_stack(int isCompound,SymbolContext *sbCtx, bitSt *bs, TileData *t_data,
-								 PartitionData *p_data, BlockData *b_data, AV1DecodeContext *av1ctx);
+								 PartitionData *p_data, BlockData *b_data, AV1DecodeContext *av1Ctx);
 	int scan_row(int deltaRow,int isCompound,
 				TileData *t_data,PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int scan_col(int deltaCol,int isCompound,
@@ -42,7 +42,7 @@ public:
 	int compound_search_stack(int  mvRow ,int  mvCol,int weight,
 				TileData *t_data,PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx);
 	
-	int temporal_scan(int isCompound,TileData *t_data,BlockData *b_data,AV1DecodeContext *av1ctx);
+	int temporal_scan(int isCompound,TileData *t_data,BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int extra_search(int isCompound);
 	int setup_global_mv(int refList,int *mv,
 								 BlockData *b_data,AV1DecodeContext *av1Ctx);

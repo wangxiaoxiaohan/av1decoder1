@@ -123,7 +123,7 @@ int decode::init_non_coeff_cdfs(CDFArrays *cdf){
 }
 //indicates that this frame can be decoded without dependence on previous coded frames
 int decode::setup_past_independence(AV1DecodeContext *av1Ctx){
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	for(int i = 0 ; i < MAX_SEGMENTS; i++){
 		for(int j = 0 ; j < SEG_LVL_MAX ; j++){
 			frameHdr->segmentation_params.FeatureData[ i ][ j ] = 0;
@@ -160,11 +160,11 @@ int decode::setup_past_independence(AV1DecodeContext *av1Ctx){
 }
 //从参考帧拷贝cdf到当前framecontext
 int decode::load_cdfs(AV1DecodeContext *av1Ctx,int ctx){
-	memcpy(&av1Ctx->currentFrame.cdfCtx,&av1Ctx->ref_frames[ctx]->cdfCtx,sizeof(av1Ctx->ref_frames[ctx]->cdfCtx));
+	memcpy(&av1Ctx->currentFrame->cdfCtx,&av1Ctx->ref_frames[ctx]->cdfCtx,sizeof(av1Ctx->ref_frames[ctx]->cdfCtx));
 }
 //加载主参考帧的一些参数
 int decode::load_previous(AV1DecodeContext *av1Ctx){
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	int prevFrame = frameHdr->ref_frame_idx[ frameHdr->primary_ref_frame ];
 	load_loop_filter_params(av1Ctx,prevFrame);
 	//frameHdr->global_motion_params.PrevGmParams = av1Ctx->SavedGmParams[ prevFrame ];
@@ -178,25 +178,25 @@ int decode::load_previous(AV1DecodeContext *av1Ctx){
 
 int decode::load_loop_filter_params(AV1DecodeContext *av1Ctx,int prevFrame){
 
-	memcpy(av1Ctx->currentFrame.frameHdr.loop_filter_params.loop_filter_ref_deltas,
+	memcpy(av1Ctx->currentFrame->frameHdr.loop_filter_params.loop_filter_ref_deltas,
 		av1Ctx->ref_frames[prevFrame]->frameHdr.loop_filter_params.loop_filter_ref_deltas,
 		TOTAL_REFS_PER_FRAME * sizeof(uint8_t));
-	memcpy(av1Ctx->currentFrame.frameHdr.loop_filter_params.loop_filter_mode_deltas,
+	memcpy(av1Ctx->currentFrame->frameHdr.loop_filter_params.loop_filter_mode_deltas,
 		av1Ctx->ref_frames[prevFrame]->frameHdr.loop_filter_params.loop_filter_mode_deltas,
 		2 * sizeof(uint8_t));
 
 	
 }
 int decode::load_segmentation_params(AV1DecodeContext *av1Ctx,int prevFrame){
-	memcpy(av1Ctx->currentFrame.frameHdr.segmentation_params.FeatureEnabled,
+	memcpy(av1Ctx->currentFrame->frameHdr.segmentation_params.FeatureEnabled,
 		av1Ctx->ref_frames[prevFrame]->frameHdr.segmentation_params.FeatureEnabled,
 		MAX_SEGMENTS * SEG_LVL_MAX * sizeof(uint8_t));
-	memcpy(av1Ctx->currentFrame.frameHdr.segmentation_params.FeatureData,
+	memcpy(av1Ctx->currentFrame->frameHdr.segmentation_params.FeatureData,
 		av1Ctx->ref_frames[prevFrame]->frameHdr.segmentation_params.FeatureData,
 		MAX_SEGMENTS * SEG_LVL_MAX * sizeof(int16_t));
 }
 int decode::load_previous_segment_ids(AV1DecodeContext *av1Ctx){
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	int prevFrame = frameHdr->ref_frame_idx[ frameHdr->primary_ref_frame ];
 	if(frameHdr->segmentation_params.segmentation_enabled){
 		//load参数，这里为什么是save动作？
@@ -224,8 +224,8 @@ int decode::load_previous_segment_ids(AV1DecodeContext *av1Ctx){
 	}
 }
 int decode::init_coeff_cdfs(AV1DecodeContext *av1Ctx){
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;
-    CDFArrays *cdf = &av1Ctx->currentFrame.cdfCtx;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
+    CDFArrays *cdf = &av1Ctx->currentFrame->cdfCtx;
     int idx;
     if(frameHdr->quantization_params.base_q_idx == 20){
         idx = 0 ;
@@ -254,7 +254,7 @@ int decode::init_coeff_cdfs(AV1DecodeContext *av1Ctx){
 
 //7.8
 int decode::set_frame_refs(AV1DecodeContext *av1Ctx){
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
 	for (int i = 0; i < REFS_PER_FRAME; i++ )
 		frameHdr->ref_frame_idx[ i ] = -1;
@@ -380,7 +380,7 @@ int decode::set_frame_refs(AV1DecodeContext *av1Ctx){
 }
 //7.9
 int decode::motion_field_estimation(AV1DecodeContext *av1Ctx){
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
 	int w8 = frameHdr->MiCols >> 1; // Width of motion field in 8x8 luma sample units
 	int h8 = frameHdr->MiRows >> 1; // Height of motion field in 8x8 luma sample units
@@ -443,7 +443,7 @@ int decode::motion_field_estimation(AV1DecodeContext *av1Ctx){
 //The process outputs a single boolean value representing whether the source frame was valid for this operation. If the
 //output is zero, no modification is made to MotionFieldMvs
 int decode::motion_filed_project(AV1DecodeContext *av1Ctx,int src,int dstSign){
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
 	int srcIdx = frameHdr->ref_frame_idx[src - LAST_FRAME];
 	int w8 = frameHdr->MiCols >> 1;
@@ -510,7 +510,7 @@ int decode::get_mv_projection(int *mv,int numerator,int denominator,int *projMv)
 }
 //process returns a flag posValid that indicates if the position should be used
 int decode::get_block_position(AV1DecodeContext *av1Ctx,int *PosX8,int *PosY8, int x8, int y8, int dstSign, int *projMv ){
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	int posValid = 1;
 
 	*PosY8 = project(&posValid,&y8, projMv[ 0 ], dstSign, frameHdr->MiRows >> 1, MAX_OFFSET_HEIGHT);
@@ -522,89 +522,89 @@ int decode::get_block_position(AV1DecodeContext *av1Ctx,int *PosX8,int *PosY8, i
 //7.10
 /*  find mv stack  and about start...*/
 int decode::find_mv_stack(int isCompound,SymbolContext *sbCtx, bitSt *bs, TileData *t_data,
-								 PartitionData *p_data, BlockData *b_data, AV1DecodeContext *av1ctx){
+								 PartitionData *p_data, BlockData *b_data, AV1DecodeContext *av1Ctx){
 
-	frameHeader *frameHdr = av1ctx->curFrameHdr;
-	sequenceHeader *seqHdr = av1ctx->seqHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
+	sequenceHeader *seqHdr = av1Ctx->seqHdr;
 									
-	av1ctx->NumMvFound = 0;
-	av1ctx->NewMvCount = 0;
-	setup_global_mv(0,av1ctx->GlobalMvs[0],b_data,av1ctx);
-	setup_global_mv(1,av1ctx->GlobalMvs[1],b_data,av1ctx);
-	av1ctx->FoundMatch = 0;
-	scan_row(-1,isCompound,t_data, p_data,b_data,av1ctx);
+	av1Ctx->NumMvFound = 0;
+	av1Ctx->NewMvCount = 0;
+	setup_global_mv(0,av1Ctx->GlobalMvs[0],b_data,av1Ctx);
+	setup_global_mv(1,av1Ctx->GlobalMvs[1],b_data,av1Ctx);
+	av1Ctx->FoundMatch = 0;
+	scan_row(-1,isCompound,t_data, p_data,b_data,av1Ctx);
 	int foundAboveMatch,foundLeftMatch;
 
-	foundAboveMatch = av1ctx->FoundMatch ;
-	av1ctx->FoundMatch = 0;
-	scan_col(-1,isCompound,t_data, p_data,b_data,av1ctx);
-	foundLeftMatch = av1ctx->FoundMatch ;
-	av1ctx->FoundMatch = 0;
+	foundAboveMatch = av1Ctx->FoundMatch ;
+	av1Ctx->FoundMatch = 0;
+	scan_col(-1,isCompound,t_data, p_data,b_data,av1Ctx);
+	foundLeftMatch = av1Ctx->FoundMatch ;
+	av1Ctx->FoundMatch = 0;
 
 	int bh4 = Num_4x4_Blocks_High[ b_data->MiSize ];
 	int bw4 = Num_4x4_Blocks_Wide[ b_data->MiSize ];
 	if(Max( bw4, bh4 ) <= 16){
-		scan_point(-1,bw4,isCompound,t_data, p_data,b_data,av1ctx);
+		scan_point(-1,bw4,isCompound,t_data, p_data,b_data,av1Ctx);
 	}
 
-	if(av1ctx->FoundMatch == 1){
+	if(av1Ctx->FoundMatch == 1){
 		foundAboveMatch = 1;
 	}
-	av1ctx->CloseMatches = foundAboveMatch + foundLeftMatch;
-	int numNearest = av1ctx->NumMvFound;
-	int numNew = av1ctx->NewMvCount;
+	av1Ctx->CloseMatches = foundAboveMatch + foundLeftMatch;
+	int numNearest = av1Ctx->NumMvFound;
+	int numNew = av1Ctx->NewMvCount;
 	if(numNearest > 0){
 		for(int idx = 0 ;idx < numNearest - 1;idx ++ ){
-				av1ctx->WeightStack[ idx ] += REF_CAT_LEVEL;
+				av1Ctx->WeightStack[ idx ] += REF_CAT_LEVEL;
 		}
 	}
-	av1ctx->ZeroMvContext = 0;
+	av1Ctx->ZeroMvContext = 0;
 	if(frameHdr->use_ref_frame_mvs == 1){
 
-		temporal_scan(isCompound,t_data,b_data,av1ctx);
+		temporal_scan(isCompound,t_data,b_data,av1Ctx);
 	}
-	scan_point(-1,-1,isCompound,t_data, p_data,b_data,av1ctx);
-	if(av1ctx->FoundMatch == 1){
+	scan_point(-1,-1,isCompound,t_data, p_data,b_data,av1Ctx);
+	if(av1Ctx->FoundMatch == 1){
 		foundAboveMatch = 1;
 	}
 
-	av1ctx->FoundMatch =0;
-	scan_row(-3,isCompound,t_data, p_data,b_data,av1ctx);
-	if(av1ctx->FoundMatch == 1){
+	av1Ctx->FoundMatch =0;
+	scan_row(-3,isCompound,t_data, p_data,b_data,av1Ctx);
+	if(av1Ctx->FoundMatch == 1){
 		foundAboveMatch = 1;
 	}
-	av1ctx->FoundMatch =0;
+	av1Ctx->FoundMatch =0;
 
-	scan_col(-3,isCompound,t_data, p_data,b_data,av1ctx);
-	if(av1ctx->FoundMatch == 1){
+	scan_col(-3,isCompound,t_data, p_data,b_data,av1Ctx);
+	if(av1Ctx->FoundMatch == 1){
 		foundLeftMatch = 1;
 	}
-	av1ctx->FoundMatch = 0;
+	av1Ctx->FoundMatch = 0;
 
 
 	if(bh4 > 1){
-		scan_row(-5,isCompound,t_data, p_data,b_data,av1ctx);
+		scan_row(-5,isCompound,t_data, p_data,b_data,av1Ctx);
 	}
-	if(av1ctx->FoundMatch == 1){
+	if(av1Ctx->FoundMatch == 1){
 		foundAboveMatch = 1;
 	}
-	av1ctx->FoundMatch = 0;
+	av1Ctx->FoundMatch = 0;
 
 	if(bw4 > 1){
-		scan_col(-5,isCompound,t_data, p_data,b_data,av1ctx);
+		scan_col(-5,isCompound,t_data, p_data,b_data,av1Ctx);
 	}
-	if(av1ctx->FoundMatch == 1){
+	if(av1Ctx->FoundMatch == 1){
 		foundLeftMatch = 1;
 	}
 
-	av1ctx->TotalMatches = foundAboveMatch + foundLeftMatch;
+	av1Ctx->TotalMatches = foundAboveMatch + foundLeftMatch;
 
-	Sorting(0,numNearest,isCompound,av1ctx);
-	Sorting(numNearest,av1ctx->NumMvFound,isCompound,av1ctx);
-	if(av1ctx->NumMvFound < 2){
+	Sorting(0,numNearest,isCompound,av1Ctx);
+	Sorting(numNearest,av1Ctx->NumMvFound,isCompound,av1Ctx);
+	if(av1Ctx->NumMvFound < 2){
 		extra_search(isCompound);
 	}
-	context_and_clamping(isCompound,numNew,b_data,av1ctx);
+	context_and_clamping(isCompound,numNew,b_data,av1Ctx);
 
 }
 //7.10.2.1
@@ -613,7 +613,7 @@ int decode::setup_global_mv(int refList,int *mv,
 {
 	int ref,typ;
 	ref = b_data->RefFrame[ refList ];
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
 	if (ref == INTRA_FRAME || typ == IDENTITY)
 	{
@@ -649,7 +649,7 @@ int decode::setup_global_mv(int refList,int *mv,
 	lower_mv_precision(av1Ctx, mv);
 }
 int decode::lower_mv_precision(AV1DecodeContext *av1Ctx,int *candMv){
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	if(frameHdr->allow_high_precision_mv == 1)
 		return;
 	for(int idx =0 ; idx < 2 ;idx ++){	
@@ -672,7 +672,7 @@ int decode::lower_mv_precision(AV1DecodeContext *av1Ctx,int *candMv){
 }
 int decode::scan_row(int deltaRow,int isCompound,
 				TileData *t_data,PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx){
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	int deltaCol = 0;
 	if(Abs(deltaRow) > 1){
 		deltaRow += b_data->MiRow & 1;
@@ -700,7 +700,7 @@ int decode::scan_row(int deltaRow,int isCompound,
 }
 int decode::scan_col(int deltaCol,int isCompound,
 			TileData *t_data,PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx){
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	int deltaRow = 0;
 	if(Abs(deltaRow) > 1){	
 		deltaRow = 1 - (b_data->MiRow & 1);
@@ -730,7 +730,7 @@ int decode::scan_col(int deltaCol,int isCompound,
 //This process examines the candidate to find matching reference frames.
 int decode::add_ref_mv_candidate(int mvRow,int  mvCol,int  isCompound,int weight,
 								TileData *t_data,PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx){
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	if(p_data->IsInters[ mvRow ][ mvCol ] == 0){
 		return;
 	}
@@ -754,7 +754,7 @@ int decode::add_ref_mv_candidate(int mvRow,int  mvCol,int  isCompound,int weight
 
 int decode::search_stack(int mvRow,int mvCol,int candList,int weight,
 						TileData *t_data,PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx){
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	int candMode = p_data->YModes[ mvRow ][ mvCol ];
 	int candSize = p_data->MiSizes[ mvRow ][ mvCol ];
 	int candMode;
@@ -802,7 +802,7 @@ int decode::search_stack(int mvRow,int mvCol,int candList,int weight,
 //motion vectors to the stack.
 int decode::compound_search_stack(int  mvRow ,int  mvCol,int weight,
 				TileData *t_data,PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx){
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	int candMvs[2][2]; 
 	//int candMvs[2][2] = Mvs[ mvRow ][ mvCol ];
 	memcpy(candMvs,p_data->Mvs[ mvRow ][ mvCol ],2 * 2);
@@ -858,7 +858,7 @@ int decode::scan_point(int deltaRow,int deltaCol,int isCompound,
 		add_ref_mv_candidate(mvRow,mvCol,isCompound,weight,t_data, p_data, b_data,av1Ctx);
 }
 //This process scans the motion vectors in a previous frame looking for candidates which use the same reference frame.
-int decode::temporal_scan(int isCompound,TileData *t_data,BlockData *b_data,AV1DecodeContext *av1ctx)
+int decode::temporal_scan(int isCompound,TileData *t_data,BlockData *b_data,AV1DecodeContext *av1Ctx)
 {
 	int bw4 = Num_4x4_Blocks_Wide[b_data->MiSize];
 	int bh4 = Num_4x4_Blocks_High[b_data->MiSize];
@@ -869,7 +869,7 @@ int decode::temporal_scan(int isCompound,TileData *t_data,BlockData *b_data,AV1D
 	{
 		for (int deltaCol = 0; deltaCol < Min(bw4, 16); deltaCol += stepW4)
 		{
-			add_tpl_ref_mv(deltaRow, deltaCol, isCompound,t_data,b_data,av1ctx);
+			add_tpl_ref_mv(deltaRow, deltaCol, isCompound,t_data,b_data,av1Ctx);
 		}
 	}
 	const uint8_t tplSamplePos[3][2] = {
@@ -889,7 +889,7 @@ int decode::temporal_scan(int isCompound,TileData *t_data,BlockData *b_data,AV1D
 			int deltaCol = tplSamplePos[i][1];
 			if (check_sb_border(b_data->MiRow , b_data->MiCol,deltaRow, deltaCol))
 			{
-				add_tpl_ref_mv(deltaRow, deltaCol, isCompound,t_data,b_data,av1ctx);
+				add_tpl_ref_mv(deltaRow, deltaCol, isCompound,t_data,b_data,av1Ctx);
 			}
 		}
 	}
@@ -1024,7 +1024,7 @@ void decode::swap_stack(int i, int j, int isCompound, int RefStackMv[][2][2], in
 //left and above neighbors for partially matching candidates, and second adding global motion candidates
 int decode::extra_search(int isCompound,TileData *t_data,PartitionData* p_data, BlockData *b_data, AV1DecodeContext *av1Ctx)
 {
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	int RefIdCountp[2];
 	int RefDiffCount[2];
 
@@ -1118,8 +1118,8 @@ int decode::extra_search(int isCompound,TileData *t_data,PartitionData* p_data, 
 		{
 			for (int idx = 0; idx < 2; idx++)
 			{
-				//av1ctx->RefStackMv[NumMvFound][0] = combinedMvs[idx][0];
-				//av1ctx->RefStackMv[NumMvFound][1] = combinedMvs[idx][1];
+				//av1Ctx->RefStackMv[NumMvFound][0] = combinedMvs[idx][0];
+				//av1Ctx->RefStackMv[NumMvFound][1] = combinedMvs[idx][1];
 				memcpy(av1Ctx->RefStackMv[av1Ctx->NumMvFound][0],combinedMvs[idx][0],2);
 				memcpy(av1Ctx->RefStackMv[av1Ctx->NumMvFound][1],combinedMvs[idx][1],2);
 				av1Ctx->WeightStack[av1Ctx->NumMvFound] = 2;
@@ -1141,7 +1141,7 @@ int decode::extra_search(int isCompound,TileData *t_data,PartitionData* p_data, 
 int decode::add_extra_mv_candidate(int mvRow, int mvCol, int isCompound,
 									PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx)
 {
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	if (isCompound)
 	{
 		for (int candList = 0; candList < 2; candList++)
@@ -1256,14 +1256,14 @@ int decode::context_and_clamping(int isCompound, int numNew,BlockData *b_data,AV
 	}
 }
 int decode::clamp_mv_row(int  mvec, int border ,BlockData *b_data,AV1DecodeContext *av1Ctx) { 
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	int bh4 = Num_4x4_Blocks_High[ b_data->MiSize ];
 	int mbToTopEdge = -((b_data->MiRow * MI_SIZE) * 8);
 	int mbToBottomEdge = ((frameHdr->MiRows - bh4 - b_data->MiRow) * MI_SIZE) * 8;
 	return Clip3( mbToTopEdge - border, mbToBottomEdge + border, mvec );
 }
 int decode::clamp_mv_col(int mvec,int border ,BlockData *b_data,AV1DecodeContext *av1Ctx) { 
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	int bw4 = Num_4x4_Blocks_Wide[ b_data->MiSize ];
 	int mbToLeftEdge = -((b_data->MiCol * MI_SIZE) * 8);
 	int mbToRightEdge = ((frameHdr->MiCols - bw4 -b_data->MiCol) * MI_SIZE) * 8;
@@ -1271,7 +1271,7 @@ int decode::clamp_mv_col(int mvec,int border ,BlockData *b_data,AV1DecodeContext
 }
 int decode::lower_precision(int *candMv,AV1DecodeContext *av1Ctx)
 {
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	if(frameHdr->allow_high_precision_mv == 1)
 		return 0;
 	for (int i = 0; i < 2; i++)
@@ -1319,7 +1319,7 @@ int decode::get_tx_size(int plane,int txSz, int subsampling_x, int subsampling_y
 
 int decode::residual(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,PartitionData *p_data,BlockData *b_data, AV1DecodeContext *av1Ctx)
 {
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
 	int sbMask = seqHdr->use_128x128_superblock ? 31 : 15;
 	int widthChunks = Max(1, Block_Width[b_data->MiSize] >> 6);
@@ -1367,7 +1367,7 @@ int decode::residual(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,PartitionDa
 int decode::transform_tree(int startX, int startY,int w,int h,SymbolContext *sbCtx,bitSt *bs,
 							TileData *t_data,PartitionData *p_data, BlockData *b_data, AV1DecodeContext *av1Ctx)
 {
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	int maxX = frameHdr->MiCols * MI_SIZE;
 	int maxY = frameHdr->MiRows * MI_SIZE;
 	if (startX >= maxX || startY >= maxY)
@@ -1408,7 +1408,7 @@ int decode::transform_tree(int startX, int startY,int w,int h,SymbolContext *sbC
 int decode::transform_block(int plane,int baseX,int baseY,int txSz,int x,int y,SymbolContext *sbCtx,bitSt *bs,
 							TileData *t_data,PartitionData *p_data, BlockData *b_data, AV1DecodeContext *av1Ctx)
 {
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
 	int startX = baseX + 4 * x;
 	int startY = baseY + 4 * y;
@@ -1487,7 +1487,7 @@ int decode::transform_block(int plane,int baseX,int baseY,int txSz,int x,int y,S
 int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx,bitSt *bs,
 							TileData *t_data,PartitionData *p_data, BlockData *b_data, AV1DecodeContext *av1Ctx)
 {
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
 	int x4 = startX >> 2;
 	int y4 = startY >> 2;
@@ -1506,7 +1506,7 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 	int dcCategory = 0;
 
 	int ctx = cacluteAllZeroCtx( plane, txSz,  x4, y4, w4, h4,b_data,av1Ctx);
-	int all_zero = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame.cdfCtx.Txb_Skip[ txSzCtx ][ ctx ],3); // S()
+	int all_zero = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Txb_Skip[ txSzCtx ][ ctx ],3); // S()
 	if (all_zero)
 	{
 		int c = 0;
@@ -1533,44 +1533,44 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 		int ctx = ( get_tx_class( txType ) == TX_CLASS_2D ) ? 0 : 1;
 		if (eobMultisize == 0)
 		{
-			int eob_pt_16 = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame.cdfCtx.Eob_Pt_16[ ptype ][ ctx ],6); // S()
+			int eob_pt_16 = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Eob_Pt_16[ ptype ][ ctx ],6); // S()
 			eobPt = eob_pt_16 + 1;
 		}
 		else if (eobMultisize == 1)
 		{
-			int eob_pt_32  = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame.cdfCtx.Eob_Pt_32[ ptype ][ ctx ],7); // S()
+			int eob_pt_32  = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Eob_Pt_32[ ptype ][ ctx ],7); // S()
 			eobPt = eob_pt_32 + 1;
 		}
 		else if (eobMultisize == 2)
 		{
-			int eob_pt_64  = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame.cdfCtx.Eob_Pt_64[ ptype ][ ctx ],8); // S()
+			int eob_pt_64  = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Eob_Pt_64[ ptype ][ ctx ],8); // S()
 			eobPt = eob_pt_64 + 1;
 		}
 		else if (eobMultisize == 3)
 		{
-			int eob_pt_128 = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame.cdfCtx.Eob_Pt_128[ ptype ][ ctx ],9); // S()
+			int eob_pt_128 = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Eob_Pt_128[ ptype ][ ctx ],9); // S()
 			eobPt = eob_pt_128 + 1;
 		}
 		else if (eobMultisize == 4)
 		{
-			int eob_pt_256 = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame.cdfCtx.Eob_Pt_256[ ptype ][ ctx ],10); // S()
+			int eob_pt_256 = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Eob_Pt_256[ ptype ][ ctx ],10); // S()
 			eobPt = eob_pt_256 + 1;
 		}
 		else if (eobMultisize == 5)
 		{
-			int eob_pt_512 = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame.cdfCtx.Eob_Pt_512[ ptype ],11); // S()
+			int eob_pt_512 = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Eob_Pt_512[ ptype ],11); // S()
 			eobPt = eob_pt_512 + 1;
 		}
 		else
 		{
-			int eob_pt_1024 = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame.cdfCtx.Eob_Pt_1024[ ptype ],12); // S()
+			int eob_pt_1024 = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Eob_Pt_1024[ ptype ],12); // S()
 			eobPt = eob_pt_1024 + 1;
 		}
 		eob = (eobPt < 2) ? eobPt : ((1 << (eobPt - 2)) + 1);
 		int eobShift = Max(-1, eobPt - 3);
 		if (eobShift >= 0)
 		{
-			int eob_extra = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame.cdfCtx.Eob_Extra[ txSzCtx ][ ptype ][ eobPt - 3 ],12); // S()
+			int eob_extra = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Eob_Extra[ txSzCtx ][ ptype ][ eobPt - 3 ],12); // S()
 			if (eob_extra)
 			{
 				eob += (1 << eobShift);
@@ -1592,13 +1592,13 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 			if (c == (eob - 1))
 			{
 				ctx =  get_coeff_base_ctx(txSz, plane, x4, y4, scan[c], c, 1,b_data,av1Ctx) - SIG_COEF_CONTEXTS + SIG_COEF_CONTEXTS_EOB;
-				int coeff_base_eob = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame.cdfCtx.Coeff_Base_Eob[ txSzCtx ][ ptype ][ ctx ],4);// S()
+				int coeff_base_eob = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Coeff_Base_Eob[ txSzCtx ][ ptype ][ ctx ],4);// S()
 				level = coeff_base_eob + 1;
 			}
 			else
 			{
 				ctx = get_coeff_base_ctx(txSz, plane, x4, y4, scan[c], c, 0,b_data,av1Ctx);
-				int coeff_base =  sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame.cdfCtx.Coeff_Base[ txSzCtx ][ ptype ][ ctx ],5); // S()
+				int coeff_base =  sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Coeff_Base[ txSzCtx ][ ptype ][ ctx ],5); // S()
 				level = coeff_base;
 			}
 			if (level > NUM_BASE_LEVELS)
@@ -1669,7 +1669,7 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 						}
 					}
 				//------
-					int coeff_br = sb->decodeSymbol(sbCtx, bs, av1Ctx->currentFrame.cdfCtx.Coeff_Br[Min(txSzCtx, TX_32X32)][ptype][ctx], BR_CDF_SIZE + 1); // S()
+					int coeff_br = sb->decodeSymbol(sbCtx, bs, av1Ctx->currentFrame->cdfCtx.Coeff_Br[Min(txSzCtx, TX_32X32)][ptype][ctx], BR_CDF_SIZE + 1); // S()
 					level += coeff_br;
 					if (coeff_br < (BR_CDF_SIZE - 1))
 						break;
@@ -1737,7 +1737,7 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 						ctx = 0;
 					}
 				//---------
-					int dc_sign = sb->decodeSymbol(sbCtx, bs, av1Ctx->currentFrame.cdfCtx.Dc_Sign[ptype][ctx], BR_CDF_SIZE + 1); // S()
+					int dc_sign = sb->decodeSymbol(sbCtx, bs, av1Ctx->currentFrame->cdfCtx.Dc_Sign[ptype][ctx], BR_CDF_SIZE + 1); // S()
 					sign = dc_sign;
 				}
 				else
@@ -1793,7 +1793,7 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 }
 int decode::cacluteAllZeroCtx(int plane,int txSz, int x4,int y4,int w4,int h4,BlockData *b_data,AV1DecodeContext *av1Ctx)
 {
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
 	int ctx;
 	int maxX4 = frameHdr->MiCols;
@@ -1879,7 +1879,7 @@ int decode::cacluteAllZeroCtx(int plane,int txSz, int x4,int y4,int w4,int h4,Bl
 int decode::transform_type(int x4,int  y4,int txSz,SymbolContext *sbCtx,bitSt *bs,
 						BlockData *b_data, AV1DecodeContext *av1Ctx)
 {
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	int set = get_tx_set(txSz,b_data->is_inter,frameHdr->reduced_tx_set);
 	int TxType;
 	if (set > 0 &&
@@ -1892,13 +1892,13 @@ int decode::transform_type(int x4,int  y4,int txSz,SymbolContext *sbCtx,bitSt *b
 		if (b_data->is_inter)
 		{
 			if(set == TX_SET_INTER_1){
-				cdf = av1Ctx->currentFrame.cdfCtx.Inter_Tx_Type_Set1[ Tx_Size_Sqr[ txSz ] ];
+				cdf = av1Ctx->currentFrame->cdfCtx.Inter_Tx_Type_Set1[ Tx_Size_Sqr[ txSz ] ];
 				size = 17;
 			}else if(set == TX_SET_INTER_2){
-				cdf = av1Ctx->currentFrame.cdfCtx.Inter_Tx_Type_Set2;
+				cdf = av1Ctx->currentFrame->cdfCtx.Inter_Tx_Type_Set2;
 				size = 13;
 			}else if(set == TX_SET_INTER_3){
-				cdf = av1Ctx->currentFrame.cdfCtx.Inter_Tx_Type_Set3[ Tx_Size_Sqr[ txSz ] ];
+				cdf = av1Ctx->currentFrame->cdfCtx.Inter_Tx_Type_Set3[ Tx_Size_Sqr[ txSz ] ];
 				size = 3;
 			}
 			int inter_tx_type = sb->decodeSymbol(sbCtx,bs,cdf,size); // S()
@@ -1918,10 +1918,10 @@ int decode::transform_type(int x4,int  y4,int txSz,SymbolContext *sbCtx,bitSt *b
 				intraDir = b_data->YMode;
 			}
 			if(set == TX_SET_INTRA_1){
-				cdf = av1Ctx->currentFrame.cdfCtx.Intra_Tx_Type_Set1[ Tx_Size_Sqr[ txSz ] ][ intraDir ];
+				cdf = av1Ctx->currentFrame->cdfCtx.Intra_Tx_Type_Set1[ Tx_Size_Sqr[ txSz ] ][ intraDir ];
 				size = 8;
 			}else if(set == TX_SET_INTRA_2){
-				cdf = av1Ctx->currentFrame.cdfCtx.Intra_Tx_Type_Set1[ Tx_Size_Sqr[ txSz ] ][ intraDir ];
+				cdf = av1Ctx->currentFrame->cdfCtx.Intra_Tx_Type_Set1[ Tx_Size_Sqr[ txSz ] ][ intraDir ];
 				size = 6;
 			}
 			int intra_tx_type = sb->decodeSymbol(sbCtx,bs,cdf,size); // S()
@@ -1945,7 +1945,7 @@ int decode::transform_type(int x4,int  y4,int txSz,SymbolContext *sbCtx,bitSt *b
 }
 int decode::compute_tx_type(int plane, int txSz,int blockX,int blockY,BlockData *b_data,AV1DecodeContext *av1Ctx)
 {
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
 	int txSzSqrUp = Tx_Size_Sqr_Up[txSz];
 	if (b_data->Lossless || txSzSqrUp > TX_32X32)
@@ -2025,7 +2025,7 @@ int decode::get_coeff_base_ctx(int txSz, int plane, int blockX, int blockY, int 
 //7.10.3
 int decode::has_overlappable_candidates(PartitionData *p_data, BlockData *b_data,AV1DecodeContext *av1Ctx)
 {
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	if (b_data->AvailU)
 	{
 		int w4 = Num_4x4_Blocks_Wide[b_data->MiSize];
@@ -2053,13 +2053,13 @@ int decode::has_overlappable_candidates(PartitionData *p_data, BlockData *b_data
 //The process produces a variable NumSamples containing the number of valid candidates found, and an array CandList
 //containing sorted candidates.
 int decode::find_warp_samples(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
-							PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1ctx)
+							PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx)
 {
-	frameHeader *frameHdr = av1ctx->curFrameHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	int doTopLeft = 1;
 	int doTopRight = 1;
-	av1ctx->NumSamples = 0;
-	av1ctx->NumSamplesScanned = 0;
+	av1Ctx->NumSamples = 0;
+	av1Ctx->NumSamplesScanned = 0;
 	int w4 = Num_4x4_Blocks_Wide[ b_data->MiSize ];
 	int h4 = Num_4x4_Blocks_High[ b_data->MiSize ];
 	if (b_data->AvailU)
@@ -2073,7 +2073,7 @@ int decode::find_warp_samples(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
 				doTopLeft = 0;
 			if (colOffset + srcW > w4)
 				doTopRight = 0;
-			add_sample(-1, 0,t_data,p_data,b_data,av1ctx);
+			add_sample(-1, 0,t_data,p_data,b_data,av1Ctx);
 		}
 		else
 		{
@@ -2083,7 +2083,7 @@ int decode::find_warp_samples(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
 				srcSize = p_data->MiSizes[b_data->MiRow - 1][b_data->MiCol + i];
 				srcW = Num_4x4_Blocks_Wide[srcSize];
 				miStep = Min(w4, srcW);
-				add_sample(-1, i,t_data,p_data,b_data,av1ctx);
+				add_sample(-1, i,t_data,p_data,b_data,av1Ctx);
 			}
 		}
 	}
@@ -2096,7 +2096,7 @@ int decode::find_warp_samples(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
 			int rowOffset = -(b_data->MiRow & (srcH - 1));
 			if (rowOffset < 0)
 				doTopLeft = 0;
-			add_sample(0, -1,t_data,p_data,b_data,av1ctx);
+			add_sample(0, -1,t_data,p_data,b_data,av1Ctx);
 		}
 		else
 		{
@@ -2106,23 +2106,23 @@ int decode::find_warp_samples(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
 				srcSize = p_data->MiSizes[b_data->MiRow + i][b_data->MiCol - 1];
 				srcH = Num_4x4_Blocks_High[srcSize];
 				miStep = Min(h4, srcH);
-				add_sample(i, -1,t_data,p_data,b_data,av1ctx);
+				add_sample(i, -1,t_data,p_data,b_data,av1Ctx);
 			}
 		}
 	}
 	if (doTopLeft)
 	{
-		add_sample(-1, -1,t_data,p_data,b_data,av1ctx);
+		add_sample(-1, -1,t_data,p_data,b_data,av1Ctx);
 	}
 	if (doTopRight)
 	{
 		if (Max(w4, h4) <= 16)
 		{
-			add_sample(-1, w4,t_data,p_data,b_data,av1ctx);
+			add_sample(-1, w4,t_data,p_data,b_data,av1Ctx);
 		}
 	}
-	if (av1ctx->NumSamples == 0 && av1ctx->NumSamplesScanned > 0)
-		av1ctx->NumSamples = 1;
+	if (av1Ctx->NumSamples == 0 && av1Ctx->NumSamplesScanned > 0)
+		av1Ctx->NumSamples = 1;
 }
 int decode::add_sample(int deltaRow,int deltaCol,TileData *t_data,PartitionData *p_data,
 				BlockData *b_data,AV1DecodeContext *av1Ctx){
@@ -2217,7 +2217,7 @@ int decode::predict_intra(int plane,int x,int y,int haveLeft,int haveAbove,
 				int haveAboveRight,int haveBelowLeft,int mode,int log2W,int log2H,
 				TileData *t_data, PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx){
 
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
 	int w = 1 << log2W;
 	int h = 1 << log2H;
@@ -2232,36 +2232,36 @@ int decode::predict_intra(int plane,int x,int y,int haveLeft,int haveAbove,
     for (int i = 0; i < w + h - 1; i++) {
         if (haveAbove == 0 && haveLeft == 1) {
             // 如果haveAbove为0且haveLeft为1，设置AboveRow[i]等于左侧的像素值
-            (*b_data->AboveRow)[i] = av1Ctx->currentFrame.CurrFrame[plane][y][x - 1];
+            (*b_data->AboveRow)[i] = av1Ctx->currentFrame->CurrFrame[plane][y][x - 1];
         } else if (haveAbove == 0 && haveLeft == 0) {
             // 如果haveAbove和haveLeft都为0，设置AboveRow[i]为(1 << (BitDepth - 1)) - 1
             (*b_data->AboveRow)[i] = (1 << (seqHdr->color_config.BitDepth - 1)) - 1;
         } else {
             // 如果以上两个条件都不满足
             int aboveLimit = x + (haveAboveRight ? 2 * w : w) - 1;
-            (*b_data->AboveRow)[i] = av1Ctx->currentFrame.CurrFrame[plane][y - 1][Min(aboveLimit, x+i)];
+            (*b_data->AboveRow)[i] = av1Ctx->currentFrame->CurrFrame[plane][y - 1][Min(aboveLimit, x+i)];
         }
 
     }
     for (int i = 0; i < w + h - 1; i++) {
         if (haveLeft == 0 && haveAbove == 1) {
             // 如果haveLeft为0且haveAbove为1，设置LeftCol[i]等于上方的像素值
-            (*b_data->LeftCol)[i] = av1Ctx->currentFrame.CurrFrame[plane][y - 1][x];
+            (*b_data->LeftCol)[i] = av1Ctx->currentFrame->CurrFrame[plane][y - 1][x];
         } else if (haveLeft == 0 && haveAbove == 0) {
             // 如果haveLeft和haveAbove都为0，设置LeftCol[i]为(1 << (BitDepth - 1)) + 1
             (*b_data->LeftCol)[i] = (1 << (seqHdr->color_config.BitDepth - 1)) + 1;
         } else {
             // 如果以上两个条件都不满足
             int leftLimit = y + (haveBelowLeft ? 2 * h : h) - 1;
-            (*b_data->LeftCol)[i] = av1Ctx->currentFrame.CurrFrame[plane][Min(leftLimit, y+i)][x - 1];
+            (*b_data->LeftCol)[i] = av1Ctx->currentFrame->CurrFrame[plane][Min(leftLimit, y+i)][x - 1];
         }
     }
 	if(haveAbove == 1 && haveLeft == 1){
-		(*b_data->AboveRow)[ -1 ] = av1Ctx->currentFrame.CurrFrame[ plane ][ y-1 ][x-1 ];
+		(*b_data->AboveRow)[ -1 ] = av1Ctx->currentFrame->CurrFrame[ plane ][ y-1 ][x-1 ];
 	}else if(haveAbove == 1){
-		(*b_data->AboveRow)[ -1 ] = av1Ctx->currentFrame.CurrFrame[ plane ][ y-1 ][x ];
+		(*b_data->AboveRow)[ -1 ] = av1Ctx->currentFrame->CurrFrame[ plane ][ y-1 ][x ];
 	}else if(haveLeft == 1) {
-		(*b_data->AboveRow)[ -1 ] = av1Ctx->currentFrame.CurrFrame[ plane ][ y ][x-1 ];
+		(*b_data->AboveRow)[ -1 ] = av1Ctx->currentFrame->CurrFrame[ plane ][ y ][x-1 ];
 	}else{
 		(*b_data->AboveRow)[ -1 ] = 1 << ( seqHdr->color_config.BitDepth - 1 );
 	}
@@ -2281,7 +2281,7 @@ int decode::predict_intra(int plane,int x,int y,int haveLeft,int haveAbove,
 	}
 	for(int i = 0 ; i < h ;i ++){
 		for(int j = 0 ; j < w ;j ++){
-			av1Ctx->currentFrame.CurrFrame[ plane ][ y + i ][ x + j ] = pred[ i ][ j ];
+			av1Ctx->currentFrame->CurrFrame[ plane ][ y + i ][ x + j ] = pred[ i ][ j ];
 		}	
 	}
 }
@@ -2896,7 +2896,7 @@ int decode::intraEdgeFilter(int sz, int strength, int left,BlockData *b_data){
 
 int decode::predict_inter(int plane, int x, int y,int w ,int h ,int candRow,int candCol,int IsInterIntra,
 							TileData *t_data,PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx){
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
 	int isCompound =  p_data->RefFrames[ candRow ][ candCol ][ 1 ] > INTRA_FRAME;
 	roundingVariablesDerivation(isCompound,b_data,av1Ctx);
@@ -2992,19 +2992,19 @@ genArray:
 	if(isCompound == 0 && IsInterIntra == 0){
 		for(int i = 0 ; i < h ; i ++){
 			for(int j = 0 ; j < w ; j ++){
-			    av1Ctx->currentFrame.CurrFrame[ plane ][ y + i ][ x + j ] = Clip1(preds[ 0 ][ i ][ j ] ,seqHdr->color_config.BitDepth);
+			    av1Ctx->currentFrame->CurrFrame[ plane ][ y + i ][ x + j ] = Clip1(preds[ 0 ][ i ][ j ] ,seqHdr->color_config.BitDepth);
 			}
 		}
 	}else if(b_data->compound_type == COMPOUND_AVERAGE){
 		for(int i = 0 ; i < h ; i ++){
 			for(int j = 0 ; j < w ; j ++){
-				av1Ctx->currentFrame.CurrFrame[ plane ][ y + i ][ x + j ] = Clip1( Round2( preds[ 0 ][ i ][ j ] + preds[ 1 ][ i ][ j ], 1 + b_data->InterPostRound ),seqHdr->color_config.BitDepth );
+				av1Ctx->currentFrame->CurrFrame[ plane ][ y + i ][ x + j ] = Clip1( Round2( preds[ 0 ][ i ][ j ] + preds[ 1 ][ i ][ j ], 1 + b_data->InterPostRound ),seqHdr->color_config.BitDepth );
 			}
 		}
 	}else if(b_data->compound_type == COMPOUND_DISTANCE){
 		for(int i = 0 ; i < h ; i ++){
 			for(int j = 0 ; j < w ; j ++){
-				av1Ctx->currentFrame.CurrFrame[ plane ][ y + i ][ x + j ] = Clip1( Round2( FwdWeight * preds[ 0 ][ i ][ j ] + BckWeight * preds[ 1 ][ i ][ j ], 4 + b_data->InterPostRound ) ,seqHdr->color_config.BitDepth);
+				av1Ctx->currentFrame->CurrFrame[ plane ][ y + i ][ x + j ] = Clip1( Round2( FwdWeight * preds[ 0 ][ i ][ j ] + BckWeight * preds[ 1 ][ i ][ j ], 4 + b_data->InterPostRound ) ,seqHdr->color_config.BitDepth);
 			}
 		}
 	}else{
@@ -3153,7 +3153,7 @@ int decode::warpEstimation(int **CandList, int LocalWarpParams[6], int *LocalVal
 ////7.11.3.3
 int decode::motionVectorScaling(int plane, int refIdx, int x, int y, int mv[2],
 								int *startX,int *startY, int *stepX,int *stepY, AV1DecodeContext *av1Ctx){
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
 	int xScale, yScale;
     int subX, subY;
@@ -3192,7 +3192,7 @@ int decode::blockWarp(int useWarp,int plane,int refList,int x,int y,
 						int i8,int j8,int w,int h,uint8_t **pred,int LocalWarpParams[6],
 						BlockData *b_data,AV1DecodeContext *av1Ctx)
 {
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
     int refIdx = frameHdr->ref_frame_idx[b_data->RefFrame[refList] - LAST_FRAME];
 
@@ -3280,11 +3280,11 @@ int decode::blockWarp(int useWarp,int plane,int refList,int x,int y,
 int decode::block_inter_prediction(int plane, int refIdx, int x, int y, int xStep, int yStep, 
 						int w, int h, int candRow, int candCol,uint8_t **pred,
 						PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx) {
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;		
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;		
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
-    uint8_t ***ref;
+    uint16_t ***ref;
     if (refIdx == -1) {
-        ref = av1Ctx->currentFrame.CurrFrame;
+        ref = av1Ctx->currentFrame->CurrFrame;
     } else if (refIdx >= 0) {
         ref = av1Ctx->FrameStore[refIdx];
     }
@@ -3466,7 +3466,7 @@ int decode::differenceWeightMask(uint8_t ***preds, int w, int h,BlockData *b_dat
 int decode::distanceWeights(int candRow,int candCol,int *FwdWeight,int *BckWeight,  
 							PartitionData *p_data, AV1DecodeContext *av1Ctx)
 {
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
  	int refList;  
     int h;  
@@ -3510,7 +3510,7 @@ int decode::distanceWeights(int candRow,int candCol,int *FwdWeight,int *BckWeigh
 //COMPOUND_INTRA, or the luma plane otherwise).
 int decode::maskBlend(uint8_t ***preds,int plane , int dstX,int dstY,int w,int h,BlockData *b_data,AV1DecodeContext *av1Ctx){
 	
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
     int subX, subY;  
     int m;  
@@ -3537,12 +3537,12 @@ int decode::maskBlend(uint8_t ***preds,int plane , int dstX,int dstY,int w,int h
   
             if (av1Ctx->interintra) {  
                 pred0 = Clip1(Round2(preds[0][y][x], b_data->InterPostRound),seqHdr->color_config.BitDepth);  
-                pred1 = av1Ctx->currentFrame.CurrFrame[plane][y+dstY][x+dstX];  
-                av1Ctx->currentFrame.CurrFrame[plane][y+dstY][x+dstX] = Round2(m * pred1 + (64 - m) * pred0, 6);  
+                pred1 = av1Ctx->currentFrame->CurrFrame[plane][y+dstY][x+dstX];  
+                av1Ctx->currentFrame->CurrFrame[plane][y+dstY][x+dstX] = Round2(m * pred1 + (64 - m) * pred0, 6);  
             } else {  
                 pred0 = preds[0][y][x];  
                 pred1 = preds[1][y][x];  
-                av1Ctx->currentFrame.CurrFrame[plane][y+dstY][x+dstX] = Clip1(Round2(m * pred0 + (64 - m) * pred1, 6 + b_data->InterPostRound),seqHdr->color_config.BitDepth);  
+                av1Ctx->currentFrame->CurrFrame[plane][y+dstY][x+dstX] = Clip1(Round2(m * pred0 + (64 - m) * pred1, 6 + b_data->InterPostRound),seqHdr->color_config.BitDepth);  
             }  
         }  
     }  
@@ -3556,7 +3556,7 @@ int decode::maskBlend(uint8_t ***preds,int plane , int dstX,int dstY,int w,int h
 
 int decode::overlappedMotionCompensation(int plane, int w ,int h,PartitionData *p_data,
 					BlockData *b_data,AV1DecodeContext *av1Ctx) {
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
 
     int AvailU = 1; // 上方是否可用
@@ -3626,7 +3626,7 @@ int decode::overlappedMotionCompensation(int plane, int w ,int h,PartitionData *
 
 int decode::predict_overlap(int MiSize,int plane ,int x4,int y4,int predW,int predH,int subX,int subY ,
 						  int candRow,int candCol ,int pass,uint8_t *mask,PartitionData *p_data,BlockData *b_data, AV1DecodeContext *av1Ctx){
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
 	int *mv = p_data->Mvs[ candRow ][ candCol ][ 0 ];
 	int refIdx = frameHdr->ref_frame_idx[ p_data->RefFrames[ candRow ][ candCol ][ 0 ] - LAST_FRAME ];
@@ -3662,8 +3662,8 @@ int decode::OverlapBlending(int plane ,int predX,int predY,int predW,int predH ,
 				//blend from left
 				m = mask[ j ];
 			}
-			av1Ctx->currentFrame.CurrFrame[ plane ][ predY + i ][ predX + j ] = 
-					Round2( m * av1Ctx->currentFrame.CurrFrame[ plane ][ predY + i ][ predX + j ] + (64 - m) * obmcPred[ i ][ j ], 6);
+			av1Ctx->currentFrame->CurrFrame[ plane ][ predY + i ][ predX + j ] = 
+					Round2( m * av1Ctx->currentFrame->CurrFrame[ plane ][ predY + i ][ predX + j ] + (64 - m) * obmcPred[ i ][ j ], 6);
 		}
 	}
 } 
@@ -3686,7 +3686,7 @@ int decode::predict_palette(int plane, int startX, int startY, int x, int y, int
 
     for (int i = 0; i < h; i++) {
         for (int j = 0; j < w; j++) {
-            av1Ctx->currentFrame.CurrFrame[plane][startY + i][startX + j] = palette[map[y * 4 + i][x * 4 + j]];
+            av1Ctx->currentFrame->CurrFrame[plane][startY + i][startX + j] = palette[map[y * 4 + i][x * 4 + j]];
         }
     }
 }
@@ -3712,7 +3712,7 @@ int decode::predict_chroma_from_luma(int plane, int startX, int startY, int txSz
             int t = 0;
             for (int dy = 0; dy <= subY; dy += 1) {
                 for (int dx = 0; dx <= subX; dx += 1) {
-                    t += av1Ctx->currentFrame.CurrFrame[0][lumaY + dy][lumaX + dx];
+                    t += av1Ctx->currentFrame->CurrFrame[0][lumaY + dy][lumaX + dx];
                 }
             }
 
@@ -3726,16 +3726,16 @@ int decode::predict_chroma_from_luma(int plane, int startX, int startY, int txSz
 
     for (int i = 0; i < h; i++) {
         for (int j = 0; j < w; j++) {
-            int dc = av1Ctx->currentFrame.CurrFrame[plane][startY + i][startX + j];
+            int dc = av1Ctx->currentFrame->CurrFrame[plane][startY + i][startX + j];
             int scaledLuma = (int)((alpha * (L[i][j] - lumaAvg)) * 64);
-            av1Ctx->currentFrame.CurrFrame[plane][startY + i][startX + j] = Clip1(dc + scaledLuma,seqHdr->color_config.BitDepth);
+            av1Ctx->currentFrame->CurrFrame[plane][startY + i][startX + j] = Clip1(dc + scaledLuma,seqHdr->color_config.BitDepth);
         }
     }
 }                                                                                                                                                                                                                                              
 
 //7.12
 int decode::get_dc_quant(int plane,BlockData *b_data,AV1DecodeContext *av1Ctx) {
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
     
     int qindex = seg_instance->get_qindex(0, b_data->segment_id,frameHdr);
@@ -3750,7 +3750,7 @@ int decode::get_dc_quant(int plane,BlockData *b_data,AV1DecodeContext *av1Ctx) {
 
 // Function to calculate the quantizer value for the ac coefficient for a given plane.
 int decode::get_ac_quant(int plane,BlockData *b_data,AV1DecodeContext *av1Ctx) {
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
     int qindex = seg_instance->get_qindex(0, b_data->segment_id,frameHdr);
     
@@ -3763,7 +3763,7 @@ int decode::get_ac_quant(int plane,BlockData *b_data,AV1DecodeContext *av1Ctx) {
     }
 }
 int decode::reconstruct(int plane, int x, int y, int txSz,BlockData *b_data,AV1DecodeContext *av1Ctx) {
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
     int dqDenom;
 	if (txSz == TX_32X32 || txSz == TX_16X32 || txSz == TX_32X16 || txSz == TX_16X64 || txSz == TX_64X16) {
@@ -3807,7 +3807,7 @@ int decode::reconstruct(int plane, int x, int y, int txSz,BlockData *b_data,AV1D
             int xx = flipLR ? (w - j - 1) : j;
             int yy = flipUD ? (h - i - 1) : i;
             
-            av1Ctx->currentFrame.CurrFrame[plane][y + yy][x + xx] = Clip1(av1Ctx->currentFrame.CurrFrame[plane][y + yy][x + xx] + Residual[i][j],seqHdr->color_config.BitDepth);
+            av1Ctx->currentFrame->CurrFrame[plane][y + yy][x + xx] = Clip1(av1Ctx->currentFrame->CurrFrame[plane][y + yy][x + xx] + Residual[i][j],seqHdr->color_config.BitDepth);
         }
     }
     // 无损模式下 需要完全无损 ，因此 Residual 内的每个像素 用 1 + BitDepth位来表示，即比位深度还多一位
@@ -4238,7 +4238,7 @@ void decode::inverseIdentityTransform(int *T,int n){
 	}
 }
 void decode::twoDInverseTransformBlock(int txSz,int **Residual,BlockData *b_data, AV1DecodeContext *av1Ctx) {
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
 	int log2W = Tx_Width_Log2[ txSz ];
     int log2H = Tx_Height_Log2[txSz];
@@ -4313,7 +4313,7 @@ void decode::twoDInverseTransformBlock(int txSz,int **Residual,BlockData *b_data
 }
 //7.14
 void decode::loopFilter(int **CurrFrame,TileData *t_data, PartitionData *p_data,BlockData *b_data, AV1DecodeContext *av1Ctx){
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
 	for (int  plane = 0; plane < seqHdr->color_config.NumPlanes; plane++ ) {
 		if ( plane == 0 || frameHdr->loop_filter_params.loop_filter_level[ 1 + plane ] ) {
@@ -4328,7 +4328,7 @@ void decode::loopFilter(int **CurrFrame,TileData *t_data, PartitionData *p_data,
 	}
 }
 void decode::edgeLoopFilter(int plane, int pass, int row, int col,TileData *t_data,PartitionData *p_data,BlockData *b_data, AV1DecodeContext *av1Ctx) {
-   	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+   	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
     int subX, subY, dx, dy, x, y, onScreen, xP, yP, prevRow, prevCol;
     int isBlockEdge, isTxEdge, applyFilter;
@@ -4447,7 +4447,7 @@ int decode::filterSizeProcess(int txSz, int prevTxSz, int pass, int plane) {
 //7.14.4
 void decode::adaptiveFilterStrength(int row, int col, int plane, int pass, int* lvl, int* limit, int* blimit, int* thresh,
 							PartitionData *p_data ,AV1DecodeContext *av1Ctx) {
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
 
     int segment = p_data->SegmentIds[row][col];
@@ -4495,7 +4495,7 @@ void decode::adaptiveFilterStrength(int row, int col, int plane, int pass, int* 
 //7.14.5
 int decode::adaptiveFilterStrengthSelection(int segment, int ref, int modeType, int deltaLF, int plane, int pass,
 									PartitionData *p_data ,AV1DecodeContext *av1Ctx) {
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
     // 初始化变量
     int i = (plane == 0) ? pass : (plane + 1);
@@ -4554,20 +4554,20 @@ void decode::filterMaskProcess(int x,int y,int plane,int limit,int blimit,int th
 						AV1DecodeContext *av1Ctx)
 {
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
-	int q0 = av1Ctx->currentFrame.CurrFrame[ plane ][ y ][ x ];
-	int q1 = av1Ctx->currentFrame.CurrFrame[ plane ][ y + dy ][ x + dx ];
-	int q2 = av1Ctx->currentFrame.CurrFrame[ plane ][ y + dy * 2 ][ x + dx * 2 ];
-	int q3 = av1Ctx->currentFrame.CurrFrame[ plane ][ y + dy * 3 ][ x + dx * 3 ];
-	int q4 = av1Ctx->currentFrame.CurrFrame[ plane ][ y + dy * 4 ][ x + dx * 4 ];
-	int q5 = av1Ctx->currentFrame.CurrFrame[ plane ][ y + dy * 5 ][ x + dx * 5 ];
-	int q6 = av1Ctx->currentFrame.CurrFrame[ plane ][ y + dy * 6 ][ x + dx * 6 ];
-	int p0 = av1Ctx->currentFrame.CurrFrame[ plane ][ y - dy ][ x - dx ];
-	int p1 = av1Ctx->currentFrame.CurrFrame[ plane ][ y - dy * 2 ][ x - dx * 2 ];
-	int p2 = av1Ctx->currentFrame.CurrFrame[ plane ][ y - dy * 3 ][ x - dx * 3 ];
-	int p3 = av1Ctx->currentFrame.CurrFrame[ plane ][ y - dy * 4 ][ x - dx * 4 ];
-	int p4 = av1Ctx->currentFrame.CurrFrame[ plane ][ y - dy * 5 ][ x - dx * 5 ];
-	int p5 = av1Ctx->currentFrame.CurrFrame[ plane ][ y - dy * 6 ][ x - dx * 6 ];
-	int p6 = av1Ctx->currentFrame.CurrFrame[ plane ][ y - dy * 7 ][ x - dx * 7 ];
+	int q0 = av1Ctx->currentFrame->CurrFrame[ plane ][ y ][ x ];
+	int q1 = av1Ctx->currentFrame->CurrFrame[ plane ][ y + dy ][ x + dx ];
+	int q2 = av1Ctx->currentFrame->CurrFrame[ plane ][ y + dy * 2 ][ x + dx * 2 ];
+	int q3 = av1Ctx->currentFrame->CurrFrame[ plane ][ y + dy * 3 ][ x + dx * 3 ];
+	int q4 = av1Ctx->currentFrame->CurrFrame[ plane ][ y + dy * 4 ][ x + dx * 4 ];
+	int q5 = av1Ctx->currentFrame->CurrFrame[ plane ][ y + dy * 5 ][ x + dx * 5 ];
+	int q6 = av1Ctx->currentFrame->CurrFrame[ plane ][ y + dy * 6 ][ x + dx * 6 ];
+	int p0 = av1Ctx->currentFrame->CurrFrame[ plane ][ y - dy ][ x - dx ];
+	int p1 = av1Ctx->currentFrame->CurrFrame[ plane ][ y - dy * 2 ][ x - dx * 2 ];
+	int p2 = av1Ctx->currentFrame->CurrFrame[ plane ][ y - dy * 3 ][ x - dx * 3 ];
+	int p3 = av1Ctx->currentFrame->CurrFrame[ plane ][ y - dy * 4 ][ x - dx * 4 ];
+	int p4 = av1Ctx->currentFrame->CurrFrame[ plane ][ y - dy * 5 ][ x - dx * 5 ];
+	int p5 = av1Ctx->currentFrame->CurrFrame[ plane ][ y - dy * 6 ][ x - dx * 6 ];
+	int p6 = av1Ctx->currentFrame->CurrFrame[ plane ][ y - dy * 7 ][ x - dx * 7 ];
 	// hev : means |high| edge| variance|
 	*hevMask = 0 ;
 	int threshBd = thresh << (seqHdr->color_config.BitDepth - 8);
@@ -4638,10 +4638,10 @@ void decode::filterMaskProcess(int x,int y,int plane,int limit,int blimit,int th
 //specified boundary depending on the value of hevMask 
 void decode::narrowFilter(int x,int y,int plane,int dx ,int dy,int *hevMask,AV1DecodeContext *av1Ctx){
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
-	int q0 = av1Ctx->currentFrame.CurrFrame[ plane ][ y ][ x ];
-	int q1 = av1Ctx->currentFrame.CurrFrame[ plane ][ y + dy ][ x + dx ];
-	int p0 = av1Ctx->currentFrame.CurrFrame[ plane ][ y - dy ][ x - dx ];
-	int p1 = av1Ctx->currentFrame.CurrFrame[ plane ][ y - dy * 2 ][ x - dx * 2 ];
+	int q0 = av1Ctx->currentFrame->CurrFrame[ plane ][ y ][ x ];
+	int q1 = av1Ctx->currentFrame->CurrFrame[ plane ][ y + dy ][ x + dx ];
+	int p0 = av1Ctx->currentFrame->CurrFrame[ plane ][ y - dy ][ x - dx ];
+	int p1 = av1Ctx->currentFrame->CurrFrame[ plane ][ y - dy * 2 ][ x - dx * 2 ];
 	int ps1 = p1 - (0x80 << (seqHdr->color_config.BitDepth - 8));
 	int ps0 = p0 - (0x80 << (seqHdr->color_config.BitDepth - 8));
 	int qs0 = q0 - (0x80 << (seqHdr->color_config.BitDepth - 8));
@@ -4652,14 +4652,14 @@ void decode::narrowFilter(int x,int y,int plane,int dx ,int dy,int *hevMask,AV1D
 	int filter2 = filter4_clamp( filter + 3  ,seqHdr->color_config.BitDepth) >> 3;
 	int oq0 = filter4_clamp( qs0 - filter1 ,seqHdr->color_config.BitDepth ) + (0x80 << (seqHdr->color_config.BitDepth - 8));
 	int op0 = filter4_clamp( ps0 + filter2  ,seqHdr->color_config.BitDepth) + (0x80 << (seqHdr->color_config. BitDepth - 8));
-	av1Ctx->currentFrame.CurrFrame[ plane ][ y ][ x ] = oq0;
-	av1Ctx->currentFrame.CurrFrame[ plane ][ y - dy ][ x - dx ] = op0;
+	av1Ctx->currentFrame->CurrFrame[ plane ][ y ][ x ] = oq0;
+	av1Ctx->currentFrame->CurrFrame[ plane ][ y - dy ][ x - dx ] = op0;
 	if ( !*hevMask ) {
 		filter = Round2( filter1, 1 );
 		int oq1 = filter4_clamp( qs1 - filter,seqHdr->color_config.BitDepth ) + (0x80 << (seqHdr->color_config.BitDepth - 8));
 		int op1 = filter4_clamp( ps1 + filter,seqHdr->color_config.BitDepth ) + (0x80 << (seqHdr->color_config.BitDepth - 8));
-		av1Ctx->currentFrame.CurrFrame[ plane ][ y + dy ][ x + dx ] = oq1;
-		av1Ctx->currentFrame.CurrFrame[ plane ][ y - dy * 2 ][ x - dx * 2 ] = op1;
+		av1Ctx->currentFrame->CurrFrame[ plane ][ y + dy ][ x + dx ] = oq1;
+		av1Ctx->currentFrame->CurrFrame[ plane ][ y - dy * 2 ][ x - dx * 2 ] = op1;
 	}
 
 }
@@ -4688,7 +4688,7 @@ void decode::wideFilter(int x,int y,int plane,int dx ,int dy,int log2Size,AV1Dec
 		for (int j = -n; j <= n; j++) {
 			int p = Clip3(-(n + 1), n, i + j);
 			int tap = (Abs(j) <= n2) ? 2 : 1;
-			t += av1Ctx->currentFrame.CurrFrame[plane][y + p * dy][x + p * dx] * tap;
+			t += av1Ctx->currentFrame->CurrFrame[plane][y + p * dy][x + p * dx] * tap;
 		}
 		
 		// 将滤波结果保存到数组 F
@@ -4697,12 +4697,12 @@ void decode::wideFilter(int x,int y,int plane,int dx ,int dy,int log2Size,AV1Dec
 
 	// 应用滤波结果到当前帧
 	for (int i = -n; i < n; i++) {
-		av1Ctx->currentFrame.CurrFrame[plane][y + i * dy][x + i * dx] = F[i];
+		av1Ctx->currentFrame->CurrFrame[plane][y + i * dy][x + i * dx] = F[i];
 	}
 }
 //7.15
 void decode::cdef(TileData *t_data, PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx){
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	int step4 = Num_4x4_Blocks_Wide[ BLOCK_8X8 ];
 	int cdefSize4 = Num_4x4_Blocks_Wide[ BLOCK_64X64 ];
 	int   cdefMask4 = ~(cdefSize4 - 1);
@@ -4716,7 +4716,7 @@ void decode::cdef(TileData *t_data, PartitionData *p_data,BlockData *b_data,AV1D
 	}
 }
 void decode::cdefBlock(int r, int c, int idx,PartitionData *p_data, BlockData *b_data,AV1DecodeContext *av1Ctx) {
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
     int startY = r * MI_SIZE;
     int endY = startY + MI_SIZE * 2;
@@ -4725,7 +4725,7 @@ void decode::cdefBlock(int r, int c, int idx,PartitionData *p_data, BlockData *b
 
     for (int y = startY; y < endY; y++) {
         for (int x = startX; x < endX; x++) {
-            av1Ctx->currentFrame.CdefFrame[0][y][x] = av1Ctx->currentFrame.CurrFrame[0][y][x];
+            av1Ctx->currentFrame->CdefFrame[0][y][x] = av1Ctx->currentFrame->CurrFrame[0][y][x];
         }
     }
 
@@ -4737,8 +4737,8 @@ void decode::cdefBlock(int r, int c, int idx,PartitionData *p_data, BlockData *b
 
         for (int y = startY; y < endY; y++) {
             for (int x = startX; x < endX; x++) {
-                av1Ctx->currentFrame.CdefFrame[1][y][x] = av1Ctx->currentFrame.CurrFrame[1][y][x];
-                av1Ctx->currentFrame.CdefFrame[2][y][x] = av1Ctx->currentFrame.CurrFrame[2][y][x];
+                av1Ctx->currentFrame->CdefFrame[1][y][x] = av1Ctx->currentFrame->CurrFrame[1][y][x];
+                av1Ctx->currentFrame->CdefFrame[2][y][x] = av1Ctx->currentFrame->CurrFrame[2][y][x];
             }
         }
     }
@@ -4779,7 +4779,7 @@ void decode::cdefBlock(int r, int c, int idx,PartitionData *p_data, BlockData *b
 //7.15.2
 void decode::cdefDirectionProcess(int r, int c, int *yDir, int *var,
 								PartitionData *p_data, BlockData *b_data,AV1DecodeContext *av1Ctx) {
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
     int cost[8];
     int partial[8][15];
@@ -4797,7 +4797,7 @@ void decode::cdefDirectionProcess(int r, int c, int *yDir, int *var,
 
     for (int i = 0; i < 8; i++) {
         for (int j = 0; j < 8; j++) {
-            int x = (av1Ctx->currentFrame.CurrFrame[0][y0 + i][x0 + j] >> (seqHdr->color_config.BitDepth - 8)) - 128;
+            int x = (av1Ctx->currentFrame->CurrFrame[0][y0 + i][x0 + j] >> (seqHdr->color_config.BitDepth - 8)) - 128;
             partial[0][i + j] += x;
             partial[1][i + j / 2] += x;
             partial[2][i] += x;
@@ -4848,7 +4848,7 @@ void decode::cdefDirectionProcess(int r, int c, int *yDir, int *var,
 //7.15.3
 void decode::cdefFilter(int plane, int r, int c, int priStr, int secStr, int damping, int dir,
 						PartitionData *p_data, BlockData *b_data,AV1DecodeContext *av1Ctx ){
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
     int subX = (plane > 0) ? seqHdr->color_config.subsampling_x : 0;
     int subY = (plane > 0) ? seqHdr->color_config.subsampling_y : 0;
@@ -4860,7 +4860,7 @@ void decode::cdefFilter(int plane, int r, int c, int priStr, int secStr, int dam
     for (int i = 0; i < h; i++) {
         for (int j = 0; j < w; j++) {
             int sum = 0;
-            int x = av1Ctx->currentFrame.CurrFrame[plane][y0 + i][x0 + j];
+            int x = av1Ctx->currentFrame->CurrFrame[plane][y0 + i][x0 + j];
             int max = x;
             int min = x;
 
@@ -4868,7 +4868,7 @@ void decode::cdefFilter(int plane, int r, int c, int priStr, int secStr, int dam
                 for (int sign = -1; sign <= 1; sign += 2) {
 					int CdefAvailable;
                     int p = cdef_get_at(plane, x0, y0, i, j, dir, k, sign, subX, subY,
-								&CdefAvailable,av1Ctx->currentFrame.CurrFrame,av1Ctx);
+								&CdefAvailable,av1Ctx->currentFrame->CurrFrame,av1Ctx);
 
                     if (CdefAvailable) {
                         sum += Cdef_Pri_Taps[(priStr >> (seqHdr->color_config.BitDepth - 8)) & 1][k] * constrain(p - x, priStr, damping);
@@ -4878,7 +4878,7 @@ void decode::cdefFilter(int plane, int r, int c, int priStr, int secStr, int dam
 
                     for (int dirOff = -2; dirOff <= 2; dirOff += 4) {
                         int s = cdef_get_at(plane, x0, y0, i, j, (dir + dirOff) & 7, k, sign, subX, subY,
-						&CdefAvailable,av1Ctx->currentFrame.CurrFrame,av1Ctx);
+						&CdefAvailable,av1Ctx->currentFrame->CurrFrame,av1Ctx);
 
                         if (CdefAvailable) {
                             sum += Cdef_Sec_Taps[(priStr >> (seqHdr->color_config.BitDepth - 8)) & 1][k] * constrain(s - x, secStr, damping);
@@ -4889,7 +4889,7 @@ void decode::cdefFilter(int plane, int r, int c, int priStr, int secStr, int dam
                 }
             }
 
-            av1Ctx->currentFrame.CurrFrame[plane][y0 + i][x0 + j] = Clip3(min, max, x + ((8 + sum - (sum < 0)) >> 4));
+            av1Ctx->currentFrame->CurrFrame[plane][y0 + i][x0 + j] = Clip3(min, max, x + ((8 + sum - (sum < 0)) >> 4));
         }
     }
 }
@@ -4898,7 +4898,7 @@ void decode::cdefFilter(int plane, int r, int c, int priStr, int secStr, int dam
 
 int decode::cdef_get_at(int plane,int x0,int y0,int i, int j,int dir,int k,int sign,int subX,int subY,
 						int * CdefAvailable,uint8_t ***CurrFrame,AV1DecodeContext *av1Ctx) {
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	int y = y0 + i + sign * Cdef_Directions[dir][k][0];
 	int x = x0 + j + sign * Cdef_Directions[dir][k][1];
 	int candidateR = (y << subY) >> MI_SIZE_LOG2;
@@ -4913,7 +4913,7 @@ int decode::cdef_get_at(int plane,int x0,int y0,int i, int j,int dir,int k,int s
 }
 //7.16
 void decode::upscalingProcess(int ***inputFrame,int ***outputFrame,AV1DecodeContext *av1Ctx) {
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
     for (int plane = 0; plane < seqHdr->color_config.NumPlanes; plane++) {
         int subX, subY;
@@ -4957,12 +4957,12 @@ void decode::upscalingProcess(int ***inputFrame,int ***outputFrame,AV1DecodeCont
 }
 //7.17
 void decode::loopRestoration(BlockData *b_data,AV1DecodeContext *av1Ctx){
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
 	int size = sizeof(uint8_t) * 3 * frameHdr->si.FrameHeight * frameHdr->si.UpscaledWidth;
 	//记得delete 这个
-	av1Ctx->currentFrame.lrCtx->LrFrame = new uint8_t[3][frameHdr->si.FrameHeight][frameHdr->si.UpscaledWidth];
-	memcpy(av1Ctx->currentFrame.lrCtx->LrFrame,b_data->UpscaledCdefFrame,size);
+	av1Ctx->currentFrame->lrCtx->LrFrame = new uint8_t[3][frameHdr->si.FrameHeight][frameHdr->si.UpscaledWidth];
+	memcpy(av1Ctx->currentFrame->lrCtx->LrFrame,b_data->UpscaledCdefFrame,size);
 
 
 	// 如果不需要循环恢复，直接返回
@@ -4987,7 +4987,7 @@ void decode::loopRestoration(BlockData *b_data,AV1DecodeContext *av1Ctx){
 }
 //7.17.1
 void decode::loopRestoreBlock(int plane,int row ,int col,BlockData *b_data,AV1DecodeContext *av1Ctx){
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
 	int lumaY = row * MI_SIZE;
 
@@ -5023,7 +5023,7 @@ void decode::loopRestoreBlock(int plane,int row ,int col,BlockData *b_data,AV1De
 	int w = Min(MI_SIZE >> subX, PlaneEndX - x + 1);
 	int h = Min(MI_SIZE >> subY, PlaneEndY - y + 1);
 
-	int rType = av1Ctx->currentFrame.lrCtx->LrType[plane][unitRow][unitCol];
+	int rType = av1Ctx->currentFrame->lrCtx->LrType[plane][unitRow][unitCol];
 
 	// 根据rType选择滤波器
 	if (rType == RESTORE_WIENER) {
@@ -5037,9 +5037,9 @@ void decode::loopRestoreBlock(int plane,int row ,int col,BlockData *b_data,AV1De
 //7.17.2
 void decode::selfGuidedFilter(int plane,int unitRow,int unitCol, int x,int y,int w,int h,
 							BlockData *b_data,AV1DecodeContext *av1Ctx){
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
-	int set = av1Ctx->currentFrame.lrCtx->LrSgrSet[plane][unitRow][unitCol];
+	int set = av1Ctx->currentFrame->lrCtx->LrSgrSet[plane][unitRow][unitCol];
 	int pass = 0;
 	int flt0[h][w];
 	boxFilter(plane, x, y, w, h, set, pass,(int **)flt0,b_data,av1Ctx);
@@ -5048,8 +5048,8 @@ void decode::selfGuidedFilter(int plane,int unitRow,int unitCol, int x,int y,int
 	boxFilter(plane, x, y, w, h, set, pass,(int **)flt1,b_data,av1Ctx);
 
 	// 计算权重和参数
-	int w0 = av1Ctx->currentFrame.lrCtx->LrSgrXqd[plane][unitRow][unitCol][0];
-	int w1 = av1Ctx->currentFrame.lrCtx->LrSgrXqd[plane][unitRow][unitCol][1];
+	int w0 = av1Ctx->currentFrame->lrCtx->LrSgrXqd[plane][unitRow][unitCol][0];
+	int w1 = av1Ctx->currentFrame->lrCtx->LrSgrXqd[plane][unitRow][unitCol][1];
 	int w2 = (1 << SGRPROJ_PRJ_BITS) - w0 - w1;
 	int r0 = Sgr_Params[set][0];
 	int r1 = Sgr_Params[set][2];
@@ -5073,14 +5073,14 @@ void decode::selfGuidedFilter(int plane,int unitRow,int unitCol, int x,int y,int
 			}
 			
 			int s = Round2(v, SGRPROJ_RST_BITS + SGRPROJ_PRJ_BITS);
-			av1Ctx->currentFrame.lrCtx->LrFrame[plane][y + i][x + j] = Clip1(s,seqHdr->color_config.BitDepth);
+			av1Ctx->currentFrame->lrCtx->LrFrame[plane][y + i][x + j] = Clip1(s,seqHdr->color_config.BitDepth);
 		}
 	}
 }
 //7.17.3
 void decode::boxFilter(int plane,int x,int y,int w,int h,int set ,int pass,int **F,
 				BlockData *b_data,AV1DecodeContext *av1Ctx){
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
 
 	// 计算r和eps
@@ -5151,7 +5151,7 @@ void decode::boxFilter(int plane,int x,int y,int w,int h,int set ,int pass,int *
 //7.17.4
 void decode::wienerFilter(int plane ,int unitRow,int unitCol,int x,int y,int w,int h,
 							BlockData *b_data, AV1DecodeContext *av1Ctx){
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
 	int isCompound = 0;
 	roundingVariablesDerivation(isCompound,b_data,av1Ctx);
@@ -5159,8 +5159,8 @@ void decode::wienerFilter(int plane ,int unitRow,int unitCol,int x,int y,int w,i
 
 	int vfilter[7];
 	int hfilter[7];
-	wienerCoefficient(av1Ctx->currentFrame.lrCtx->LrWiener[plane][unitRow][unitCol][0],vfilter);
-	wienerCoefficient(av1Ctx->currentFrame.lrCtx->LrWiener[plane][unitRow][unitCol][1],hfilter);
+	wienerCoefficient(av1Ctx->currentFrame->lrCtx->LrWiener[plane][unitRow][unitCol][0],vfilter);
+	wienerCoefficient(av1Ctx->currentFrame->lrCtx->LrWiener[plane][unitRow][unitCol][1],hfilter);
 
 
 	int intermediate[h + 6][ w ];
@@ -5185,7 +5185,7 @@ void decode::wienerFilter(int plane ,int unitRow,int unitCol,int x,int y,int w,i
 				s += vfilter[t] * intermediate[r + t][c];
 			}
 			int v = Round2(s, b_data->InterRound1);
-			av1Ctx->currentFrame.lrCtx->LrFrame[plane][y + r][x + c] = Clip1(v,seqHdr->color_config.BitDepth);
+			av1Ctx->currentFrame->lrCtx->LrFrame[plane][y + r][x + c] = Clip1(v,seqHdr->color_config.BitDepth);
 		}
 	}
 }
@@ -5203,17 +5203,17 @@ void decode::wienerCoefficient(int coeff[3],int filter[7]){
 //7.17.6
 int decode::getSourceSample(int plane ,int x,int y,BlockData *b_data, AV1DecodeContext *av1Ctx){
 	// 确保x和y在合法范围内
-	x = Min(av1Ctx->currentFrame.lrCtx->PlaneEndX, x);
+	x = Min(av1Ctx->currentFrame->lrCtx->PlaneEndX, x);
 	x = Max(0, x);
-	y = Min(av1Ctx->currentFrame.lrCtx->PlaneEndY, y);
+	y = Min(av1Ctx->currentFrame->lrCtx->PlaneEndY, y);
 	y = Max(0, y);
 
 	// 根据y的位置确定样本来源
-	if (y < av1Ctx->currentFrame.lrCtx->StripeStartY) {
-		y = Max(av1Ctx->currentFrame.lrCtx->StripeStartY - 2, y);
+	if (y < av1Ctx->currentFrame->lrCtx->StripeStartY) {
+		y = Max(av1Ctx->currentFrame->lrCtx->StripeStartY - 2, y);
 		return b_data->UpscaledCurrFrame[plane][y][x];
-	} else if (y > av1Ctx->currentFrame.lrCtx->StripeEndY) {
-		y = Min(av1Ctx->currentFrame.lrCtx->StripeEndY + 2, y);
+	} else if (y > av1Ctx->currentFrame->lrCtx->StripeEndY) {
+		y = Min(av1Ctx->currentFrame->lrCtx->StripeEndY + 2, y);
 		return b_data->UpscaledCurrFrame[plane][y][x];
 	} else {
 		return b_data->UpscaledCdefFrame[plane][y][x];
@@ -5227,7 +5227,7 @@ void decode::output(AV1DecodeContext *av1Ctx){
 
 }
 void decode::intermediateOutputPreparation(int *w,int *h,int *subX,int *subY,int *bitDepth,AV1DecodeContext *av1Ctx){
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
 	if (frameHdr->show_existing_frame == 1) {
 		// Copy from a previously decoded frame
@@ -5238,34 +5238,34 @@ void decode::intermediateOutputPreparation(int *w,int *h,int *subX,int *subY,int
 
 		for (int y = 0; y < *h; y++) {
 			for (int x = 0; x < *w; x++) {
-				av1Ctx->currentFrame.OutY[y][x] = av1Ctx->FrameStore[frameHdr->frame_to_show_map_idx][0][y][x];
+				av1Ctx->currentFrame->OutY[y][x] = av1Ctx->FrameStore[frameHdr->frame_to_show_map_idx][0][y][x];
 			}
 		}
 
 		for (int y = 0; y < ((*h + *subY) >> *subY); y++) {
 			for (int x = 0; x < ((*w + *subX) >> *subX); x++) {
-				av1Ctx->currentFrame.OutU[y][x] = av1Ctx->FrameStore[frameHdr->frame_to_show_map_idx][1][y][x];
-				av1Ctx->currentFrame.OutV[y][x] = av1Ctx->FrameStore[frameHdr->frame_to_show_map_idx][2][y][x];
+				av1Ctx->currentFrame->OutU[y][x] = av1Ctx->FrameStore[frameHdr->frame_to_show_map_idx][1][y][x];
+				av1Ctx->currentFrame->OutV[y][x] = av1Ctx->FrameStore[frameHdr->frame_to_show_map_idx][2][y][x];
 			}
 		}
 		*bitDepth = av1Ctx->RefBitDepth[frameHdr->frame_to_show_map_idx];
 	} else {
 		// Copy from the current frame
-		*w = av1Ctx->currentFrame.si.UpscaledWidth;
-		*h = av1Ctx->currentFrame.si.FrameHeight;
+		*w = av1Ctx->currentFrame->si.UpscaledWidth;
+		*h = av1Ctx->currentFrame->si.FrameHeight;
 		*subX = seqHdr->color_config.subsampling_x;
 		*subY = seqHdr->color_config.subsampling_y;
 
 		for (int y = 0; y < *h; y++) {
 			for (int x = 0; x < *w; x++) {
-				av1Ctx->currentFrame.OutY[y][x] = av1Ctx->currentFrame.lrCtx->LrFrame[0][y][x];
+				av1Ctx->currentFrame->OutY[y][x] = av1Ctx->currentFrame->lrCtx->LrFrame[0][y][x];
 			}
 		}
 
 		for (int y = 0; y < ((*h + *subY) >> *subY); y++) {
 			for (int x = 0; x < ((*w + *subX) >> *subX); x++) {
-				av1Ctx->currentFrame.OutU[y][x] = av1Ctx->currentFrame.lrCtx->LrFrame[1][y][x];
-				av1Ctx->currentFrame.OutV[y][x] = av1Ctx->currentFrame.lrCtx->LrFrame[2][y][x];
+				av1Ctx->currentFrame->OutU[y][x] = av1Ctx->currentFrame->lrCtx->LrFrame[1][y][x];
+				av1Ctx->currentFrame->OutV[y][x] = av1Ctx->currentFrame->lrCtx->LrFrame[2][y][x];
 			}
 		}
 
@@ -5276,7 +5276,7 @@ void decode::intermediateOutputPreparation(int *w,int *h,int *subX,int *subY,int
 //7.18.3
 //这里的bitdepth 到底是 用 序列参数集中的 还是 intermediateOutputPreparation中修改过的？？ 标记
 void decode::filmGrainSynthesis(int w, int h, int subX, int subY,AV1DecodeContext *av1Ctx) {
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
     // 设置随机数生成器的初始状态
     int RandomRegister = frameHdr->film_grain_params.grain_seed;
@@ -5304,7 +5304,7 @@ int decode::get_random_number( int bits ,int *RandomRegister) {
 	return result;
 }
 void decode::generateGrain(int GrainMin,int GrainMax, int *RandomRegister ,AV1DecodeContext *av1Ctx) {
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
     // 生成白噪声
     int shift = 12 - seqHdr->color_config.BitDepth + frameHdr->film_grain_params.grain_scale_shift;
@@ -5314,7 +5314,7 @@ void decode::generateGrain(int GrainMin,int GrainMax, int *RandomRegister ,AV1De
             if (frameHdr->film_grain_params.num_y_points > 0) {
                 g = Gaussian_Sequence[get_random_number(11,RandomRegister)];
             }
-            av1Ctx->currentFrame.fgCtx->LumaGrain[y][x] = Round2(g, shift);
+            av1Ctx->currentFrame->fgCtx->LumaGrain[y][x] = Round2(g, shift);
         }
     }
 
@@ -5330,11 +5330,11 @@ void decode::generateGrain(int GrainMin,int GrainMax, int *RandomRegister ,AV1De
                         break;
                     }
                     int c = frameHdr->film_grain_params.ar_coeffs_y_plus_128[pos] - 128;
-                    s += av1Ctx->currentFrame.fgCtx->LumaGrain[y + deltaRow][x + deltaCol] * c;
+                    s += av1Ctx->currentFrame->fgCtx->LumaGrain[y + deltaRow][x + deltaCol] * c;
                     pos++;
                 }
             }
-            av1Ctx->currentFrame.fgCtx->LumaGrain[y][x] = Clip3(GrainMin, GrainMax, av1Ctx->currentFrame.fgCtx->LumaGrain[y][x] + Round2(s, shift));
+            av1Ctx->currentFrame->fgCtx->LumaGrain[y][x] = Clip3(GrainMin, GrainMax, av1Ctx->currentFrame->fgCtx->LumaGrain[y][x] + Round2(s, shift));
         }
     }
 	if(seqHdr->color_config.mono_chrome == 1) return;
@@ -5349,7 +5349,7 @@ void decode::generateGrain(int GrainMin,int GrainMax, int *RandomRegister ,AV1De
             if (frameHdr->film_grain_params.num_cb_points > 0 || frameHdr->film_grain_params.chroma_scaling_from_luma) {
                 g = Gaussian_Sequence[get_random_number(11,RandomRegister)];
             }
-            av1Ctx->currentFrame.fgCtx->CbGrain[y][x] = Round2(g, shift);
+            av1Ctx->currentFrame->fgCtx->CbGrain[y][x] = Round2(g, shift);
         }
     }
 
@@ -5360,7 +5360,7 @@ void decode::generateGrain(int GrainMin,int GrainMax, int *RandomRegister ,AV1De
             if (frameHdr->film_grain_params.num_cr_points > 0 || frameHdr->film_grain_params.chroma_scaling_from_luma) {
                 g = Gaussian_Sequence[get_random_number(11,RandomRegister)];
             }
-            av1Ctx->currentFrame.fgCtx->CrGrain[y][x] = Round2(g, shift);
+            av1Ctx->currentFrame->fgCtx->CrGrain[y][x] = Round2(g, shift);
         }
     }
 
@@ -5382,7 +5382,7 @@ void decode::generateGrain(int GrainMin,int GrainMax, int *RandomRegister ,AV1De
                             int lumaY = ((y - 3) << seqHdr->color_config.subsampling_y) + 3;
                             for (int i = 0; i <= seqHdr->color_config.subsampling_y; i++) {
                                 for (int j = 0; j <= seqHdr->color_config.subsampling_x; j++) {
-                                    luma += av1Ctx->currentFrame.fgCtx->LumaGrain[lumaY + i][lumaX + j];
+                                    luma += av1Ctx->currentFrame->fgCtx->LumaGrain[lumaY + i][lumaX + j];
                                 }
                             }
                             luma = Round2(luma, seqHdr->color_config.subsampling_x + seqHdr->color_config.subsampling_y);
@@ -5391,18 +5391,18 @@ void decode::generateGrain(int GrainMin,int GrainMax, int *RandomRegister ,AV1De
                         }
                         break;
                     }
-                    s0 += av1Ctx->currentFrame.fgCtx->CbGrain[y + deltaRow][x + deltaCol] * c0;
-                    s1 += av1Ctx->currentFrame.fgCtx->CrGrain[y + deltaRow][x + deltaCol] * c1;
+                    s0 += av1Ctx->currentFrame->fgCtx->CbGrain[y + deltaRow][x + deltaCol] * c0;
+                    s1 += av1Ctx->currentFrame->fgCtx->CrGrain[y + deltaRow][x + deltaCol] * c1;
                     pos++;
                 }
             }
-            av1Ctx->currentFrame.fgCtx->CbGrain[y][x] = Clip3(GrainMin, GrainMax, av1Ctx->currentFrame.fgCtx->CbGrain[y][x] + Round2(s0, shift));
-            av1Ctx->currentFrame.fgCtx->CrGrain[y][x] = Clip3(GrainMin, GrainMax, av1Ctx->currentFrame.fgCtx->CrGrain[y][x] + Round2(s1, shift));
+            av1Ctx->currentFrame->fgCtx->CbGrain[y][x] = Clip3(GrainMin, GrainMax, av1Ctx->currentFrame->fgCtx->CbGrain[y][x] + Round2(s0, shift));
+            av1Ctx->currentFrame->fgCtx->CrGrain[y][x] = Clip3(GrainMin, GrainMax, av1Ctx->currentFrame->fgCtx->CrGrain[y][x] + Round2(s1, shift));
         }
     }
 }
 void decode::scalingLookupInitialization(AV1DecodeContext *av1Ctx) {
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
     for (int plane = 0; plane < seqHdr->color_config.NumPlanes; plane++) {
         int numPoints;
@@ -5415,11 +5415,11 @@ void decode::scalingLookupInitialization(AV1DecodeContext *av1Ctx) {
 
         if (numPoints == 0) {
             for (int x = 0; x < 256; x++) {
-                av1Ctx->currentFrame.fgCtx->ScalingLut[plane][x] = 0;
+                av1Ctx->currentFrame->fgCtx->ScalingLut[plane][x] = 0;
             }
         } else {
             for (int x = 0; x < get_x(plane, 0,av1Ctx); x++) {
-                av1Ctx->currentFrame.fgCtx->ScalingLut[plane][x] = get_y(plane, 0,av1Ctx);
+                av1Ctx->currentFrame->fgCtx->ScalingLut[plane][x] = get_y(plane, 0,av1Ctx);
             }
             for (int i = 0; i < numPoints - 1; i++) {
                 int deltaY = get_y(plane, i + 1,av1Ctx) - get_y(plane, i,av1Ctx);
@@ -5427,18 +5427,18 @@ void decode::scalingLookupInitialization(AV1DecodeContext *av1Ctx) {
                 int delta = deltaY * ((65536 + (deltaX >> 1)) / deltaX);
                 for (int x = 0; x < deltaX; x++) {
                     int v = get_y(plane, i,av1Ctx) + ((x * delta + 32768) >> 16);
-                    av1Ctx->currentFrame.fgCtx->ScalingLut[plane][get_x(plane, i,av1Ctx) + x] = v;
+                    av1Ctx->currentFrame->fgCtx->ScalingLut[plane][get_x(plane, i,av1Ctx) + x] = v;
                 }
             }
             for (int x = get_x(plane, numPoints - 1,av1Ctx); x < 256; x++) {
-                av1Ctx->currentFrame.fgCtx->ScalingLut[plane][x] = get_y(plane, numPoints - 1,av1Ctx);
+                av1Ctx->currentFrame->fgCtx->ScalingLut[plane][x] = get_y(plane, numPoints - 1,av1Ctx);
             }
         }
     }
 }
 
 int decode::get_x(int plane, int i,AV1DecodeContext *av1Ctx) {
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
     if (plane == 0 || frameHdr->film_grain_params.chroma_scaling_from_luma)
         return frameHdr->film_grain_params.point_y_value[i];
     else if (plane == 1)
@@ -5448,7 +5448,7 @@ int decode::get_x(int plane, int i,AV1DecodeContext *av1Ctx) {
 }
 
 int decode::get_y(int plane, int i,AV1DecodeContext *av1Ctx) {
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
     if (plane == 0 || frameHdr->film_grain_params.chroma_scaling_from_luma)
         return frameHdr->film_grain_params.point_y_scaling[i];
     else if (plane == 1)
@@ -5459,7 +5459,7 @@ int decode::get_y(int plane, int i,AV1DecodeContext *av1Ctx) {
 //This process combines the film grain with the image data.
 void decode::addNoiseSynthesis(int GrainMin,int GrainMax,int * RandomRegister,int w, int h, int subX, int subY, AV1DecodeContext *av1Ctx)
 {
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
 	int lumaNum = 0;
 	int noiseStripe[(h + 1) / 2][3][34][w];
@@ -5485,11 +5485,11 @@ void decode::addNoiseSynthesis(int GrainMin,int GrainMax,int * RandomRegister,in
 					for (int j = 0; j < 34 >> planeSubX; j++)
 					{
 						if (plane == 0)
-							g = av1Ctx->currentFrame.fgCtx->LumaGrain[planeOffsetY + i][planeOffsetX + j];
+							g = av1Ctx->currentFrame->fgCtx->LumaGrain[planeOffsetY + i][planeOffsetX + j];
 						else if (plane == 1)
-							g = av1Ctx->currentFrame.fgCtx->CbGrain[planeOffsetY + i][planeOffsetX + j];
+							g = av1Ctx->currentFrame->fgCtx->CbGrain[planeOffsetY + i][planeOffsetX + j];
 						else
-							g = av1Ctx->currentFrame.fgCtx->CrGrain[planeOffsetY + i][planeOffsetX + j];
+							g = av1Ctx->currentFrame->fgCtx->CrGrain[planeOffsetY + i][planeOffsetX + j];
 						if (planeSubX == 0)
 						{
 							if (j < 2 && frameHdr->film_grain_params.overlap_flag && x > 0)
@@ -5526,13 +5526,13 @@ void decode::addNoiseSynthesis(int GrainMin,int GrainMax,int * RandomRegister,in
 }
 //7.19
 void decode::motionFieldMotionVectorStorage(PartitionData *p_data, AV1DecodeContext *av1Ctx){
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
 	for (int row = 0; row < frameHdr->MiRows; row++) {
 		for (int col = 0; col < frameHdr->MiCols; col++) {
-			av1Ctx->currentFrame.mfmvCtx->MfRefFrames[row][col] = NONE;
-			av1Ctx->currentFrame.mfmvCtx->MfMvs[row][col][0] = 0;
-			av1Ctx->currentFrame.mfmvCtx->MfMvs[row][col][1] = 0;
+			av1Ctx->currentFrame->mfmvCtx->MfRefFrames[row][col] = NONE;
+			av1Ctx->currentFrame->mfmvCtx->MfMvs[row][col][0] = 0;
+			av1Ctx->currentFrame->mfmvCtx->MfMvs[row][col][1] = 0;
 
 			for (int list = 0; list < 2; list++) {
 				int r = p_data->RefFrames[row][col][list];
@@ -5546,9 +5546,9 @@ void decode::motionFieldMotionVectorStorage(PartitionData *p_data, AV1DecodeCont
 						int mvCol = p_data->Mvs[row][col][list][1];
 
 						if (Abs(mvRow) <= REFMVS_LIMIT && Abs(mvCol) <= REFMVS_LIMIT) {
-							av1Ctx->currentFrame.mfmvCtx->MfRefFrames[row][col] = r;
-							av1Ctx->currentFrame.mfmvCtx->MfMvs[row][col][0] = mvRow;
-							av1Ctx->currentFrame.mfmvCtx->MfMvs[row][col][1] = mvCol;
+							av1Ctx->currentFrame->mfmvCtx->MfRefFrames[row][col] = r;
+							av1Ctx->currentFrame->mfmvCtx->MfMvs[row][col][0] = mvRow;
+							av1Ctx->currentFrame->mfmvCtx->MfMvs[row][col][1] = mvCol;
 						}
 					}
 				}
@@ -5558,17 +5558,17 @@ void decode::motionFieldMotionVectorStorage(PartitionData *p_data, AV1DecodeCont
 
 }
 void decode::referenceFrameUpdate(PartitionData *p_data, AV1DecodeContext *av1Ctx){
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
 	for (int i = 0; i < NUM_REF_FRAMES; i++) {
 		if ((frameHdr->refresh_frame_flags >> i) & 1) {
 			av1Ctx->RefValid[i] = 1;
 			av1Ctx->RefFrameId[i] = frameHdr->current_frame_id;
-			(*av1Ctx->RefUpscaledWidth)[i] = av1Ctx->currentFrame.si.UpscaledWidth;
-			(*av1Ctx->RefFrameWidth)[i] = av1Ctx->currentFrame.si.FrameWidth;
-			(*av1Ctx->RefFrameHeight)[i] = av1Ctx->currentFrame.si.FrameHeight;
-			(*av1Ctx->RefRenderWidth)[i] = av1Ctx->currentFrame.si.RenderWidth;
-			(*av1Ctx->RefRenderHeight)[i] = av1Ctx->currentFrame.si.RenderHeight;
+			(*av1Ctx->RefUpscaledWidth)[i] = av1Ctx->currentFrame->si.UpscaledWidth;
+			(*av1Ctx->RefFrameWidth)[i] = av1Ctx->currentFrame->si.FrameWidth;
+			(*av1Ctx->RefFrameHeight)[i] = av1Ctx->currentFrame->si.FrameHeight;
+			(*av1Ctx->RefRenderWidth)[i] = av1Ctx->currentFrame->si.RenderWidth;
+			(*av1Ctx->RefRenderHeight)[i] = av1Ctx->currentFrame->si.RenderHeight;
 			av1Ctx->RefMiCols[i] = frameHdr->MiCols;
 			av1Ctx->RefMiRows[i] = frameHdr->MiRows;
 			av1Ctx->RefFrameType[i] = frameHdr->frame_type;
@@ -5580,26 +5580,26 @@ void decode::referenceFrameUpdate(PartitionData *p_data, AV1DecodeContext *av1Ct
 				av1Ctx->SavedOrderHints[i][j + LAST_FRAME] = frameHdr->OrderHints[j + LAST_FRAME];
 			}
 
-			for (int y = 0; y < av1Ctx->currentFrame.si.FrameHeight; y++) {
-				for (int x = 0; x < av1Ctx->currentFrame.si.UpscaledWidth; x++) {
-					av1Ctx->FrameStore[i][0][y][x] = av1Ctx->currentFrame.lrCtx->LrFrame[0][y][x];
+			for (int y = 0; y < av1Ctx->currentFrame->si.FrameHeight; y++) {
+				for (int x = 0; x < av1Ctx->currentFrame->si.UpscaledWidth; x++) {
+					av1Ctx->FrameStore[i][0][y][x] = av1Ctx->currentFrame->lrCtx->LrFrame[0][y][x];
 				}
 			}
 
 			for (int plane = 1; plane <= 2; plane++) {
-				for (int y = 0; y < ((av1Ctx->currentFrame.si.FrameHeight + seqHdr->color_config.subsampling_y) >> seqHdr->color_config.subsampling_y); y++) {
-					for (int x = 0; x < ((av1Ctx->currentFrame.si.UpscaledWidth + seqHdr->color_config.subsampling_x) >> seqHdr->color_config.subsampling_x); x++) {
-						av1Ctx->FrameStore[i][plane][y][x] = av1Ctx->currentFrame.lrCtx->LrFrame[plane][y][x];
+				for (int y = 0; y < ((av1Ctx->currentFrame->si.FrameHeight + seqHdr->color_config.subsampling_y) >> seqHdr->color_config.subsampling_y); y++) {
+					for (int x = 0; x < ((av1Ctx->currentFrame->si.UpscaledWidth + seqHdr->color_config.subsampling_x) >> seqHdr->color_config.subsampling_x); x++) {
+						av1Ctx->FrameStore[i][plane][y][x] = av1Ctx->currentFrame->lrCtx->LrFrame[plane][y][x];
 					}
 				}
 			}
 
 			for (int row = 0; row < frameHdr->MiRows; row++) {
 				for (int col = 0; col < frameHdr->MiCols; col++) {
-					av1Ctx->SavedRefFrames[i][row][col] = av1Ctx->currentFrame.mfmvCtx->MfRefFrames[row][col];
+					av1Ctx->SavedRefFrames[i][row][col] = av1Ctx->currentFrame->mfmvCtx->MfRefFrames[row][col];
 
 					for (int comp = 0; comp <= 1; comp++) {
-						av1Ctx->SavedMvs[i][row][col][comp] = av1Ctx->currentFrame.mfmvCtx->MfMvs[row][col][comp];
+						av1Ctx->SavedMvs[i][row][col][comp] = av1Ctx->currentFrame->mfmvCtx->MfMvs[row][col][comp];
 					}
 				}
 			}
@@ -5629,15 +5629,15 @@ void decode::referenceFrameUpdate(PartitionData *p_data, AV1DecodeContext *av1Ct
 
 }
 void decode::referenceFrameLoading(PartitionData *p_data, AV1DecodeContext *av1Ctx){
-	frameHeader *frameHdr = av1Ctx->curFrameHdr;
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
 
 	frameHdr->current_frame_id = av1Ctx->RefFrameId[frameHdr->frame_to_show_map_idx];//这里， spec 是不是写错了？？
-	av1Ctx->currentFrame.si.UpscaledWidth = (*av1Ctx->RefUpscaledWidth)[frameHdr->frame_to_show_map_idx];
-	av1Ctx->currentFrame.si.FrameWidth = (*av1Ctx->RefFrameWidth)[frameHdr->frame_to_show_map_idx];
-	av1Ctx->currentFrame.si.FrameHeight = (*av1Ctx->RefFrameHeight)[frameHdr->frame_to_show_map_idx];
-	av1Ctx->currentFrame.si.RenderWidth = (*av1Ctx->RefRenderWidth)[frameHdr->frame_to_show_map_idx];
-	av1Ctx->currentFrame.si.RenderHeight = (*av1Ctx->RefRenderHeight)[frameHdr->frame_to_show_map_idx];
+	av1Ctx->currentFrame->si.UpscaledWidth = (*av1Ctx->RefUpscaledWidth)[frameHdr->frame_to_show_map_idx];
+	av1Ctx->currentFrame->si.FrameWidth = (*av1Ctx->RefFrameWidth)[frameHdr->frame_to_show_map_idx];
+	av1Ctx->currentFrame->si.FrameHeight = (*av1Ctx->RefFrameHeight)[frameHdr->frame_to_show_map_idx];
+	av1Ctx->currentFrame->si.RenderWidth = (*av1Ctx->RefRenderWidth)[frameHdr->frame_to_show_map_idx];
+	av1Ctx->currentFrame->si.RenderHeight = (*av1Ctx->RefRenderHeight)[frameHdr->frame_to_show_map_idx];
 	frameHdr->MiCols = av1Ctx->RefMiCols[frameHdr->frame_to_show_map_idx];
 	frameHdr->MiRows = av1Ctx->RefMiRows[frameHdr->frame_to_show_map_idx];
 	seqHdr->color_config.subsampling_x = av1Ctx->RefSubsamplingX[frameHdr->frame_to_show_map_idx];
@@ -5649,26 +5649,26 @@ void decode::referenceFrameLoading(PartitionData *p_data, AV1DecodeContext *av1C
 		frameHdr->OrderHints[j + LAST_FRAME] = av1Ctx->SavedOrderHints[frameHdr->frame_to_show_map_idx][j + LAST_FRAME];
 	}
 
-	for (int y = 0; y < av1Ctx->currentFrame.si.FrameHeight; y++) {
-		for (int x = 0; x < av1Ctx->currentFrame.si.UpscaledWidth; x++) {
-			av1Ctx->currentFrame.lrCtx->LrFrame[0][y][x] = av1Ctx->FrameStore[frameHdr->frame_to_show_map_idx][0][y][x];
+	for (int y = 0; y < av1Ctx->currentFrame->si.FrameHeight; y++) {
+		for (int x = 0; x < av1Ctx->currentFrame->si.UpscaledWidth; x++) {
+			av1Ctx->currentFrame->lrCtx->LrFrame[0][y][x] = av1Ctx->FrameStore[frameHdr->frame_to_show_map_idx][0][y][x];
 		}
 	}
 
 	for (int plane = 1; plane <= 2; plane++) {
-		for (int y = 0; y < ((av1Ctx->currentFrame.si.FrameHeight + seqHdr->color_config.subsampling_y) >> seqHdr->color_config.subsampling_y); y++) {
-			for (int x = 0; x < ((av1Ctx->currentFrame.si.UpscaledWidth + seqHdr->color_config.subsampling_x) >> seqHdr->color_config.subsampling_x); x++) {
-				av1Ctx->currentFrame.lrCtx->LrFrame[plane][y][x] = av1Ctx->FrameStore[frameHdr->frame_to_show_map_idx][plane][y][x];
+		for (int y = 0; y < ((av1Ctx->currentFrame->si.FrameHeight + seqHdr->color_config.subsampling_y) >> seqHdr->color_config.subsampling_y); y++) {
+			for (int x = 0; x < ((av1Ctx->currentFrame->si.UpscaledWidth + seqHdr->color_config.subsampling_x) >> seqHdr->color_config.subsampling_x); x++) {
+				av1Ctx->currentFrame->lrCtx->LrFrame[plane][y][x] = av1Ctx->FrameStore[frameHdr->frame_to_show_map_idx][plane][y][x];
 			}
 		}
 	}
 
 	for (int row = 0; row < frameHdr->MiRows; row++) {
 		for (int col = 0; col < frameHdr->MiCols; col++) {
-			av1Ctx->currentFrame.mfmvCtx->MfRefFrames[row][col] = av1Ctx->SavedRefFrames[frameHdr->frame_to_show_map_idx][row][col];
+			av1Ctx->currentFrame->mfmvCtx->MfRefFrames[row][col] = av1Ctx->SavedRefFrames[frameHdr->frame_to_show_map_idx][row][col];
 
 			for (int comp = 0; comp <= 1; comp++) {
-				av1Ctx->currentFrame.mfmvCtx->MfMvs[row][col][comp] = av1Ctx->SavedMvs[frameHdr->frame_to_show_map_idx][row][col][comp];
+				av1Ctx->currentFrame->mfmvCtx->MfMvs[row][col][comp] = av1Ctx->SavedMvs[frameHdr->frame_to_show_map_idx][row][col][comp];
 			}
 		}
 	}

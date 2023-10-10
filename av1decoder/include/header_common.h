@@ -437,11 +437,15 @@ typedef struct FilmGainContext{
 	int **CrGrain;
 	int **ScalingLut;
 };
+typedef struct MFMVContext{
+	int **MfRefFrames;
+	int ***MfMvs;
+};
 typedef struct FrameContext{
 	sizeInfo si;
 	frameHeader frameHdr;
 	CDFArrays cdfCtx;
-	int ***CurrFrame;
+	uint16_t ***CurrFrame;
 	int ***CdefFrame;
 	int ***UpscaledCdefFrame;
 	int ***UpscaledCurrFrame;
@@ -453,14 +457,14 @@ typedef struct FrameContext{
 	MFMVContext *mfmvCtx;
 	uint8_t **cdef_idx;
 };
-typedef struct MFMVContext{
-	int **MfRefFrames;
-	int ***MfMvs;
-};
+
 typedef struct AV1DecodeContext{
 	FrameContext 	*ref_frames[NUM_REF_FRAMES];
-	FrameContext currentFrame;
+	FrameContext *currentFrame;
+	sequenceHeader *seqHdr;
     CDFArrays cdfCtxs[NUM_REF_FRAMES];
+
+	//
 	uint8_t	RefValid[NUM_REF_FRAMES];
 	uint8_t RefFrameId[NUM_REF_FRAMES];
 	uint8_t	RefOrderHint[NUM_REF_FRAMES];
@@ -476,16 +480,13 @@ typedef struct AV1DecodeContext{
 	uint8_t RefSubsamplingY[NUM_REF_FRAMES];
 	uint8_t RefBitDepth[NUM_REF_FRAMES];
 	uint8_t SavedOrderHints[NUM_REF_FRAMES][TOTAL_REFS_PER_FRAME];
-	uint8_t **FrameStore[NUM_REF_FRAMES][3];
+	uint16_t **FrameStore[NUM_REF_FRAMES][3];
 	uint8_t **SavedRefFrames[NUM_REF_FRAMES];
 	int ***SavedMvs[NUM_REF_FRAMES];
 	uint8_t SavedGmParams[NUM_REF_FRAMES][NUM_REF_FRAMES][8];
 	uint8_t **SavedSegmentIds[NUM_REF_FRAMES];
 
-	frameHeader *curFrameHdr;
-	sequenceHeader *seqHdr;
 	uint8_t SeenFrameHeader;
-
 	int ***MotionFieldMvs[8]; 
 	uint8_t DeltaLF[4];	
 	uint8_t **PrevSegmentIds;
@@ -508,17 +509,8 @@ typedef struct AV1DecodeContext{
 	uint8_t FoundMatch;
 	uint8_t TotalMatches;
 	uint8_t CloseMatches;
-	uint8_t mv_joint;
-	uint8_t mv_sign;
-	uint8_t mv_class;
-	uint8_t mv_class0_bit;
-	uint8_t mv_class0_fr;
-	uint8_t mv_class0_hp;
-	uint8_t mv_fr;
-	uint8_t mv_hp;
-	uint8_t mv_bit;
-	uint8_t ZeroMvContext;
 
+	uint8_t ZeroMvContext;
 	uint8_t AboveSingle;
 	uint8_t LeftSingle;
 	uint8_t AboveIntra;
