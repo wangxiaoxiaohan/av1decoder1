@@ -4,7 +4,6 @@
 #include <string.h>
 decode::decode(){
 	sb = &Symbol::Instance();
-	decode_instance = &decode::Instance();
 }
 decode::~decode(){
 
@@ -158,10 +157,54 @@ int decode::setup_past_independence(AV1DecodeContext *av1Ctx){
 
 
 }
-//从参考帧拷贝cdf到当前framecontext
+int decode::init_coeff_cdfs(AV1DecodeContext *av1Ctx){
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
+    CDFArrays *cdf = &av1Ctx->currentFrame->cdfCtx;
+    int idx;
+    if(frameHdr->quantization_params.base_q_idx == 20){
+        idx = 0 ;
+    }else if(frameHdr->quantization_params.base_q_idx < 60){
+        idx = 1 ;
+    }else if(frameHdr->quantization_params.base_q_idx < 120){
+        idx = 2 ;
+    }else{
+        idx = 3 ;
+    }
+    memcpy(cdf->Txb_Skip,Default_Txb_Skip_Cdf[idx],sizeof(Default_Txb_Skip_Cdf[idx])/sizeof(uint16_t));
+    memcpy(cdf->Eob_Pt_16,Default_Eob_Pt_16_Cdf[idx],sizeof(Default_Eob_Pt_16_Cdf[idx])/sizeof(uint16_t));
+    memcpy(cdf->Eob_Pt_32,Default_Eob_Pt_32_Cdf[idx],sizeof(Default_Eob_Pt_32_Cdf[idx])/sizeof(uint16_t));
+    memcpy(cdf->Eob_Pt_64,Default_Eob_Pt_64_Cdf[idx],sizeof(Default_Eob_Pt_64_Cdf[idx])/sizeof(uint16_t));
+    memcpy(cdf->Eob_Pt_128,Default_Eob_Pt_128_Cdf[idx],sizeof(Default_Eob_Pt_128_Cdf[idx])/sizeof(uint16_t));
+    memcpy(cdf->Eob_Pt_256,Default_Eob_Pt_256_Cdf[idx],sizeof(Default_Eob_Pt_256_Cdf[idx])/sizeof(uint16_t));
+    memcpy(cdf->Eob_Pt_512,Default_Eob_Pt_512_Cdf[idx],sizeof(Default_Eob_Pt_512_Cdf[idx])/sizeof(uint16_t));
+    memcpy(cdf->Eob_Pt_1024,Default_Eob_Pt_1024_Cdf[idx],sizeof(Default_Eob_Pt_1024_Cdf[idx])/sizeof(uint16_t));
+
+    memcpy(cdf->Eob_Extra,Default_Eob_Extra_Cdf[idx],sizeof(Default_Eob_Pt_32_Cdf[idx])/sizeof(uint16_t));
+    memcpy(cdf->Dc_Sign,Default_Dc_Sign_Cdf[idx],sizeof(Default_Eob_Pt_32_Cdf[idx])/sizeof(uint16_t));
+    memcpy(cdf->Coeff_Base_Eob,Default_Coeff_Base_Eob_Cdf[idx],sizeof(Default_Y_Mode_Cdf[idx])/sizeof(uint16_t));
+    memcpy(cdf->Coeff_Base,Default_Coeff_Base_Cdf[idx],sizeof(Default_Y_Mode_Cdf[idx])/sizeof(uint16_t));
+    memcpy(cdf->Coeff_Br,Default_Coeff_Br_Cdf[idx],sizeof(Default_Y_Mode_Cdf[idx])/sizeof(uint16_t));
+}
+//从参考帧上下文拷贝cdf到当前framecontext
 int decode::load_cdfs(AV1DecodeContext *av1Ctx,int ctx){
 	memcpy(&av1Ctx->currentFrame->cdfCtx,&av1Ctx->ref_frames[ctx]->cdfCtx,sizeof(av1Ctx->ref_frames[ctx]->cdfCtx));
 }
+//保存cdf到参考帧上下文
+int decode::save_cdfs(AV1DecodeContext *av1Ctx,int ctx){
+	memcpy(&av1Ctx->ref_frames[ctx]->cdfCtx,&av1Ctx->currentFrame->cdfCtx,sizeof(av1Ctx->ref_frames[ctx]->cdfCtx));
+}
+
+int decode::save_grain_params(AV1DecodeContext *av1Ctx,int i){
+	memcpy(&av1Ctx->ref_frames[i]->frameHdr.film_grain_params,
+		&av1Ctx->currentFrame->frameHdr.film_grain_params,
+		sizeof(av1Ctx->ref_frames[i]->frameHdr.film_grain_params));
+}
+int decode::load_grain_params(AV1DecodeContext *av1Ctx,int i){
+	memcpy(&av1Ctx->currentFrame->frameHdr.film_grain_params,
+			&av1Ctx->ref_frames[i]->frameHdr.film_grain_params,
+			sizeof(av1Ctx->ref_frames[i]->frameHdr.film_grain_params));
+}
+
 //加载主参考帧的一些参数
 int decode::load_previous(AV1DecodeContext *av1Ctx){
 	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
@@ -172,6 +215,7 @@ int decode::load_previous(AV1DecodeContext *av1Ctx){
 	load_segmentation_params(av1Ctx,prevFrame);
 
 }
+
 //the values of loop_filter_ref_deltas[ j ] for j = 0 ..
 //TOTAL_REFS_PER_FRAME-1, and the values of loop_filter_mode_deltas[ j ] for j = 0 .. 1 should be 
 //loaded from an area of memory indexed by i.
@@ -222,34 +266,6 @@ int decode::load_previous_segment_ids(AV1DecodeContext *av1Ctx){
 		*/
 		memset(av1Ctx->PrevSegmentIds, 0,sizeof(uint8_t) * frameHdr->MiRows * frameHdr->MiCols);
 	}
-}
-int decode::init_coeff_cdfs(AV1DecodeContext *av1Ctx){
-	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
-    CDFArrays *cdf = &av1Ctx->currentFrame->cdfCtx;
-    int idx;
-    if(frameHdr->quantization_params.base_q_idx == 20){
-        idx = 0 ;
-    }else if(frameHdr->quantization_params.base_q_idx < 60){
-        idx = 1 ;
-    }else if(frameHdr->quantization_params.base_q_idx < 120){
-        idx = 2 ;
-    }else{
-        idx = 3 ;
-    }
-    memcpy(cdf->Txb_Skip,Default_Txb_Skip_Cdf[idx],sizeof(Default_Txb_Skip_Cdf[idx])/sizeof(uint16_t));
-    memcpy(cdf->Eob_Pt_16,Default_Eob_Pt_16_Cdf[idx],sizeof(Default_Eob_Pt_16_Cdf[idx])/sizeof(uint16_t));
-    memcpy(cdf->Eob_Pt_32,Default_Eob_Pt_32_Cdf[idx],sizeof(Default_Eob_Pt_32_Cdf[idx])/sizeof(uint16_t));
-    memcpy(cdf->Eob_Pt_64,Default_Eob_Pt_64_Cdf[idx],sizeof(Default_Eob_Pt_64_Cdf[idx])/sizeof(uint16_t));
-    memcpy(cdf->Eob_Pt_128,Default_Eob_Pt_128_Cdf[idx],sizeof(Default_Eob_Pt_128_Cdf[idx])/sizeof(uint16_t));
-    memcpy(cdf->Eob_Pt_256,Default_Eob_Pt_256_Cdf[idx],sizeof(Default_Eob_Pt_256_Cdf[idx])/sizeof(uint16_t));
-    memcpy(cdf->Eob_Pt_512,Default_Eob_Pt_512_Cdf[idx],sizeof(Default_Eob_Pt_512_Cdf[idx])/sizeof(uint16_t));
-    memcpy(cdf->Eob_Pt_1024,Default_Eob_Pt_1024_Cdf[idx],sizeof(Default_Eob_Pt_1024_Cdf[idx])/sizeof(uint16_t));
-
-    memcpy(cdf->Eob_Extra,Default_Eob_Extra_Cdf[idx],sizeof(Default_Eob_Pt_32_Cdf[idx])/sizeof(uint16_t));
-    memcpy(cdf->Dc_Sign,Default_Dc_Sign_Cdf[idx],sizeof(Default_Eob_Pt_32_Cdf[idx])/sizeof(uint16_t));
-    memcpy(cdf->Coeff_Base_Eob,Default_Coeff_Base_Eob_Cdf[idx],sizeof(Default_Y_Mode_Cdf[idx])/sizeof(uint16_t));
-    memcpy(cdf->Coeff_Base,Default_Coeff_Base_Cdf[idx],sizeof(Default_Y_Mode_Cdf[idx])/sizeof(uint16_t));
-    memcpy(cdf->Coeff_Br,Default_Coeff_Br_Cdf[idx],sizeof(Default_Y_Mode_Cdf[idx])/sizeof(uint16_t));
 }
 
 //7.8
@@ -4897,7 +4913,7 @@ void decode::cdefFilter(int plane, int r, int c, int priStr, int secStr, int dam
 
 
 int decode::cdef_get_at(int plane,int x0,int y0,int i, int j,int dir,int k,int sign,int subX,int subY,
-						int * CdefAvailable,uint8_t ***CurrFrame,AV1DecodeContext *av1Ctx) {
+						int * CdefAvailable,uint16_t ***CurrFrame,AV1DecodeContext *av1Ctx) {
 	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	int y = y0 + i + sign * Cdef_Directions[dir][k][0];
 	int x = x0 + j + sign * Cdef_Directions[dir][k][1];
@@ -4962,7 +4978,7 @@ void decode::loopRestoration(BlockData *b_data,AV1DecodeContext *av1Ctx){
 	int size = sizeof(uint8_t) * 3 * frameHdr->si.FrameHeight * frameHdr->si.UpscaledWidth;
 	//记得delete 这个
 	av1Ctx->currentFrame->lrCtx->LrFrame = new uint8_t[3][frameHdr->si.FrameHeight][frameHdr->si.UpscaledWidth];
-	memcpy(av1Ctx->currentFrame->lrCtx->LrFrame,b_data->UpscaledCdefFrame,size);
+	memcpy(av1Ctx->currentFrame->lrCtx->LrFrame,av1Ctx->currentFrame->UpscaledCdefFrame,size);
 
 
 	// 如果不需要循环恢复，直接返回
@@ -5057,7 +5073,7 @@ void decode::selfGuidedFilter(int plane,int unitRow,int unitCol, int x,int y,int
 	// 应用恢复过程
 	for (int i = 0; i < h; i++) {
 		for (int j = 0; j < w; j++) {
-			int u = b_data->UpscaledCdefFrame[plane][y + i][x + j] << SGRPROJ_RST_BITS;
+			int u = av1Ctx->currentFrame->UpscaledCdefFrame[plane][y + i][x + j] << SGRPROJ_RST_BITS;
 			int v = w1 * u;
 			
 			if (r0 != 0) {
@@ -5143,7 +5159,7 @@ void decode::boxFilter(int plane,int x,int y,int w,int h,int set ,int pass,int *
 					b += weight * B[i + dy + 1][j + dx + 1];
 				}
 			}
-			int v = a * b_data->UpscaledCdefFrame[plane][y + i][x + j] + b;
+			int v = a * av1Ctx->currentFrame->UpscaledCdefFrame[plane][y + i][x + j] + b;
 			F[i][j] = Round2(v, SGRPROJ_SGR_BITS + shift - SGRPROJ_RST_BITS);
 		}
 	}
@@ -5211,12 +5227,12 @@ int decode::getSourceSample(int plane ,int x,int y,BlockData *b_data, AV1DecodeC
 	// 根据y的位置确定样本来源
 	if (y < av1Ctx->currentFrame->lrCtx->StripeStartY) {
 		y = Max(av1Ctx->currentFrame->lrCtx->StripeStartY - 2, y);
-		return b_data->UpscaledCurrFrame[plane][y][x];
+		return av1Ctx->currentFrame->UpscaledCurrFrame[plane][y][x];
 	} else if (y > av1Ctx->currentFrame->lrCtx->StripeEndY) {
 		y = Min(av1Ctx->currentFrame->lrCtx->StripeEndY + 2, y);
-		return b_data->UpscaledCurrFrame[plane][y][x];
+		return av1Ctx->currentFrame->UpscaledCurrFrame[plane][y][x];
 	} else {
-		return b_data->UpscaledCdefFrame[plane][y][x];
+		return av1Ctx->currentFrame->UpscaledCdefFrame[plane][y][x];
 	}
 }
 //7.18.2
@@ -5616,10 +5632,10 @@ void decode::referenceFrameUpdate(PartitionData *p_data, AV1DecodeContext *av1Ct
 				}
 			}
 
-			save_cdfs(i);
+			save_cdfs(av1Ctx,i);
 
 			if (seqHdr->film_grain_params_present == 1) {
-				save_grain_params(i);
+				save_grain_params(av1Ctx,i);
 			}
 
 			save_loop_filter_params(i);
@@ -5688,11 +5704,11 @@ void decode::referenceFrameLoading(PartitionData *p_data, AV1DecodeContext *av1C
 	load_cdfs(av1Ctx, frameHdr->frame_to_show_map_idx);
 
 	if (seqHdr->film_grain_params_present == 1) {
-		load_grain_params(frameHdr->frame_to_show_map_idx);
+		load_grain_params( av1Ctx, frameHdr->frame_to_show_map_idx);
 	}
 
-	load_loop_filter_params(frameHdr->frame_to_show_map_idx);
-	load_segmentation_params(frameHdr->frame_to_show_map_idx);
+	load_loop_filter_params(av1Ctx, frameHdr->frame_to_show_map_idx);
+	load_segmentation_params(av1Ctx, frameHdr->frame_to_show_map_idx);
 
 
 }

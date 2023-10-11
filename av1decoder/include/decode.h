@@ -17,10 +17,16 @@ public:
 	int init_non_coeff_cdfs(CDFArrays *cdf);
 	int setup_past_independence(AV1DecodeContext *av1Ctx);
 	int load_cdfs(AV1DecodeContext *av1Ctx,int ctx);
+	int save_cdfs(AV1DecodeContext *av1Ctx,int ctx);
+	int save_grain_params(AV1DecodeContext *av1Ctx,int i);
+	int load_grain_params(AV1DecodeContext *av1Ctx,int i);
+
 	int load_previous(AV1DecodeContext *av1Ctx);
 	int load_segmentation_params(AV1DecodeContext *av1Ctx,int prevFrame);
 	int load_loop_filter_params(AV1DecodeContext *av1Ctx,int prevFrame);
 	int load_previous_segment_ids(AV1DecodeContext *av1Ctx);
+
+
 	int set_frame_refs(AV1DecodeContext *av1Ctx);
 	int motion_field_estimation(AV1DecodeContext *av1Ctx);
 	int motion_filed_project(AV1DecodeContext *av1Ctx,int src,int dstSign);
@@ -169,7 +175,7 @@ public:
 	void cdefFilter(int plane, int r, int c, int priStr, int secStr, int damping, int dir,
 							PartitionData *p_data, BlockData *b_data,AV1DecodeContext *av1Ctx );
 	int cdef_get_at(int plane,int x0,int y0,int i, int j,int dir,int k,int sign,int subX,int subY,
-							int * CdefAvailable,uint8_t ***CurrFrame,AV1DecodeContext *av1Ctx);
+							int * CdefAvailable,uint16_t ***CurrFrame,AV1DecodeContext *av1Ctx);
 
 
 	void upscalingProcess(int ***inputFrame,int ***outputFrame,AV1DecodeContext *av1Ctx);

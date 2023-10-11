@@ -92,7 +92,7 @@ public:
 	int read_var_tx_size(int row,int col,int txSz,int depth,SymbolContext *sbCtx, bitSt *bs, TileData *t_data,
 								 PartitionData *p_data, BlockData *b_data, AV1DecodeContext *av1Ctx);
 	int read_tx_size(int allowSelect, SymbolContext *sbCtx, bitSt *bs,PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx);
-	int compute_prediction(SymbolContext *sbCtx, bitSt *bs, 
+	int compute_prediction(SymbolContext *sbCtx, bitSt *bs, TileData *t_data,
 						 	PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int reset_block_context(int bw4, int bh4,SymbolContext *sbCtx, bitSt *bs,
 							PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx);

@@ -307,7 +307,7 @@ int frame::parseFrameHeader(int sz, bitSt *bs, AV1DecodeContext *av1Ctx, sequenc
 	}
 	if (out->use_ref_frame_mvs == 1)
 	{
-		 motion_field_estimation( );
+		 decode_instance->motion_field_estimation(av1Ctx);
 	}
 		
 
@@ -325,11 +325,11 @@ int frame::parseFrameHeader(int sz, bitSt *bs, AV1DecodeContext *av1Ctx, sequenc
 
 	if (out->primary_ref_frame == PRIMARY_REF_NONE)
 	{
-		 init_coeff_cdfs(av1Ctx);
+		 decode_instance->init_coeff_cdfs(av1Ctx);
 	}
 	else
 	{
-		 load_previous_segment_ids( );
+		 decode_instance->load_previous_segment_ids(av1Ctx);
 	}
 	out->CodedLossless = 1;
 	int segmentId;
@@ -875,11 +875,13 @@ int frame::readGlobalMotionParams(bitSt *bs, frameHeader *frameHdr)
 int frame::readFilmGrainParams(bitSt *bs, frameHeader *frameHdr,sequenceHeader *seqHdr)
 {
 	if ( !seqHdr->film_grain_params_present ||(!frameHdr->show_frame && !frameHdr->showable_frame) ) {
-		//reset_grain_params()
+		//reset_grain_params();
+		memset(&frameHdr->film_grain_params, 0,sizeof(frameHdr->film_grain_params));
 		return 0;
 	}
 	if ( !readOneBit(bs)/*apply_grain*/ ) {
-		//reset_grain_params()
+		//reset_grain_params();
+		memset(&frameHdr->film_grain_params, 0,sizeof(frameHdr->film_grain_params));
 		return 0;
 	}
 	frameHdr->film_grain_params.grain_seed = readBits(bs, 16);
@@ -891,7 +893,7 @@ int frame::readFilmGrainParams(bitSt *bs, frameHeader *frameHdr,sequenceHeader *
 	if ( !frameHdr->film_grain_params.update_grain ) {
 		frameHdr->film_grain_params.film_grain_params_ref_idx = readBits(bs, 3);// f(3)
 		int tempGrainSeed = frameHdr->film_grain_params.grain_seed;
-		//load_grain_params( film_grain_p`arams_ref_idx );
+		load_grain_params(frameHdr->film_grain_params.film_grain_params_ref_idx );
 		frameHdr->film_grain_params.grain_seed = tempGrainSeed;
 		return 0;
 	}
@@ -3156,7 +3158,7 @@ int frame::reset_block_context(int bw4, int bh4,SymbolContext *sbCtx, bitSt *bs,
 		}
 	}
 }
-int frame::compute_prediction(SymbolContext *sbCtx, bitSt *bs, 
+int frame::compute_prediction(SymbolContext *sbCtx, bitSt *bs, TileData *t_data,
 						 	PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx)
 {
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
@@ -3189,17 +3191,17 @@ int frame::compute_prediction(SymbolContext *sbCtx, bitSt *bs,
 				mode = H_PRED;
 			else
 				mode = SMOOTH_PRED;
-			predict_intra(plane, baseX, baseY,
-						  plane == 0 ? AvailL : AvailLChroma,
-						  plane == 0 ? AvailU : AvailUChroma,
-						  BlockDecoded[plane]
+			decode_instance->predict_intra(plane, baseX, baseY,
+						  plane == 0 ? b_data->AvailL : b_data->AvailLChroma,
+						  plane == 0 ? b_data->AvailU : b_data->AvailUChroma,
+						  t_data->BlockDecoded[plane]
 									  [(subBlockMiRow >> subY) - 1]
 									  [(subBlockMiCol >> subX) + num4x4W],
-						  BlockDecoded[plane]
+						  t_data->BlockDecoded[plane]
 									  [(subBlockMiRow >> subY) + num4x4H]
 									  [(subBlockMiCol >> subX) - 1],
 						  mode,
-						  log2W, log2H);
+						  log2W, log2H,t_data,p_data,b_data,av1Ctx);
 		}
 		if (b_data->is_inter)
 		{
@@ -3225,7 +3227,7 @@ int frame::compute_prediction(SymbolContext *sbCtx, bitSt *bs,
 				{
 					decode_instance->predict_inter(plane, baseX + x, baseY + y,
 								  predW, predH,
-								  candRow + r, candCol + c,IsInterIntra,t_da);
+								  candRow + r, candCol + c,IsInterIntra,t_data,p_data,b_data,av1Ctx);
 					c++;
 				}
 				r++;
