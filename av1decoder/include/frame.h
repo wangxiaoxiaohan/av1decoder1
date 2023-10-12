@@ -94,15 +94,18 @@ public:
 	int read_tx_size(int allowSelect, SymbolContext *sbCtx, bitSt *bs,PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int compute_prediction(SymbolContext *sbCtx, bitSt *bs, TileData *t_data,
 						 	PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx);
-	int reset_block_context(int bw4, int bh4,SymbolContext *sbCtx, bitSt *bs,
+	int reset_block_context(int bw4, int bh4,SymbolContext *sbCtx, bitSt *bs,TileData *t_data,
 							PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int needs_interp_filter(BlockData *b_data,AV1DecodeContext *av1Ctx);
 
-	int clear_cdef(int r, int c,BlockData *b_data,AV1DecodeContext *av1Ctx);
-	int read_lr(SymbolContext *sbCtx, bitSt *bs,int r,int c, int bSize,AV1DecodeContext *av1Ctx);
+	int clear_cdef(int r, int c,AV1DecodeContext *av1Ctx);
+	int read_lr(SymbolContext *sbCtx, bitSt *bs,int r,int c, int bSize,
+				TileData *t_data, AV1DecodeContext *av1Ctx);
 	int read_lr_unit(SymbolContext *sbCtx, bitSt *bs,int plane,int unitRow,int unitCol,
-						TileData *t_data, BlockData *b_data,AV1DecodeContext  *av1Ctx);
+						TileData *t_data,AV1DecodeContext  *av1Ctx);
 	int clear_block_decoded_flags(int r, int c, int sbSize4,TileData *t_data, AV1DecodeContext *av1Ctx);
+	int clear_above_context(TileData *t_data);
+	int clear_left_context(TileData *t_data);
 	static frame& Instance() {
 		static frame m_pInstance;
 		return m_pInstance;

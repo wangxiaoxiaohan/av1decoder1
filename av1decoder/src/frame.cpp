@@ -1152,7 +1152,7 @@ int frame::decodeFrame(int sz, bitSt *bs, AV1DecodeContext *av1Ctx){
 	//	注意这个!!!! spec中有用，但是用到那个地方在 dav1d中，和libaom中又都没有用
 		t_data.CurrentQIndex = frameHdr->quantization_params.base_q_idx;
 		//之所以 每个tile 进行一次 init_symbol 是因为tile内的所有语法元素和数据都是算术编码的，而tile层之上会有非算术编码的语法元素。
-		init_symbol( tileSize );
+		//init_symbol( tileSize );
 		SymbolContext symCtx;
 		sb->initSymbol(&symCtx,bs,sz);
 		decode_tile(&symCtx,bs,&t_data,av1Ctx);
@@ -1171,9 +1171,9 @@ int frame::decode_tile(SymbolContext *sbCtx,bitSt *bs, TileData *t_data,AV1Decod
 	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
 
-	clear_above_context( );
+	clear_above_context(t_data );
 	for (int i = 0; i < FRAME_LF_COUNT; i++ )
-		av1Ctx->DeltaLF[ i ] = 0;
+		t_data->DeltaLF[ i ] = 0;
 	for (int plane = 0; plane < seqHdr->color_config.NumPlanes; plane++ ) {
 		for (int pass = 0; pass < 2; pass++ ) {
 			t_data->RefSgrXqd[ plane ][ pass ] = Sgrproj_Xqd_Mid[ pass ];
@@ -1186,12 +1186,12 @@ int frame::decode_tile(SymbolContext *sbCtx,bitSt *bs, TileData *t_data,AV1Decod
 	int sbSize4 = Num_4x4_Blocks_Wide[ sbSize ];
 
 	for (int  r = t_data->MiRowStart; r < t_data->MiRowEnd; r += sbSize4 ) {
-		clear_left_context( );
+		clear_left_context(t_data );
 		for (int  c = t_data->MiColStart; c < t_data->MiColEnd; c += sbSize4 ) {
 			t_data->ReadDeltas = frameHdr->delta_q_params.delta_q_present;
-			clear_cdef( r, c );
-			clear_block_decoded_flags( r, c, sbSize4 );
-			read_lr( r, c, sbSize );
+			clear_cdef( r, c ,av1Ctx);
+			clear_block_decoded_flags( r, c, sbSize4 ,t_data,av1Ctx);
+			read_lr(sbCtx,bs, r, c, sbSize,t_data,av1Ctx );
 			PartitionData p_data;
 			decode_partition(sbCtx, bs , t_data,&p_data,r, c, sbSize ,av1Ctx);
 		}
@@ -1253,8 +1253,7 @@ int frame::decode_partition(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
 	{
 		 //根据上边和左边的块来推出需要使用的cdf， 为什么MiSizes 还未初始化这里就在使用？
 		 //在最左上角的时候AvailU AvailL都是0，自然  p_data->AvailU && 后面的就不会调了，就没有问题
-		//size 计算错
-		partition = sb->decodeSymbol(sbCtx,bs,partitionCdf,sizeof(partitionCdf)/sizeof(uint16_t));
+		partition = sb->decodeSymbol(sbCtx,bs,partitionCdf,size);
 	}
 	else if (hasCols)
 	{
@@ -1397,58 +1396,59 @@ int frame::decode_block(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
 	}
 
 	mode_info(sbCtx,bs,t_data,p_data,&b_data,av1Ctx);
-	palette_tokens();
-	read_block_tx_size();	
+	palette_tokens(sbCtx,bs,t_data,p_data,&b_data,av1Ctx);
+	read_block_tx_size(sbCtx,bs,t_data,p_data,&b_data,av1Ctx);	
 	if (b_data.skip)
-		reset_block_context(bw4, bh4);
-	isCompound = RefFrame[1] > INTRA_FRAME;
+		reset_block_context(bw4, bh4,sbCtx,bs,t_data, p_data,&b_data,av1Ctx);
+	int isCompound = b_data.RefFrame[1] > INTRA_FRAME;
 	for (int y = 0; y < bh4; y++)
 	{
 		for (int x = 0; x < bw4; x++)
 		{
-			YModes[r + y][c + x] = YMode ;
-			if (RefFrame[0] == INTRA_FRAME && HasChroma)
-				UVModes[r + y][c + x] = UVMode ;
+			p_data->YModes[r + y][c + x] = b_data.YMode ;
+			if (b_data.RefFrame[0] == INTRA_FRAME && b_data.HasChroma)
+				p_data->UVModes[r + y][c + x] = b_data.UVMode ;
 			for (int refList = 0; refList < 2; refList++)
-				RefFrames[r + y][c + x][refList] = RefFrame[refList] ;
-			if (is_inter)
+				p_data->RefFrames[r + y][c + x][refList] = b_data.RefFrame[refList] ;
+			if (b_data.is_inter)
 			{
-					if (!use_intrabc)
+					if (!b_data.use_intrabc)
 					{
-						CompGroupIdxs[r + y][c + x] = comp_group_idx;
-						CompoundIdxs[r + y][c + x] = compound_idx;
+						p_data->CompGroupIdxs[r + y][c + x] = b_data.comp_group_idx;
+						p_data->CompoundIdxs[r + y][c + x] = b_data.compound_idx;
 					}
 					for (int dir = 0; dir < 2; dir++)
 					{
-						InterpFilters[r + y][c + x][dir] = interp_filter[dir];
+						p_data->InterpFilters[r + y][c + x][dir] = b_data.interp_filter[dir];
 					}
 					for (int refList = 0; refList < 1 + isCompound; refList++)
 					{
-						Mvs[r + y][c + x][refList] = av1Ctx->Mv[refList];
+						//p_data->Mvs[r + y][c + x][refList] = b_data.Mv[refList];
+						memcpy(p_data->Mvs[r + y][c + x][refList],b_data.Mv[refList],sizeof(uint8_t) * 2);
 					}
 			}
 		}
 	}
-	compute_prediction();
-	residual() ;
+	compute_prediction(sbCtx,bs,t_data,p_data,&b_data,av1Ctx);
+	decode_instance->residual(sbCtx,bs,t_data,p_data,&b_data,av1Ctx) ;
 	for (int y = 0; y < bh4; y++)
 	{
 		for (int x = 0; x < bw4; x++)
 		{
-			IsInters[r + y][c + x] = is_inter;
-			SkipModes[r + y][c + x] = skip_mode;
-			Skips[r + y][c + x] = skip;
-			TxSizes[r + y][c + x] = TxSize;
-			MiSizes[r + y][c + x] = MiSize;
-			SegmentIds[r + y][c + x] = segment_id;
-			PaletteSizes[0][r + y][c + x] = PaletteSizeY;
-			PaletteSizes[1][r + y][c + x] = PaletteSizeUV ;
-			for (int i = 0; i < PaletteSizeY; i++)
-				PaletteColors[0][r + y][c + x][i] = palette_colors_y[i] ;
-			for (int i = 0; i < PaletteSizeUV; i++);
-				PaletteColors[1][r + y][c + x][i] = palette_colors_u[i] ;
+			p_data->IsInters[r + y][c + x] = b_data.is_inter;
+			p_data->SkipModes[r + y][c + x] = b_data.skip_mode;
+			p_data->Skips[r + y][c + x] = b_data.skip;
+			p_data->TxSizes[r + y][c + x] = b_data.TxSize;
+			p_data->MiSizes[r + y][c + x] = b_data.MiSize;
+			p_data->SegmentIds[r + y][c + x] = b_data.segment_id;
+			p_data->PaletteSizes[0][r + y][c + x] = b_data.PaletteSizeY;
+			p_data->PaletteSizes[1][r + y][c + x] = b_data.PaletteSizeUV ;
+			for (int i = 0; i < b_data.PaletteSizeY; i++)
+				p_data->PaletteColors[0][r + y][c + x][i] = b_data.palette_colors_y[i] ;
+			for (int i = 0; i < b_data.PaletteSizeUV; i++)
+				p_data->PaletteColors[1][r + y][c + x][i] = b_data.palette_colors_u[i] ;
 			for (int i = 0; i < FRAME_LF_COUNT; i++)
-				DeltaLFs[r + y][c + x][i] = DeltaLF[i];
+				p_data->DeltaLFs[r + y][c + x][i] = t_data->DeltaLF[i];
 		}
 	}
 }
@@ -1795,7 +1795,7 @@ int frame::read_delta_lf(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
 			{
 				b_data->delta_lf_sign_bit = sb->read_literal(sbCtx,bs,1); //L(1)
 				int reducedDeltaLfLevel = b_data->delta_lf_sign_bit ? -deltaLfAbs : deltaLfAbs;
-				av1Ctx->DeltaLF[i] = Clip3(-MAX_LOOP_FILTER, MAX_LOOP_FILTER, av1Ctx->DeltaLF[i] + (reducedDeltaLfLevel << frameHdr->delta_lf_params.delta_lf_res));
+				t_data->DeltaLF[i] = Clip3(-MAX_LOOP_FILTER, MAX_LOOP_FILTER, t_data->DeltaLF[i] + (reducedDeltaLfLevel << frameHdr->delta_lf_params.delta_lf_res));
 			}
 		}
 	}
@@ -2249,25 +2249,25 @@ int frame::inter_segment_id(int preSkip,SymbolContext *sbCtx, bitSt *bs, TileDat
 				{
 					b_data->seg_id_predicted = 0;
 					for (int i = 0; i < Num_4x4_Blocks_Wide[b_data->MiSize]; i++)
-						b_data->AboveSegPredContext[b_data->MiCol + i] = b_data->seg_id_predicted;
+						t_data->AboveSegPredContext[b_data->MiCol + i] = b_data->seg_id_predicted;
 					for (int i = 0; i < Num_4x4_Blocks_High[b_data->MiSize]; i++)
-						b_data->LeftSegPredContext[b_data->MiRow + i] = b_data->seg_id_predicted;
+						t_data->LeftSegPredContext[b_data->MiRow + i] = b_data->seg_id_predicted;
 					read_segment_id( sbCtx, bs, t_data,p_data, b_data, av1Ctx);
 					return;
 				}
 			}
 			if (frameHdr->segmentation_params.segmentation_temporal_update == 1)
 			{
-				int ctx = b_data->LeftSegPredContext[ b_data->MiRow ] + b_data->AboveSegPredContext[ b_data->MiCol ];
+				int ctx = t_data->LeftSegPredContext[ b_data->MiRow ] + t_data->AboveSegPredContext[ b_data->MiCol ];
 				b_data->seg_id_predicted = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Segment_Id_Predicted[ctx],3); //S()
 				if (b_data->seg_id_predicted)
 					b_data->segment_id = predictedSegmentId;
 				else
 					read_segment_id(sbCtx, bs, t_data,p_data, b_data, av1Ctx);
 				for (int i = 0; i < Num_4x4_Blocks_Wide[b_data->MiSize]; i++)
-					b_data->AboveSegPredContext[b_data->MiCol + i] = b_data->seg_id_predicted;
+					t_data->AboveSegPredContext[b_data->MiCol + i] = b_data->seg_id_predicted;
 				for (int i = 0; i < Num_4x4_Blocks_High[b_data->MiSize]; i++)
-					b_data->LeftSegPredContext[b_data->MiRow + i] = b_data->seg_id_predicted;
+					t_data->LeftSegPredContext[b_data->MiRow + i] = b_data->seg_id_predicted;
 			}
 			else
 			{
@@ -3138,7 +3138,7 @@ int frame::read_tx_size(int allowSelect, SymbolContext *sbCtx, bitSt *bs,Partiti
 	}
 }
 
-int frame::reset_block_context(int bw4, int bh4,SymbolContext *sbCtx, bitSt *bs, 
+int frame::reset_block_context(int bw4, int bh4,SymbolContext *sbCtx, bitSt *bs, TileData *t_data,
 						 	PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx)
 {
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
@@ -3148,13 +3148,13 @@ int frame::reset_block_context(int bw4, int bh4,SymbolContext *sbCtx, bitSt *bs,
 		int subY = (plane > 0) ? seqHdr->color_config.subsampling_y : 0;
 		for (int i = b_data->MiCol >> subX; i < ((b_data->MiCol + bw4) >> subX); i++)
 		{
-			b_data->AboveLevelContext[plane][i] = 0;
-			b_data->AboveDcContext[plane][i] = 0;
+			t_data->AboveLevelContext[plane][i] = 0;
+			t_data->AboveDcContext[plane][i] = 0;
 		}
 		for (int i = b_data->MiRow >> subY; i < ((b_data->MiRow + bh4) >> subY); i++)
 		{
-			b_data->LeftLevelContext[plane][i] = 0;
-			b_data->LeftDcContext[plane][i] = 0;
+			t_data->LeftLevelContext[plane][i] = 0;
+			t_data->LeftDcContext[plane][i] = 0;
 		}
 	}
 }
@@ -3336,19 +3336,20 @@ int frame::clear_block_decoded_flags(int r, int c, int sbSize4,TileData *t_data,
 		t_data->BlockDecoded[plane][sbSize4 >> subY][-1] = 0;
 	}
 }
-int frame::clear_cdef(int r, int c,BlockData *b_data,AV1DecodeContext *av1Ctx)
+int frame::clear_cdef(int r, int c,AV1DecodeContext *av1Ctx)
 {
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
-	b_data->cdef_idx[r][c] = -1;
+	av1Ctx->currentFrame->cdef_idx[r][c] = -1;
 	if (seqHdr->use_128x128_superblock)
 	{
 		int cdefSize4 = Num_4x4_Blocks_Wide[BLOCK_64X64];
-		b_data->cdef_idx[r][c + cdefSize4] = -1;
-		b_data->cdef_idx[r + cdefSize4][c] = -1;
-		b_data->cdef_idx[r + cdefSize4][c + cdefSize4] = -1;
+		av1Ctx->currentFrame->cdef_idx[r][c + cdefSize4] = -1;
+		av1Ctx->currentFrame->cdef_idx[r + cdefSize4][c] = -1;
+		av1Ctx->currentFrame->cdef_idx[r + cdefSize4][c + cdefSize4] = -1;
 	}
 }
-int frame::read_lr(SymbolContext *sbCtx, bitSt *bs,int r,int c, int bSize,AV1DecodeContext *av1Ctx)
+int frame::read_lr(SymbolContext *sbCtx, bitSt *bs,int r,int c, int bSize,
+			TileData *t_data,AV1DecodeContext *av1Ctx)
 {
 	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
@@ -3388,14 +3389,14 @@ int frame::read_lr(SymbolContext *sbCtx, bitSt *bs,int r,int c, int bSize,AV1Dec
 			{
 				for (int unitCol = unitColStart; unitCol < unitColEnd; unitCol++)
 				{
-					read_lr_unit(plane, unitRow, unitCol);
+					read_lr_unit(sbCtx,bs, plane, unitRow, unitCol,t_data,av1Ctx);
 				}
 			}
 		}
 	}
 }
 int frame::read_lr_unit(SymbolContext *sbCtx, bitSt *bs,int plane,int unitRow,int unitCol,
-					TileData *t_data, BlockData *b_data,AV1DecodeContext  *av1Ctx)
+					TileData *t_data,AV1DecodeContext  *av1Ctx)
 {
 	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
@@ -3414,7 +3415,7 @@ int frame::read_lr_unit(SymbolContext *sbCtx, bitSt *bs,int plane,int unitRow,in
 	{
 		restoration_type = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Restoration_Type ,RESTORE_SWITCHABLE + 1 ); // S()
 	}
-	b_data->LrType[plane][unitRow][unitCol] = restoration_type;
+	av1Ctx->currentFrame->lrCtx->LrType[plane][unitRow][unitCol] = restoration_type;
 	int v;
 	if (restoration_type == RESTORE_WIENER)
 	{
@@ -3424,7 +3425,7 @@ int frame::read_lr_unit(SymbolContext *sbCtx, bitSt *bs,int plane,int unitRow,in
 			if (plane)
 			{
 				firstCoeff = 1;
-				b_data->LrWiener[plane][unitRow][unitCol][pass][0] = 0;
+				av1Ctx->currentFrame->lrCtx->LrWiener[plane][unitRow][unitCol][pass][0] = 0;
 			}
 			else
 			{
@@ -3437,7 +3438,7 @@ int frame::read_lr_unit(SymbolContext *sbCtx, bitSt *bs,int plane,int unitRow,in
 				int k = Wiener_Taps_K[j];
 				v = sb->decode_signed_subexp_with_ref_bool(sbCtx,bs,
 						min, max + 1, k, t_data->RefLrWiener[plane][pass][j]);
-				b_data->LrWiener[plane][unitRow][unitCol][pass][j] = v;
+				av1Ctx->currentFrame->lrCtx->LrWiener[plane][unitRow][unitCol][pass][j] = v;
 				t_data->RefLrWiener[plane][pass][j] = v;
 			}
 		}
@@ -3445,7 +3446,7 @@ int frame::read_lr_unit(SymbolContext *sbCtx, bitSt *bs,int plane,int unitRow,in
 	else if (restoration_type == RESTORE_SGRPROJ)
 	{
 		int lr_sgr_set = sb->read_literal(sbCtx,bs,SGRPROJ_PARAMS_BITS); // L(SGRPROJ_PARAMS_BITS)
-		b_data->LrSgrSet[plane][unitRow][unitCol] = lr_sgr_set;
+		av1Ctx->currentFrame->lrCtx->LrSgrSet[plane][unitRow][unitCol] = lr_sgr_set;
 		for (int i = 0; i < 2; i++)
 		{
 			int radius = Sgr_Params[lr_sgr_set][i * 2];
@@ -3465,16 +3466,20 @@ int frame::read_lr_unit(SymbolContext *sbCtx, bitSt *bs,int plane,int unitRow,in
 					v = Clip3(min, max, (1 << SGRPROJ_PRJ_BITS) - t_data->RefSgrXqd[plane][0]);
 				}
 			}
-			b_data->LrSgrXqd[plane][unitRow][unitCol][i] = v;
+			av1Ctx->currentFrame->lrCtx->LrSgrXqd[plane][unitRow][unitCol][i] = v;
 			t_data->RefSgrXqd[plane][i] = v;
 		}
 	}
 }
-int frame::clear_above_context()
+int frame::clear_above_context(TileData *t_data)
 {
-
+	memset(t_data->AboveLevelContext,0,);
+	memset(t_data->AboveDcContext,0,);
+	memset(t_data->AboveSegPredContext,0,);
 }
-int frame::clear_left_context()
+int frame::clear_left_context(TileData *t_data)
 {
-
+	memset(t_data->LeftLevelContext,0,);
+	memset(t_data->LeftDcContext,0,);
+	memset(t_data->LeftSegPredContext,0,);
 }

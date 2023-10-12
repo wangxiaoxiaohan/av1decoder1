@@ -231,12 +231,29 @@ int decode::load_loop_filter_params(AV1DecodeContext *av1Ctx,int prevFrame){
 
 	
 }
+
+int decode::save_loop_filter_params(AV1DecodeContext *av1Ctx,int i){
+	memcpy(av1Ctx->currentFrame->frameHdr.loop_filter_params.loop_filter_ref_deltas,
+		av1Ctx->ref_frames[i]->frameHdr.loop_filter_params.loop_filter_ref_deltas,
+		TOTAL_REFS_PER_FRAME * sizeof(uint8_t));
+	memcpy(av1Ctx->currentFrame->frameHdr.loop_filter_params.loop_filter_mode_deltas,
+		av1Ctx->ref_frames[i]->frameHdr.loop_filter_params.loop_filter_mode_deltas,
+		2 * sizeof(uint8_t));
+}
 int decode::load_segmentation_params(AV1DecodeContext *av1Ctx,int prevFrame){
 	memcpy(av1Ctx->currentFrame->frameHdr.segmentation_params.FeatureEnabled,
 		av1Ctx->ref_frames[prevFrame]->frameHdr.segmentation_params.FeatureEnabled,
 		MAX_SEGMENTS * SEG_LVL_MAX * sizeof(uint8_t));
 	memcpy(av1Ctx->currentFrame->frameHdr.segmentation_params.FeatureData,
 		av1Ctx->ref_frames[prevFrame]->frameHdr.segmentation_params.FeatureData,
+		MAX_SEGMENTS * SEG_LVL_MAX * sizeof(int16_t));
+}
+int decode::save_segmentation_params(AV1DecodeContext *av1Ctx,int i){
+	memcpy(av1Ctx->ref_frames[i]->frameHdr.segmentation_params.FeatureEnabled,
+		av1Ctx->currentFrame->frameHdr.segmentation_params.FeatureEnabled,
+		MAX_SEGMENTS * SEG_LVL_MAX * sizeof(uint8_t));
+	memcpy(av1Ctx->ref_frames[i]->frameHdr.segmentation_params.FeatureData,
+		av1Ctx->currentFrame->frameHdr.segmentation_params.FeatureData,
 		MAX_SEGMENTS * SEG_LVL_MAX * sizeof(int16_t));
 }
 int decode::load_previous_segment_ids(AV1DecodeContext *av1Ctx){
@@ -1521,7 +1538,7 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 	int culLevel = 0;
 	int dcCategory = 0;
 
-	int ctx = cacluteAllZeroCtx( plane, txSz,  x4, y4, w4, h4,b_data,av1Ctx);
+	int ctx = cacluteAllZeroCtx( plane, txSz,  x4, y4, w4, h4,t_data, b_data,av1Ctx);
 	int all_zero = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Txb_Skip[ txSzCtx ][ ctx ],3); // S()
 	if (all_zero)
 	{
@@ -1714,7 +1731,7 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 					{
 						if (x4 + k < maxX4)
 						{
-							sign = b_data->AboveDcContext[plane][x4 + k];
+							sign = t_data->AboveDcContext[plane][x4 + k];
 							if (sign == 1)
 							{
 								dcSign--;
@@ -1729,7 +1746,7 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 					{
 						if (y4 + k < maxY4)
 						{
-							sign = b_data->LeftDcContext[plane][y4 + k];
+							sign = t_data->LeftDcContext[plane][y4 + k];
 							if (sign == 1)
 							{
 								dcSign--;
@@ -1797,17 +1814,17 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 	}
 	for (int i = 0; i < w4; i++)
 	{
-		b_data->AboveLevelContext[plane][x4 + i] = culLevel;
-		b_data->AboveDcContext[plane][x4 + i] = dcCategory;
+		t_data->AboveLevelContext[plane][x4 + i] = culLevel;
+		t_data->AboveDcContext[plane][x4 + i] = dcCategory;
 	}
 	for (int i = 0; i < h4; i++)
 	{
-		b_data->LeftLevelContext[plane][y4 + i] = culLevel;
-		b_data->LeftDcContext[plane][y4 + i] = dcCategory;
+		t_data->LeftLevelContext[plane][y4 + i] = culLevel;
+		t_data->LeftDcContext[plane][y4 + i] = dcCategory;
 	}
 	return eob;
 }
-int decode::cacluteAllZeroCtx(int plane,int txSz, int x4,int y4,int w4,int h4,BlockData *b_data,AV1DecodeContext *av1Ctx)
+int decode::cacluteAllZeroCtx(int plane,int txSz, int x4,int y4,int w4,int h4,TileData *t_data, BlockData *b_data,AV1DecodeContext *av1Ctx)
 {
 	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
@@ -1831,12 +1848,12 @@ int decode::cacluteAllZeroCtx(int plane,int txSz, int x4,int y4,int w4,int h4,Bl
 		for (int k = 0; k < w4; k++)
 		{
 			if (x4 + k < maxX4)
-				top = Max(top, b_data->AboveLevelContext[plane][x4 + k]);
+				top = Max(top, t_data->AboveLevelContext[plane][x4 + k]);
 		}
 		for (int k = 0; k < h4; k++)
 		{
 			if (y4 + k < maxY4)
-				left = Max(left, b_data->LeftLevelContext[plane][y4 + k]);
+				left = Max(left, t_data->LeftLevelContext[plane][y4 + k]);
 		}
 		top = Min(top, 255);
 		left = Min(left, 255);
@@ -1873,16 +1890,16 @@ int decode::cacluteAllZeroCtx(int plane,int txSz, int x4,int y4,int w4,int h4,Bl
 		{
 			if (x4 + i < maxX4)
 			{
-				above |= b_data->AboveLevelContext[plane][x4 + i];
-				above |= b_data->AboveDcContext[plane][x4 + i];
+				above |= t_data->AboveLevelContext[plane][x4 + i];
+				above |= t_data->AboveDcContext[plane][x4 + i];
 			}
 		}
 		for (int i = 0; i < h4; i++)
 		{
 			if (y4 + i < maxY4)
 			{
-				left |= b_data->LeftLevelContext[plane][y4 + i];
-				left |= b_data->LeftDcContext[plane][y4 + i];
+				left |= t_data->LeftLevelContext[plane][y4 + i];
+				left |= t_data->LeftDcContext[plane][y4 + i];
 			}
 		}
 		ctx = (above != 0) + (left != 0);
@@ -3213,7 +3230,7 @@ int decode::blockWarp(int useWarp,int plane,int refList,int x,int y,
     int refIdx = frameHdr->ref_frame_idx[b_data->RefFrame[refList] - LAST_FRAME];
 
     // Calculate ref
-    uint8_t ***ref = av1Ctx->FrameStore[refIdx];
+    uint16_t ***ref = av1Ctx->FrameStore[refIdx];
 
     // Calculate subX and subY
     int subX, subY;
@@ -4726,7 +4743,7 @@ void decode::cdef(TileData *t_data, PartitionData *p_data,BlockData *b_data,AV1D
 		for (int c = 0; c < frameHdr->MiCols; c += step4 ) {
 			int baseR = r & cdefMask4;
 			int baseC = c & cdefMask4;
-			int idx = b_data->cdef_idx[ baseR ][ baseC ];
+			int idx = av1Ctx->currentFrame->cdef_idx[ baseR ][ baseC ];
 			cdefBlock(r, c, idx,p_data,b_data,av1Ctx);
 		}
 	}
@@ -5638,8 +5655,8 @@ void decode::referenceFrameUpdate(PartitionData *p_data, AV1DecodeContext *av1Ct
 				save_grain_params(av1Ctx,i);
 			}
 
-			save_loop_filter_params(i);
-			save_segmentation_params(i);
+			save_loop_filter_params(av1Ctx, i);
+			save_segmentation_params(av1Ctx, i);
 		}
 	}
 

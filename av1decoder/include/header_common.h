@@ -301,6 +301,13 @@ typedef struct TileData{
 	uint8_t CurrentQIndex;
 	uint8_t **BlockDecoded[3];
 	uint8_t **LoopfilterTxSizes[3];
+	int **AboveLevelContext;
+	int **AboveDcContext;
+	int **LeftLevelContext;
+	int **LeftDcContext;
+	uint8_t *AboveSegPredContext;
+	uint8_t *LeftSegPredContext;
+	uint8_t DeltaLF[4];	
 }TileData;
 typedef struct PartitionData{
 	uint8_t AvailU;
@@ -392,12 +399,7 @@ typedef struct BlockData{
 	uint8_t ColorOrder[PALETTE_COLORS];
 	uint8_t ColorContextHash;
 	uint8_t TxSize;
-	int **AboveLevelContext;
-	int **AboveDcContext;
-	int **LeftLevelContext;
-	int **LeftDcContext;
-	uint8_t *AboveSegPredContext;
-	uint8_t *LeftSegPredContext;
+
 	//块左边，上边的样本，是像素值
 	Array8 *AboveRow;
 	Array8 *LeftCol;
@@ -488,7 +490,6 @@ typedef struct AV1DecodeContext{
 
 	uint8_t SeenFrameHeader;
 	int ***MotionFieldMvs[8]; 
-	uint8_t DeltaLF[4];	
 	uint8_t **PrevSegmentIds;
 
 //decode ctx variables

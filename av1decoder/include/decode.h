@@ -13,6 +13,7 @@ public:
 	int has_overlappable_candidates(PartitionData *p_data, BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int get_above_tx_width(int row, int col,PartitionData *p_data,BlockData *b_data);
 	int get_left_tx_height(int row,int col,PartitionData *p_data,BlockData *b_data);
+	
 	int init_coeff_cdfs(AV1DecodeContext *av1Ctx);
 	int init_non_coeff_cdfs(CDFArrays *cdf);
 	int setup_past_independence(AV1DecodeContext *av1Ctx);
@@ -20,10 +21,11 @@ public:
 	int save_cdfs(AV1DecodeContext *av1Ctx,int ctx);
 	int save_grain_params(AV1DecodeContext *av1Ctx,int i);
 	int load_grain_params(AV1DecodeContext *av1Ctx,int i);
-
 	int load_previous(AV1DecodeContext *av1Ctx);
-	int load_segmentation_params(AV1DecodeContext *av1Ctx,int prevFrame);
+	int save_loop_filter_params(AV1DecodeContext *av1Ctx,int i);
 	int load_loop_filter_params(AV1DecodeContext *av1Ctx,int prevFrame);
+	int save_segmentation_params(AV1DecodeContext *av1Ctx,int i);
+	int load_segmentation_params(AV1DecodeContext *av1Ctx,int prevFrame);
 	int load_previous_segment_ids(AV1DecodeContext *av1Ctx);
 
 
@@ -77,7 +79,7 @@ public:
 							TileData *t_data,PartitionData *p_data, BlockData *b_data, AV1DecodeContext *av1Ctx);
 	int transform_type(int x4,int  y4,int txSz,SymbolContext *sbCtx,bitSt *bs,
 					BlockData *b_data, AV1DecodeContext *av1Ctx);
-	int cacluteAllZeroCtx(int plane,int txSz, int x4,int y4,int w4,int h4,BlockData *b_data,AV1DecodeContext *av1Ctx);
+	int cacluteAllZeroCtx(int plane,int txSz, int x4,int y4,int w4,int h4,TileData *t_data, BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int compute_tx_type(int plane, int txSz,int blockX,int blockY,BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int get_coeff_base_ctx(int txSz, int plane, int blockX, int blockY, int pos, int c, int isEob,
 						BlockData *b_data,AV1DecodeContext *av1Ctx);
