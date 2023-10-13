@@ -626,22 +626,6 @@ enum em_partition
 	PARTITION_HORZ_4,
 	PARTITION_VERT_4
 };
-enum em_intra_frame_y_mode
-{
-	DC_PRED = 0,
-	V_PRED,
-	H_PRED,
-	D45_PRED,
-	D135_PRED,
-	D113_PRED,
-	D157_PRED,
-	D203_PRED,
-	D67_PRED,
-	SMOOTH_PRED,
-	SMOOTH_V_PRED,
-	SMOOTH_H_PRED,
-	PAETH_PRED
-};
 enum em_motion_mode
 {
 	SIMPLE = 0,
@@ -678,7 +662,7 @@ enum em_mv_joint
 	MV_JOINT_HZVNZ,
 	MV_JOINT_HNZVNZ
 };
-enum em_uv_mode
+enum em_predict_mode
 {
 	DC_PRED = 0,
 	V_PRED,

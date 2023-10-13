@@ -443,6 +443,27 @@ typedef struct MFMVContext{
 	int **MfRefFrames;
 	int ***MfMvs;
 };
+typedef struct MVPredContext{
+	uint8_t NewMvContext;
+	uint8_t RefMvContext;
+	uint8_t RefMvIdx;
+	uint8_t *RefIdCount;
+	uint8_t *RefDiffCount;
+	int ***RefIdMvs;
+	int ***RefDiffMvs;
+	int RefStackMv[8][2][2]; //consturct by find_mv_stack
+	int *WeightStack;
+	int *DrlCtxStack;
+
+	int GlobalMvs[2][2];
+	uint8_t NumMvFound;
+	uint8_t NewMvCount;
+	uint8_t FoundMatch;
+	uint8_t TotalMatches;
+	uint8_t CloseMatches;
+	uint8_t ZeroMvContext;
+
+};
 typedef struct FrameContext{
 	sizeInfo si;
 	frameHeader frameHdr;
@@ -457,6 +478,7 @@ typedef struct FrameContext{
 	int **OutV;
 	FilmGainContext *fgCtx;
 	MFMVContext *mfmvCtx;
+	MVPredContext *mvpCtx;
 	uint8_t **cdef_idx;
 };
 
@@ -466,7 +488,6 @@ typedef struct AV1DecodeContext{
 	sequenceHeader *seqHdr;
     CDFArrays cdfCtxs[NUM_REF_FRAMES];
 
-	//
 	uint8_t	RefValid[NUM_REF_FRAMES];
 	uint8_t RefFrameId[NUM_REF_FRAMES];
 	uint8_t	RefOrderHint[NUM_REF_FRAMES];
@@ -493,25 +514,7 @@ typedef struct AV1DecodeContext{
 	uint8_t **PrevSegmentIds;
 
 //decode ctx variables
-	uint8_t NewMvContext;
-	uint8_t RefMvContext;
-	uint8_t RefMvIdx;
-	uint8_t *RefIdCount;
-	uint8_t *RefDiffCount;
-	int ***RefIdMvs;
-	int ***RefDiffMvs;
-	int RefStackMv[8][2][2]; //consturct by find_mv_stack
-	int *WeightStack;
-	int *DrlCtxStack;
 
-	int GlobalMvs[2][2];
-	uint8_t NumMvFound;
-	uint8_t NewMvCount;
-	uint8_t FoundMatch;
-	uint8_t TotalMatches;
-	uint8_t CloseMatches;
-
-	uint8_t ZeroMvContext;
 	uint8_t AboveSingle;
 	uint8_t LeftSingle;
 	uint8_t AboveIntra;

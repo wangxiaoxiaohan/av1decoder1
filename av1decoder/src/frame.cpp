@@ -1845,11 +1845,11 @@ int frame::assign_mv(int isCompound,SymbolContext *sbCtx,bitSt *bs,TileData *t_d
 		{
 
 			//PredMv[0] = b_data->RefStackMv[0][0];
-			 memcpy(PredMv[0], av1Ctx->RefStackMv[0][0], sizeof(PredMv[0]));
+			 memcpy(PredMv[0], av1Ctx->currentFrame->mvpCtx->RefStackMv[0][0], sizeof(PredMv[0]));
 			if (PredMv[0][0] == 0 && PredMv[0][1] == 0)
 			{
 				//PredMv[0] = b_data->RefStackMv[1][0];
-				memcpy(PredMv[0], av1Ctx->RefStackMv[1][0], sizeof(PredMv[0]));
+				memcpy(PredMv[0], av1Ctx->currentFrame->mvpCtx->RefStackMv[1][0], sizeof(PredMv[0]));
 			}
 			if (PredMv[0][0] == 0 && PredMv[0][1] == 0)
 			{
@@ -1871,15 +1871,15 @@ int frame::assign_mv(int isCompound,SymbolContext *sbCtx,bitSt *bs,TileData *t_d
 		{
 
 			//PredMv[i] = b_data->GlobalMvs[i];
-			memcpy(PredMv[i], av1Ctx->GlobalMvs[i], sizeof(PredMv[0]));
+			memcpy(PredMv[i], av1Ctx->currentFrame->mvpCtx->GlobalMvs[i], sizeof(PredMv[0]));
 		}
 		else
 		{
-			int pos = (compMode == NEARESTMV) ? 0 : av1Ctx->RefMvIdx ;
-			if (compMode == NEWMV && av1Ctx->NumMvFound <= 1) 
+			int pos = (compMode == NEARESTMV) ? 0 : av1Ctx->currentFrame->mvpCtx->RefMvIdx ;
+			if (compMode == NEWMV && av1Ctx->currentFrame->mvpCtx->NumMvFound <= 1) 
 				pos = 0 ;
 			//PredMv[i] = b_data->RefStackMv[pos][i];
-			memcpy(PredMv[i], av1Ctx->RefStackMv[pos][i], sizeof(PredMv[i]));
+			memcpy(PredMv[i], av1Ctx->currentFrame->mvpCtx->RefStackMv[pos][i], sizeof(PredMv[i]));
 		}
 		uint8_t diffMv[2];
 		if (compMode == NEWMV)
@@ -2305,7 +2305,7 @@ int frame::inter_block_mode_info(SymbolContext *sbCtx, bitSt *bs, TileData *t_da
 	}
 	else if (isCompound)
 	{
-		int ctx = Compound_Mode_Ctx_Map[ av1Ctx->RefMvContext >> 1 ][ Min(av1Ctx->NewMvContext, COMP_NEWMV_CTXS - 1) ];
+		int ctx = Compound_Mode_Ctx_Map[ av1Ctx->currentFrame->mvpCtx->RefMvContext >> 1 ][ Min(av1Ctx->currentFrame->mvpCtx->NewMvContext, COMP_NEWMV_CTXS - 1) ];
 		b_data->compound_mode = 
 			sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Compound_Mode[ctx],COMPOUND_MODES + 1); //S()
 		b_data->YMode = NEAREST_NEARESTMV + b_data->compound_mode;
@@ -2313,56 +2313,56 @@ int frame::inter_block_mode_info(SymbolContext *sbCtx, bitSt *bs, TileData *t_da
 	else
 	{
 		//new_mv; //S()
-		if (sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.New_Mv[av1Ctx->NewMvContext],3) == 0)
+		if (sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.New_Mv[av1Ctx->currentFrame->mvpCtx->NewMvContext],3) == 0)
 		{
 			b_data->YMode = NEWMV;
 		}
 		else
 		{
 			//zero_mv; //S()
-			if (sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Zero_Mv[av1Ctx->ZeroMvContext],3 ) == 0)
+			if (sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Zero_Mv[av1Ctx->currentFrame->mvpCtx->ZeroMvContext],3 ) == 0)
 			{
 				b_data->YMode = GLOBALMV;
 			}
 			else
 			{
 				//ref_mv; //S()
-				b_data->YMode = (sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Ref_Mv[av1Ctx->RefMvContext],3 ) == 0) ? NEARESTMV : NEARMV;
+				b_data->YMode = (sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Ref_Mv[av1Ctx->currentFrame->mvpCtx->RefMvContext],3 ) == 0) ? NEARESTMV : NEARMV;
 			}
 		}
 	}
-	av1Ctx->RefMvIdx = 0;
+	av1Ctx->currentFrame->mvpCtx->RefMvIdx = 0;
 	if (b_data->YMode == NEWMV || b_data->YMode == NEW_NEWMV)
 	{
 		for (int idx = 0; idx < 2; idx++)
 		{
 
-			if (av1Ctx->NumMvFound > idx + 1)
+			if (av1Ctx->currentFrame->mvpCtx->NumMvFound > idx + 1)
 			{
 				//drl_mode; // S()
-				if (sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Drl_Mode[av1Ctx->DrlCtxStack[idx]],3 ) == 0)
+				if (sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Drl_Mode[av1Ctx->currentFrame->mvpCtx->DrlCtxStack[idx]],3 ) == 0)
 				{
-					av1Ctx->RefMvIdx = idx;
+					av1Ctx->currentFrame->mvpCtx->RefMvIdx = idx;
 					break;
 				}
-				av1Ctx->RefMvIdx = idx + 1;
+				av1Ctx->currentFrame->mvpCtx->RefMvIdx = idx + 1;
 			}
 		}
 	}
 	else if (has_nearmv(b_data->YMode))
 	{
-		av1Ctx->RefMvIdx = 1;
+		av1Ctx->currentFrame->mvpCtx->RefMvIdx = 1;
 		for (int idx = 1; idx < 3; idx++)
 		{
-			if (av1Ctx->NumMvFound > idx + 1)
+			if (av1Ctx->currentFrame->mvpCtx->NumMvFound > idx + 1)
 			{
 				//drl_mode; // S()
-				if (sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Drl_Mode[av1Ctx->DrlCtxStack[idx]],3 ) == 0)
+				if (sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Drl_Mode[av1Ctx->currentFrame->mvpCtx->DrlCtxStack[idx]],3 ) == 0)
 				{
-					av1Ctx->RefMvIdx = idx;
+					av1Ctx->currentFrame->mvpCtx->RefMvIdx = idx;
 					break;
 				}
-				av1Ctx->RefMvIdx = idx + 1;
+				av1Ctx->currentFrame->mvpCtx->RefMvIdx = idx + 1;
 			}
 		}
 	}
