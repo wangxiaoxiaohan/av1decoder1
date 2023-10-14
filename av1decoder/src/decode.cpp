@@ -1393,8 +1393,8 @@ int decode::find_warp_samples(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
 	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	int doTopLeft = 1;
 	int doTopRight = 1;
-	av1Ctx->NumSamples = 0;
-	av1Ctx->NumSamplesScanned = 0;
+	av1Ctx->currentFrame->mvpCtx->NumSamples = 0;
+	av1Ctx->currentFrame->mvpCtx->NumSamplesScanned = 0;
 	int w4 = Num_4x4_Blocks_Wide[ b_data->MiSize ];
 	int h4 = Num_4x4_Blocks_High[ b_data->MiSize ];
 	if (b_data->AvailU)
@@ -1456,12 +1456,12 @@ int decode::find_warp_samples(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
 			add_sample(-1, w4,t_data,p_data,b_data,av1Ctx);
 		}
 	}
-	if (av1Ctx->NumSamples == 0 && av1Ctx->NumSamplesScanned > 0)
-		av1Ctx->NumSamples = 1;
+	if (av1Ctx->currentFrame->mvpCtx->NumSamples == 0 && av1Ctx->currentFrame->mvpCtx->NumSamplesScanned > 0)
+		av1Ctx->currentFrame->mvpCtx->NumSamples = 1;
 }
 int decode::add_sample(int deltaRow,int deltaCol,TileData *t_data,PartitionData *p_data,
 				BlockData *b_data,AV1DecodeContext *av1Ctx){
-    if (av1Ctx->NumSamplesScanned >= LEAST_SQUARES_SAMPLES_MAX) {
+    if (av1Ctx->currentFrame->mvpCtx->NumSamplesScanned >= LEAST_SQUARES_SAMPLES_MAX) {
         return; 
     }
 
@@ -1495,21 +1495,21 @@ int decode::add_sample(int deltaRow,int deltaCol,TileData *t_data,PartitionData 
     int mvDiffCol = Abs(p_data->Mvs[candRow][candCol][0][1] - b_data->Mv[0][1]);
     int valid = ((mvDiffRow + mvDiffCol) <= threshold);
 
-	av1Ctx->NumSamplesScanned++;
+	av1Ctx->currentFrame->mvpCtx->NumSamplesScanned++;
 
 
-    if (valid == 0 && av1Ctx->NumSamplesScanned > 1) {
+    if (valid == 0 && av1Ctx->currentFrame->mvpCtx->NumSamplesScanned > 1) {
         return;
     }
 
-    av1Ctx->CandList[av1Ctx->NumSamples][0] = midY * 8;
-    av1Ctx->CandList[av1Ctx->NumSamples][1] = midX * 8;
-    av1Ctx->CandList[av1Ctx->NumSamples][2] = midY * 8 + p_data->Mvs[candRow][candCol][0][0];
-    av1Ctx->CandList[av1Ctx->NumSamples][3] = midX * 8 + p_data->Mvs[candRow][candCol][0][1];
+    b_data->CandList[av1Ctx->currentFrame->mvpCtx->NumSamples][0] = midY * 8;
+    b_data->CandList[av1Ctx->currentFrame->mvpCtx->NumSamples][1] = midX * 8;
+    b_data->CandList[av1Ctx->currentFrame->mvpCtx->NumSamples][2] = midY * 8 + p_data->Mvs[candRow][candCol][0][0];
+    b_data->CandList[av1Ctx->currentFrame->mvpCtx->NumSamples][3] = midX * 8 + p_data->Mvs[candRow][candCol][0][1];
 
 
     if (valid == 1) {
-        av1Ctx->NumSamples++;
+        av1Ctx->currentFrame->mvpCtx->NumSamples++;
     }
 
 }
@@ -2945,7 +2945,7 @@ int decode::predict_inter(int plane, int x, int y,int w ,int h ,int candRow,int 
 	int LocalValid;
 	int LocalWarpParams[6];
 	if(plane == 0 && b_data->motion_mode == LOCALWARP){
-		warpEstimation(av1Ctx->CandList,LocalWarpParams,&LocalValid,b_data,av1Ctx);
+		warpEstimation(b_data->CandList,LocalWarpParams,&LocalValid,b_data,av1Ctx);
 	}
 	if(plane == 0 && b_data->motion_mode == LOCALWARP && LocalValid == 1){
 		int a,b,g,d;//these values will bediscard;
@@ -3061,22 +3061,16 @@ genArray:
 //7.11.3.2
 int decode::roundingVariablesDerivation(int isCompound,BlockData *b_data,AV1DecodeContext *av1Ctx){
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
-	int InterRound0 = 3;
-	int InterRound1 = isCompound ? 7 : 11;
+	 b_data->InterRound0 = 3;
+	 b_data->InterRound1 = isCompound ? 7 : 11;
     if (seqHdr->color_config.BitDepth == 12) {
-        InterRound0 += 2;
-    }
-
-    if (isCompound) {
-        InterRound1 = 7;
-    } else {
-        InterRound1 = 11;
+        b_data->InterRound0 += 2;
     }
 
     if (seqHdr->color_config.BitDepth == 12 && !isCompound) {
-        InterRound1 -= 2;
+        b_data->InterRound1 -= 2;
     }
-    b_data->InterPostRound = 2 * FILTER_BITS - (InterRound0 + InterRound1);
+    b_data->InterPostRound = 2 * FILTER_BITS - (b_data->InterRound0 + b_data->InterRound1);
 
 
 }
@@ -3142,7 +3136,7 @@ int decode::warpEstimation(int **CandList, int LocalWarpParams[6], int *LocalVal
     int duy = suy + b_data->Mv[0][0];
     int dux = sux + b_data->Mv[0][1];
 
-    for (int i = 0; i < av1Ctx->NumSamples; i++) {
+    for (int i = 0; i < av1Ctx->currentFrame->mvpCtx->NumSamples; i++) {
         int sy = CandList[i][0] - suy;
         int sx = CandList[i][1] - sux;
         int dy = CandList[i][2] - duy;
@@ -3451,7 +3445,7 @@ int decode::wedgeMask(int w,int h,BlockData *b_data,AV1DecodeContext *av1Ctx){
     }
 	for (int  i = 0; i < h; i++ ) {
 		for (int  j = 0; j < w; j++ ) {
-			b_data->Mask[ i ][ j ] = WedgeMasks[ b_data->MiSize ][ av1Ctx->wedge_sign ][ av1Ctx->wedge_index ][ i ][ j ];
+			b_data->Mask[ i ][ j ] = WedgeMasks[ b_data->MiSize ][ b_data->wedge_sign ][ b_data->wedge_index ][ i ][ j ];
 		}
 	}
 }
@@ -3464,15 +3458,15 @@ int decode::intraModeVariantMask(int w, int h,BlockData *b_data,AV1DecodeContext
 	{
 		for (int j = 0; j < w; j++)
 		{
-			if (av1Ctx->interintra_mode == II_V_PRED)
+			if (b_data->interintra_mode == II_V_PRED)
 			{
 				b_data->Mask[i][j] = Ii_Weights_1d[i * sizeScale];
 			}
-			else if (av1Ctx->interintra_mode == II_H_PRED)
+			else if (b_data->interintra_mode == II_H_PRED)
 			{
 				b_data->Mask[i][j] = Ii_Weights_1d[j * sizeScale];
 			}
-			else if (av1Ctx->interintra_mode == II_SMOOTH_PRED)
+			else if (b_data->interintra_mode == II_SMOOTH_PRED)
 			{
 				b_data->Mask[i][j] = Ii_Weights_1d[Min(i, j) * sizeScale];
 			}
@@ -3567,7 +3561,7 @@ int decode::maskBlend(uint8_t ***preds,int plane , int dstX,int dstY,int w,int h
   
     for (int y = 0; y < h; y++) {  
         for (int x = 0; x < w; x++) {  
-            if ((!subX && !subY) || (av1Ctx->interintra && !av1Ctx->wedge_interintra)) {  
+            if ((!subX && !subY) || (b_data->interintra && !b_data->wedge_interintra)) {  
                 m = b_data->Mask[y][x];  
             } else if (subX && !subY) {  
                 m = Round2(b_data->Mask[y][2*x] + b_data->Mask[y][2*x+1], 1);  
@@ -3577,7 +3571,7 @@ int decode::maskBlend(uint8_t ***preds,int plane , int dstX,int dstY,int w,int h
                 m = Round2(b_data->Mask[2*y][2*x] + b_data->Mask[2*y][2*x+1] + b_data->Mask[2*y+1][2*x] + b_data->Mask[2*y+1][2*x+1], 2);  
             }  
   
-            if (av1Ctx->interintra) {  
+            if (b_data->interintra) {  
                 pred0 = Clip1(Round2(preds[0][y][x], b_data->InterPostRound),seqHdr->color_config.BitDepth);  
                 pred1 = av1Ctx->currentFrame->CurrFrame[plane][y+dstY][x+dstX];  
                 av1Ctx->currentFrame->CurrFrame[plane][y+dstY][x+dstX] = Round2(m * pred1 + (64 - m) * pred0, 6);  
@@ -3670,7 +3664,8 @@ int decode::predict_overlap(int MiSize,int plane ,int x4,int y4,int predW,int pr
 						  int candRow,int candCol ,int pass,uint8_t *mask,PartitionData *p_data,BlockData *b_data, AV1DecodeContext *av1Ctx){
 	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
-	int *mv = p_data->Mvs[ candRow ][ candCol ][ 0 ];
+	int mv[2];
+	memcpy(mv,p_data->Mvs[ candRow ][ candCol ][ 0 ],2);
 	int refIdx = frameHdr->ref_frame_idx[ p_data->RefFrames[ candRow ][ candCol ][ 0 ] - LAST_FRAME ];
 	int predX = (x4 * 4) >> subX;
 	int predY = (y4 * 4) >> subY;

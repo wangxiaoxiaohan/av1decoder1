@@ -318,7 +318,7 @@ typedef struct PartitionData{
 	uint8_t **CompGroupIdxs;
 	uint8_t **CompoundIdxs;
 	uint8_t **InterpFilters[2];
-	int ****Mvs;
+	int ****Mvs; // [row][col][ref][x/y] 4 * 4 为单位
 	uint8_t **MiSizes;
 	uint8_t **SegmentIds;
 	uint8_t **IsInters;
@@ -341,38 +341,24 @@ typedef struct BlockData{
 	uint8_t AvailL;
 	uint8_t AvailUChroma;
 	uint8_t AvailLChroma;
-	uint8_t prevUL;
-	uint8_t prevU;
-	uint8_t prevL;
+
 	uint8_t segment_id;
 	uint8_t Lossless;
-	uint8_t delta_q_abs;
-	uint8_t delta_q_rem_bits;
-	uint8_t delta_q_abs_bits;
-	uint8_t delta_q_sign_bit;
-
-	uint8_t delta_lf_abs;
-	uint8_t delta_lf_rem_bits;
-	uint8_t delta_lf_abs_bits;
-	uint8_t delta_lf_sign_bit;
 	uint8_t RefFrame[2];
 	uint8_t use_intrabc;
 	uint8_t is_inter;
+
 	uint8_t YMode;
 	uint8_t UVMode;
 	uint8_t motion_mode;
 	uint8_t compound_type;
 	uint8_t interp_filter[2];
-
 	uint8_t comp_mode;
-
 	uint8_t AngleDeltaY;
 	uint8_t AngleDeltaUV;
 	uint8_t angle_delta_y;
 	uint8_t angle_delta_uv;
 
-	uint8_t signU;
-	uint8_t signV;
 	uint8_t CflAlphaU;
 	uint8_t CflAlphaV;
 
@@ -385,41 +371,56 @@ typedef struct BlockData{
 
 	uint8_t use_filter_intra;
 	uint8_t filter_intra_mode;
-
 	uint8_t LeftRefFrame[2];
 	uint8_t AboveRefFrame[2];
-	uint8_t seg_id_predicted;
-	uint8_t compound_mode;
 
+	uint8_t compound_mode;
 	uint8_t comp_group_idx;
 	uint8_t compound_idx;
 	uint8_t mask_type;
+
+	uint8_t AboveSingle;
+	uint8_t LeftSingle;
+	uint8_t AboveIntra;
+	uint8_t LeftIntra;
+
+	uint8_t interintra;
+	uint8_t interintra_mode;
+	uint8_t wedge_interintra;
+	uint8_t wedge_index;
+	uint8_t wedge_sign;
+
+	//palette 调色板
 	uint8_t **ColorMapY;
 	uint8_t **ColorMapUV;
 	uint8_t ColorOrder[PALETTE_COLORS];
 	uint8_t ColorContextHash;
+
 	uint8_t TxSize;
+	uint8_t **TxTypes; //4 * 4 块为单位
+	uint8_t Mv[2][2]; //[ref][x/y]
 
-	//块左边，上边的样本，是像素值
-	Array8 *AboveRow;
-	Array8 *LeftCol;
-//	uint8_t **pred;
+ 	//帧内预测
+	Array8 *AboveRow; //块上边的样本，是像素值
+	Array8 *LeftCol; //块左边的样本，是像素值
 
-//下面这几个是不是考虑专门做一个 block decode context的结构体？
-	int PlaneTxType;
-
-	int MaxLumaW;
-	int MaxLumaH;
-	uint8_t *Quant;
-	uint8_t **Dequant;
-	uint8_t **TxTypes;
-	uint8_t Mv[2][2];
-
+	//帧间预测
 	int InterPostRound ;//representing the amount to round by at the end of the prediction process
 	int InterRound0; //representing the amount to round by after horizontal filtering
 	int InterRound1; //representing the amount to round by after vertical filtering
-
 	int **Mask;
+	int **CandList;
+
+	//量化
+	uint8_t *Quant;
+	uint8_t **Dequant;
+
+	//reconstruct 重建图像
+	int PlaneTxType;
+	
+	//7.11.5
+	int MaxLumaW;
+	int MaxLumaH;
 
 }BlockData;
 typedef struct LoopRestorationContext{
@@ -462,6 +463,9 @@ typedef struct MVPredContext{
 	uint8_t TotalMatches;
 	uint8_t CloseMatches;
 	uint8_t ZeroMvContext;
+
+	uint8_t NumSamples;
+	uint8_t NumSamplesScanned;
 
 };
 typedef struct FrameContext{
@@ -512,23 +516,6 @@ typedef struct AV1DecodeContext{
 	uint8_t SeenFrameHeader;
 	int ***MotionFieldMvs[8]; 
 	uint8_t **PrevSegmentIds;
-
-//decode ctx variables
-
-	uint8_t AboveSingle;
-	uint8_t LeftSingle;
-	uint8_t AboveIntra;
-	uint8_t LeftIntra;
-
-	uint8_t interintra;
-	uint8_t interintra_mode;
-	uint8_t wedge_interintra;
-	uint8_t wedge_index;
-	uint8_t wedge_sign;
-
-	uint8_t NumSamples;
-	uint8_t NumSamplesScanned;
-	int **CandList;
 	
 }AV1DecodeContext;
 
