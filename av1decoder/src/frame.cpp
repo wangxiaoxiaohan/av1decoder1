@@ -2309,9 +2309,9 @@ int frame::inter_block_mode_info(SymbolContext *sbCtx, bitSt *bs, TileData *t_da
 	else if (isCompound)
 	{
 		int ctx = Compound_Mode_Ctx_Map[ av1Ctx->currentFrame->mvpCtx->RefMvContext >> 1 ][ Min(av1Ctx->currentFrame->mvpCtx->NewMvContext, COMP_NEWMV_CTXS - 1) ];
-		b_data->compound_mode = 
+		int compound_mode = 
 			sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Compound_Mode[ctx],COMPOUND_MODES + 1); //S()
-		b_data->YMode = NEAREST_NEARESTMV + b_data->compound_mode;
+		b_data->YMode = NEAREST_NEARESTMV + compound_mode;
 	}
 	else
 	{

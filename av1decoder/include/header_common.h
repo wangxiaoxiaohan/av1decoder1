@@ -362,6 +362,7 @@ typedef struct BlockData{
 	uint8_t CflAlphaU;
 	uint8_t CflAlphaV;
 
+// palette mode info
 	uint8_t PaletteSizeY;
 	uint8_t *palette_colors_y;
 	uint8_t PaletteSizeUV;
@@ -371,12 +372,13 @@ typedef struct BlockData{
 
 	uint8_t use_filter_intra;
 	uint8_t filter_intra_mode;
+
 	uint8_t LeftRefFrame[2];
 	uint8_t AboveRefFrame[2];
 
-	uint8_t compound_mode;
 	uint8_t comp_group_idx;
 	uint8_t compound_idx;
+
 	uint8_t mask_type;
 
 	uint8_t AboveSingle;

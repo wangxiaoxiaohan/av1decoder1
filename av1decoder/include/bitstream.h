@@ -20,6 +20,11 @@ void inline BitStreamAlign(bitSt *bs)
 	bs->offsetInByte = 0;
 	bs->offset += 1;
 }
+int inline get_position(bitSt *bs)
+{
+	bs->offset * 8 + bs->offsetInByte;
+}
+
 void  inline updateOffset(bitSt *bs)
 {
     bs->offsetInByte += 1;
@@ -45,7 +50,15 @@ uint32_t inline readBits(bitSt *bs,int len)
     return ret;
 	
 }
-
+void inline trailing_bits(bitSt *bs ,int nbBits)
+{
+	readOneBit(bs);
+	nbBits--;
+	while ( nbBits > 0 ) {
+		readOneBit(bs);
+		nbBits--;
+	}
+}
 uint64_t inline readleb128(bitSt *bs,uint8_t* Leb128Bytes)
 { 
 	uint64_t value = 0;

@@ -2298,6 +2298,7 @@ public:
   Symbol(){}
 	~Symbol(){}
   void initSymbol(SymbolContext *sbCtx,bitSt *bs,int sz);
+  void exit_symbol(SymbolContext *sbCtx,bitSt *bs);
   int read_literal(SymbolContext *sbCtx,bitSt *bs,int n);
   int decodeSymbolBool(SymbolContext *sbCtx,bitSt *bs); 
   int readNS(SymbolContext *sbCtx,bitSt *bs,int n );

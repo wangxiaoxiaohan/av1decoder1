@@ -10,6 +10,12 @@ void Symbol::initSymbol(SymbolContext *sbCtx,bitSt *bs,int sz){
     sbCtx->SymbolRange = 1 << 15;
     sbCtx->SymbolMaxBits = 8 * sz - 15;
 }
+void Symbol::exit_symbol(SymbolContext *sbCtx,bitSt *bs){
+    if(sbCtx->SymbolMaxBits < -14 )
+        return;
+    int trailingBitPosition = get_position() - Min(15, sbCtx->SymbolMaxBits + 15);
+
+}
 int Symbol::read_literal(SymbolContext *sbCtx,bitSt *bs,int n){
 
     int x = 0;

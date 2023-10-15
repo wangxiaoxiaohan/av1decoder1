@@ -2,6 +2,7 @@
 #define _COMMON_
 #include "stdio.h"
 #include "stdint.h"
+#include <algorithm>
 enum tristate
 {
 	ONE = 0,
@@ -8970,11 +8971,12 @@ int inline is_directional_mode(int mode)
 	}
 	return 0;
 }
-int inline av1sort(int *array, int min, int max)
+void inline av1sort(int *array, int min, int max)
 {
+	std::sort(array + min, array + max);
 }
 int inline get_relative_dist(int enable_order_hint, int OrderHintBits, int a, int b)
-{
+{ 
 	if (enable_order_hint)
 		return 0;
 	int diff = a - b;

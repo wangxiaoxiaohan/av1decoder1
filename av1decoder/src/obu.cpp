@@ -252,10 +252,7 @@ int obu::parseObuInfo(FILE* fp,int fileOffset,uint8_t *buf,int sz,AV1DecodeConte
     bitSt bs;
     initBitStream(&bs,&obu_header_buf);
 
-
 	obuHeader obu_header;
-
-
 
     readOneBit(&bs);  //obu_forbidden_bit 解码器忽略
     obu_header.obu_type = readBits(&bs,4);
@@ -300,12 +297,11 @@ int obu::parseObuInfo(FILE* fp,int fileOffset,uint8_t *buf,int sz,AV1DecodeConte
 	}else{
 		obu_size = sz - 1 - obu_header.obu_extension_flag;
 	}
-
-// read obu payload from file
+	int startPosition = get_position(&bs);
 
 	printf("obu_header.obu_type %d\n",obu_header.obu_type);
 	printf("obu_size  %d\n",obu_size);
-
+// read obu payload from file
 	uint8_t obubuffer[obu_size];
 	fread(obubuffer,obu_size,1,fp);
 	initBitStream(&bs,obubuffer);
@@ -321,6 +317,7 @@ int obu::parseObuInfo(FILE* fp,int fileOffset,uint8_t *buf,int sz,AV1DecodeConte
 		case OBU_TEMPORAL_DELIMITER:
 			ctx->SeenFrameHeader = 0;
 			break;
+		case OBU_REDUNDANT_FRAME_HEADER:
 		case OBU_FRAME:	//frame obu = frame header obu + tile group obu
 		case OBU_FRAME_HEADER:
 			if(ctx->SeenFrameHeader == 1){
@@ -329,9 +326,9 @@ int obu::parseObuInfo(FILE* fp,int fileOffset,uint8_t *buf,int sz,AV1DecodeConte
 				break;
 			} else {
 				ctx->SeenFrameHeader = 1;
-				frame::Instance().parseFrameHeader(sz, &bs,ctx, ctx->seqHdr, &obu_header,&ctx->frameHdr);
+				frame::Instance().parseFrameHeader(sz, &bs,ctx, ctx->seqHdr, &obu_header,&ctx->currentFrame->frameHdr);
 				BitStreamAlign(&bs);//byte alignment
-				if ( ctx->frameHdr.show_existing_frame ) {
+				if ( ctx->currentFrame->frameHdr.show_existing_frame ) {
 					//decode_frame_wrapup();
 					ctx->SeenFrameHeader = 0;
 				} else {
@@ -344,15 +341,26 @@ int obu::parseObuInfo(FILE* fp,int fileOffset,uint8_t *buf,int sz,AV1DecodeConte
 			frame::Instance().decodeFrame(sz - bs.offset, &bs,ctx);
 			break;
 		case OBU_METADATA:
-			break;
-		case OBU_REDUNDANT_FRAME_HEADER:
+			//metadata_obu( )
 			break;
 		case OBU_TILE_LIST:
+			//tile_list_obu( )
 			break;
 		case OBU_PADDING:
+			//padding_obu( )
+
 			break;
 		default:
+			//reserved obu()
 			break;
+		int currentPosition  = get_position(&bs);
+		int payloadBits = currentPosition - startPosition;
+		if ( obu_size > 0 && obu_header.obu_type != OBU_TILE_GROUP &&
+			obu_header.obu_type != OBU_TILE_LIST &&
+			obu_header.obu_type != OBU_FRAME ) {
+			trailing_bits( &bs ,obu_size * 8 - payloadBits );
+		}
+
 	}
 	
     return total_size + obu_size;
