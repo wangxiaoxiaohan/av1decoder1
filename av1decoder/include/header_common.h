@@ -289,47 +289,17 @@ typedef struct frameHeader{
 	uint8_t allow_warped_motion;//是否使用扭曲运动模式
 	uint8_t reduced_tx_set;
 }frameHeader;
+//TileData 这个数据结构似乎也要取消
 typedef struct TileData{
-	uint16_t MiRowStart;
-	uint16_t MiRowEnd;
-	uint16_t MiColStart;
-	uint16_t MiColEnd;
 
-	uint8_t RefSgrXqd[3][2];
-	uint8_t RefLrWiener[3][2][3];
-	uint8_t ReadDeltas;
-	uint8_t CurrentQIndex;
-	uint8_t **BlockDecoded[3];
-	uint8_t **LoopfilterTxSizes[3];
-	int **AboveLevelContext;
-	int **AboveDcContext;
-	int **LeftLevelContext;
-	int **LeftDcContext;
-	uint8_t *AboveSegPredContext;
-	uint8_t *LeftSegPredContext;
-	uint8_t DeltaLF[4];	
+
 }TileData;
+//PartitionData 里面的东西似乎都应该移走，因为都是 以  4 * 4 块 为单位的 表示整个的数据
+/**/
 typedef struct PartitionData{
-	uint8_t AvailU;
-	uint8_t AvailL;
-	uint8_t **YModes;
-	uint8_t **UVModes;
-	uint8_t **RefFrames[2];
-	uint8_t **CompGroupIdxs;
-	uint8_t **CompoundIdxs;
-	uint8_t **InterpFilters[2];
-	int ****Mvs; // [row][col][ref][x/y] 4 * 4 为单位
-	uint8_t **MiSizes;
-	uint8_t **SegmentIds;
-	uint8_t **IsInters;
-	uint8_t **SkipModes;
-	uint8_t **Skips;
-	uint8_t **TxSizes;
-	uint8_t **PaletteSizes[2];
-	uint8_t ***PaletteColors[2];
-	uint8_t **DeltaLFs[4];
-	uint8_t **InterTxSizes;
+		
 }PartitionData;
+
 typedef struct BlockData{
 	uint8_t HasChroma;
 	uint8_t skip;
@@ -407,9 +377,6 @@ typedef struct BlockData{
 	Array8 *LeftCol; //块左边的样本，是像素值
 
 	//帧间预测
-	int InterPostRound ;//representing the amount to round by at the end of the prediction process
-	int InterRound0; //representing the amount to round by after horizontal filtering
-	int InterRound1; //representing the amount to round by after vertical filtering
 	int **Mask;
 	int **CandList;
 
@@ -475,9 +442,9 @@ typedef struct FrameContext{
 	frameHeader frameHdr;
 	CDFArrays cdfCtx;
 	uint16_t ***CurrFrame;
-	int ***CdefFrame;
-	int ***UpscaledCdefFrame;
-	int ***UpscaledCurrFrame;
+	uint16_t ***CdefFrame;
+	uint16_t ***UpscaledCdefFrame;
+	uint16_t ***UpscaledCurrFrame;
 	LoopRestorationContext *lrCtx;
 	int **OutY;
 	int **OutU;
@@ -493,6 +460,9 @@ typedef struct AV1DecodeContext{
 	FrameContext *currentFrame;
 	sequenceHeader *seqHdr;
     CDFArrays cdfCtxs[NUM_REF_FRAMES];
+	
+	CDFArrays tileSavedCdf;
+	CDFArrays tileSavedCdf;
 
 	uint8_t	RefValid[NUM_REF_FRAMES];
 	uint8_t RefFrameId[NUM_REF_FRAMES];
@@ -514,6 +484,52 @@ typedef struct AV1DecodeContext{
 	int ***SavedMvs[NUM_REF_FRAMES];
 	uint8_t SavedGmParams[NUM_REF_FRAMES][NUM_REF_FRAMES][8];
 	uint8_t **SavedSegmentIds[NUM_REF_FRAMES];
+
+	int InterPostRound ;//预测过程结束后的舍入量
+	int InterRound0; //水平滤波后舍入量
+	int InterRound1; //垂直滤波后舍入量
+
+
+ // partition	
+ //都是以4 * 4 块为单位的
+	uint8_t **YModes;
+	uint8_t **UVModes;
+	uint8_t **RefFrames[2]; //?
+	uint8_t **CompGroupIdxs;
+	uint8_t **CompoundIdxs;
+	uint8_t **InterpFilters[2];
+	int ****Mvs; // [row][col][ref][x/y] 
+	uint8_t **MiSizes;
+	uint8_t **SegmentIds;
+	uint8_t **IsInters;
+	uint8_t **SkipModes;
+	uint8_t **Skips;
+	uint8_t **TxSizes;
+	uint8_t **PaletteSizes[2];
+	uint8_t ***PaletteColors[2];
+	uint8_t **DeltaLFs[4];
+	uint8_t **InterTxSizes;
+
+//tile
+	uint16_t MiRowStart;
+	uint16_t MiRowEnd;
+	uint16_t MiColStart;
+	uint16_t MiColEnd;
+	uint8_t RefSgrXqd[3][2];
+	uint8_t RefLrWiener[3][2][3];
+	uint8_t ReadDeltas;
+	uint8_t CurrentQIndex;
+	uint8_t **BlockDecoded[3];
+	uint8_t **LoopfilterTxSizes[3];
+	int **AboveLevelContext;
+	int **AboveDcContext;
+	int **LeftLevelContext;
+	int **LeftDcContext;
+	uint8_t *AboveSegPredContext;
+	uint8_t *LeftSegPredContext;
+	uint8_t DeltaLF[4];	
+
+
 
 	uint8_t SeenFrameHeader;
 	int ***MotionFieldMvs[8]; 

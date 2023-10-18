@@ -6,13 +6,14 @@ class decode{
 public:
     decode();
     ~decode();
-	int find_mv_stack(int isCompound,SymbolContext *sbCtx, bitSt *bs, TileData *t_data,
-								 PartitionData *p_data, BlockData *b_data, AV1DecodeContext *av1Ctx);
-	int find_warp_samples(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,
-							PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx);
-	int has_overlappable_candidates(PartitionData *p_data, BlockData *b_data,AV1DecodeContext *av1Ctx);
-	int get_above_tx_width(int row, int col,PartitionData *p_data,BlockData *b_data);
-	int get_left_tx_height(int row,int col,PartitionData *p_data,BlockData *b_data);
+	int decode_frame_wrapup( AV1DecodeContext *av1Ctx);
+	int find_mv_stack(int isCompound,SymbolContext *sbCtx, bitSt *bs, 
+								  BlockData *b_data, AV1DecodeContext *av1Ctx);
+	int find_warp_samples(SymbolContext *sbCtx,bitSt *bs,
+							BlockData *b_data,AV1DecodeContext *av1Ctx);
+	int has_overlappable_candidates( BlockData *b_data,AV1DecodeContext *av1Ctx);
+	int get_above_tx_width(int row, int col,BlockData *b_data,AV1DecodeContext *av1Ctx);
+	int get_left_tx_height(int row,int col,BlockData *b_data,AV1DecodeContext *av1Ctx);
 	
 	int init_coeff_cdfs(AV1DecodeContext *av1Ctx);
 	int init_non_coeff_cdfs(CDFArrays *cdf);
@@ -34,66 +35,65 @@ public:
 	int motion_filed_project(AV1DecodeContext *av1Ctx,int src,int dstSign);
 	int get_mv_projection(int *mv,int numerator,int denominator,int *projMv);
 	int get_block_position(AV1DecodeContext *av1Ctx,int *PosX8,int *PosY8, int x8, int y8, int dstSign, int *projMv );
-	int find_mv_stack(int isCompound,SymbolContext *sbCtx, bitSt *bs, TileData *t_data,
-								 PartitionData *p_data, BlockData *b_data, AV1DecodeContext *av1Ctx);
+
 	int scan_row(int deltaRow,int isCompound,
-				TileData *t_data,PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx);
+				BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int scan_col(int deltaCol,int isCompound,
-			TileData *t_data,PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx);
+			BlockData *b_data,AV1DecodeContext *av1Ctx);
 
 	int scan_point(int deltaRow,int deltaCol,int isCompound,
-					TileData *t_data,PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx);
+					BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int add_ref_mv_candidate(int mvRow,int  mvCol,int  isCompound,int weight,
-								TileData *t_data,PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx);
+								BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int search_stack(int mvRow,int mvCol,int candList,int weight,
-						TileData *t_data,PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx);
+						BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int compound_search_stack(int  mvRow ,int  mvCol,int weight,
-				TileData *t_data,PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx);
+				BlockData *b_data,AV1DecodeContext *av1Ctx);
 	
-	int temporal_scan(int isCompound,TileData *t_data,BlockData *b_data,AV1DecodeContext *av1Ctx);
+	int temporal_scan(int isCompound,BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int extra_search(int isCompound);
 	int setup_global_mv(int refList,int *mv,
 								 BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int lower_mv_precision(AV1DecodeContext *av1Ctx,int *candMv);
 	int lower_precision(int *candMv,AV1DecodeContext *av1Ctx);
-	int add_tpl_ref_mv(int deltaRow, int deltaCol, int isCompound,TileData *t_data,BlockData *b_data,AV1DecodeContext *av1Ctx);
+	int add_tpl_ref_mv(int deltaRow, int deltaCol, int isCompound,BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int Sorting(int start,int end ,int isCompound,AV1DecodeContext *av1Ctx);
 	void swap_stack(int i, int j, int isCompound, int RefStackMv[][2][2], int WeightStack[],AV1DecodeContext *av1Ctx);
-	int extra_search(int isCompound,TileData *t_data,PartitionData* p_data, BlockData *b_data, AV1DecodeContext *av1Ctx);
-	int add_extra_mv_candidate(int mvRow, int mvCol, int isCompound,PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx);
+	int extra_search(int isCompound, BlockData *b_data, AV1DecodeContext *av1Ctx);
+	int add_extra_mv_candidate(int mvRow, int mvCol, int isCompound,BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int context_and_clamping(int isCompound, int numNew,BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int clamp_mv_row(int  mvec, int border ,BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int clamp_mv_col(int mvec,int border ,BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int get_tx_size(int plane,int txSz,int subsampling_x, int subsampling_y,BlockData *b_data);
-	int residual(SymbolContext *sbCtx,bitSt *bs,TileData *t_data,PartitionData *p_data,
+	int residual(SymbolContext *sbCtx,bitSt *bs,
 				BlockData *b_data, AV1DecodeContext *av1Ctx);
 	int transform_tree(int startX, int startY,int w,int h,SymbolContext *sbCtx,bitSt *bs,
-					TileData *t_data,PartitionData *p_data,BlockData *b_data, AV1DecodeContext *av1Ctx);
+					BlockData *b_data, AV1DecodeContext *av1Ctx);
 	int transform_block(int plane,int baseX,int baseY,int txSz,int x,int y,SymbolContext *sbCtx,bitSt *bs,
-							TileData *t_data,PartitionData *p_data, BlockData *b_data, AV1DecodeContext *av1Ctx);
+							 BlockData *b_data, AV1DecodeContext *av1Ctx);
 	int predict_intra(int plane,int x,int y,int haveLeft,int haveAbove,
 				int haveAboveRight,int haveBelowLeft,int mode,int log2W,int log2H,
-				TileData *t_data,PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx);
+				BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int predict_chroma_from_luma(int plane, int startX, int startY, int txSz);
 	int coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx,bitSt *bs,
-							TileData *t_data,PartitionData *p_data, BlockData *b_data, AV1DecodeContext *av1Ctx);
+							 BlockData *b_data, AV1DecodeContext *av1Ctx);
 	int transform_type(int x4,int  y4,int txSz,SymbolContext *sbCtx,bitSt *bs,
 					BlockData *b_data, AV1DecodeContext *av1Ctx);
-	int cacluteAllZeroCtx(int plane,int txSz, int x4,int y4,int w4,int h4,TileData *t_data, BlockData *b_data,AV1DecodeContext *av1Ctx);
+	int cacluteAllZeroCtx(int plane,int txSz, int x4,int y4,int w4,int h4, BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int compute_tx_type(int plane, int txSz,int blockX,int blockY,BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int get_coeff_base_ctx(int txSz, int plane, int blockX, int blockY, int pos, int c, int isEob,
 						BlockData *b_data,AV1DecodeContext *av1Ctx);
-	int add_sample(int deltaRow,int deltaCol,TileData *t_data,PartitionData *p_data,
+	int add_sample(int deltaRow,int deltaCol,
 				BlockData *b_data,AV1DecodeContext *av1Ctx);
 	void basicIntraPrediction(int w, int h, uint8_t** pred,BlockData *b_data) ;
 	int recursiveIntraPrdiction(int w, int h,uint8_t **pred,BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int directionalIntraPrediction(int plane,int x,int y,int haveLeft,int haveAbove,
-									int mode ,int w ,int h ,int maxX,int maxY,uint8_t **pred,PartitionData *p_data,
+									int mode ,int w ,int h ,int maxX,int maxY,uint8_t **pred,
 									BlockData *b_data ,AV1DecodeContext *av1Ctx);
 	int filterCornor(Array8 *LeftCol,Array8 *AboveRow);
-	int intrafilterType(int plane,PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx);
-	int is_smooth(int row, int col, int plane,PartitionData *p_data) ;
-	int get_filter_type(int plane,PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx) ;
+	int intrafilterType(int plane,BlockData *b_data,AV1DecodeContext *av1Ctx);
+	int is_smooth(int row, int col, int plane,AV1DecodeContext *av1Ctx) ;
+	int get_filter_type(int plane,BlockData *b_data,AV1DecodeContext *av1Ctx) ;
 	int intraEdgeFilterStrengthSelection(int w, int h, int filterType, int delta);
 	int intraEdgeFilter(int sz, int strength, int left,BlockData *b_data);
 	int intraEdgeUpsampleSelection(int w, int h, int filterType, int delta);
@@ -102,8 +102,8 @@ public:
 	int DCIntraPrediction(int haveLeft ,int haveAbove,int log2W,int log2H,int w,int h,uint8_t **pred,
 									BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int predict_inter(int plane, int x, int y,int w ,int h ,int candRow,int candCol,int IsInterIntra,
-							TileData *t_data,PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx);
-	int roundingVariablesDerivation(int isCompound,BlockData *b_data,AV1DecodeContext *av1Ctx);
+							BlockData *b_data,AV1DecodeContext *av1Ctx);
+	int roundingVariablesDerivation(int isCompound,AV1DecodeContext *av1Ctx);
 	int warpEstimation(int **CandList, int LocalWarpParams[6], int *LocalValid,BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int setupShear(int *warpParams,int *warpValid,int *alpha,int *beta,int *gamma,int *delta);
 	int resolveDivisor(int d, int *divShift, int *divFactor);
@@ -117,16 +117,16 @@ public:
 						BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int block_inter_prediction(int plane, int refIdx, int x, int y, int xStep, int yStep, 
 							int w, int h, int candRow, int candCol,uint8_t **pred,
-							PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx);
+							BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int wedgeMask(int w,int h,BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int intraModeVariantMask(int w, int h,BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int differenceWeightMask(uint8_t ***preds, int w, int h,BlockData *b_data,  AV1DecodeContext *av1Ctx);
 	int distanceWeights(int candRow,int candCol,int *FwdWeight,int *BckWeight,  
-							PartitionData *p_data, AV1DecodeContext *av1Ctx);
+							 AV1DecodeContext *av1Ctx);
 	int maskBlend(uint8_t ***preds,int plane , int dstX,int dstY,int w,int h,BlockData *b_data,AV1DecodeContext *av1Ctx);
-	int overlappedMotionCompensation(int plane, int w ,int h,PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx);
+	int overlappedMotionCompensation(int plane, int w ,int h,BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int predict_overlap(int MiSize,int plane ,int x4,int y4,int predW,int predH,int subX,int subY ,
-				int candRow,int candCol ,int pass,uint8_t *mask,PartitionData *p_data,BlockData *b_data, AV1DecodeContext *av1Ctx);
+				int candRow,int candCol ,int pass,uint8_t *mask,BlockData *b_data, AV1DecodeContext *av1Ctx);
 	int OverlapBlending(int plane ,int predX,int predY,int predW,int predH ,int pass,
 							uint8_t **obmcPred,uint8_t *mask,AV1DecodeContext *av1Ctx);
 	int predict_palette(int plane, int startX, int startY, int x, int y, int txSz,
@@ -154,13 +154,13 @@ public:
 	void twoDInverseTransformBlock(int txSz,int **Residual,BlockData *b_data,AV1DecodeContext *av1Ctx) ;
 
 
-	void loopFilter(int **CurrFrame,TileData *t_data, PartitionData *p_data,BlockData *b_data, AV1DecodeContext *av1Ctx);
-	void edgeLoopFilter(int plane, int pass, int row, int col,TileData *t_data, PartitionData *p_data,BlockData *b_data, AV1DecodeContext *av1Ctx);
+	void loopFilter(AV1DecodeContext *av1Ctx);
+	void edgeLoopFilter(int plane, int pass, int row, int col, AV1DecodeContext *av1Ctx);
 	int filterSizeProcess(int txSz, int prevTxSz, int pass, int plane);
 	void adaptiveFilterStrength(int row, int col, int plane, int pass, int* lvl, int* limit, int* blimit, int* thresh,
-							PartitionData *p_data ,AV1DecodeContext *av1Ctx) ;
+							AV1DecodeContext *av1Ctx) ;
 	int adaptiveFilterStrengthSelection(int segment, int ref, int modeType, int deltaLF, int plane, int pass,
-										PartitionData *p_data ,AV1DecodeContext *av1Ctx);
+										AV1DecodeContext *av1Ctx);
 	void sampleFiltering(int x,int  y,int  plane, int limit,int  blimit,int  thresh,int  dx,int  dy,
 						int  filterSize ,AV1DecodeContext *av1Ctx);
 	void filterMaskProcess(int x,int y,int plane,int limit,int blimit,int thresh,int dx,int dy,int filterSize,
@@ -170,28 +170,28 @@ public:
 
 
 
-	void cdef(TileData *t_data, PartitionData *p_data,BlockData *b_data,AV1DecodeContext *av1Ctx);
-	void cdefBlock(int r, int c, int idx,PartitionData *p_data, BlockData *b_data,AV1DecodeContext *av1Ctx);
+	void cdef(AV1DecodeContext *av1Ctx);
+	void cdefBlock(int r, int c, int idx, AV1DecodeContext *av1Ctx);
 	void cdefDirectionProcess(int r, int c, int *yDir, int *var,
-									PartitionData *p_data, BlockData *b_data,AV1DecodeContext *av1Ctx);
+									AV1DecodeContext *av1Ctx);
 	void cdefFilter(int plane, int r, int c, int priStr, int secStr, int damping, int dir,
-							PartitionData *p_data, BlockData *b_data,AV1DecodeContext *av1Ctx );
+							 AV1DecodeContext *av1Ctx );
 	int cdef_get_at(int plane,int x0,int y0,int i, int j,int dir,int k,int sign,int subX,int subY,
 							int * CdefAvailable,uint16_t ***CurrFrame,AV1DecodeContext *av1Ctx);
 
 
-	void upscalingProcess(int ***inputFrame,int ***outputFrame,AV1DecodeContext *av1Ctx);
+	void upscalingProcess(uint16_t ***inputFrame,uint16_t ***outputFrame,AV1DecodeContext *av1Ctx);
 
-	void loopRestoration(BlockData *b_data,AV1DecodeContext *av1Ctx);
-	void loopRestoreBlock(int plane,int row ,int col,BlockData *b_data,AV1DecodeContext *av1Ctx);
+	void loopRestoration(AV1DecodeContext *av1Ctx);
+	void loopRestoreBlock(int plane,int row ,int col,AV1DecodeContext *av1Ctx);
 	void wienerFilter(int plane ,int unitRow,int unitCol,int x,int y,int w,int h,
-								BlockData *b_data, AV1DecodeContext *av1Ctx);
+								 AV1DecodeContext *av1Ctx);
 	void wienerCoefficient(int coeff[3],int filter[7]);
-	int getSourceSample(int plane ,int x,int y,BlockData *b_data, AV1DecodeContext *av1Ctx);
+	int getSourceSample(int plane ,int x,int y, AV1DecodeContext *av1Ctx);
 	void selfGuidedFilter(int plane,int unitRow,int unitCol, int x,int y,int w,int h,
-								BlockData *b_data,AV1DecodeContext *av1Ctx);
+								AV1DecodeContext *av1Ctx);
 	void boxFilter(int plane,int x,int y,int w,int h,int set ,int pass,int **F,
-					BlockData *b_data,AV1DecodeContext *av1Ctx);
+					AV1DecodeContext *av1Ctx);
 
 	void output(AV1DecodeContext *av1Ctx);
 	void intermediateOutputPreparation(int *w,int *h,int *subX,int *subY,int *bidepth,AV1DecodeContext *av1Ctx);
@@ -202,9 +202,9 @@ public:
 	int get_x(int plane, int i,AV1DecodeContext *av1Ctx);
 	int get_y(int plane, int i,AV1DecodeContext *av1Ctx);
 	void addNoiseSynthesis(int GrainMin,int GrainMax,int * RandomRegister,int w, int h, int subX, int subY, AV1DecodeContext *av1Ctx);
-	void motionFieldMotionVectorStorage(PartitionData *p_data, AV1DecodeContext *av1Ctx);
-	void referenceFrameUpdate(PartitionData *p_data, AV1DecodeContext *av1Ctx);
-	void referenceFrameLoading(PartitionData *p_data, AV1DecodeContext *av1Ctx);
+	void motionFieldMotionVectorStorage(AV1DecodeContext *av1Ctx);
+	void referenceFrameUpdate(AV1DecodeContext *av1Ctx);
+	void referenceFrameLoading( AV1DecodeContext *av1Ctx);
 	static decode& Instance() {
 		static decode m_pInstance;
 		return m_pInstance;

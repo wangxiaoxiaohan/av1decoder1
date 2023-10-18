@@ -250,6 +250,7 @@ int obu::parseObuInfo(FILE* fp,int fileOffset,uint8_t *buf,int sz,AV1DecodeConte
 
     
     bitSt bs;
+
     initBitStream(&bs,&obu_header_buf);
 
 	obuHeader obu_header;
@@ -329,7 +330,7 @@ int obu::parseObuInfo(FILE* fp,int fileOffset,uint8_t *buf,int sz,AV1DecodeConte
 				frame::Instance().parseFrameHeader(sz, &bs,ctx, ctx->seqHdr, &obu_header,&ctx->currentFrame->frameHdr);
 				BitStreamAlign(&bs);//byte alignment
 				if ( ctx->currentFrame->frameHdr.show_existing_frame ) {
-					//decode_frame_wrapup();
+					decode_frame_wrapup();
 					ctx->SeenFrameHeader = 0;
 				} else {
 					//TileNum = 0;
@@ -362,6 +363,5 @@ int obu::parseObuInfo(FILE* fp,int fileOffset,uint8_t *buf,int sz,AV1DecodeConte
 		}
 
 	}
-	
     return total_size + obu_size;
 }
