@@ -304,9 +304,9 @@ typedef struct BlockData{
 	uint8_t HasChroma;
 	uint8_t skip;
 	uint8_t skip_mode;
-	uint8_t MiRow;
-	uint8_t MiCol;
-	uint8_t MiSize;
+	uint8_t MiRow; //block 在帧中起始位置 4* 4为单位
+	uint8_t MiCol; //block 在帧中起始位置 4* 4为单位
+	uint8_t MiSize; //block size/类型 看 em_SubSize
 	uint8_t AvailU;
 	uint8_t AvailL;
 	uint8_t AvailUChroma;
@@ -490,7 +490,27 @@ typedef struct AV1DecodeContext{
 	int InterRound1; //垂直滤波后舍入量
 
 
- // partition	
+//tile 独立解码单元
+	uint16_t MiRowStart;//当前tile在frame中 行的起始位置 以 4*4 为单位
+	uint16_t MiRowEnd; //当前tile在frame中 行的结束位置 以 4*4 为单位
+	uint16_t MiColStart;//当前tile在frame中 列的起始位置 以 4*4 为单位
+	uint16_t MiColEnd;//当前tile在frame中 列的结束位置 以 4*4 为单位
+	uint8_t RefSgrXqd[3][2];
+	uint8_t RefLrWiener[3][2][3];
+	uint8_t ReadDeltas;
+	uint8_t CurrentQIndex;
+	tArray8 *BlockDecoded; //标记已经解码的 4 * 4 块  
+	uint8_t **LoopfilterTxSizes[3];
+	int *AboveLevelContext[3];
+	int *AboveDcContext[3];
+	int *LeftLevelContext[3];
+	int *LeftDcContext[3];
+	uint8_t *AboveSegPredContext;
+	uint8_t *LeftSegPredContext;
+	uint8_t DeltaLF[4];	
+
+ // partition	 可以理解为 H264 中的 宏块，为固定大小（超级块的情况下为 128 * 128）?
+ //否则 为 64 * 64 ,在这个区域内 再划分 block，block的大小则有很多种情况，与 hevc的ctu - cu关系类似了
  //都是以4 * 4 块为单位的
 	uint8_t **YModes;
 	uint8_t **UVModes;
@@ -509,26 +529,6 @@ typedef struct AV1DecodeContext{
 	uint8_t ***PaletteColors[2];
 	uint8_t **DeltaLFs[4];
 	uint8_t **InterTxSizes;
-
-//tile
-	uint16_t MiRowStart;
-	uint16_t MiRowEnd;
-	uint16_t MiColStart;
-	uint16_t MiColEnd;
-	uint8_t RefSgrXqd[3][2];
-	uint8_t RefLrWiener[3][2][3];
-	uint8_t ReadDeltas;
-	uint8_t CurrentQIndex;
-	uint8_t **BlockDecoded[3];
-	uint8_t **LoopfilterTxSizes[3];
-	int **AboveLevelContext;
-	int **AboveDcContext;
-	int **LeftLevelContext;
-	int **LeftDcContext;
-	uint8_t *AboveSegPredContext;
-	uint8_t *LeftSegPredContext;
-	uint8_t DeltaLF[4];	
-
 
 
 	uint8_t SeenFrameHeader;

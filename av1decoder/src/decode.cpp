@@ -14,12 +14,12 @@ int decode::decode_frame_wrapup( AV1DecodeContext *av1Ctx){
 	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	if(frameHdr->show_existing_frame == 0){
 		if( frameHdr->loop_filter_params.loop_filter_level[ 0 ] != 0 || frameHdr->loop_filter_params.loop_filter_level[ 1 ] != 0){
-			loopFilter(av1Ctx); //处理 MiSizes skips RefFrames 等
+			loopFilter(av1Ctx); 
 		}
-		cdef(av1Ctx); //只需要处理 skips
+		cdef(av1Ctx); 
 		upscalingProcess(av1Ctx->currentFrame->CdefFrame,av1Ctx->currentFrame->UpscaledCdefFrame,av1Ctx);
 		upscalingProcess(av1Ctx->currentFrame->CurrFrame,av1Ctx->currentFrame->UpscaledCurrFrame,av1Ctx);
-		loopRestoration(av1Ctx); //需要 将 几个变量从block data移出来 ： InterRound0 InterRound1
+		loopRestoration(av1Ctx); 
 		motion_field_estimation(av1Ctx);
 		if(frameHdr->segmentation_params.segmentation_enabled == 1 && frameHdr->segmentation_params.segmentation_update_map ==0){
 			for(int row = 0 ; row < frameHdr->MiRows ; row ++ ){
@@ -41,114 +41,114 @@ int decode::decode_frame_wrapup( AV1DecodeContext *av1Ctx){
 
 }
 int decode::init_non_coeff_cdfs(CDFArrays *cdf){
-    memcpy(cdf->Intra_Frame_Y_Mode,Default_Intra_Frame_Y_Mode_Cdf,sizeof(Default_Intra_Frame_Y_Mode_Cdf)/sizeof(uint16_t));
-    memcpy(cdf->Y_Mode,Default_Y_Mode_Cdf,sizeof(Default_Y_Mode_Cdf)/sizeof(uint16_t));
-    memcpy(cdf->Uv_Mode_Cfl_Not_Allowed,Default_Uv_Mode_Cfl_Not_Allowed_Cdf, sizeof(Default_Uv_Mode_Cfl_Not_Allowed_Cdf)/sizeof(uint16_t));
-    memcpy(cdf->Uv_Mode_Cfl_Allowed,Default_Uv_Mode_Cfl_Allowed_Cdf ,sizeof(Default_Uv_Mode_Cfl_Allowed_Cdf)/sizeof(uint16_t));
+    memcpy(cdf->Intra_Frame_Y_Mode,Default_Intra_Frame_Y_Mode_Cdf,sizeof(Default_Intra_Frame_Y_Mode_Cdf));
+    memcpy(cdf->Y_Mode,Default_Y_Mode_Cdf,sizeof(Default_Y_Mode_Cdf));
+    memcpy(cdf->Uv_Mode_Cfl_Not_Allowed,Default_Uv_Mode_Cfl_Not_Allowed_Cdf, sizeof(Default_Uv_Mode_Cfl_Not_Allowed_Cdf));
+    memcpy(cdf->Uv_Mode_Cfl_Allowed,Default_Uv_Mode_Cfl_Allowed_Cdf ,sizeof(Default_Uv_Mode_Cfl_Allowed_Cdf));
 
-    memcpy(cdf->Angle_Delta,Default_Angle_Delta_Cdf,sizeof(Default_Angle_Delta_Cdf)/sizeof(uint16_t));
-    memcpy(cdf->Intrabc,Default_Intrabc_Cdf,sizeof(Default_Intrabc_Cdf)/sizeof(uint16_t));
+    memcpy(cdf->Angle_Delta,Default_Angle_Delta_Cdf,sizeof(Default_Angle_Delta_Cdf));
+    memcpy(cdf->Intrabc,Default_Intrabc_Cdf,sizeof(Default_Intrabc_Cdf));
 
-    memcpy(cdf->Partition_W8,Default_Partition_W8_Cdf,sizeof(Default_Partition_W8_Cdf)/sizeof(uint16_t));
-    memcpy(cdf->Partition_W16,Default_Partition_W16_Cdf ,sizeof(Default_Partition_W16_Cdf)/sizeof(uint16_t));
-    memcpy(cdf->Partition_W32,Default_Partition_W32_Cdf ,sizeof(Default_Partition_W32_Cdf)/sizeof(uint16_t));
-    memcpy(cdf->Partition_W64,Default_Partition_W64_Cdf ,sizeof(Default_Partition_W64_Cdf)/sizeof(uint16_t));
-    memcpy(cdf->Partition_W128,Default_Partition_W128_Cdf ,sizeof(Default_Partition_W128_Cdf)/sizeof(uint16_t));
+    memcpy(cdf->Partition_W8,Default_Partition_W8_Cdf,sizeof(Default_Partition_W8_Cdf));
+    memcpy(cdf->Partition_W16,Default_Partition_W16_Cdf ,sizeof(Default_Partition_W16_Cdf));
+    memcpy(cdf->Partition_W32,Default_Partition_W32_Cdf ,sizeof(Default_Partition_W32_Cdf));
+    memcpy(cdf->Partition_W64,Default_Partition_W64_Cdf ,sizeof(Default_Partition_W64_Cdf));
+    memcpy(cdf->Partition_W128,Default_Partition_W128_Cdf ,sizeof(Default_Partition_W128_Cdf));
 
-    memcpy(cdf->Tx_8x8,Default_Tx_8x8_Cdf,sizeof(Default_Tx_8x8_Cdf)/sizeof(uint16_t));
-    memcpy(cdf->Tx_16x16,Default_Tx_16x16_Cdf,sizeof(Default_Tx_16x16_Cdf)/sizeof(uint16_t));
-    memcpy(cdf->Tx_32x32,Default_Tx_32x32_Cdf,sizeof(Default_Tx_32x32_Cdf)/sizeof(uint16_t));
-    memcpy(cdf->Tx_64x64,Default_Tx_64x64_Cdf,sizeof(Default_Tx_64x64_Cdf)/sizeof(uint16_t));
+    memcpy(cdf->Tx_8x8,Default_Tx_8x8_Cdf,sizeof(Default_Tx_8x8_Cdf));
+    memcpy(cdf->Tx_16x16,Default_Tx_16x16_Cdf,sizeof(Default_Tx_16x16_Cdf));
+    memcpy(cdf->Tx_32x32,Default_Tx_32x32_Cdf,sizeof(Default_Tx_32x32_Cdf));
+    memcpy(cdf->Tx_64x64,Default_Tx_64x64_Cdf,sizeof(Default_Tx_64x64_Cdf));
 
-    memcpy(cdf->Txfm_Split,Default_Txfm_Split_Cdf,sizeof(Default_Txfm_Split_Cdf)/sizeof(uint16_t));
-    memcpy(cdf->Filter_Intra_Mode,Default_Filter_Intra_Mode_Cdf,sizeof(Default_Filter_Intra_Mode_Cdf)/sizeof(uint16_t));
-    memcpy(cdf->Filter_Intra,Default_Filter_Intra_Cdf,sizeof(Default_Filter_Intra_Cdf)/sizeof(uint16_t));
-    memcpy(cdf->Segment_Id,Default_Segment_Id_Cdf,sizeof(Default_Segment_Id_Cdf)/sizeof(uint16_t));
-    memcpy(cdf->Segment_Id_Predicted,Default_Segment_Id_Predicted_Cdf,sizeof(Default_Segment_Id_Predicted_Cdf)/sizeof(uint16_t));
+    memcpy(cdf->Txfm_Split,Default_Txfm_Split_Cdf,sizeof(Default_Txfm_Split_Cdf));
+    memcpy(cdf->Filter_Intra_Mode,Default_Filter_Intra_Mode_Cdf,sizeof(Default_Filter_Intra_Mode_Cdf));
+    memcpy(cdf->Filter_Intra,Default_Filter_Intra_Cdf,sizeof(Default_Filter_Intra_Cdf));
+    memcpy(cdf->Segment_Id,Default_Segment_Id_Cdf,sizeof(Default_Segment_Id_Cdf));
+    memcpy(cdf->Segment_Id_Predicted,Default_Segment_Id_Predicted_Cdf,sizeof(Default_Segment_Id_Predicted_Cdf));
     for(int i = 0 ; i < MV_CONTEXTS ; i++){
         for(int j = 0 ; i < 2 ; j++){
-            memcpy(cdf->Mv_Class0_Hp[i][j],Default_Mv_Class0_Hp_Cdf,sizeof(Default_Mv_Class0_Hp_Cdf)/sizeof(uint16_t));
-            memcpy(cdf->Mv_Hp[i][j],Default_Mv_Hp_Cdf,sizeof(Default_Mv_Hp_Cdf)/sizeof(uint16_t));
-            memcpy(cdf->Mv_Sign[i][j],Default_Mv_Sign_Cdf,sizeof(Default_Mv_Sign_Cdf)/sizeof(uint16_t));
-            memcpy(cdf->Mv_Bit[i][j],Default_Mv_Bit_Cdf,sizeof(Default_Mv_Bit_Cdf)/sizeof(uint16_t));
-            memcpy(cdf->Mv_Class0_Bit[i][j],Default_Mv_Class0_Bit_Cdf,sizeof(Default_Mv_Class0_Bit_Cdf)/sizeof(uint16_t));
+            memcpy(cdf->Mv_Class0_Hp[i][j],Default_Mv_Class0_Hp_Cdf,sizeof(Default_Mv_Class0_Hp_Cdf));
+            memcpy(cdf->Mv_Hp[i][j],Default_Mv_Hp_Cdf,sizeof(Default_Mv_Hp_Cdf));
+            memcpy(cdf->Mv_Sign[i][j],Default_Mv_Sign_Cdf,sizeof(Default_Mv_Sign_Cdf));
+            memcpy(cdf->Mv_Bit[i][j],Default_Mv_Bit_Cdf,sizeof(Default_Mv_Bit_Cdf));
+            memcpy(cdf->Mv_Class0_Bit[i][j],Default_Mv_Class0_Bit_Cdf,sizeof(Default_Mv_Class0_Bit_Cdf));
         }
     }
-    memcpy(cdf->New_Mv,Default_New_Mv_Cdf,sizeof(Default_New_Mv_Cdf)/sizeof(uint16_t));
-    memcpy(cdf->Zero_Mv,Default_Zero_Mv_Cdf,sizeof(Default_Zero_Mv_Cdf)/sizeof(uint16_t));
-    memcpy(cdf->Ref_Mv,Default_Ref_Mv_Cdf,sizeof(Default_Ref_Mv_Cdf)/sizeof(uint16_t));
-    memcpy(cdf->Ref_Mv,Default_Ref_Mv_Cdf,sizeof(Default_Ref_Mv_Cdf)/sizeof(uint16_t));
-    memcpy(cdf->Drl_Mode,Default_Drl_Mode_Cdf,sizeof(Default_Drl_Mode_Cdf)/sizeof(uint16_t));
-    memcpy(cdf->Is_Inter,Default_Is_Inter_Cdf,sizeof(Default_Is_Inter_Cdf)/sizeof(uint16_t));
+    memcpy(cdf->New_Mv,Default_New_Mv_Cdf,sizeof(Default_New_Mv_Cdf));
+    memcpy(cdf->Zero_Mv,Default_Zero_Mv_Cdf,sizeof(Default_Zero_Mv_Cdf));
+    memcpy(cdf->Ref_Mv,Default_Ref_Mv_Cdf,sizeof(Default_Ref_Mv_Cdf));
+    memcpy(cdf->Ref_Mv,Default_Ref_Mv_Cdf,sizeof(Default_Ref_Mv_Cdf));
+    memcpy(cdf->Drl_Mode,Default_Drl_Mode_Cdf,sizeof(Default_Drl_Mode_Cdf));
+    memcpy(cdf->Is_Inter,Default_Is_Inter_Cdf,sizeof(Default_Is_Inter_Cdf));
 
-    memcpy(cdf->Is_Inter,Default_Is_Inter_Cdf,sizeof(Default_Is_Inter_Cdf)/sizeof(uint16_t));
-    memcpy(cdf->Comp_Mode,Default_Comp_Mode_Cdf,sizeof(Default_Comp_Mode_Cdf)/sizeof(uint16_t));
-    memcpy(cdf->Skip_Mode,Default_Skip_Mode_Cdf,sizeof(Default_Skip_Mode_Cdf)/sizeof(uint16_t));
-    memcpy(cdf->Skip,Default_Skip_Cdf,sizeof(Default_Skip_Cdf)/sizeof(uint16_t));
-    memcpy(cdf->Comp_Ref,Default_Comp_Ref_Cdf,sizeof(Default_Comp_Ref_Cdf)/sizeof(uint16_t));
+    memcpy(cdf->Is_Inter,Default_Is_Inter_Cdf,sizeof(Default_Is_Inter_Cdf));
+    memcpy(cdf->Comp_Mode,Default_Comp_Mode_Cdf,sizeof(Default_Comp_Mode_Cdf));
+    memcpy(cdf->Skip_Mode,Default_Skip_Mode_Cdf,sizeof(Default_Skip_Mode_Cdf));
+    memcpy(cdf->Skip,Default_Skip_Cdf,sizeof(Default_Skip_Cdf));
+    memcpy(cdf->Comp_Ref,Default_Comp_Ref_Cdf,sizeof(Default_Comp_Ref_Cdf));
 
-    memcpy(cdf->Comp_Bwd_Ref,Default_Comp_Bwd_Ref_Cdf,sizeof(Default_Comp_Bwd_Ref_Cdf)/sizeof(uint16_t));
-    memcpy(cdf->Single_Ref,Default_Single_Ref_Cdf,sizeof(Default_Single_Ref_Cdf)/sizeof(uint16_t));
-    memcpy(cdf->Compound_Mode,Default_Compound_Mode_Cdf,sizeof(Default_Compound_Mode_Cdf)/sizeof(uint16_t));
+    memcpy(cdf->Comp_Bwd_Ref,Default_Comp_Bwd_Ref_Cdf,sizeof(Default_Comp_Bwd_Ref_Cdf));
+    memcpy(cdf->Single_Ref,Default_Single_Ref_Cdf,sizeof(Default_Single_Ref_Cdf));
+    memcpy(cdf->Compound_Mode,Default_Compound_Mode_Cdf,sizeof(Default_Compound_Mode_Cdf));
 
-    memcpy(cdf->Interp_Filter,Default_Interp_Filter_Cdf,sizeof(Default_Interp_Filter_Cdf)/sizeof(uint16_t));
-    memcpy(cdf->Motion_Mode,Default_Motion_Mode_Cdf,sizeof(Default_Motion_Mode_Cdf)/sizeof(uint16_t));
+    memcpy(cdf->Interp_Filter,Default_Interp_Filter_Cdf,sizeof(Default_Interp_Filter_Cdf));
+    memcpy(cdf->Motion_Mode,Default_Motion_Mode_Cdf,sizeof(Default_Motion_Mode_Cdf));
 
     for(int i = 0 ; i < MV_CONTEXTS ; i++){
-        memcpy(cdf->Mv_Joint[i],Default_Mv_Joint_Cdf,sizeof(Default_Mv_Joint_Cdf)/sizeof(uint16_t));
-        memcpy(cdf->Mv_Class[i],Default_Mv_Class_Cdf,sizeof(Default_Mv_Class_Cdf)/sizeof(uint16_t));
-        memcpy(cdf->Mv_Class0_Fr[i],Default_Mv_Class0_Fr_Cdf,sizeof(Default_Mv_Class0_Fr_Cdf)/sizeof(uint16_t));
-        memcpy(cdf->Mv_Fr[i],Default_Mv_Fr_Cdf,sizeof(Default_Mv_Fr_Cdf)/sizeof(uint16_t));
+        memcpy(cdf->Mv_Joint[i],Default_Mv_Joint_Cdf,sizeof(Default_Mv_Joint_Cdf));
+        memcpy(cdf->Mv_Class[i],Default_Mv_Class_Cdf,sizeof(Default_Mv_Class_Cdf));
+        memcpy(cdf->Mv_Class0_Fr[i],Default_Mv_Class0_Fr_Cdf,sizeof(Default_Mv_Class0_Fr_Cdf));
+        memcpy(cdf->Mv_Fr[i],Default_Mv_Fr_Cdf,sizeof(Default_Mv_Fr_Cdf));
     }
-    memcpy(cdf->Palette_Y_Size,Default_Palette_Y_Size_Cdf,sizeof(Default_Palette_Y_Size_Cdf)/sizeof(uint16_t));
-    memcpy(cdf->Palette_Uv_Size,Default_Palette_Uv_Size_Cdf,sizeof(Default_Palette_Uv_Size_Cdf)/sizeof(uint16_t));
+    memcpy(cdf->Palette_Y_Size,Default_Palette_Y_Size_Cdf,sizeof(Default_Palette_Y_Size_Cdf));
+    memcpy(cdf->Palette_Uv_Size,Default_Palette_Uv_Size_Cdf,sizeof(Default_Palette_Uv_Size_Cdf));
 
-    memcpy(cdf->Palette_Size_2_Y_Color,Default_Palette_Size_2_Y_Color_Cdf,sizeof(Default_Palette_Size_2_Y_Color_Cdf)/sizeof(uint16_t));
-    memcpy(cdf->Palette_Size_3_Y_Color,Default_Palette_Size_3_Y_Color_Cdf,sizeof(Default_Palette_Size_3_Y_Color_Cdf)/sizeof(uint16_t));
-    memcpy(cdf->Palette_Size_4_Y_Color,Default_Palette_Size_4_Y_Color_Cdf,sizeof(Default_Palette_Size_4_Y_Color_Cdf)/sizeof(uint16_t));
-    memcpy(cdf->Palette_Size_5_Y_Color,Default_Palette_Size_5_Y_Color_Cdf,sizeof(Default_Palette_Size_5_Y_Color_Cdf)/sizeof(uint16_t));
-    memcpy(cdf->Palette_Size_6_Y_Color,Default_Palette_Size_6_Y_Color_Cdf,sizeof(Default_Palette_Size_6_Y_Color_Cdf)/sizeof(uint16_t));
-    memcpy(cdf->Palette_Size_7_Y_Color,Default_Palette_Size_7_Y_Color_Cdf,sizeof(Default_Palette_Size_7_Y_Color_Cdf)/sizeof(uint16_t));
-    memcpy(cdf->Palette_Size_8_Y_Color,Default_Palette_Size_8_Y_Color_Cdf,sizeof(Default_Palette_Size_8_Y_Color_Cdf)/sizeof(uint16_t));
+    memcpy(cdf->Palette_Size_2_Y_Color,Default_Palette_Size_2_Y_Color_Cdf,sizeof(Default_Palette_Size_2_Y_Color_Cdf));
+    memcpy(cdf->Palette_Size_3_Y_Color,Default_Palette_Size_3_Y_Color_Cdf,sizeof(Default_Palette_Size_3_Y_Color_Cdf));
+    memcpy(cdf->Palette_Size_4_Y_Color,Default_Palette_Size_4_Y_Color_Cdf,sizeof(Default_Palette_Size_4_Y_Color_Cdf));
+    memcpy(cdf->Palette_Size_5_Y_Color,Default_Palette_Size_5_Y_Color_Cdf,sizeof(Default_Palette_Size_5_Y_Color_Cdf));
+    memcpy(cdf->Palette_Size_6_Y_Color,Default_Palette_Size_6_Y_Color_Cdf,sizeof(Default_Palette_Size_6_Y_Color_Cdf));
+    memcpy(cdf->Palette_Size_7_Y_Color,Default_Palette_Size_7_Y_Color_Cdf,sizeof(Default_Palette_Size_7_Y_Color_Cdf));
+    memcpy(cdf->Palette_Size_8_Y_Color,Default_Palette_Size_8_Y_Color_Cdf,sizeof(Default_Palette_Size_8_Y_Color_Cdf));
 
 
-    memcpy(cdf->Palette_Size_2_Uv_Color,Default_Palette_Size_2_Uv_Color_Cdf,sizeof(Default_Palette_Size_2_Uv_Color_Cdf)/sizeof(uint16_t));
-    memcpy(cdf->Palette_Size_3_Uv_Color,Default_Palette_Size_3_Uv_Color_Cdf,sizeof(Default_Palette_Size_3_Uv_Color_Cdf)/sizeof(uint16_t));
-    memcpy(cdf->Palette_Size_4_Uv_Color,Default_Palette_Size_4_Uv_Color_Cdf,sizeof(Default_Palette_Size_4_Uv_Color_Cdf)/sizeof(uint16_t));
-    memcpy(cdf->Palette_Size_5_Uv_Color,Default_Palette_Size_5_Uv_Color_Cdf,sizeof(Default_Palette_Size_5_Uv_Color_Cdf)/sizeof(uint16_t));
-    memcpy(cdf->Palette_Size_6_Uv_Color,Default_Palette_Size_6_Uv_Color_Cdf,sizeof(Default_Palette_Size_6_Uv_Color_Cdf)/sizeof(uint16_t));
-    memcpy(cdf->Palette_Size_7_Uv_Color,Default_Palette_Size_7_Uv_Color_Cdf,sizeof(Default_Palette_Size_7_Uv_Color_Cdf)/sizeof(uint16_t));
-    memcpy(cdf->Palette_Size_8_Uv_Color,Default_Palette_Size_8_Uv_Color_Cdf,sizeof(Default_Palette_Size_8_Uv_Color_Cdf)/sizeof(uint16_t));
+    memcpy(cdf->Palette_Size_2_Uv_Color,Default_Palette_Size_2_Uv_Color_Cdf,sizeof(Default_Palette_Size_2_Uv_Color_Cdf));
+    memcpy(cdf->Palette_Size_3_Uv_Color,Default_Palette_Size_3_Uv_Color_Cdf,sizeof(Default_Palette_Size_3_Uv_Color_Cdf));
+    memcpy(cdf->Palette_Size_4_Uv_Color,Default_Palette_Size_4_Uv_Color_Cdf,sizeof(Default_Palette_Size_4_Uv_Color_Cdf));
+    memcpy(cdf->Palette_Size_5_Uv_Color,Default_Palette_Size_5_Uv_Color_Cdf,sizeof(Default_Palette_Size_5_Uv_Color_Cdf));
+    memcpy(cdf->Palette_Size_6_Uv_Color,Default_Palette_Size_6_Uv_Color_Cdf,sizeof(Default_Palette_Size_6_Uv_Color_Cdf));
+    memcpy(cdf->Palette_Size_7_Uv_Color,Default_Palette_Size_7_Uv_Color_Cdf,sizeof(Default_Palette_Size_7_Uv_Color_Cdf));
+    memcpy(cdf->Palette_Size_8_Uv_Color,Default_Palette_Size_8_Uv_Color_Cdf,sizeof(Default_Palette_Size_8_Uv_Color_Cdf));
 
-    memcpy(cdf->Delta_Q,Default_Delta_Q_Cdf,sizeof(Default_Delta_Q_Cdf)/sizeof(uint16_t));
-    memcpy(cdf->Delta_Lf,Default_Delta_Lf_Cdf,sizeof(Default_Delta_Lf_Cdf)/sizeof(uint16_t));
+    memcpy(cdf->Delta_Q,Default_Delta_Q_Cdf,sizeof(Default_Delta_Q_Cdf));
+    memcpy(cdf->Delta_Lf,Default_Delta_Lf_Cdf,sizeof(Default_Delta_Lf_Cdf));
 
     for(int i = 0 ; i < FRAME_LF_COUNT ; i++)
-        memcpy(cdf->Delta_Lf_Muti[i],Default_Delta_Lf_Cdf,sizeof(Default_Delta_Lf_Cdf)/sizeof(uint16_t));
+        memcpy(cdf->Delta_Lf_Muti[i],Default_Delta_Lf_Cdf,sizeof(Default_Delta_Lf_Cdf));
 
-    memcpy(cdf->Intra_Tx_Type_Set1,Default_Intra_Tx_Type_Set1_Cdf,sizeof(Default_Intra_Tx_Type_Set1_Cdf)/sizeof(uint16_t));
-    memcpy(cdf->Intra_Tx_Type_Set2,Default_Intra_Tx_Type_Set2_Cdf,sizeof(Default_Intra_Tx_Type_Set2_Cdf)/sizeof(uint16_t));
-    memcpy(cdf->Inter_Tx_Type_Set1,Default_Inter_Tx_Type_Set1_Cdf,sizeof(Default_Inter_Tx_Type_Set1_Cdf)/sizeof(uint16_t));
-    memcpy(cdf->Inter_Tx_Type_Set2,Default_Inter_Tx_Type_Set2_Cdf,sizeof(Default_Inter_Tx_Type_Set2_Cdf)/sizeof(uint16_t));
-    memcpy(cdf->Inter_Tx_Type_Set3,Default_Inter_Tx_Type_Set3_Cdf,sizeof(Default_Inter_Tx_Type_Set3_Cdf)/sizeof(uint16_t));
+    memcpy(cdf->Intra_Tx_Type_Set1,Default_Intra_Tx_Type_Set1_Cdf,sizeof(Default_Intra_Tx_Type_Set1_Cdf));
+    memcpy(cdf->Intra_Tx_Type_Set2,Default_Intra_Tx_Type_Set2_Cdf,sizeof(Default_Intra_Tx_Type_Set2_Cdf));
+    memcpy(cdf->Inter_Tx_Type_Set1,Default_Inter_Tx_Type_Set1_Cdf,sizeof(Default_Inter_Tx_Type_Set1_Cdf));
+    memcpy(cdf->Inter_Tx_Type_Set2,Default_Inter_Tx_Type_Set2_Cdf,sizeof(Default_Inter_Tx_Type_Set2_Cdf));
+    memcpy(cdf->Inter_Tx_Type_Set3,Default_Inter_Tx_Type_Set3_Cdf,sizeof(Default_Inter_Tx_Type_Set3_Cdf));
 
-    memcpy(cdf->Compound_Idx,Default_Compound_Idx_Cdf,sizeof(Default_Compound_Idx_Cdf)/sizeof(uint16_t));
-    memcpy(cdf->Comp_Group_Idx,Default_Comp_Group_Idx_Cdf,sizeof(Default_Comp_Group_Idx_Cdf)/sizeof(uint16_t));
-    memcpy(cdf->Compound_Type,Default_Compound_Type_Cdf,sizeof(Default_Compound_Type_Cdf)/sizeof(uint16_t));
-    memcpy(cdf->Inter_Intra,Default_Inter_Intra_Cdf,sizeof(Default_Inter_Intra_Cdf)/sizeof(uint16_t));
-    memcpy(cdf->Inter_Intra_Mode,Default_Inter_Intra_Mode_Cdf,sizeof(Default_Inter_Intra_Mode_Cdf)/sizeof(uint16_t));
+    memcpy(cdf->Compound_Idx,Default_Compound_Idx_Cdf,sizeof(Default_Compound_Idx_Cdf));
+    memcpy(cdf->Comp_Group_Idx,Default_Comp_Group_Idx_Cdf,sizeof(Default_Comp_Group_Idx_Cdf));
+    memcpy(cdf->Compound_Type,Default_Compound_Type_Cdf,sizeof(Default_Compound_Type_Cdf));
+    memcpy(cdf->Inter_Intra,Default_Inter_Intra_Cdf,sizeof(Default_Inter_Intra_Cdf));
+    memcpy(cdf->Inter_Intra_Mode,Default_Inter_Intra_Mode_Cdf,sizeof(Default_Inter_Intra_Mode_Cdf));
 
-    memcpy(cdf->Wedge_Index,Default_Wedge_Index_Cdf,sizeof(Default_Wedge_Index_Cdf)/sizeof(uint16_t));
-    memcpy(cdf->Wedge_Inter_Intra,Default_Wedge_Inter_Intra_Cdf,sizeof(Default_Wedge_Inter_Intra_Cdf)/sizeof(uint16_t));
-    memcpy(cdf->Use_Obmc,Default_Use_Obmc_Cdf,sizeof(Default_Use_Obmc_Cdf)/sizeof(uint16_t));
-    memcpy(cdf->Comp_Ref_Type,Default_Comp_Ref_Type_Cdf,sizeof(Default_Comp_Ref_Type_Cdf)/sizeof(uint16_t));
-    memcpy(cdf->Uni_Comp_Ref,Default_Uni_Comp_Ref_Cdf,sizeof(Default_Uni_Comp_Ref_Cdf)/sizeof(uint16_t));
+    memcpy(cdf->Wedge_Index,Default_Wedge_Index_Cdf,sizeof(Default_Wedge_Index_Cdf));
+    memcpy(cdf->Wedge_Inter_Intra,Default_Wedge_Inter_Intra_Cdf,sizeof(Default_Wedge_Inter_Intra_Cdf));
+    memcpy(cdf->Use_Obmc,Default_Use_Obmc_Cdf,sizeof(Default_Use_Obmc_Cdf));
+    memcpy(cdf->Comp_Ref_Type,Default_Comp_Ref_Type_Cdf,sizeof(Default_Comp_Ref_Type_Cdf));
+    memcpy(cdf->Uni_Comp_Ref,Default_Uni_Comp_Ref_Cdf,sizeof(Default_Uni_Comp_Ref_Cdf));
 
-    memcpy(cdf->Cfl_Sign,Default_Cfl_Sign_Cdf,sizeof(Default_Cfl_Sign_Cdf)/sizeof(uint16_t));
-    memcpy(cdf->Cfl_Alpha,Default_Cfl_Alpha_Cdf,sizeof(Default_Cfl_Alpha_Cdf)/sizeof(uint16_t));
-    memcpy(cdf->Use_Wiener,Default_Use_Wiener_Cdf,sizeof(Default_Use_Wiener_Cdf)/sizeof(uint16_t));
-    memcpy(cdf->Use_Sgrproj,Default_Use_Sgrproj_Cdf,sizeof(Default_Use_Sgrproj_Cdf)/sizeof(uint16_t));
-    memcpy(cdf->Restoration_Type,Default_Restoration_Type_Cdf,sizeof(Default_Restoration_Type_Cdf)/sizeof(uint16_t));
+    memcpy(cdf->Cfl_Sign,Default_Cfl_Sign_Cdf,sizeof(Default_Cfl_Sign_Cdf));
+    memcpy(cdf->Cfl_Alpha,Default_Cfl_Alpha_Cdf,sizeof(Default_Cfl_Alpha_Cdf));
+    memcpy(cdf->Use_Wiener,Default_Use_Wiener_Cdf,sizeof(Default_Use_Wiener_Cdf));
+    memcpy(cdf->Use_Sgrproj,Default_Use_Sgrproj_Cdf,sizeof(Default_Use_Sgrproj_Cdf));
+    memcpy(cdf->Restoration_Type,Default_Restoration_Type_Cdf,sizeof(Default_Restoration_Type_Cdf));
 
 }
 //indicates that this frame can be decoded without dependence on previous coded frames
@@ -201,20 +201,20 @@ int decode::init_coeff_cdfs(AV1DecodeContext *av1Ctx){
     }else{
         idx = 3 ;
     }
-    memcpy(cdf->Txb_Skip,Default_Txb_Skip_Cdf[idx],sizeof(Default_Txb_Skip_Cdf[idx])/sizeof(uint16_t));
-    memcpy(cdf->Eob_Pt_16,Default_Eob_Pt_16_Cdf[idx],sizeof(Default_Eob_Pt_16_Cdf[idx])/sizeof(uint16_t));
-    memcpy(cdf->Eob_Pt_32,Default_Eob_Pt_32_Cdf[idx],sizeof(Default_Eob_Pt_32_Cdf[idx])/sizeof(uint16_t));
-    memcpy(cdf->Eob_Pt_64,Default_Eob_Pt_64_Cdf[idx],sizeof(Default_Eob_Pt_64_Cdf[idx])/sizeof(uint16_t));
-    memcpy(cdf->Eob_Pt_128,Default_Eob_Pt_128_Cdf[idx],sizeof(Default_Eob_Pt_128_Cdf[idx])/sizeof(uint16_t));
-    memcpy(cdf->Eob_Pt_256,Default_Eob_Pt_256_Cdf[idx],sizeof(Default_Eob_Pt_256_Cdf[idx])/sizeof(uint16_t));
-    memcpy(cdf->Eob_Pt_512,Default_Eob_Pt_512_Cdf[idx],sizeof(Default_Eob_Pt_512_Cdf[idx])/sizeof(uint16_t));
-    memcpy(cdf->Eob_Pt_1024,Default_Eob_Pt_1024_Cdf[idx],sizeof(Default_Eob_Pt_1024_Cdf[idx])/sizeof(uint16_t));
+    memcpy(cdf->Txb_Skip,Default_Txb_Skip_Cdf[idx],sizeof(Default_Txb_Skip_Cdf[idx]));
+    memcpy(cdf->Eob_Pt_16,Default_Eob_Pt_16_Cdf[idx],sizeof(Default_Eob_Pt_16_Cdf[idx]));
+    memcpy(cdf->Eob_Pt_32,Default_Eob_Pt_32_Cdf[idx],sizeof(Default_Eob_Pt_32_Cdf[idx]));
+    memcpy(cdf->Eob_Pt_64,Default_Eob_Pt_64_Cdf[idx],sizeof(Default_Eob_Pt_64_Cdf[idx]));
+    memcpy(cdf->Eob_Pt_128,Default_Eob_Pt_128_Cdf[idx],sizeof(Default_Eob_Pt_128_Cdf[idx]));
+    memcpy(cdf->Eob_Pt_256,Default_Eob_Pt_256_Cdf[idx],sizeof(Default_Eob_Pt_256_Cdf[idx]));
+    memcpy(cdf->Eob_Pt_512,Default_Eob_Pt_512_Cdf[idx],sizeof(Default_Eob_Pt_512_Cdf[idx]));
+    memcpy(cdf->Eob_Pt_1024,Default_Eob_Pt_1024_Cdf[idx],sizeof(Default_Eob_Pt_1024_Cdf[idx]));
 
-    memcpy(cdf->Eob_Extra,Default_Eob_Extra_Cdf[idx],sizeof(Default_Eob_Pt_32_Cdf[idx])/sizeof(uint16_t));
-    memcpy(cdf->Dc_Sign,Default_Dc_Sign_Cdf[idx],sizeof(Default_Eob_Pt_32_Cdf[idx])/sizeof(uint16_t));
-    memcpy(cdf->Coeff_Base_Eob,Default_Coeff_Base_Eob_Cdf[idx],sizeof(Default_Y_Mode_Cdf[idx])/sizeof(uint16_t));
-    memcpy(cdf->Coeff_Base,Default_Coeff_Base_Cdf[idx],sizeof(Default_Y_Mode_Cdf[idx])/sizeof(uint16_t));
-    memcpy(cdf->Coeff_Br,Default_Coeff_Br_Cdf[idx],sizeof(Default_Y_Mode_Cdf[idx])/sizeof(uint16_t));
+    memcpy(cdf->Eob_Extra,Default_Eob_Extra_Cdf[idx],sizeof(Default_Eob_Pt_32_Cdf[idx]));
+    memcpy(cdf->Dc_Sign,Default_Dc_Sign_Cdf[idx],sizeof(Default_Eob_Pt_32_Cdf[idx]));
+    memcpy(cdf->Coeff_Base_Eob,Default_Coeff_Base_Eob_Cdf[idx],sizeof(Default_Y_Mode_Cdf[idx]));
+    memcpy(cdf->Coeff_Base,Default_Coeff_Base_Cdf[idx],sizeof(Default_Y_Mode_Cdf[idx]));
+    memcpy(cdf->Coeff_Br,Default_Coeff_Br_Cdf[idx],sizeof(Default_Y_Mode_Cdf[idx]));
 }
 //从参考帧上下文拷贝cdf到当前framecontext
 int decode::load_cdfs(AV1DecodeContext *av1Ctx,int ctx){
@@ -982,7 +982,7 @@ int decode::add_tpl_ref_mv(int deltaRow, int deltaCol, int isCompound,BlockData 
 	{
 		int candMv[2];
 		//int candMv[2] = av1Ctx->MotionFieldMvs[b_data->RefFrame[0]][y8][x8];
-		memcpy(candMv,av1Ctx->MotionFieldMvs[b_data->RefFrame[0]][y8][x8],2);
+		memcpy(candMv,av1Ctx->MotionFieldMvs[b_data->RefFrame[0]][y8][x8],2 * sizeof(int));
 		if (candMv[0] == -1 << 15)
 			return;
 		lower_mv_precision(av1Ctx,candMv);
@@ -1009,7 +1009,7 @@ int decode::add_tpl_ref_mv(int deltaRow, int deltaCol, int isCompound,BlockData 
 		else if (av1Ctx->currentFrame->mvpCtx->NumMvFound < MAX_REF_MV_STACK_SIZE)
 		{
 			//av1Ctx->RefStackMv[av1Ctx->NumMvFound][0] = candMv;
-			memcpy(av1Ctx->currentFrame->mvpCtx->RefStackMv[av1Ctx->currentFrame->mvpCtx->NumMvFound][0],candMv,2); 
+			memcpy(av1Ctx->currentFrame->mvpCtx->RefStackMv[av1Ctx->currentFrame->mvpCtx->NumMvFound][0],candMv,2 * sizeof(int)); 
 			av1Ctx->currentFrame->mvpCtx->WeightStack[av1Ctx->currentFrame->mvpCtx->NumMvFound] = 2;
 			av1Ctx->currentFrame->mvpCtx->NumMvFound += 1;
 		}
@@ -1018,12 +1018,12 @@ int decode::add_tpl_ref_mv(int deltaRow, int deltaCol, int isCompound,BlockData 
 	{
 		//int candMv0[2] = av1Ctx->MotionFieldMvs[b_data->RefFrame[0]][y8][x8];
 		int candMv0[2];
-		memcpy(candMv0,av1Ctx->MotionFieldMvs[b_data->RefFrame[0]][y8][x8],2); 
+		memcpy(candMv0,av1Ctx->MotionFieldMvs[b_data->RefFrame[0]][y8][x8],2 * sizeof(int)); 
 		if (candMv0[0] == -1 << 15)
 			return;
 		//int candMv1[2] = av1Ctx->MotionFieldMvs[b_data->RefFrame[1]][y8][x8];
 		int candMv1[2] ;
-		memcpy(candMv1,av1Ctx->MotionFieldMvs[b_data->RefFrame[1]][y8][x8],2); 
+		memcpy(candMv1,av1Ctx->MotionFieldMvs[b_data->RefFrame[1]][y8][x8],2 * sizeof(int)); 
 		if (candMv1[0] == -1 << 15)
 			return;
 		lower_mv_precision(av1Ctx,candMv0);
@@ -1055,8 +1055,8 @@ int decode::add_tpl_ref_mv(int deltaRow, int deltaCol, int isCompound,BlockData 
 		{
 			//av1Ctx->RefStackMv[av1Ctx->NumMvFound][0] = candMv0;
 			//av1Ctx->RefStackMv[av1Ctx->NumMvFound][1] = candMv1;
-			memcpy(av1Ctx->currentFrame->mvpCtx->RefStackMv[av1Ctx->currentFrame->mvpCtx->NumMvFound][0],candMv0,2); 
-			memcpy(av1Ctx->currentFrame->mvpCtx->RefStackMv[av1Ctx->currentFrame->mvpCtx->NumMvFound][1],candMv1,2); 
+			memcpy(av1Ctx->currentFrame->mvpCtx->RefStackMv[av1Ctx->currentFrame->mvpCtx->NumMvFound][0],candMv0,2 * sizeof(int)); 
+			memcpy(av1Ctx->currentFrame->mvpCtx->RefStackMv[av1Ctx->currentFrame->mvpCtx->NumMvFound][1],candMv1,2 * sizeof(int)); 
 			av1Ctx->currentFrame->mvpCtx->WeightStack[av1Ctx->currentFrame->mvpCtx->NumMvFound] = 2;
 			av1Ctx->currentFrame->mvpCtx->NumMvFound += 1;
 		}
@@ -1148,19 +1148,19 @@ int decode::extra_search(int isCompound, BlockData *b_data, AV1DecodeContext *av
 			for (int idx = 0; idx < av1Ctx->currentFrame->mvpCtx->RefIdCount[list]; idx++)
 			{
 				//combinedMvs[compCount][list] = av1Ctx->RefIdMvs[list][idx];
-				memcpy(combinedMvs[compCount][list],av1Ctx->currentFrame->mvpCtx->RefIdMvs[list][idx],2);
+				memcpy(combinedMvs[compCount][list],av1Ctx->currentFrame->mvpCtx->RefIdMvs[list][idx],2 * sizeof(int));
 				compCount++;
 			}
 			for (int idx = 0; idx < RefDiffCount[list] && compCount < 2; idx++)
 			{
 				//combinedMvs[compCount][list] = av1Ctx->RefDiffMvs[list][idx];
-				memcpy(combinedMvs[compCount][list],av1Ctx->currentFrame->mvpCtx->RefDiffMvs[list][idx],2);
+				memcpy(combinedMvs[compCount][list],av1Ctx->currentFrame->mvpCtx->RefDiffMvs[list][idx],2* sizeof(int));
 				compCount++;
 			}
 			while (compCount < 2)
 			{
 				//combinedMvs[compCount][list] = av1Ctx->GlobalMvs[list];
-				memcpy(combinedMvs[compCount][list],av1Ctx->currentFrame->mvpCtx->GlobalMvs[list],2);
+				memcpy(combinedMvs[compCount][list],av1Ctx->currentFrame->mvpCtx->GlobalMvs[list],2* sizeof(int));
 				compCount++;
 			}
 		}
@@ -1171,15 +1171,15 @@ int decode::extra_search(int isCompound, BlockData *b_data, AV1DecodeContext *av
 			{
 				//av1Ctx->RefStackMv[av1Ctx->NumMvFound][0] = combinedMvs[1][0];
 				//av1Ctx->RefStackMv[av1Ctx->NumMvFound][1] = combinedMvs[1][1];
-				memcpy(av1Ctx->currentFrame->mvpCtx->RefStackMv[av1Ctx->currentFrame->mvpCtx->NumMvFound][0],combinedMvs[1][0],2);
-				memcpy(av1Ctx->currentFrame->mvpCtx->RefStackMv[av1Ctx->currentFrame->mvpCtx->NumMvFound][1],combinedMvs[1][1],2);
+				memcpy(av1Ctx->currentFrame->mvpCtx->RefStackMv[av1Ctx->currentFrame->mvpCtx->NumMvFound][0],combinedMvs[1][0],2* sizeof(int));
+				memcpy(av1Ctx->currentFrame->mvpCtx->RefStackMv[av1Ctx->currentFrame->mvpCtx->NumMvFound][1],combinedMvs[1][1],2* sizeof(int));
 			}
 			else
 			{
 				//av1Ctx->RefStackMv[av1Ctx->NumMvFound][0] = combinedMvs[0][0];
 				//av1Ctx->RefStackMv[av1Ctx->NumMvFound][1] = combinedMvs[0][1];
-				memcpy(av1Ctx->currentFrame->mvpCtx->RefStackMv[av1Ctx->currentFrame->mvpCtx->NumMvFound][0],combinedMvs[0][0],2);
-				memcpy(av1Ctx->currentFrame->mvpCtx->RefStackMv[av1Ctx->currentFrame->mvpCtx->NumMvFound][1],combinedMvs[0][1],2);
+				memcpy(av1Ctx->currentFrame->mvpCtx->RefStackMv[av1Ctx->currentFrame->mvpCtx->NumMvFound][0],combinedMvs[0][0],2* sizeof(int));
+				memcpy(av1Ctx->currentFrame->mvpCtx->RefStackMv[av1Ctx->currentFrame->mvpCtx->NumMvFound][1],combinedMvs[0][1],2* sizeof(int));
 			}
 			av1Ctx->currentFrame->mvpCtx->WeightStack[av1Ctx->currentFrame->mvpCtx->NumMvFound] = 2;
 			av1Ctx->currentFrame->mvpCtx->NumMvFound++;
@@ -1190,8 +1190,8 @@ int decode::extra_search(int isCompound, BlockData *b_data, AV1DecodeContext *av
 			{
 				//av1Ctx->RefStackMv[NumMvFound][0] = combinedMvs[idx][0];
 				//av1Ctx->RefStackMv[NumMvFound][1] = combinedMvs[idx][1];
-				memcpy(av1Ctx->currentFrame->mvpCtx->RefStackMv[av1Ctx->currentFrame->mvpCtx->NumMvFound][0],combinedMvs[idx][0],2);
-				memcpy(av1Ctx->currentFrame->mvpCtx->RefStackMv[av1Ctx->currentFrame->mvpCtx->NumMvFound][1],combinedMvs[idx][1],2);
+				memcpy(av1Ctx->currentFrame->mvpCtx->RefStackMv[av1Ctx->currentFrame->mvpCtx->NumMvFound][0],combinedMvs[idx][0],2* sizeof(int));
+				memcpy(av1Ctx->currentFrame->mvpCtx->RefStackMv[av1Ctx->currentFrame->mvpCtx->NumMvFound][1],combinedMvs[idx][1],2* sizeof(int));
 				av1Ctx->currentFrame->mvpCtx->WeightStack[av1Ctx->currentFrame->mvpCtx->NumMvFound] = 2;
 				av1Ctx->currentFrame->mvpCtx->NumMvFound++;
 			}
@@ -1202,7 +1202,7 @@ int decode::extra_search(int isCompound, BlockData *b_data, AV1DecodeContext *av
 		for (int idx = av1Ctx->currentFrame->mvpCtx->NumMvFound; idx < 2; idx++)
 		{
 			//av1Ctx->RefStackMv[idx][0] = av1Ctx->GlobalMvs[0];
-			memcpy(av1Ctx->currentFrame->mvpCtx->RefStackMv[idx][0],av1Ctx->currentFrame->mvpCtx->GlobalMvs[0],2);
+			memcpy(av1Ctx->currentFrame->mvpCtx->RefStackMv[idx][0],av1Ctx->currentFrame->mvpCtx->GlobalMvs[0],2* sizeof(int));
 		}
 	}
 }
@@ -1224,7 +1224,7 @@ int decode::add_extra_mv_candidate(int mvRow, int mvCol, int isCompound,
 				{
 					//int candMv[2] = p_data->Mvs[mvRow][mvCol][candList];
 					int candMv[2] ;
-					memcpy(candMv,av1Ctx->Mvs[mvRow][mvCol][candList],2);
+					memcpy(candMv,av1Ctx->Mvs[mvRow][mvCol][candList],2* sizeof(int));
 					if (candRef == b_data->RefFrame[list] && av1Ctx->currentFrame->mvpCtx->RefIdCount[list] < 2)
 					{
 						av1Ctx->currentFrame->mvpCtx->RefIdMvs[list][av1Ctx->currentFrame->mvpCtx->RefIdCount[list]] = candMv;
@@ -1238,7 +1238,7 @@ int decode::add_extra_mv_candidate(int mvRow, int mvCol, int isCompound,
 							candMv[1] *= -1;
 						}
 						//av1Ctx->RefDiffMvs[list][av1Ctx->RefDiffCount[list]] = candMv;
-						memcpy(av1Ctx->currentFrame->mvpCtx->RefDiffMvs[list][av1Ctx->currentFrame->mvpCtx->RefDiffCount[list]],candMv,2);
+						memcpy(av1Ctx->currentFrame->mvpCtx->RefDiffMvs[list][av1Ctx->currentFrame->mvpCtx->RefDiffCount[list]],candMv,2* sizeof(int));
 						av1Ctx->currentFrame->mvpCtx->RefDiffCount[list]++;
 					}
 				}
@@ -1254,7 +1254,7 @@ int decode::add_extra_mv_candidate(int mvRow, int mvCol, int isCompound,
 			{
 				int candMv[2];
 				//int candMv = Mvs[mvRow][mvCol][candList];
-				memcpy(candMv,av1Ctx->Mvs[mvRow][mvCol][candList],2);
+				memcpy(candMv,av1Ctx->Mvs[mvRow][mvCol][candList],2* sizeof(int));
 				if (frameHdr->RefFrameSignBias[candRef] != frameHdr->RefFrameSignBias[b_data->RefFrame[0]])
 				{
 					candMv[0] *= -1;
@@ -1269,7 +1269,7 @@ int decode::add_extra_mv_candidate(int mvRow, int mvCol, int isCompound,
 				if (idx == av1Ctx->currentFrame->mvpCtx->NumMvFound)
 				{
 					//av1Ctx->RefStackMv[idx][0] = candMv;
-					memcpy(av1Ctx->currentFrame->mvpCtx->RefStackMv[idx][0],candMv,2);
+					memcpy(av1Ctx->currentFrame->mvpCtx->RefStackMv[idx][0],candMv,2* sizeof(int));
 					av1Ctx->currentFrame->mvpCtx->WeightStack[idx] = 2;
 					av1Ctx->currentFrame->mvpCtx->NumMvFound++;
 				}
@@ -1309,11 +1309,11 @@ int decode::context_and_clamping(int isCompound, int numNew,BlockData *b_data,AV
 		for (int idx = 0; idx < av1Ctx->currentFrame->mvpCtx->NumMvFound ; idx++ ) {
 			int refMv[2];
 			//int refMv[2] = av1Ctx->RefStackMv[ idx ][ list ];
-			memcpy(refMv,av1Ctx->currentFrame->mvpCtx->RefStackMv[ idx ][ list ],2);
+			memcpy(refMv,av1Ctx->currentFrame->mvpCtx->RefStackMv[ idx ][ list ],2* sizeof(int));
 			refMv[ 0 ] = clamp_mv_row( refMv[ 0 ], MV_BORDER + bh * 8,b_data,av1Ctx);
 			refMv[ 1 ] = clamp_mv_col( refMv[ 1 ], MV_BORDER + bw * 8,b_data,av1Ctx);
 			//av1Ctx->RefStackMv[ idx ][ list ] = refMv;
-			memcpy(av1Ctx->currentFrame->mvpCtx->RefStackMv[ idx ][ list ],refMv,2);
+			memcpy(av1Ctx->currentFrame->mvpCtx->RefStackMv[ idx ][ list ],refMv,2* sizeof(int));
 		}
 	}	
 	if ( av1Ctx->currentFrame->mvpCtx->CloseMatches == 0 ) {
@@ -3009,7 +3009,7 @@ genArray:
 	}
 	int mv[2];
 	//	mv = p_data->Mvs[ candRow ][ candCol ][ refList ];
-	memcpy(mv,av1Ctx->Mvs[ candRow ][ candCol ][ refList ],2);
+	memcpy(mv,av1Ctx->Mvs[ candRow ][ candCol ][ refList ],2* sizeof(int));
 	int refIdx ;
 	if(b_data->use_intrabc == 0){
 		refIdx == frameHdr->ref_frame_idx[ refFrame - LAST_FRAME ];
@@ -3696,7 +3696,7 @@ int decode::predict_overlap(int MiSize,int plane ,int x4,int y4,int predW,int pr
 	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
 	int mv[2];
-	memcpy(mv,av1Ctx->Mvs[ candRow ][ candCol ][ 0 ],2);
+	memcpy(mv,av1Ctx->Mvs[ candRow ][ candCol ][ 0 ],2* sizeof(int));
 	int refIdx = frameHdr->ref_frame_idx[ av1Ctx->RefFrames[ candRow ][ candCol ][ 0 ] - LAST_FRAME ];
 	int predX = (x4 * 4) >> subX;
 	int predY = (y4 * 4) >> subY;
@@ -3889,7 +3889,7 @@ int decode::inverseDCTArrayPermutation(int T[],int n)
 {
     int copyT[1 << n];
     // 复制数组 T 到 copyT
-	memcpy(copyT,T,1 << n);
+	memcpy(copyT,T,(1 << n) * sizeof(int));
     // 根据位翻转函数 brev(n, i) 重新排列数组 T
     for (int i = 0; i < (1 << n); i++) {
         T[i] = copyT[brev(n, i)];
@@ -4060,7 +4060,7 @@ void decode::inverseADSTInputArrayPermutation(int* T, int n) {
     int n0 = 1 << n;
     int copyT[n0]; 
 
-	memcpy(copyT,T,n0);
+	memcpy(copyT,T,n0 * sizeof(int));
     // 执行位逆序排列
     for (int i = 0; i < n0; i++) {
 		 //区分奇偶
@@ -4073,7 +4073,7 @@ void decode::inverseADSTInputArrayPermutation(int* T, int n) {
 void decode::inverseADSTOutputArrayPermutation(int* T, int n) {
     int n0 = 1 << n;
     int copyT[n0];
-	memcpy(copyT,T,n0);
+	memcpy(copyT,T,n0* sizeof(int));
     // 执行输出数组排列
     for (int i = 0; i < n0; i++) {
         int a = ((i >> 3) & 1);
@@ -5593,7 +5593,7 @@ void decode::addNoiseSynthesis(int GrainMin,int GrainMax,int * RandomRegister,in
 	}
 }
 //7.19
-void decode::motionFieldMotionVectorStorage(PartitionData *p_data, AV1DecodeContext *av1Ctx){
+void decode::motionFieldMotionVectorStorage(AV1DecodeContext *av1Ctx){
 	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
 	for (int row = 0; row < frameHdr->MiRows; row++) {

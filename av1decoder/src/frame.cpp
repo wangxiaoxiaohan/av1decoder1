@@ -1109,7 +1109,145 @@ int frame::read_global_param(frameHeader *frameHdr,bitSt *bs, int type,int ref,i
 	frameHdr->global_motion_params.gm_params[ref][idx] = (decode_signed_subexp_with_ref(bs, -mx, mx + 1, r )<< precDiff) + round;
 }
 
+void frame::initDecodeContext(AV1DecodeContext *av1Ctx){
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
+	sequenceHeader *seqHdr = av1Ctx->seqHdr;
+	av1Ctx->BlockDecoded = new tArray8(3,frameHdr->MiCols,frameHdr->MiRows);
+	for(int i = 0 ; i < 3 ; i ++){
+		av1Ctx->LoopfilterTxSizes[i] = new uint8_t*[frameHdr->MiCols];
+		for(int j  = 0 ; j < frameHdr->MiRows ; j ++){
+			av1Ctx->LoopfilterTxSizes[i][j] = new uint8_t[frameHdr->MiCols];
+		}
+		av1Ctx->AboveLevelContext[i] = new int[frameHdr->MiCols];
+		av1Ctx->AboveDcContext[i] = new int[frameHdr->MiCols];
+		av1Ctx->LeftLevelContext[i] = new int[frameHdr->MiRows];
+		av1Ctx->LeftDcContext[i] = new int[frameHdr->MiRows];
+	}
+	av1Ctx->AboveSegPredContext = new uint8_t[frameHdr->MiCols];
+	av1Ctx->LeftSegPredContext = new uint8_t[frameHdr->MiRows];
 
+	av1Ctx->YModes = new uint8_t*[frameHdr->MiRows];
+	av1Ctx->UVModes = new uint8_t*[frameHdr->MiRows];
+	av1Ctx->CompGroupIdxs = new uint8_t*[frameHdr->MiRows];
+	av1Ctx->CompoundIdxs = new uint8_t*[frameHdr->MiRows];
+	av1Ctx->MiSizes = new uint8_t*[frameHdr->MiRows];
+	av1Ctx->SegmentIds = new uint8_t*[frameHdr->MiRows]  ;
+	av1Ctx->SkipModes = new uint8_t*[frameHdr->MiRows];
+	av1Ctx->Skips = new uint8_t*[frameHdr->MiRows];
+	av1Ctx->TxSizes = new uint8_t*[frameHdr->MiRows];
+	av1Ctx->InterTxSizes = new uint8_t*[frameHdr->MiRows];
+	for(int i = 0 ; i < frameHdr->MiRows ; i++){
+		av1Ctx->YModes[i] = new uint8_t[frameHdr->MiCols];
+		av1Ctx->UVModes[i] = new uint8_t[frameHdr->MiCols];
+		av1Ctx->CompGroupIdxs[i] = new uint8_t[frameHdr->MiCols];
+		av1Ctx->CompoundIdxs[i] = new uint8_t[frameHdr->MiCols];
+		av1Ctx->MiSizes[i] = new uint8_t[frameHdr->MiCols];
+		av1Ctx->SegmentIds[i] = new uint8_t[frameHdr->MiCols];
+		av1Ctx->SkipModes[i] = new uint8_t[frameHdr->MiCols];
+		av1Ctx->Skips[i] = new uint8_t[frameHdr->MiCols];
+		av1Ctx->TxSizes[i] = new uint8_t[frameHdr->MiCols];
+		av1Ctx->InterTxSizes[i] = new uint8_t[frameHdr->MiCols];
+	}
+
+	for(int i = 0 ; i < 2 ; i++){
+		av1Ctx->RefFrames[i] = new uint8_t*[frameHdr->MiRows];
+		av1Ctx->InterpFilters[i] = new uint8_t*[frameHdr->MiRows];
+		av1Ctx->PaletteSizes[i] = new uint8_t*[frameHdr->MiRows];
+		for(int j = 0 ; j < frameHdr->MiRows ; j++){
+			av1Ctx->RefFrames[i][j] = new uint8_t[frameHdr->MiCols];
+			av1Ctx->InterpFilters[i][j] = new uint8_t[frameHdr->MiCols];
+			av1Ctx->PaletteSizes[i][j] = new uint8_t[frameHdr->MiCols];
+		}
+	}
+	for(int i = 0 ; i < 4 ; i++){
+		av1Ctx->DeltaLFs[i] = new uint8_t*[frameHdr->MiRows];
+		for(int j = 0 ; j < frameHdr->MiRows ; j++){
+			av1Ctx->DeltaLFs[i][j] = new uint8_t[frameHdr->MiCols];
+		}
+	}
+	for(int i = 0 ; i < 2 ; i++){
+		av1Ctx->PaletteColors[i] = new uint8_t**[frameHdr->MiRows];
+		for(int j = 0 ; j < frameHdr->MiRows ; j++){
+			av1Ctx->PaletteColors[i][j] = new uint8_t*[frameHdr->MiCols];
+			for(int k = 0 ; k < frameHdr->MiCols ; k++){
+				//av1Ctx->PaletteColors[i][j][j] = new uint8_t[b_data.PaletteSizeY];
+				//PaletteColors 的内存 在 decode_block 中分配
+			}
+		}
+	}
+}
+void frame::releaseContext(AV1DecodeContext *av1Ctx){
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
+	sequenceHeader *seqHdr = av1Ctx->seqHdr;
+	delete av1Ctx->BlockDecoded;
+	for(int i = 0 ; i < 3 ; i ++){
+		
+		for(int j  = 0 ; j < frameHdr->MiRows ; j ++){
+			delete[] av1Ctx->LoopfilterTxSizes[i][j];
+		}
+		delete[]  av1Ctx->LoopfilterTxSizes[i];
+
+		delete[]  av1Ctx->AboveLevelContext[i];
+		delete[]  av1Ctx->AboveDcContext[i];
+		delete[]  av1Ctx->LeftLevelContext[i];
+		delete[]  av1Ctx->LeftDcContext[i];
+	}
+	delete [] av1Ctx->AboveSegPredContext;
+	delete [] av1Ctx->LeftSegPredContext;
+		
+
+	for(int i = 0 ; i < frameHdr->MiRows ; i++){
+		delete [] av1Ctx->YModes[i] ;
+		delete []av1Ctx->UVModes[i] ;
+		delete []av1Ctx->CompGroupIdxs[i] ;
+		delete []av1Ctx->CompoundIdxs[i] ;
+		delete []av1Ctx->MiSizes[i] ;
+		delete []av1Ctx->SegmentIds[i] ;
+		delete []av1Ctx->SkipModes[i] ;
+		delete []av1Ctx->Skips[i] ;
+		delete []av1Ctx->TxSizes[i]  ;
+		delete []av1Ctx->InterTxSizes[i] ;
+	}
+	delete [] av1Ctx->YModes ;
+	delete [] av1Ctx->UVModes ;
+	delete [] av1Ctx->CompGroupIdxs ;
+	delete [] av1Ctx->CompoundIdxs ;
+	delete [] av1Ctx->MiSizes ;
+	delete [] av1Ctx->SegmentIds ;
+	delete [] av1Ctx->SkipModes ;
+	delete [] av1Ctx->Skips ;
+	delete [] av1Ctx->TxSizes ;
+	delete [] av1Ctx->InterTxSizes ;
+
+	for(int i = 0 ; i < 2 ; i++){
+		for(int j = 0 ; j < frameHdr->MiRows ; j++){
+			delete [] av1Ctx->RefFrames[i][j] ;
+			delete [] av1Ctx->InterpFilters[i][j] ;
+			delete [] av1Ctx->PaletteSizes[i][j] ;
+		}
+		delete [] av1Ctx->RefFrames[i] ;
+		delete [] av1Ctx->InterpFilters[i];
+		delete [] av1Ctx->PaletteSizes[i] ;	
+	}
+	for(int i = 0 ; i < 4 ; i++){
+		for(int j = 0 ; j < frameHdr->MiRows ; j++){
+			delete [] av1Ctx->DeltaLFs[i][j] ;
+		}
+		delete [] av1Ctx->DeltaLFs[i] ;
+	}
+
+	for(int i = 0 ; i < 2 ; i++){
+		for(int j = 0 ; j < frameHdr->MiRows ; j++){
+			for(int k = 0 ; k < frameHdr->MiCols ; k++){
+				delete [] av1Ctx->PaletteColors[i][j][j] ;
+			}
+			delete [] av1Ctx->PaletteColors[i][j] ;
+		}
+		delete [] av1Ctx->PaletteColors[i];
+	}
+	
+
+}
 int frame::decodeFrame(int sz, bitSt *bs, AV1DecodeContext *av1Ctx){
 	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	sequenceHeader *seqHdr = av1Ctx->seqHdr;
@@ -1192,7 +1330,7 @@ int frame::decode_tile(SymbolContext *sbCtx,bitSt *bs,AV1DecodeContext *av1Ctx){
 			clear_cdef( r, c ,av1Ctx);
 			clear_block_decoded_flags( r, c, sbSize4 ,av1Ctx);
 			read_lr(sbCtx,bs, r, c, sbSize,av1Ctx );
-			PartitionData p_data;
+			//PartitionData p_data;
 			decode_partition(sbCtx, bs ,r, c, sbSize ,av1Ctx);
 		}
 	}
@@ -1371,6 +1509,7 @@ int frame::decode_block(SymbolContext *sbCtx,bitSt *bs,int r,int c,int subSize, 
 	b_data.MiRow = r;
 	b_data.MiCol = c;
 	b_data.MiSize = subSize;
+	//block 宽高 4*4 为单位
 	int bw4 = Num_4x4_Blocks_Wide[subSize];
 	int bh4 = Num_4x4_Blocks_High[subSize];	
 	if (bh4 == 1 && seqHdr->color_config.subsampling_y && (b_data.MiRow & 1) == 0)
@@ -1442,6 +1581,10 @@ int frame::decode_block(SymbolContext *sbCtx,bitSt *bs,int r,int c,int subSize, 
 			av1Ctx->SegmentIds[r + y][c + x] = b_data.segment_id;
 			av1Ctx->PaletteSizes[0][r + y][c + x] = b_data.PaletteSizeY;
 			av1Ctx->PaletteSizes[1][r + y][c + x] = b_data.PaletteSizeUV ;
+			
+			//在 releasecontext中释放
+			av1Ctx->PaletteColors[0][r + y][c + x] = new uint8_t[b_data.PaletteSizeY];
+			av1Ctx->PaletteColors[1][r + y][c + x] = new uint8_t[b_data.PaletteSizeUV];
 			for (int i = 0; i < b_data.PaletteSizeY; i++)
 				av1Ctx->PaletteColors[0][r + y][c + x][i] = b_data.palette_colors_y[i] ;
 			for (int i = 0; i < b_data.PaletteSizeUV; i++)
@@ -1838,11 +1981,11 @@ int frame::assign_mv(int isCompound,SymbolContext *sbCtx,bitSt *bs,BlockData *b_
 		{
 
 			//PredMv[0] = b_data->RefStackMv[0][0];
-			 memcpy(PredMv[0], av1Ctx->currentFrame->mvpCtx->RefStackMv[0][0], sizeof(PredMv[0]));
+			 memcpy(PredMv[0], av1Ctx->currentFrame->mvpCtx->RefStackMv[0][0], sizeof(int) * 2);
 			if (PredMv[0][0] == 0 && PredMv[0][1] == 0)
 			{
 				//PredMv[0] = b_data->RefStackMv[1][0];
-				memcpy(PredMv[0], av1Ctx->currentFrame->mvpCtx->RefStackMv[1][0], sizeof(PredMv[0]));
+				memcpy(PredMv[0], av1Ctx->currentFrame->mvpCtx->RefStackMv[1][0], sizeof(int) * 2);
 			}
 			if (PredMv[0][0] == 0 && PredMv[0][1] == 0)
 			{
@@ -1864,7 +2007,7 @@ int frame::assign_mv(int isCompound,SymbolContext *sbCtx,bitSt *bs,BlockData *b_
 		{
 
 			//PredMv[i] = b_data->GlobalMvs[i];
-			memcpy(PredMv[i], av1Ctx->currentFrame->mvpCtx->GlobalMvs[i], sizeof(PredMv[0]));
+			memcpy(PredMv[i], av1Ctx->currentFrame->mvpCtx->GlobalMvs[i], sizeof(int) * 2);
 		}
 		else
 		{
@@ -1872,7 +2015,7 @@ int frame::assign_mv(int isCompound,SymbolContext *sbCtx,bitSt *bs,BlockData *b_
 			if (compMode == NEWMV && av1Ctx->currentFrame->mvpCtx->NumMvFound <= 1) 
 				pos = 0 ;
 			//PredMv[i] = b_data->RefStackMv[pos][i];
-			memcpy(PredMv[i], av1Ctx->currentFrame->mvpCtx->RefStackMv[pos][i], sizeof(PredMv[i]));
+			memcpy(PredMv[i], av1Ctx->currentFrame->mvpCtx->RefStackMv[pos][i], sizeof(int) * 2);
 		}
 		uint8_t diffMv[2];
 		if (compMode == NEWMV)
@@ -1898,7 +2041,7 @@ int frame::assign_mv(int isCompound,SymbolContext *sbCtx,bitSt *bs,BlockData *b_
 		else
 		{
 			//b_data->Mv[i] = PredMv[i];
-			memcpy(b_data->Mv[i], PredMv[i], sizeof(b_data->Mv[i]));
+			memcpy(b_data->Mv[i], PredMv[i], sizeof(int) * 2);
 		}
 	}
 }

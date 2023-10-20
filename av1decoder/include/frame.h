@@ -11,6 +11,9 @@ class frame{
 public:
     frame();
 	~frame();
+	void initDecodeContext(AV1DecodeContext *av1Ctx);
+	void releaseContext(AV1DecodeContext *av1Ctx);
+	
 	int readTileInfo(bitSt *bs,sequenceHeader *seqHdr,frameHeader *frameHdr);
 	int readQuantizationParams(bitSt *bs,sequenceHeader *seqHdr,frameHeader *frameHdr);
 	int read_interpolation_filter(bitSt *bs,frameHeader *frameHdr);
