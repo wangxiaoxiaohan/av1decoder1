@@ -241,6 +241,7 @@ int obu::parseSequenceHeader(int sz,bitSt *bs,sequenceHeader *out)
 
 int obu::parseObuInfo(FILE* fp,int fileOffset,uint8_t *buf,int sz,AV1DecodeContext *ctx)
 {
+
 	uint64_t total_size = 1;//obu header + exention header + obu_size
 
 	uint8_t obu_header_buf;
@@ -310,10 +311,10 @@ int obu::parseObuInfo(FILE* fp,int fileOffset,uint8_t *buf,int sz,AV1DecodeConte
 	
 	switch(obu_header.obu_type){
 		case OBU_SEQUENCE_HEADER:
-			if(!ctx->seqHdr){
+			if(!(&ctx->seqHdr)){
 				printf("ctx->seqHdr is null\n");
 			}
-			parseSequenceHeader(sz,&bs,ctx->seqHdr);
+			parseSequenceHeader(sz,&bs,&ctx->seqHdr);
 			break;
 		case OBU_TEMPORAL_DELIMITER:
 			ctx->SeenFrameHeader = 0;
@@ -323,11 +324,14 @@ int obu::parseObuInfo(FILE* fp,int fileOffset,uint8_t *buf,int sz,AV1DecodeConte
 		case OBU_FRAME_HEADER:
 			if(ctx->SeenFrameHeader == 1){
 				//copy frame header...
-				//may no need to do anything... frameheader store in context;
 				break;
 			} else {
 				ctx->SeenFrameHeader = 1;
-				frame::Instance().parseFrameHeader(sz, &bs,ctx, ctx->seqHdr, &obu_header,&ctx->currentFrame->frameHdr);
+				frame::Instance().parseFrameHeader(sz, &bs,ctx, &ctx->seqHdr, &obu_header,&ctx->frameHdr);
+				if(ctx->decAlloced == 0){
+					frame::Instance().allocDecodeContext(ctx);
+					ctx->decAlloced == 1;
+				}
 				BitStreamAlign(&bs);//byte alignment
 				if ( ctx->currentFrame->frameHdr.show_existing_frame ) {
 					decode_frame_wrapup();
@@ -338,8 +342,8 @@ int obu::parseObuInfo(FILE* fp,int fileOffset,uint8_t *buf,int sz,AV1DecodeConte
 				}
 			}
 			if(obu_header.obu_type == OBU_FRAME_HEADER) break;
-		case OBU_TILE_GROUP:
 			frame::Instance().decodeFrame(sz - bs.offset, &bs,ctx);
+		case OBU_TILE_GROUP:
 			break;
 		case OBU_METADATA:
 			//metadata_obu( )
@@ -349,7 +353,6 @@ int obu::parseObuInfo(FILE* fp,int fileOffset,uint8_t *buf,int sz,AV1DecodeConte
 			break;
 		case OBU_PADDING:
 			//padding_obu( )
-
 			break;
 		default:
 			//reserved obu()

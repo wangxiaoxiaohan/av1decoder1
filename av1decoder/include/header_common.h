@@ -101,11 +101,11 @@ typedef struct sequenceHeader{
 }sequenceHeader;
 
 typedef struct sizeInfo{
-	uint32_t FrameWidth; // 
-	uint32_t FrameHeight;
+	uint16_t FrameWidth; // 
+	uint16_t FrameHeight;
 	uint8_t use_superres;
 	uint16_t SuperresDenom; //use to coded_denom calculate;
-	uint32_t UpscaledWidth;
+	uint16_t UpscaledWidth;
 	uint8_t render_and_frame_size_different;
 	uint16_t RenderWidth;
 	uint16_t RenderHeight;
@@ -370,7 +370,7 @@ typedef struct BlockData{
 
 	uint8_t TxSize;
 	uint8_t **TxTypes; //4 * 4 块为单位
-	uint8_t Mv[2][2]; //[ref][x/y]
+	int Mv[2][2]; //[ref][x/y]
 
  	//帧内预测
 	Array8 *AboveRow; //块上边的样本，是像素值
@@ -393,10 +393,11 @@ typedef struct BlockData{
 
 }BlockData;
 typedef struct LoopRestorationContext{
-	int *****LrWiener;
-	uint8_t ***LrFrame;
-	int ***LrType;
-	int ***LrSgrSet;
+	
+	uint8_t **LrFrame[3];
+	int ****LrWiener[3];
+	int **LrType[3];
+	int **LrSgrSet[3];
 	int ****LrSgrXqd;	
 	int PlaneEndX;   // 当前平面的水平边界
 	int PlaneEndY;   // 当前平面的垂直边界
@@ -404,10 +405,10 @@ typedef struct LoopRestorationContext{
 	int StripeEndY;   // 当前条带的结束y坐标
 };
 typedef struct FilmGainContext{
-	int **LumaGrain;
-	int **CbGrain;
-	int **CrGrain;
-	int **ScalingLut;
+	int LumaGrain[73][82];
+	int CbGrain[38][44]; //负值？？？
+	int CrGrain[38][44];
+	int ScalingLut[3][256];
 };
 typedef struct MFMVContext{
 	int **MfRefFrames;
@@ -417,13 +418,13 @@ typedef struct MVPredContext{
 	uint8_t NewMvContext;
 	uint8_t RefMvContext;
 	uint8_t RefMvIdx;
-	uint8_t *RefIdCount;
-	uint8_t *RefDiffCount;
-	int ***RefIdMvs;
-	int ***RefDiffMvs;
+	uint8_t RefIdCount[2];
+	uint8_t RefDiffCount[2]; //参考帧的
+	int RefIdMvs[2][16][2];
+	int RefDiffMvs[2][16][2];
 	int RefStackMv[8][2][2]; //consturct by find_mv_stack
-	int *WeightStack;
-	int *DrlCtxStack;
+	int WeightStack[MAX_REF_MV_STACK_SIZE];
+	int DrlCtxStack[MAX_REF_MV_STACK_SIZE];
 
 	int GlobalMvs[2][2];
 	uint8_t NumMvFound;
@@ -441,14 +442,14 @@ typedef struct FrameContext{
 	sizeInfo si;
 	frameHeader frameHdr;
 	CDFArrays cdfCtx;
-	uint16_t ***CurrFrame;
-	uint16_t ***CdefFrame;
-	uint16_t ***UpscaledCdefFrame;
-	uint16_t ***UpscaledCurrFrame;
+	uint16_t **CurrFrame[3];
+	uint16_t **CdefFrame[3];
+	uint16_t **UpscaledCdefFrame[3];
+	uint16_t **UpscaledCurrFrame[3];
 	LoopRestorationContext *lrCtx;
-	int **OutY;
-	int **OutU;
-	int **OutV;
+	uint16_t **OutY;
+	uint16_t **OutU;
+	uint16_t **OutV;
 	FilmGainContext *fgCtx;
 	MFMVContext *mfmvCtx;
 	MVPredContext *mvpCtx;
@@ -458,10 +459,12 @@ typedef struct FrameContext{
 typedef struct AV1DecodeContext{
 	FrameContext 	*ref_frames[NUM_REF_FRAMES];
 	FrameContext *currentFrame;
-	sequenceHeader *seqHdr;
+	sequenceHeader seqHdr;
+	frameHeader frameHdr;
+	int decAlloced;
+
     CDFArrays cdfCtxs[NUM_REF_FRAMES];
 	
-	CDFArrays tileSavedCdf;
 	CDFArrays tileSavedCdf;
 
 	uint8_t	RefValid[NUM_REF_FRAMES];
@@ -532,7 +535,7 @@ typedef struct AV1DecodeContext{
 
 
 	uint8_t SeenFrameHeader;
-	int ***MotionFieldMvs[8]; 
+	int ***MotionFieldMvs[8];// [ref][y][x][x/y] 
 	uint8_t **PrevSegmentIds;
 	
 }AV1DecodeContext;

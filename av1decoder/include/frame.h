@@ -11,8 +11,11 @@ class frame{
 public:
     frame();
 	~frame();
-	void initDecodeContext(AV1DecodeContext *av1Ctx);
-	void releaseContext(AV1DecodeContext *av1Ctx);
+	void allocDecodeContext(AV1DecodeContext *av1Ctx);
+	void allocFrameContext(frameHeader *frameHdr,FrameContext **fCtx);
+
+	void releaseDecodeContext(AV1DecodeContext *av1Ctx);
+	void releaseFrameContext(frameHeader *frameHdr,FrameContext *fCtx);
 	
 	int readTileInfo(bitSt *bs,sequenceHeader *seqHdr,frameHeader *frameHdr);
 	int readQuantizationParams(bitSt *bs,sequenceHeader *seqHdr,frameHeader *frameHdr);

@@ -405,7 +405,7 @@ int frame::parseFrameHeader(int sz, bitSt *bs, AV1DecodeContext *av1Ctx, sequenc
 int frame::mark_ref_frames(AV1DecodeContext *av1Ctx,int  idLen)
 {
 	int diffLen = av1Ctx->seqHdr->delta_frame_id_length;
-	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
+	frameHeader *frameHdr = &av1Ctx->frameHdr;
 	for (int i = 0; i < NUM_REF_FRAMES; i++)
 	{
 		if (frameHdr->current_frame_id > (1 << diffLen))
@@ -1109,9 +1109,51 @@ int frame::read_global_param(frameHeader *frameHdr,bitSt *bs, int type,int ref,i
 	frameHdr->global_motion_params.gm_params[ref][idx] = (decode_signed_subexp_with_ref(bs, -mx, mx + 1, r )<< precDiff) + round;
 }
 
-void frame::initDecodeContext(AV1DecodeContext *av1Ctx){
-	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
-	sequenceHeader *seqHdr = av1Ctx->seqHdr;
+void frame::allocDecodeContext(AV1DecodeContext *av1Ctx){
+	frameHeader *frameHdr = &av1Ctx->frameHdr;
+	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
+	
+	allocFrameContext(frameHdr,&av1Ctx->currentFrame);
+	for(int i = 0 ; i < NUM_REF_FRAMES ; i ++){
+		allocFrameContext(frameHdr,&av1Ctx->ref_frames[i]);
+	}
+
+	for(int i = 0 ; i < NUM_REF_FRAMES ; i ++){
+		for(int j = 0 ; j < 3 ; j ++){
+			av1Ctx->FrameStore[i][j] = new uint16_t*[frameHdr->si.FrameHeight];
+			for(int k = 0 ; k < frameHdr->si.FrameHeight ; k++){
+				av1Ctx->FrameStore[i][j][k] = new uint16_t[frameHdr->si.UpscaledWidth];
+			}
+		}
+	}
+	for(int i = 0 ; i < NUM_REF_FRAMES ; i ++){
+		av1Ctx->SavedRefFrames[i] = new uint8_t*[frameHdr->MiRows];
+		for(int j = 0 ; j < frameHdr->MiRows ; j++){
+			av1Ctx->SavedRefFrames[i][j] = new uint8_t[frameHdr->MiCols];
+		}
+	}
+	for(int i = 0 ; i < NUM_REF_FRAMES ; i ++){
+		av1Ctx->SavedMvs[i] = new int**[frameHdr->MiRows];
+		for(int j = 0 ; j < frameHdr->MiRows ; j++){
+			av1Ctx->SavedMvs[i][j] = new int*[frameHdr->MiCols];
+			for(int k = 0 ; k < frameHdr->MiCols ;k ++){
+				av1Ctx->SavedMvs[i][j][k] = new int[2];
+			}
+		}
+	}
+	for(int i = 0 ; i < NUM_REF_FRAMES ; i ++){
+		av1Ctx->SavedSegmentIds[i] = new uint8_t*[frameHdr->MiRows];
+		for(int j = 0 ; j < frameHdr->MiRows ; j++){
+			av1Ctx->SavedSegmentIds[i][j] = new uint8_t[frameHdr->MiCols];
+		}
+	}
+
+	av1Ctx->RefUpscaledWidth = new Array16(NUM_REF_FRAMES);
+	av1Ctx->RefFrameWidth = new Array16(NUM_REF_FRAMES);
+	av1Ctx->RefFrameHeight = new Array16(NUM_REF_FRAMES);
+	av1Ctx->RefRenderWidth = new Array16(NUM_REF_FRAMES);
+	av1Ctx->RefRenderHeight = new Array16(NUM_REF_FRAMES);
+
 	av1Ctx->BlockDecoded = new tArray8(3,frameHdr->MiCols,frameHdr->MiRows);
 	for(int i = 0 ; i < 3 ; i ++){
 		av1Ctx->LoopfilterTxSizes[i] = new uint8_t*[frameHdr->MiCols];
@@ -1175,10 +1217,76 @@ void frame::initDecodeContext(AV1DecodeContext *av1Ctx){
 			}
 		}
 	}
+	av1Ctx->Mvs = new int***[frameHdr->MiRows];
+	for(int i = 0 ; i < frameHdr->MiRows ; i++){
+		av1Ctx->Mvs[i] = new int**[frameHdr->MiCols];
+		for(int j = 0 ; j < frameHdr->MiCols ; j++){
+			av1Ctx->Mvs[i][j] = new int*[2];
+			for(int k  = 0 ; k < 2 ; k ++){
+				av1Ctx->Mvs[i][j][k] = new int[2];
+			}
+		}
+	}
+	for(int i  = 0 ; i < 8 ; i++){
+		av1Ctx->MotionFieldMvs[i] = new int**[frameHdr->MiRows >> 1];
+		for(int j = 0 ; j < frameHdr->MiRows >> 1; j++ ){
+			av1Ctx->MotionFieldMvs[i][j] = new int*[frameHdr->MiCols >> 1];
+			for(int k = 0 ; k < frameHdr->MiCols >> 1 ;k ++){
+				av1Ctx->MotionFieldMvs[i][j][k] = new int[2];
+			}
+		}
+	}
+	av1Ctx->PrevSegmentIds = new uint8_t*[frameHdr->MiRows];
+	for(int i  = 0 ; i < frameHdr->MiRows ; i++){
+		av1Ctx->PrevSegmentIds[i] = new uint8_t[frameHdr->MiCols];
+	}
+
 }
-void frame::releaseContext(AV1DecodeContext *av1Ctx){
-	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
-	sequenceHeader *seqHdr = av1Ctx->seqHdr;
+void frame::releaseDecodeContext(AV1DecodeContext *av1Ctx){
+	frameHeader *frameHdr = &av1Ctx->frameHdr;
+	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
+
+	releaseFrameContext(frameHdr,av1Ctx->currentFrame);
+	for(int i = 0 ; i < NUM_REF_FRAMES ; i ++){
+		releaseFrameContext(frameHdr,av1Ctx->ref_frames[i]);
+	}
+
+	for(int i = 0 ; i < NUM_REF_FRAMES ; i ++){
+		for(int j = 0 ; j < 3 ; j ++){
+			for(int k = 0 ; k < frameHdr->si.FrameHeight ; k++){
+				delete[]  av1Ctx->FrameStore[i][j][k];
+			}
+			delete[]  av1Ctx->FrameStore[i][j] ;
+		}
+	}
+	for(int i = 0 ; i < NUM_REF_FRAMES ; i ++){
+		for(int j = 0 ; j < frameHdr->MiRows ; j++){
+			delete[]  av1Ctx->SavedRefFrames[i][j] ;
+		}
+		delete[]  av1Ctx->SavedRefFrames[i];
+	}
+	for(int i = 0 ; i < NUM_REF_FRAMES ; i ++){
+		for(int j = 0 ; j < frameHdr->MiRows ; j++){
+			for(int k = 0 ; k < frameHdr->MiCols ;k ++){
+				delete[] av1Ctx->SavedMvs[i][j][k] ;
+			}
+			delete[]  av1Ctx->SavedMvs[i][j] ;
+		}
+		delete[]  av1Ctx->SavedMvs[i] ;
+	}
+	for(int i = 0 ; i < NUM_REF_FRAMES ; i ++){
+		for(int j = 0 ; j < frameHdr->MiRows ; j++){
+			delete[]  av1Ctx->SavedSegmentIds[i][j] ;
+		}
+		delete[] av1Ctx->SavedSegmentIds[i] ;
+	}
+	
+	delete av1Ctx->RefUpscaledWidth ;
+	delete av1Ctx->RefFrameWidth ;
+	delete av1Ctx->RefFrameHeight ;
+	delete av1Ctx->RefRenderWidth ;
+	delete av1Ctx->RefRenderHeight ;
+
 	delete av1Ctx->BlockDecoded;
 	for(int i = 0 ; i < 3 ; i ++){
 		
@@ -1246,11 +1354,215 @@ void frame::releaseContext(AV1DecodeContext *av1Ctx){
 		delete [] av1Ctx->PaletteColors[i];
 	}
 	
+	
+	for(int i = 0 ; i < frameHdr->MiRows ; i++){
+		
+		for(int j = 0 ; j < frameHdr->MiCols ; j++){
+			
+			for(int k  = 0 ; k < 2 ; k ++){
+				delete [] av1Ctx->Mvs[i][j][k];
+			}
+			delete [] av1Ctx->Mvs[i][j];
+		}
+		delete [] av1Ctx->Mvs[i];
+	}	
+	delete [] av1Ctx->Mvs ;
+
+	for(int i  = 0 ; i < 8 ; i++){
+		for(int j = 0 ; j < frameHdr->MiRows >> 1; j++ ){
+			for(int k = 0 ; k < frameHdr->MiCols >> 1 ;k ++){
+				delete [] av1Ctx->MotionFieldMvs[i][j][k];
+			}
+			delete [] av1Ctx->MotionFieldMvs[i][j];
+		}
+		delete [] av1Ctx->MotionFieldMvs[i] ;
+	}
+	
+	for(int i  = 0 ; i < frameHdr->MiRows ; i++){
+		delete []  av1Ctx->PrevSegmentIds[i];
+	}
+	delete [] av1Ctx->PrevSegmentIds;
+}
+//关于色度内存的分配还要再优化
+void frame::allocFrameContext(frameHeader *frameHdr ,FrameContext **fCtx){
+	*fCtx  = (FrameContext *)malloc(sizeof(FrameContext));
+	FrameContext *fc = *fCtx;
+	for(int i = 0 ; i < 3 ; i++){
+		fc->CurrFrame[i] = new uint16_t*[frameHdr->MiRows  * MI_SIZE];
+		fc->CdefFrame[i] = new uint16_t*[frameHdr->MiRows  * MI_SIZE];
+		fc->UpscaledCdefFrame[i] = new uint16_t*[frameHdr->MiRows  * MI_SIZE];
+		fc->UpscaledCurrFrame[i] = new uint16_t*[frameHdr->MiRows  * MI_SIZE];
+		for(int j = 0 ; j < frameHdr->MiRows * MI_SIZE; j++){
+			fc->CurrFrame[i][j] = new uint16_t[frameHdr->MiCols  * MI_SIZE];
+			fc->CdefFrame[i][j] = new uint16_t[frameHdr->MiCols  * MI_SIZE];
+			fc->UpscaledCdefFrame[i][j] = new uint16_t[frameHdr->MiCols  * MI_SIZE]; // 需要确定
+			fc->UpscaledCurrFrame[i][j] = new uint16_t[frameHdr->MiCols  * MI_SIZE];  // 需要确定
+		}
+	}
+//-------下面这几个内存大小(unit size维度)暂不确定
+	fc->lrCtx = (LoopRestorationContext *)malloc(sizeof(LoopRestorationContext));
+	for(int i = 0 ; i < 3 ; i ++){
+		fc->lrCtx->LrWiener[i]  = new int ***[frameHdr->MiRows];
+		for(int j = 0 ; j < frameHdr->MiRows; j++){
+			fc->lrCtx->LrWiener[i][j] = new int **[frameHdr->MiCols];
+			for(int k = 0 ; k < 2 ; k++){
+				fc->lrCtx->LrWiener[i][j][k] = new int *[2];
+				for(int m = 0 ; m < 3 ; m++){
+					fc->lrCtx->LrWiener[i][j][k][m] = new int[3];
+				}
+			}
+		}
+	}
+	for(int i = 0 ; i < 3 ; i++){
+		fc->lrCtx->LrFrame[i] = new uint8_t*[frameHdr->si.FrameHeight];
+		for(int j = 0 ; j < frameHdr->si.FrameHeight ; j++){
+			fc->lrCtx->LrFrame[i][j] =  new uint8_t[frameHdr->si.UpscaledWidth];
+		}
+	}
+	for(int i = 0 ; i < 3 ; i ++){
+		fc->lrCtx->LrType[i]  = new int *[frameHdr->MiRows];
+		for(int j = 0 ; j < frameHdr->MiRows; j++){
+			fc->lrCtx->LrType[i][j] = new int[frameHdr->MiCols];
+		}
+	}
+	for(int i = 0 ; i < 3 ; i ++){
+		fc->lrCtx->LrSgrSet[i]  = new int *[frameHdr->MiRows];
+		for(int j = 0 ; j < frameHdr->MiRows; j++){
+			fc->lrCtx->LrSgrSet[i][j] = new int[frameHdr->MiCols];
+		}
+	}
+	for(int i = 0 ; i < 3 ; i ++){
+		fc->lrCtx->LrSgrXqd[i]  = new int **[frameHdr->MiRows];
+		for(int j = 0 ; j < frameHdr->MiRows; j++){
+			fc->lrCtx->LrSgrXqd[i][j] = new int*[frameHdr->MiCols];
+			for(int k = 0 ; k < frameHdr->MiCols; k++){
+				fc->lrCtx->LrSgrXqd[i][j][k] = new int[2];
+			}
+		}
+	}
+
+	fc->OutY = new uint16_t*[frameHdr->si.FrameHeight];
+	for(int i = 0 ; i < frameHdr->si.FrameHeight ; i++){
+		fc->OutY[i] =  new uint16_t[frameHdr->si.UpscaledWidth];
+	}
+	//两个色度分量内存分配需要优化
+	fc->OutU = new uint16_t*[frameHdr->si.FrameHeight];
+	for(int i = 0 ; i < frameHdr->si.FrameHeight ; i++){
+		fc->OutU[i] =  new uint16_t[frameHdr->si.UpscaledWidth];
+	}
+	fc->OutV = new uint16_t*[frameHdr->si.FrameHeight];
+	for(int i = 0 ; i < frameHdr->si.FrameHeight ; i++){
+		fc->OutV[i] =  new uint16_t[frameHdr->si.UpscaledWidth];
+	}
+
+
+	fc->fgCtx = (FilmGainContext *)malloc(sizeof(FilmGainContext));	
+
+	fc->mfmvCtx = (MFMVContext *)malloc(sizeof(MFMVContext));
+	fc->mfmvCtx->MfRefFrames  = new int *[frameHdr->MiRows];
+	for(int i = 0 ; i < frameHdr->MiRows; i++){
+		fc->mfmvCtx->MfRefFrames[i] = new int[frameHdr->MiCols];
+	}
+
+	fc->mfmvCtx->MfMvs  = new int **[frameHdr->MiRows];
+	for(int i = 0 ; i < frameHdr->MiRows; i++){
+		fc->mfmvCtx->MfMvs[i] = new int*[frameHdr->MiCols];
+		for(int j = 0 ; j < frameHdr->MiRows; j++){
+			fc->mfmvCtx->MfMvs[i][j] = new int[2];
+		}
+	}
+
+	fc->mvpCtx = (MVPredContext *)malloc(sizeof(MVPredContext));	
 
 }
+void frame::releaseFrameContext(frameHeader *frameHdr ,FrameContext *fCtx){
+	
+	for(int i = 0 ; i < 3 ; i++){
+		for(int j = 0 ; j < frameHdr->MiRows * MI_SIZE; j++){
+			delete [] fCtx->CurrFrame[i][j];
+			delete [] fCtx->CdefFrame[i][j] ;
+			delete [] fCtx->UpscaledCdefFrame[i][j] ; 
+			delete [] fCtx->UpscaledCurrFrame[i][j] ;
+		}
+		delete [] fCtx->CurrFrame[i];
+		delete [] fCtx->CdefFrame[i] ;
+		delete [] fCtx->UpscaledCdefFrame[i] ;
+		delete [] fCtx->UpscaledCurrFrame[i] ;
+	}
+	for(int i = 0 ; i < 3 ; i++){	
+		for(int j = 0 ; j < frameHdr->si.FrameHeight ; j++){
+			delete [] fCtx->lrCtx->LrFrame[i][j] ;
+		}
+		delete [] fCtx->lrCtx->LrFrame[i] ;
+	}
+	for(int i = 0 ; i < 3 ; i ++){
+		for(int j = 0 ; j < frameHdr->MiRows; j++){
+			delete [] fCtx->lrCtx->LrType[i][j] ;
+		}
+		delete [] fCtx->lrCtx->LrType[i] ;
+	}
+	for(int i = 0 ; i < 3 ; i ++){
+		for(int j = 0 ; j < frameHdr->MiRows; j++){
+			delete [] fCtx->lrCtx->LrSgrSet[i][j];
+		}
+		delete [] fCtx->lrCtx->LrSgrSet[i];
+	}
+	for(int i = 0 ; i < 3 ; i ++){		
+		for(int j = 0 ; j < frameHdr->MiRows; j++){
+			for(int k = 0 ; k < frameHdr->MiCols; k++){
+				delete [] fCtx->lrCtx->LrSgrXqd[i][j][k] ;
+			}
+			delete [] fCtx->lrCtx->LrSgrXqd[i][j] ;
+		}
+		delete [] fCtx->lrCtx->LrSgrXqd[i] ;
+	}
+	delete fCtx->lrCtx;
+
+	
+	for(int i = 0 ; i < frameHdr->si.FrameHeight ; i++){
+		delete [] fCtx->OutY[i];
+	}
+	delete [] fCtx->OutY;
+	
+	for(int i = 0 ; i < frameHdr->si.FrameHeight ; i++){
+		delete [] fCtx->OutU[i] ;
+	}
+	delete [] fCtx->OutU ;
+
+	for(int i = 0 ; i < frameHdr->si.FrameHeight ; i++){
+		delete [] fCtx->OutV[i];
+	}
+	delete [] fCtx->OutV ;
+
+
+
+	delete fCtx->fgCtx;	
+	
+	
+	for(int i = 0 ; i < frameHdr->MiRows; i++){
+		delete [] fCtx->mfmvCtx->MfRefFrames[i] ;
+	}
+	delete [] fCtx->mfmvCtx->MfRefFrames  ;
+
+
+	for(int i = 0 ; i < frameHdr->MiRows; i++){
+		for(int j = 0 ; j < frameHdr->MiRows; j++){
+			delete [] fCtx->mfmvCtx->MfMvs[i][j];
+		}
+		delete [] fCtx->mfmvCtx->MfMvs[i] ;
+	}
+	delete [] fCtx->mfmvCtx->MfMvs ;
+	delete fCtx->mfmvCtx ;
+
+	delete fCtx->mvpCtx ;
+
+	delete fCtx ;
+}
+
 int frame::decodeFrame(int sz, bitSt *bs, AV1DecodeContext *av1Ctx){
-	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
-	sequenceHeader *seqHdr = av1Ctx->seqHdr;
+	frameHeader *frameHdr = &av1Ctx->frameHdr;
+
+	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
 
 	int NumTiles = frameHdr->tile_info.TileCols * frameHdr->tile_info.TileRows;
 	int tile_start_and_end_present_flag = 0;
@@ -1306,8 +1618,8 @@ int frame::decodeFrame(int sz, bitSt *bs, AV1DecodeContext *av1Ctx){
 
 }
 int frame::decode_tile(SymbolContext *sbCtx,bitSt *bs,AV1DecodeContext *av1Ctx){
-	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
-	sequenceHeader *seqHdr = av1Ctx->seqHdr;
+	frameHeader *frameHdr = &av1Ctx->frameHdr;
+	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
 
 	clear_above_context(av1Ctx );
 	for (int i = 0; i < FRAME_LF_COUNT; i++ )
@@ -1340,8 +1652,8 @@ int frame::decode_tile(SymbolContext *sbCtx,bitSt *bs,AV1DecodeContext *av1Ctx){
 int frame::decode_partition(SymbolContext *sbCtx,bitSt *bs,
 						int r,int c,int bSize, AV1DecodeContext *av1Ctx)
 {
-	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
-	sequenceHeader *seqHdr = av1Ctx->seqHdr;
+	frameHeader *frameHdr = &av1Ctx->frameHdr;
+	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
 
 	if (r >= frameHdr->MiRows || c >= frameHdr->MiCols)
 		return 0;
@@ -1501,8 +1813,8 @@ int frame::decode_partition(SymbolContext *sbCtx,bitSt *bs,
 
 int frame::decode_block(SymbolContext *sbCtx,bitSt *bs,int r,int c,int subSize, AV1DecodeContext *av1Ctx)
 {
-	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
-	sequenceHeader *seqHdr = av1Ctx->seqHdr;
+	frameHeader *frameHdr = &av1Ctx->frameHdr;
+	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
 
 	BlockData b_data;
 
@@ -1595,7 +1907,7 @@ int frame::decode_block(SymbolContext *sbCtx,bitSt *bs,int r,int c,int subSize, 
 	}
 }
 int frame::mode_info(SymbolContext *sbCtx,bitSt *bs,BlockData *b_data,AV1DecodeContext *av1Ctx){
-	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
+	frameHeader *frameHdr = &av1Ctx->frameHdr;
 	if ( frameHdr->FrameIsIntra ) 
 		intra_frame_mode_info(sbCtx,bs,b_data,av1Ctx );
 	else
@@ -1603,8 +1915,8 @@ int frame::mode_info(SymbolContext *sbCtx,bitSt *bs,BlockData *b_data,AV1DecodeC
 
 }
 int frame::intra_frame_mode_info(SymbolContext *sbCtx,bitSt *bs,BlockData *b_data,AV1DecodeContext *av1Ctx ){
-	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
-	sequenceHeader *seqHdr = av1Ctx->seqHdr;
+	frameHeader *frameHdr = &av1Ctx->frameHdr;
+	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
 	b_data->skip = 0 ;
 	if (frameHdr->segmentation_params.SegIdPreSkip){
 		//intra_segment_id();
@@ -1718,7 +2030,7 @@ int frame::intra_frame_mode_info(SymbolContext *sbCtx,bitSt *bs,BlockData *b_dat
 }
 int frame::inter_frame_mode_info(SymbolContext *sbCtx, bitSt *bs, BlockData *b_data, AV1DecodeContext *av1Ctx)
 {
-	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
+	frameHeader *frameHdr = &av1Ctx->frameHdr;
 	int use_intrabc = 0;
 	b_data->LeftRefFrame[0] = b_data->AvailL ? av1Ctx->RefFrames[b_data->MiRow][b_data->MiCol - 1][0] : INTRA_FRAME;
 	b_data->AboveRefFrame[0] = b_data->AvailU ? av1Ctx->RefFrames[b_data->MiRow - 1][b_data->MiCol][0] : INTRA_FRAME;
@@ -1799,7 +2111,7 @@ int frame::inter_frame_mode_info(SymbolContext *sbCtx, bitSt *bs, BlockData *b_d
 		intra_block_mode_info(sbCtx,bs,b_data,av1Ctx);
 }
 int frame::read_segment_id(SymbolContext *sbCtx,bitSt *bs,BlockData *b_data,AV1DecodeContext *av1Ctx){
-	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
+	frameHeader *frameHdr = &av1Ctx->frameHdr;
 	int prevUL,prevU,prevL;
 	if (b_data->AvailU && b_data->AvailL)
 		prevUL = av1Ctx->SegmentIds[b_data->MiRow - 1][b_data->MiCol - 1];
@@ -1843,8 +2155,8 @@ int frame::read_segment_id(SymbolContext *sbCtx,bitSt *bs,BlockData *b_data,AV1D
 	}
 }
 int frame::read_cdef(SymbolContext *sbCtx,bitSt *bs,BlockData *b_data,AV1DecodeContext *av1Ctx){
-	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
-	sequenceHeader *seqHdr = av1Ctx->seqHdr;
+	frameHeader *frameHdr = &av1Ctx->frameHdr;
+	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
 	if (b_data->skip || frameHdr->CodedLossless || !seqHdr->enable_cdef || frameHdr->allow_intrabc)
 	{
 		return;
@@ -1869,8 +2181,8 @@ int frame::read_cdef(SymbolContext *sbCtx,bitSt *bs,BlockData *b_data,AV1DecodeC
 }
 int frame::read_delta_qindex(SymbolContext *sbCtx,bitSt *bs,BlockData *b_data,AV1DecodeContext *av1Ctx)
 {
-	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
-	sequenceHeader *seqHdr = av1Ctx->seqHdr;
+	frameHeader *frameHdr = &av1Ctx->frameHdr;
+	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
 	int sbSize = seqHdr->use_128x128_superblock ? BLOCK_128X128 : BLOCK_64X64 ;
 	if (b_data->MiSize == sbSize && b_data->skip) 
 		return ;
@@ -1894,8 +2206,8 @@ int frame::read_delta_qindex(SymbolContext *sbCtx,bitSt *bs,BlockData *b_data,AV
 }
 int frame::read_delta_lf(SymbolContext *sbCtx,bitSt *bs,BlockData *b_data,AV1DecodeContext *av1Ctx)
 {
-	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
-	sequenceHeader *seqHdr = av1Ctx->seqHdr;
+	frameHeader *frameHdr = &av1Ctx->frameHdr;
+	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
 	int sbSize = seqHdr->use_128x128_superblock ? BLOCK_128X128 : BLOCK_64X64;
 
 	if ( b_data->MiSize == sbSize && b_data->skip )
@@ -1939,8 +2251,8 @@ int frame::read_delta_lf(SymbolContext *sbCtx,bitSt *bs,BlockData *b_data,AV1Dec
 }
 int frame::assign_mv(int isCompound,SymbolContext *sbCtx,bitSt *bs,BlockData *b_data,AV1DecodeContext *av1Ctx)
 {
-	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
-	sequenceHeader *seqHdr = av1Ctx->seqHdr;
+	frameHeader *frameHdr = &av1Ctx->frameHdr;
+	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
 	int compMode;
 	for (int i = 0; i < 1 + isCompound; i++)
 	{
@@ -2047,8 +2359,8 @@ int frame::assign_mv(int isCompound,SymbolContext *sbCtx,bitSt *bs,BlockData *b_
 }
 int frame::read_mv_component(int MvCtx,int comp,SymbolContext *sbCtx,bitSt *bs,BlockData *b_data,AV1DecodeContext *av1Ctx)
 {
-	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
-	sequenceHeader *seqHdr = av1Ctx->seqHdr;
+	frameHeader *frameHdr = &av1Ctx->frameHdr;
+	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
 
 	int mv_sign = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Mv_Sign[MvCtx][comp],3);//S()
 	int mv_class = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Mv_Class[MvCtx][comp],MV_CLASSES + 1);//S() 
@@ -2146,8 +2458,8 @@ int frame::read_cfl_alphas(SymbolContext *sbCtx,bitSt *bs,BlockData *b_data,AV1D
 int frame::palette_mode_info(SymbolContext *sbCtx,bitSt *bs,
 							BlockData *b_data,AV1DecodeContext *av1Ctx)
 {
-	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
-	sequenceHeader *seqHdr = av1Ctx->seqHdr;
+	frameHeader *frameHdr = &av1Ctx->frameHdr;
+	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
 	int bsizeCtx = Mi_Width_Log2[b_data->MiSize] + Mi_Height_Log2[b_data->MiSize] - 2;
 	int BitDepth = seqHdr->color_config.BitDepth;
 	int paletteBits;
@@ -2278,8 +2590,8 @@ int frame::palette_mode_info(SymbolContext *sbCtx,bitSt *bs,
 }
 int frame::filter_intra_mode_info(SymbolContext *sbCtx,bitSt *bs,BlockData *b_data,AV1DecodeContext *av1Ctx)
 {
-	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
-	sequenceHeader *seqHdr = av1Ctx->seqHdr;
+	frameHeader *frameHdr = &av1Ctx->frameHdr;
+	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
 	b_data->use_filter_intra = 0;
 	if (seqHdr->enable_filter_intra &&
 		b_data->YMode == DC_PRED && b_data->PaletteSizeY == 0 &&
@@ -2356,8 +2668,8 @@ int frame::get_palette_cache(int plane,BlockData *b_data,AV1DecodeContext *av1Ct
 }
 int frame::inter_segment_id(int preSkip,SymbolContext *sbCtx, bitSt *bs, BlockData *b_data, AV1DecodeContext *av1Ctx)
 {
-	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
-	sequenceHeader *seqHdr = av1Ctx->seqHdr;
+	frameHeader *frameHdr = &av1Ctx->frameHdr;
+	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
 	if (frameHdr->segmentation_params.segmentation_enabled)
 	{
 		//predictedSegmentId = get_segment_id();
@@ -2421,8 +2733,8 @@ int frame::inter_segment_id(int preSkip,SymbolContext *sbCtx, bitSt *bs, BlockDa
 }
 int frame::inter_block_mode_info(SymbolContext *sbCtx, bitSt *bs, BlockData *b_data, AV1DecodeContext *av1Ctx)
 {
-	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
-	sequenceHeader *seqHdr = av1Ctx->seqHdr;
+	frameHeader *frameHdr = &av1Ctx->frameHdr;
+	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
 	b_data->PaletteSizeY = 0;
 	b_data->PaletteSizeUV = 0;
 	read_ref_frames(sbCtx,bs,b_data,av1Ctx);
@@ -2552,8 +2864,8 @@ int frame::inter_block_mode_info(SymbolContext *sbCtx, bitSt *bs, BlockData *b_d
 }
 int frame::intra_block_mode_info(SymbolContext *sbCtx, bitSt *bs,BlockData *b_data, AV1DecodeContext *av1Ctx)
 {
-	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
-	sequenceHeader *seqHdr = av1Ctx->seqHdr;
+	frameHeader *frameHdr = &av1Ctx->frameHdr;
+	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
 
 	b_data->RefFrame[0] = INTRA_FRAME;
 	b_data->RefFrame[1] = NONE;
@@ -2598,7 +2910,7 @@ int frame::intra_block_mode_info(SymbolContext *sbCtx, bitSt *bs,BlockData *b_da
 }
 int frame::read_interintra_mode(int isCompound,SymbolContext *sbCtx,bitSt *bs,BlockData *b_data,AV1DecodeContext *av1Ctx)
 {
-	sequenceHeader *seqHdr = av1Ctx->seqHdr;
+	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
 	if (!b_data->skip_mode && seqHdr->enable_interintra_compound && !isCompound &&
 		b_data->MiSize >= BLOCK_8X8 && b_data->MiSize <= BLOCK_32X32)
 	{
@@ -2627,8 +2939,8 @@ int frame::read_interintra_mode(int isCompound,SymbolContext *sbCtx,bitSt *bs,Bl
 }
 int frame::read_motion_mode(int isCompound,SymbolContext *sbCtx,bitSt *bs,BlockData *b_data,AV1DecodeContext *av1Ctx)
 {
-	sequenceHeader *seqHdr = av1Ctx->seqHdr;
-	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
+	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
+	frameHeader *frameHdr = &av1Ctx->frameHdr;
 	if (b_data->skip_mode)
 	{
 		b_data->motion_mode = SIMPLE;
@@ -2674,8 +2986,8 @@ int frame::read_motion_mode(int isCompound,SymbolContext *sbCtx,bitSt *bs,BlockD
 }
 int frame::read_compound_type(int isCompound,SymbolContext *sbCtx,bitSt *bs,BlockData *b_data,AV1DecodeContext *av1Ctx)
 {
-	sequenceHeader *seqHdr = av1Ctx->seqHdr;
-	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
+	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
+	frameHeader *frameHdr = &av1Ctx->frameHdr;
 	b_data->comp_group_idx = 0;
 	b_data->compound_idx = 1;
 	if (b_data->skip_mode)
@@ -2772,7 +3084,7 @@ int frame::read_compound_type(int isCompound,SymbolContext *sbCtx,bitSt *bs,Bloc
 }
 int frame::read_ref_frames(SymbolContext *sbCtx, bitSt *bs, BlockData *b_data, AV1DecodeContext *av1Ctx)
 {
-	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
+	frameHeader *frameHdr = &av1Ctx->frameHdr;
 	if (b_data->skip_mode)
 	{
 		b_data->RefFrame[0] = frameHdr->SkipModeFrame[0];
@@ -3037,8 +3349,8 @@ int frame::read_ref_frames(SymbolContext *sbCtx, bitSt *bs, BlockData *b_data, A
 }
 int frame::palette_tokens(SymbolContext *sbCtx, bitSt *bs, BlockData *b_data, AV1DecodeContext *av1Ctx)
 {
-	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
-	sequenceHeader *seqHdr = av1Ctx->seqHdr;
+	frameHeader *frameHdr = &av1Ctx->frameHdr;
+	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
 	int blockHeight = Block_Height[b_data->MiSize];
 	int blockWidth = Block_Width[b_data->MiSize];
 	int onscreenHeight = Min(blockHeight, (frameHdr->MiRows - b_data->MiRow) * MI_SIZE);
@@ -3145,8 +3457,8 @@ int frame::palette_tokens(SymbolContext *sbCtx, bitSt *bs, BlockData *b_data, AV
 }
 int frame::read_block_tx_size(SymbolContext *sbCtx, bitSt *bs,BlockData *b_data, AV1DecodeContext *av1Ctx)
 {
-	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
-	sequenceHeader *seqHdr = av1Ctx->seqHdr;
+	frameHeader *frameHdr = &av1Ctx->frameHdr;
+	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
 	int bw4 = Num_4x4_Blocks_Wide[b_data->MiSize];
 	int bh4 = Num_4x4_Blocks_High[b_data->MiSize];
 	if (frameHdr->TxMode == TX_MODE_SELECT &&
@@ -3170,7 +3482,7 @@ int frame::read_block_tx_size(SymbolContext *sbCtx, bitSt *bs,BlockData *b_data,
 }
 int frame::read_var_tx_size(int row,int col,int txSz,int depth,SymbolContext *sbCtx, bitSt *bs,BlockData *b_data, AV1DecodeContext *av1Ctx)
 {
-	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
+	frameHeader *frameHdr = &av1Ctx->frameHdr;
 	if (row >= frameHdr->MiRows || col >= frameHdr->MiCols)
 		return;
 	int txfm_split;
@@ -3204,8 +3516,8 @@ int frame::read_var_tx_size(int row,int col,int txSz,int depth,SymbolContext *sb
 }
 int frame::read_tx_size(int allowSelect, SymbolContext *sbCtx, bitSt *bs,BlockData *b_data,AV1DecodeContext *av1Ctx)
 {
-	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
-	sequenceHeader *seqHdr = av1Ctx->seqHdr;
+	frameHeader *frameHdr = &av1Ctx->frameHdr;
+	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
 	if (b_data->Lossless)
 	{
 		b_data->TxSize = TX_4X4;
@@ -3266,7 +3578,7 @@ int frame::read_tx_size(int allowSelect, SymbolContext *sbCtx, bitSt *bs,BlockDa
 
 int frame::reset_block_context(int bw4, int bh4,SymbolContext *sbCtx, bitSt *bs,BlockData *b_data,AV1DecodeContext *av1Ctx)
 {
-	sequenceHeader *seqHdr = av1Ctx->seqHdr;
+	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
 	for (int plane = 0; plane < 1 + 2 * b_data->HasChroma; plane++)
 	{
 		int subX = (plane > 0) ? seqHdr->color_config.subsampling_x : 0;
@@ -3285,8 +3597,8 @@ int frame::reset_block_context(int bw4, int bh4,SymbolContext *sbCtx, bitSt *bs,
 }
 int frame::compute_prediction(SymbolContext *sbCtx, bitSt *bs,BlockData *b_data,AV1DecodeContext *av1Ctx)
 {
-	sequenceHeader *seqHdr = av1Ctx->seqHdr;
-	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
+	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
+	frameHeader *frameHdr = &av1Ctx->frameHdr;
 	int sbMask = seqHdr->use_128x128_superblock ? 31 : 15;
 	int subBlockMiRow = b_data->MiRow & sbMask;
 	int subBlockMiCol = b_data->MiCol & sbMask;
@@ -3318,10 +3630,10 @@ int frame::compute_prediction(SymbolContext *sbCtx, bitSt *bs,BlockData *b_data,
 			decode_instance->predict_intra(plane, baseX, baseY,
 						  plane == 0 ? b_data->AvailL : b_data->AvailLChroma,
 						  plane == 0 ? b_data->AvailU : b_data->AvailUChroma,
-						  av1Ctx->BlockDecoded[plane]
+						  (*av1Ctx->BlockDecoded)[plane]
 									  [(subBlockMiRow >> subY) - 1]
 									  [(subBlockMiCol >> subX) + num4x4W],
-						  av1Ctx->BlockDecoded[plane]
+						  (*av1Ctx->BlockDecoded)[plane]
 									  [(subBlockMiRow >> subY) + num4x4H]
 									  [(subBlockMiCol >> subX) - 1],
 						  mode,
@@ -3362,7 +3674,7 @@ int frame::compute_prediction(SymbolContext *sbCtx, bitSt *bs,BlockData *b_data,
 
 int frame::needs_interp_filter(BlockData *b_data,AV1DecodeContext *av1Ctx)
 {
-	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
+	frameHeader *frameHdr = &av1Ctx->frameHdr;
 	int large = (Min(Block_Width[b_data->MiSize], Block_Height[b_data->MiSize]) >= 8);
 	if (b_data->skip_mode || b_data->motion_mode == LOCALWARP)
 	{
@@ -3440,7 +3752,7 @@ int frame::get_palette_color_context(uint8_t **colorMap,int r,int c,int n,BlockD
 
 int frame::clear_block_decoded_flags(int r, int c, int sbSize4, AV1DecodeContext *av1Ctx)
 {
-	sequenceHeader *seqHdr = av1Ctx->seqHdr;
+	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
 	for (int plane = 0; plane < seqHdr->color_config.NumPlanes; plane++)
 	{
 		int subX = (plane > 0) ? seqHdr->color_config.subsampling_x : 0;
@@ -3462,7 +3774,7 @@ int frame::clear_block_decoded_flags(int r, int c, int sbSize4, AV1DecodeContext
 }
 int frame::clear_cdef(int r, int c,AV1DecodeContext *av1Ctx)
 {
-	sequenceHeader *seqHdr = av1Ctx->seqHdr;
+	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
 	av1Ctx->currentFrame->cdef_idx[r][c] = -1;
 	if (seqHdr->use_128x128_superblock)
 	{
@@ -3475,8 +3787,8 @@ int frame::clear_cdef(int r, int c,AV1DecodeContext *av1Ctx)
 int frame::read_lr(SymbolContext *sbCtx, bitSt *bs,int r,int c, int bSize,
 			AV1DecodeContext *av1Ctx)
 {
-	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
-	sequenceHeader *seqHdr = av1Ctx->seqHdr;
+	frameHeader *frameHdr = &av1Ctx->frameHdr;
+	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
 	if (frameHdr->allow_intrabc)
 	{
 		return;
@@ -3522,8 +3834,8 @@ int frame::read_lr(SymbolContext *sbCtx, bitSt *bs,int r,int c, int bSize,
 int frame::read_lr_unit(SymbolContext *sbCtx, bitSt *bs,int plane,int unitRow,int unitCol,
 					AV1DecodeContext  *av1Ctx)
 {
-	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
-	sequenceHeader *seqHdr = av1Ctx->seqHdr;
+	frameHeader *frameHdr = &av1Ctx->frameHdr;
+	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
 	int restoration_type;
 	if (frameHdr->lr_params.FrameRestorationType[plane] == RESTORE_WIENER)
 	{
@@ -3597,13 +3909,15 @@ int frame::read_lr_unit(SymbolContext *sbCtx, bitSt *bs,int plane,int unitRow,in
 }
 int frame::clear_above_context(AV1DecodeContext  *av1Ctx)
 {
-	memset(av1Ctx->AboveLevelContext,0,);
-	memset(av1Ctx->AboveDcContext,0,);
-	memset(av1Ctx->AboveSegPredContext,0,);
+	frameHeader *frameHdr = &av1Ctx->frameHdr;
+	memset(av1Ctx->AboveLevelContext,0,frameHdr->MiCols * sizeof(int));
+	memset(av1Ctx->AboveDcContext,0,frameHdr->MiCols * sizeof(int));
+	memset(av1Ctx->AboveSegPredContext,0,frameHdr->MiCols * sizeof(int));
 }
 int frame::clear_left_context(AV1DecodeContext  *av1Ctx)
 {
-	memset(av1Ctx->LeftLevelContext,0,);
-	memset(av1Ctx->LeftDcContext,0,);
-	memset(av1Ctx->LeftSegPredContext,0,);
+	frameHeader *frameHdr = &av1Ctx->frameHdr;
+	memset(av1Ctx->LeftLevelContext,0,frameHdr->MiRows * sizeof(int));
+	memset(av1Ctx->LeftDcContext,0,frameHdr->MiRows * sizeof(int));
+	memset(av1Ctx->LeftSegPredContext,0,frameHdr->MiRows * sizeof(int));
 }
