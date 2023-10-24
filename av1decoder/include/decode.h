@@ -1,3 +1,5 @@
+#ifndef _DECODE_
+#define _DECODE_
 #include "header_common.h"
 #include "cdf.h"
 #include "segmentation.h"
@@ -51,7 +53,6 @@ public:
 				BlockData *b_data,AV1DecodeContext *av1Ctx);
 	
 	int temporal_scan(int isCompound,BlockData *b_data,AV1DecodeContext *av1Ctx);
-	int extra_search(int isCompound);
 	int setup_global_mv(int refList,int *mv,
 								 BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int lower_mv_precision(AV1DecodeContext *av1Ctx,int *candMv);
@@ -74,7 +75,6 @@ public:
 	int predict_intra(int plane,int x,int y,int haveLeft,int haveAbove,
 				int haveAboveRight,int haveBelowLeft,int mode,int log2W,int log2H,
 				BlockData *b_data,AV1DecodeContext *av1Ctx);
-	int predict_chroma_from_luma(int plane, int startX, int startY, int txSz);
 	int coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx,bitSt *bs,
 							 BlockData *b_data, AV1DecodeContext *av1Ctx);
 	int transform_type(int x4,int  y4,int txSz,SymbolContext *sbCtx,bitSt *bs,
@@ -110,15 +110,12 @@ public:
 	int motionVectorScaling(int plane, int refIdx, int x, int y, int mv[2],
 								int *startX,int *startY, int *stepX,int *stepY, AV1DecodeContext *av1Ctx);
 	int blockWarp(int useWarp,int plane,int refList,int x,int y,
-						int i8,int j8,int w,int h,uint8_t **pred,int LocalWarpParams[6],AV1DecodeContext *av1Ctx);
-	int setupShear(int *warpParams,int *warpValid,int *alpha,int *beta,int *gamma,int *delta);
-	int blockWarp(int useWarp,int plane,int refList,int x,int y,
 						int i8,int j8,int w,int h,uint8_t **pred,int LocalWarpParams[6],
 						BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int block_inter_prediction(int plane, int refIdx, int x, int y, int xStep, int yStep, 
 							int w, int h, int candRow, int candCol,uint8_t **pred,
 							BlockData *b_data,AV1DecodeContext *av1Ctx);
-	int wedgeMask(int w,int h,BlockData *b_data,AV1DecodeContext *av1Ctx);
+	int wedgeMask(int WMW,int WMH,BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int intraModeVariantMask(int w, int h,BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int differenceWeightMask(uint8_t ***preds, int w, int h,BlockData *b_data,  AV1DecodeContext *av1Ctx);
 	int distanceWeights(int candRow,int candCol,int *FwdWeight,int *BckWeight,  
@@ -213,3 +210,5 @@ private :
 	Symbol *sb;
 	segmentation *seg_instance;
 };
+
+#endif

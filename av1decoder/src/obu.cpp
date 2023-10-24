@@ -1,6 +1,7 @@
 #include "obu.h"
-#include "assert.h"
+#include "passert.h"
 #include "frame.h"
+#include "decode.h"
 
 obu::obu()
 {
@@ -9,7 +10,7 @@ obu::obu()
 }
 void initSequenceHeader(sequenceHeader *out)
 {
-	ASSERT(out != NULL);
+	ASSERT(out);
 	
 }
 int obu::parseSequenceHeader(int sz,bitSt *bs,sequenceHeader *out)
@@ -328,13 +329,14 @@ int obu::parseObuInfo(FILE* fp,int fileOffset,uint8_t *buf,int sz,AV1DecodeConte
 			} else {
 				ctx->SeenFrameHeader = 1;
 				frame::Instance().parseFrameHeader(sz, &bs,ctx, &ctx->seqHdr, &obu_header,&ctx->frameHdr);
+				//先假设分辨率不会变
 				if(ctx->decAlloced == 0){
 					frame::Instance().allocDecodeContext(ctx);
 					ctx->decAlloced == 1;
 				}
 				BitStreamAlign(&bs);//byte alignment
 				if ( ctx->currentFrame->frameHdr.show_existing_frame ) {
-					decode_frame_wrapup();
+					decode::Instance().decode_frame_wrapup(ctx);
 					ctx->SeenFrameHeader = 0;
 				} else {
 					//TileNum = 0;

@@ -2,6 +2,7 @@
 #define _COMMON_HEADER_
 
 #include "common.h"
+#include "cdf.h"
 typedef struct obuHeader{
 	uint8_t obu_type;
 	uint8_t obu_extension_flag;

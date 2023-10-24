@@ -664,7 +664,7 @@ int decode::find_mv_stack(int isCompound,SymbolContext *sbCtx, bitSt *bs,
 	Sorting(0,numNearest,isCompound,av1Ctx);
 	Sorting(numNearest,av1Ctx->currentFrame->mvpCtx->NumMvFound,isCompound,av1Ctx);
 	if(av1Ctx->currentFrame->mvpCtx->NumMvFound < 2){
-		extra_search(isCompound);
+		extra_search(isCompound,b_data,av1Ctx);
 	}
 	context_and_clamping(isCompound,numNew,b_data,av1Ctx);
 
@@ -713,7 +713,7 @@ int decode::setup_global_mv(int refList,int *mv,
 int decode::lower_mv_precision(AV1DecodeContext *av1Ctx,int *candMv){
 	frameHeader *frameHdr = &av1Ctx->frameHdr;
 	if(frameHdr->allow_high_precision_mv == 1)
-		return;
+		return ERROR_CODE;
 	for(int idx =0 ; idx < 2 ;idx ++){	
 		if ( frameHdr->force_integer_mv ) {
 			int a = Abs( candMv[ idx ] );
@@ -797,7 +797,7 @@ int decode::add_ref_mv_candidate(int mvRow,int  mvCol,int  isCompound,int weight
 								BlockData *b_data,AV1DecodeContext *av1Ctx){
 	frameHeader *frameHdr = &av1Ctx->frameHdr;
 	if(av1Ctx->IsInters[ mvRow ][ mvCol ] == 0){
-		return;
+		return ERROR_CODE;
 	}
 	if(isCompound == 0){
 		for(int candList = 0 ;candList < 2; candList ++){
@@ -822,7 +822,6 @@ int decode::search_stack(int mvRow,int mvCol,int candList,int weight,
 	frameHeader *frameHdr = &av1Ctx->frameHdr;
 	int candMode = av1Ctx->YModes[ mvRow ][ mvCol ];
 	int candSize = av1Ctx->MiSizes[ mvRow ][ mvCol ];
-	int candMode;
 	int candMv[2];
 	int large =  Min( Block_Width[ candSize ],Block_Height[ candSize ] ) >= 8;
 	if(( candMode == GLOBALMV && candMode == GLOBAL_GLOBALMV) && 
@@ -938,7 +937,7 @@ int decode::temporal_scan(int isCompound,BlockData *b_data,AV1DecodeContext *av1
 			add_tpl_ref_mv(deltaRow, deltaCol, isCompound,b_data,av1Ctx);
 		}
 	}
-	const uint8_t tplSamplePos[3][2] = {
+	const int8_t tplSamplePos[3][2] = {
 		{ bh4, -2 }, { bh4, bw4 }, { bh4 - 2, bw4 }
 	};
 
@@ -982,7 +981,7 @@ int decode::add_tpl_ref_mv(int deltaRow, int deltaCol, int isCompound,BlockData 
 		//int candMv[2] = av1Ctx->MotionFieldMvs[b_data->RefFrame[0]][y8][x8];
 		memcpy(candMv,av1Ctx->MotionFieldMvs[b_data->RefFrame[0]][y8][x8],2 * sizeof(int));
 		if (candMv[0] == -1 << 15)
-			return;
+			return ERROR_CODE;
 		lower_mv_precision(av1Ctx,candMv);
 		if (deltaRow == 0 && deltaCol == 0)
 		{
@@ -1018,12 +1017,12 @@ int decode::add_tpl_ref_mv(int deltaRow, int deltaCol, int isCompound,BlockData 
 		int candMv0[2];
 		memcpy(candMv0,av1Ctx->MotionFieldMvs[b_data->RefFrame[0]][y8][x8],2 * sizeof(int)); 
 		if (candMv0[0] == -1 << 15)
-			return;
+			return ERROR_CODE;
 		//int candMv1[2] = av1Ctx->MotionFieldMvs[b_data->RefFrame[1]][y8][x8];
 		int candMv1[2] ;
 		memcpy(candMv1,av1Ctx->MotionFieldMvs[b_data->RefFrame[1]][y8][x8],2 * sizeof(int)); 
 		if (candMv1[0] == -1 << 15)
-			return;
+			return ERROR_CODE;
 		lower_mv_precision(av1Ctx,candMv0);
 		lower_mv_precision(av1Ctx,candMv1);
 		if (deltaRow == 0 && deltaCol == 0)
@@ -1102,8 +1101,8 @@ int decode::extra_search(int isCompound, BlockData *b_data, AV1DecodeContext *av
 	}
 	int w4 = Min(16, Num_4x4_Blocks_Wide[b_data->MiSize]);
 	int h4 = Min(16, Num_4x4_Blocks_High[b_data->MiSize]);
-	int w4 = Min(w4, frameHdr->MiCols - b_data->MiCol);
-	int h4 = Min(h4, frameHdr->MiRows - b_data->MiRow);
+	w4 = Min(w4, frameHdr->MiCols - b_data->MiCol);
+	h4 = Min(h4, frameHdr->MiRows - b_data->MiRow);
 	int num4x4 = Min(w4, h4);
 	//The first pass searches the row above, the second searches the column to the left.
 	for (int pass = 0; pass < 2; pass++)
@@ -1491,25 +1490,25 @@ int decode::find_warp_samples(SymbolContext *sbCtx,bitSt *bs,
 int decode::add_sample(int deltaRow,int deltaCol,
 				BlockData *b_data,AV1DecodeContext *av1Ctx){
     if (av1Ctx->currentFrame->mvpCtx->NumSamplesScanned >= LEAST_SQUARES_SAMPLES_MAX) {
-        return; 
+        return ERROR_CODE; 
     }
 
     int mvRow = b_data->MiRow + deltaRow;
     int mvCol = b_data->MiCol + deltaCol;
 
     if (!is_inside(mvRow, mvCol,av1Ctx->MiColStart,av1Ctx->MiColEnd,av1Ctx->MiRowStart,av1Ctx->MiRowEnd)) {
-        return; 
+        return ERROR_CODE; 
     }
 		//has not been written for this frame 是否被写了  到底该怎么写 还要想想
     if (av1Ctx->RefFrames[mvRow][mvCol][0]  == 0) {
-        return; 
+        return ERROR_CODE; 
     }
 
     if (av1Ctx->RefFrames[mvRow][mvCol][0] != b_data->RefFrame[0]) 
-        return; 
+        return ERROR_CODE; 
 
     if (av1Ctx->RefFrames[mvRow][mvCol][1] != NONE) {
-        return; 
+        return ERROR_CODE; 
     }
 
     int candSz = av1Ctx->MiSizes[mvRow][mvCol];
@@ -1528,7 +1527,7 @@ int decode::add_sample(int deltaRow,int deltaCol,
 
 
     if (valid == 0 && av1Ctx->currentFrame->mvpCtx->NumSamplesScanned > 1) {
-        return;
+        return ERROR_CODE;
     }
 
     b_data->CandList[av1Ctx->currentFrame->mvpCtx->NumSamples][0] = midY * 8;
@@ -1629,7 +1628,7 @@ int decode::transform_tree(int startX, int startY,int w,int h,SymbolContext *sbC
 	int maxY = frameHdr->MiRows * MI_SIZE;
 	if (startX >= maxX || startY >= maxY)
 	{
-		return;
+		return ERROR_CODE;
 	}
 	int row = startY >> MI_SIZE_LOG2;
 	int col = startX >> MI_SIZE_LOG2;
@@ -1682,7 +1681,7 @@ int decode::transform_block(int plane,int baseX,int baseY,int txSz,int x,int y,S
 	int maxY = (frameHdr->MiRows * MI_SIZE) >> subY;
 	if (startX >= maxX || startY >= maxY)
 	{
-		return;
+		return ERROR_CODE;
 	}
 	if (!b_data->is_inter)
 	{
@@ -1713,7 +1712,7 @@ int decode::transform_block(int plane,int baseX,int baseY,int txSz,int x,int y,S
 						mode,log2W, log2H, b_data,av1Ctx);
 			if (isCfl)
 			{
-				predict_chroma_from_luma(plane, startX, startY, txSz);
+				predict_chroma_from_luma(plane, startX, startY, txSz,b_data,av1Ctx);
 			}
 		}
 		if (plane == 0)
@@ -2141,7 +2140,7 @@ int decode::transform_type(int x4,int  y4,int txSz,SymbolContext *sbCtx,bitSt *b
 	int TxType;
 	if (set > 0 &&
 		(frameHdr->segmentation_params.segmentation_enabled ? 
-			seg_instance->get_qindex(1, b_data->segment_id,frameHdr) : frameHdr->quantization_params.base_q_idx) > 0)
+			seg_instance->get_qindex(1, b_data->segment_id,frameHdr,av1Ctx->CurrentQIndex) : frameHdr->quantization_params.base_q_idx) > 0)
 	{
 		uint16_t *cdf;
 		int size;
@@ -2338,7 +2337,7 @@ int decode::predict_intra(int plane,int x,int y,int haveLeft,int haveAbove,
 	}
 	(*b_data->LeftCol)[ -1 ] = (*b_data->AboveRow)[ -1 ];
 
-	uint8_t **pred;
+	uint8_t pred[w][h];//内存大小需要确认
 	if(plane == 0 && b_data->use_filter_intra){
 		recursiveIntraPrdiction(w,h,pred,b_data,av1Ctx);
 	}else if( is_directional_mode( mode ) ){
@@ -2357,7 +2356,7 @@ int decode::predict_intra(int plane,int x,int y,int haveLeft,int haveAbove,
 	}
 }
 //7.11.2.2
-void basicIntraPrediction(int w, int h, uint8_t** pred,BlockData *b_data) {
+void decode::basicIntraPrediction(int w, int h, uint8_t** pred,BlockData *b_data) {
 
     // Perform intra prediction
     for (int i = 0; i < h; i++) {
@@ -2531,12 +2530,12 @@ int decode::directionalIntraPrediction(int plane,int x,int y,int haveLeft,int ha
 			for (int j = 0; j < w; j++) {
 				int idx, base, shift;
 				
-				int idx = (j << 6) - (i + 1) * dx;
+				idx = (j << 6) - (i + 1) * dx;
 				
-				int base = idx >> (6 - upsampleAbove);
+				base = idx >> (6 - upsampleAbove);
 				
 				if (base >= -(1 << upsampleAbove)) {
-					int shift = ((idx << upsampleAbove) >> 1) & 0x1F;
+					shift = ((idx << upsampleAbove) >> 1) & 0x1F;
 
 					pred[i][j] = Round2((*b_data->AboveRow)[base] * (32 - shift) + (*b_data->AboveRow)[base + 1] * shift, 5);
 				} else {
@@ -2937,7 +2936,7 @@ int decode::intraEdgeUpsample(int numPx,int dir,BlockData *b_data,AV1DecodeConte
 }
 int decode::intraEdgeFilter(int sz, int strength, int left,BlockData *b_data){
     if (strength == 0) {
-        return; 
+        return ERROR_CODE; 
     }
 
     int edge[sz]; 
@@ -3186,7 +3185,7 @@ int decode::warpEstimation(int **CandList, int LocalWarpParams[6], int *LocalVal
     
     if (det == 0) {
         *LocalValid = 0;
-        return;
+        return ERROR_CODE;
     }
 
     int divShift = 0;
@@ -3415,7 +3414,7 @@ int decode::block_inter_prediction(int plane, int refIdx, int x, int y, int xSte
     }
 }
 //7.11.3.11
-int decode::wedgeMask(int w,int h,BlockData *b_data,AV1DecodeContext *av1Ctx){
+int decode::wedgeMask(int WMW,int WMH,BlockData *b_data,AV1DecodeContext *av1Ctx){
 	int w, h,shift, sum, avg, flipSign, msk;
     w = MASK_MASTER_SIZE;
 	h = MASK_MASTER_SIZE;
@@ -3472,8 +3471,8 @@ int decode::wedgeMask(int w,int h,BlockData *b_data,AV1DecodeContext *av1Ctx){
             }
         }
     }
-	for (int  i = 0; i < h; i++ ) {
-		for (int  j = 0; j < w; j++ ) {
+	for (int  i = 0; i < WMW; i++ ) {
+		for (int  j = 0; j < WMH; j++ ) {
 			b_data->Mask[ i ][ j ] = WedgeMasks[ b_data->MiSize ][ b_data->wedge_sign ][ b_data->wedge_index ][ i ][ j ];
 		}
 	}
@@ -3804,7 +3803,7 @@ int decode::get_dc_quant(int plane,BlockData *b_data,AV1DecodeContext *av1Ctx) {
 	frameHeader *frameHdr = &av1Ctx->frameHdr;
 	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
     
-    int qindex = seg_instance->get_qindex(0, b_data->segment_id,frameHdr);
+    int qindex = seg_instance->get_qindex(0, b_data->segment_id,frameHdr,av1Ctx->CurrentQIndex);
     if (plane == 0) {
         return dc_q(qindex + frameHdr->quantization_params.DeltaQYDc,seqHdr->color_config.BitDepth);
     } else if (plane == 1) {
@@ -3818,7 +3817,7 @@ int decode::get_dc_quant(int plane,BlockData *b_data,AV1DecodeContext *av1Ctx) {
 int decode::get_ac_quant(int plane,BlockData *b_data,AV1DecodeContext *av1Ctx) {
 	frameHeader *frameHdr = &av1Ctx->frameHdr;
 	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
-    int qindex = seg_instance->get_qindex(0, b_data->segment_id,frameHdr);
+    int qindex = seg_instance->get_qindex(0, b_data->segment_id,frameHdr,av1Ctx->CurrentQIndex);
     
     if (plane == 0) {
         return ac_q(qindex,seqHdr->color_config.BitDepth);
@@ -4398,7 +4397,7 @@ void decode::edgeLoopFilter(int plane, int pass, int row, int col,AV1DecodeConte
 	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
     int subX, subY, dx, dy, x, y, onScreen, xP, yP, prevRow, prevCol;
     int isBlockEdge, isTxEdge, applyFilter;
-    int lvl, limit, blimit, thresh;
+
 
     // Derive subX and subY
     if (plane == 0) {

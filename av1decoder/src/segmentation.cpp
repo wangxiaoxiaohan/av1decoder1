@@ -1,18 +1,18 @@
 #include "segmentation.h"
 
-int segmentation::get_qindex(int ignoreDeltaQ, int segmentId,frameHeader *frameHdr){
+int segmentation::get_qindex(int ignoreDeltaQ, int segmentId,frameHeader *frameHdr,int CurrentQIndex){
 
     if (seg_feature_active_idx(segmentId, SEG_LVL_ALT_Q,frameHdr) == 1) {
-        int data = frameHdr->FeatureData[segmentId][SEG_LVL_ALT_Q];
+        int data = frameHdr->segmentation_params.FeatureData[segmentId][SEG_LVL_ALT_Q];
         int qindex = frameHdr->quantization_params.base_q_idx + data;
         
-        if (ignoreDeltaQ == 0 && delta_q_present == 1) {
+        if (ignoreDeltaQ == 0 && frameHdr->delta_q_params.delta_q_present == 1) {
             qindex = CurrentQIndex + data;
         }
         
         return Clip3(0, 255, qindex);
     } else {
-        if (ignoreDeltaQ == 0 && delta_q_present == 1) {
+        if (ignoreDeltaQ == 0 && frameHdr->delta_q_params.delta_q_present == 1) {
             return CurrentQIndex;
         } else {
             return frameHdr->quantization_params.base_q_idx;

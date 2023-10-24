@@ -2,142 +2,7 @@
 #include "header_common.h"
 #include "bitstream.h"
 #include <string.h>
-int copyCdf(CDFArrays *dst,CDFArrays *src,AV1DecodeContext *av1Ctx){
-   	memcpy(dst->Intra_Frame_Y_Mode,src->Intra_Frame_Y_Mode,sizeof(Default_Intra_Frame_Y_Mode_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Y_Mode,src->Y_Mode,sizeof(Default_Y_Mode_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Uv_Mode_Cfl_Not_Allowed,src->Uv_Mode_Cfl_Not_Allowed, sizeof(Default_Uv_Mode_Cfl_Not_Allowed_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Uv_Mode_Cfl_Allowed,src->Uv_Mode_Cfl_Allowed ,sizeof(Default_Uv_Mode_Cfl_Allowed_Cdf)/sizeof(uint16_t));
 
-    memcpy(dst->Angle_Delta,src->Angle_Delta,sizeof(Default_Angle_Delta_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Intrabc,src->Intrabc,sizeof(Default_Intrabc_Cdf)/sizeof(uint16_t));
-
-    memcpy(dst->Partition_W8,src->Partition_W8,sizeof(Default_Partition_W8_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Partition_W16,src->Partition_W16 ,sizeof(Default_Partition_W16_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Partition_W32,src->Partition_W32 ,sizeof(Default_Partition_W32_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Partition_W64,src->Partition_W64 ,sizeof(Default_Partition_W64_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Partition_W128,src->Partition_W128 ,sizeof(Default_Partition_W128_Cdf)/sizeof(uint16_t));
-
-    memcpy(dst->Tx_8x8,src->Tx_8x8,sizeof(Default_Tx_8x8_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Tx_16x16,src->Tx_16x16,sizeof(Default_Tx_16x16_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Tx_32x32,src->Tx_32x32,sizeof(Default_Tx_32x32_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Tx_64x64,src->Tx_64x64,sizeof(Default_Tx_64x64_Cdf)/sizeof(uint16_t));
-
-    memcpy(dst->Txfm_Split,src->Txfm_Split,sizeof(Default_Txfm_Split_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Filter_Intra_Mode,src->Filter_Intra_Mode,sizeof(Default_Filter_Intra_Mode_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Filter_Intra,src->Filter_Intra,sizeof(Default_Filter_Intra_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Segment_Id,src->Segment_Id,sizeof(Default_Segment_Id_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Segment_Id_Predicted,src->Segment_Id_Predicted,sizeof(Default_Segment_Id_Predicted_Cdf)/sizeof(uint16_t));
-    for(int i = 0 ; i < MV_CONTEXTS ; i++){
-        for(int j = 0 ; i < 2 ; j++){
-            memcpy(dst->Mv_Class0_Hp[i][j],src->Mv_Class0_Hp[i][j],sizeof(Default_Mv_Class0_Hp_Cdf)/sizeof(uint16_t));
-            memcpy(dst->Mv_Hp[i][j],src->Mv_Hp[i][j],sizeof(Default_Mv_Hp_Cdf)/sizeof(uint16_t));
-            memcpy(dst->Mv_Sign[i][j],src->Mv_Sign[i][j],sizeof(Default_Mv_Sign_Cdf)/sizeof(uint16_t));
-            memcpy(dst->Mv_Bit[i][j],src->Mv_Bit[i][j],sizeof(Default_Mv_Bit_Cdf)/sizeof(uint16_t));
-            memcpy(dst->Mv_Class0_Bit[i][j],src->Mv_Class0_Bit[i][j],sizeof(Default_Mv_Class0_Bit_Cdf)/sizeof(uint16_t));
-        }
-    }
-    memcpy(dst->New_Mv,src->New_Mv,sizeof(Default_New_Mv_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Zero_Mv,src->Zero_Mv,sizeof(Default_Zero_Mv_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Ref_Mv,src->Ref_Mv,sizeof(Default_Ref_Mv_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Drl_Mode,src->Drl_Mode,sizeof(Default_Drl_Mode_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Is_Inter,src->Is_Inter,sizeof(Default_Is_Inter_Cdf)/sizeof(uint16_t));
-
-    memcpy(dst->Is_Inter,src->Is_Inter,sizeof(Default_Is_Inter_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Comp_Mode,src->Comp_Mode,sizeof(Default_Comp_Mode_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Skip_Mode,src->Skip_Mode,sizeof(Default_Skip_Mode_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Skip,src->Skip,sizeof(Default_Skip_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Comp_Ref,src->Comp_Ref,sizeof(Default_Comp_Ref_Cdf)/sizeof(uint16_t));
-
-    memcpy(dst->Comp_Bwd_Ref,src->Comp_Bwd_Ref,sizeof(Default_Comp_Bwd_Ref_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Single_Ref,src->Single_Ref,sizeof(Default_Single_Ref_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Compound_Mode,src->Compound_Mode,sizeof(Default_Compound_Mode_Cdf)/sizeof(uint16_t));
-
-    memcpy(dst->Interp_Filter,src->Interp_Filter,sizeof(Default_Interp_Filter_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Motion_Mode,src->Motion_Mode,sizeof(Default_Motion_Mode_Cdf)/sizeof(uint16_t));
-
-    for(int i = 0 ; i < MV_CONTEXTS ; i++){
-        memcpy(dst->Mv_Joint[i],src->Mv_Joint[i],sizeof(Default_Mv_Joint_Cdf)/sizeof(uint16_t));
-        memcpy(dst->Mv_Class[i],src->Mv_Class[i],sizeof(Default_Mv_Class_Cdf)/sizeof(uint16_t));
-        memcpy(dst->Mv_Class0_Fr[i],src->Mv_Class0_Fr[i],sizeof(Default_Mv_Class0_Fr_Cdf)/sizeof(uint16_t));
-        memcpy(dst->Mv_Fr[i],src->Mv_Fr[i],sizeof(Default_Mv_Fr_Cdf)/sizeof(uint16_t));
-    }
-    memcpy(dst->Palette_Y_Size,src->Palette_Y_Size,sizeof(Default_Palette_Y_Size_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Palette_Uv_Size,src->Palette_Uv_Size,sizeof(Default_Palette_Uv_Size_Cdf)/sizeof(uint16_t));
-
-    memcpy(dst->Palette_Size_2_Y_Color,src->Palette_Size_2_Y_Color,sizeof(Default_Palette_Size_2_Y_Color_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Palette_Size_3_Y_Color,src->Palette_Size_3_Y_Color,sizeof(Default_Palette_Size_3_Y_Color_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Palette_Size_4_Y_Color,src->Palette_Size_4_Y_Color,sizeof(Default_Palette_Size_4_Y_Color_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Palette_Size_5_Y_Color,src->Palette_Size_5_Y_Color,sizeof(Default_Palette_Size_5_Y_Color_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Palette_Size_6_Y_Color,src->Palette_Size_6_Y_Color,sizeof(Default_Palette_Size_6_Y_Color_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Palette_Size_7_Y_Color,src->Palette_Size_7_Y_Color,sizeof(Default_Palette_Size_7_Y_Color_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Palette_Size_8_Y_Color,src->Palette_Size_8_Y_Color,sizeof(Default_Palette_Size_8_Y_Color_Cdf)/sizeof(uint16_t));
-
-
-    memcpy(dst->Palette_Size_2_Uv_Color,src->Palette_Size_2_Uv_Color,sizeof(Default_Palette_Size_2_Uv_Color_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Palette_Size_3_Uv_Color,src->Palette_Size_3_Uv_Color,sizeof(Default_Palette_Size_3_Uv_Color_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Palette_Size_4_Uv_Color,src->Palette_Size_4_Uv_Color,sizeof(Default_Palette_Size_4_Uv_Color_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Palette_Size_5_Uv_Color,src->Palette_Size_5_Uv_Color,sizeof(Default_Palette_Size_5_Uv_Color_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Palette_Size_6_Uv_Color,src->Palette_Size_6_Uv_Color,sizeof(Default_Palette_Size_6_Uv_Color_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Palette_Size_7_Uv_Color,src->Palette_Size_7_Uv_Color,sizeof(Default_Palette_Size_7_Uv_Color_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Palette_Size_8_Uv_Color,src->Palette_Size_8_Uv_Color,sizeof(Default_Palette_Size_8_Uv_Color_Cdf)/sizeof(uint16_t));
-
-    memcpy(dst->Delta_Q,src->Delta_Q,sizeof(Default_Delta_Q_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Delta_Lf,src->Delta_Lf,sizeof(Default_Delta_Lf_Cdf)/sizeof(uint16_t));
-
-    for(int i = 0 ; i < FRAME_LF_COUNT ; i++)
-        memcpy(dst->Delta_Lf_Muti[i],src->Delta_Lf_Muti[i],sizeof(Default_Delta_Lf_Cdf)/sizeof(uint16_t));
-
-    memcpy(dst->Intra_Tx_Type_Set1,src->Intra_Tx_Type_Set1,sizeof(Default_Intra_Tx_Type_Set1_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Intra_Tx_Type_Set2,src->Intra_Tx_Type_Set2,sizeof(Default_Intra_Tx_Type_Set2_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Inter_Tx_Type_Set1,src->Inter_Tx_Type_Set1,sizeof(Default_Inter_Tx_Type_Set1_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Inter_Tx_Type_Set2,src->Inter_Tx_Type_Set2,sizeof(Default_Inter_Tx_Type_Set2_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Inter_Tx_Type_Set3,src->Inter_Tx_Type_Set3,sizeof(Default_Inter_Tx_Type_Set3_Cdf)/sizeof(uint16_t));
-
-    memcpy(dst->Compound_Idx,src->Compound_Idx,sizeof(Default_Compound_Idx_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Comp_Group_Idx,src->Comp_Group_Idx,sizeof(Default_Comp_Group_Idx_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Compound_Type,src->Compound_Type,sizeof(Default_Compound_Type_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Inter_Intra,src->Inter_Intra,sizeof(Default_Inter_Intra_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Inter_Intra_Mode,src->Inter_Intra_Mode,sizeof(Default_Inter_Intra_Mode_Cdf)/sizeof(uint16_t));
-
-    memcpy(dst->Wedge_Index,src->Wedge_Index,sizeof(Default_Wedge_Index_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Wedge_Inter_Intra,src->Wedge_Inter_Intra,sizeof(Default_Wedge_Inter_Intra_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Use_Obmc,src->Use_Obmc,sizeof(Default_Use_Obmc_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Comp_Ref_Type,src->Comp_Ref_Type,sizeof(Default_Comp_Ref_Type_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Uni_Comp_Ref,src->Uni_Comp_Ref,sizeof(Default_Uni_Comp_Ref_Cdf)/sizeof(uint16_t));
-
-    memcpy(dst->Cfl_Sign,src->Cfl_Sign,sizeof(Default_Cfl_Sign_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Cfl_Alpha,src->Cfl_Alpha,sizeof(Default_Cfl_Alpha_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Use_Wiener,src->Use_Wiener,sizeof(Default_Use_Wiener_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Use_Sgrproj,src->Use_Sgrproj,sizeof(Default_Use_Sgrproj_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Restoration_Type,src->Restoration_Type,sizeof(Default_Restoration_Type_Cdf)/sizeof(uint16_t));
-
-	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
-    int idx;
-    if(frameHdr->quantization_params.base_q_idx == 20){
-        idx = 0 ;
-    }else if(frameHdr->quantization_params.base_q_idx < 60){
-        idx = 1 ;
-    }else if(frameHdr->quantization_params.base_q_idx < 120){
-        idx = 2 ;
-    }else{
-        idx = 3 ;
-    }
-    memcpy(dst->Txb_Skip,src->Txb_Skip,sizeof(Default_Txb_Skip_Cdf[idx])/sizeof(uint16_t));
-    memcpy(dst->Eob_Pt_16,src->Eob_Pt_16,sizeof(Default_Eob_Pt_16_Cdf[idx])/sizeof(uint16_t));
-    memcpy(dst->Eob_Pt_32,src->Eob_Pt_32,sizeof(Default_Eob_Pt_32_Cdf[idx])/sizeof(uint16_t));
-    memcpy(dst->Eob_Pt_64,src->Eob_Pt_64,sizeof(Default_Eob_Pt_64_Cdf[idx])/sizeof(uint16_t));
-    memcpy(dst->Eob_Pt_128,src->Eob_Pt_128,sizeof(Default_Eob_Pt_128_Cdf[idx])/sizeof(uint16_t));
-    memcpy(dst->Eob_Pt_256,src->Eob_Pt_256,sizeof(Default_Eob_Pt_256_Cdf[idx])/sizeof(uint16_t));
-    memcpy(dst->Eob_Pt_512,src->Eob_Pt_512,sizeof(Default_Eob_Pt_512_Cdf[idx])/sizeof(uint16_t));
-    memcpy(dst->Eob_Pt_1024,src->Eob_Pt_1024,sizeof(Default_Eob_Pt_1024_Cdf[idx])/sizeof(uint16_t));
-
-    memcpy(dst->Eob_Extra,src->Eob_Extra,sizeof(Default_Eob_Pt_32_Cdf[idx])/sizeof(uint16_t));
-    memcpy(dst->Dc_Sign,src->Dc_Sign,sizeof(Default_Eob_Pt_32_Cdf[idx])/sizeof(uint16_t));
-    memcpy(dst->Coeff_Base_Eob,src->Coeff_Base_Eob,sizeof(Default_Y_Mode_Cdf[idx])/sizeof(uint16_t));
-    memcpy(dst->Coeff_Base,src->Coeff_Base,sizeof(Default_Y_Mode_Cdf[idx])/sizeof(uint16_t));
-    memcpy(dst->Coeff_Br,src->Coeff_Br,sizeof(Default_Y_Mode_Cdf[idx])/sizeof(uint16_t));
-
-}
 void Symbol::initSymbol(SymbolContext *sbCtx,bitSt *bs,int sz){
     sbCtx->numBits = Min( sz * 8, 15);
     sbCtx->buf = readBits(bs,sbCtx->numBits); //????
@@ -146,6 +11,7 @@ void Symbol::initSymbol(SymbolContext *sbCtx,bitSt *bs,int sz){
     sbCtx->SymbolRange = 1 << 15;
     sbCtx->SymbolMaxBits = 8 * sz - 15;
 }
+/*
 void Symbol::exit_symbol(SymbolContext *sbCtx,bitSt *bs,int TileNum,AV1DecodeContext *av1Ctx){
     if(sbCtx->SymbolMaxBits < -14 )
         return;
@@ -170,7 +36,7 @@ void Symbol::exit_symbol(SymbolContext *sbCtx,bitSt *bs,int TileNum,AV1DecodeCon
 }
 void Symbol::frame_end_update_cdf(AV1DecodeContext *av1Ctx){
     copyCdf(&av1Ctx->currentFrame->cdfCtx,&av1Ctx->tileSavedCdf,av1Ctx);
-}
+}*/
 int Symbol::read_literal(SymbolContext *sbCtx,bitSt *bs,int n){
 
     int x = 0;

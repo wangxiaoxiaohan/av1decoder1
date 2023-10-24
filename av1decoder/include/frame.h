@@ -16,7 +16,9 @@ public:
 
 	void releaseDecodeContext(AV1DecodeContext *av1Ctx);
 	void releaseFrameContext(frameHeader *frameHdr,FrameContext *fCtx);
-	
+	void exit_symbol(SymbolContext *sbCtx,bitSt *bs,int TileNum,AV1DecodeContext *av1Ctx);
+    void frame_end_update_cdf(AV1DecodeContext *av1Ctx);
+
 	int readTileInfo(bitSt *bs,sequenceHeader *seqHdr,frameHeader *frameHdr);
 	int readQuantizationParams(bitSt *bs,sequenceHeader *seqHdr,frameHeader *frameHdr);
 	int read_interpolation_filter(bitSt *bs,frameHeader *frameHdr);
@@ -86,8 +88,6 @@ public:
 
 	int read_motion_mode(int isCompound,SymbolContext *sbCtx,bitSt *bs,
 							BlockData *b_data,AV1DecodeContext *av1Ctx);					
-	int read_motion_mode(int isCompound,SymbolContext *sbCtx,bitSt *bs,
-							BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int read_compound_type(int isCompound,SymbolContext *sbCtx,bitSt *bs,
 							BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int palette_tokens(SymbolContext *sbCtx, bitSt *bs,
