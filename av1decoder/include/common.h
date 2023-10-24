@@ -463,7 +463,7 @@ typedef struct tArray32
 	{
 		for (int i = 0; i < mSize1; i++)
 		{
-			delete data[i];
+			delete  data[i];
 		}
 		delete[] data;
 		data = NULL;

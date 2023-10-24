@@ -1772,7 +1772,7 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 			{
 				for (int j = 0; j < h4; j++)
 				{
-					b_data->TxTypes[y4 + j][x4 + i] = DCT_DCT;
+					av1Ctx->TxTypes[y4 + j][x4 + i] = DCT_DCT;
 				}
 			}
 		}
@@ -2195,7 +2195,7 @@ int decode::transform_type(int x4,int  y4,int txSz,SymbolContext *sbCtx,bitSt *b
 	{
 		for (int j = 0; j < (Tx_Height[txSz] >> 2); j++)
 		{
-			b_data->TxTypes[y4 + j][x4 + i] = TxType;
+			av1Ctx->TxTypes[y4 + j][x4 + i] = TxType;
 		}
 	}
 }
@@ -2209,14 +2209,14 @@ int decode::compute_tx_type(int plane, int txSz,int blockX,int blockY,BlockData 
 	int txSet = get_tx_set(txSz,b_data->is_inter,frameHdr->reduced_tx_set);
 	if (plane == 0)
 	{
-		return b_data->TxTypes[blockY][blockX];
+		return av1Ctx->TxTypes[blockY][blockX];
 	}
 	int txType;
 	if (b_data->is_inter)
 	{
 		int x4 = Max(b_data->MiCol, blockX << seqHdr->color_config.subsampling_x);
 		int y4 = Max(b_data->MiRow, blockY << seqHdr->color_config.subsampling_y);
-		txType = b_data->TxTypes[y4][x4];
+		txType = av1Ctx->TxTypes[y4][x4];
 		if (!is_tx_type_in_set(txSet, txType,b_data->is_inter))
 			return DCT_DCT;
 		return txType;
@@ -2337,7 +2337,11 @@ int decode::predict_intra(int plane,int x,int y,int haveLeft,int haveAbove,
 	}
 	(*b_data->LeftCol)[ -1 ] = (*b_data->AboveRow)[ -1 ];
 
-	uint8_t pred[w][h];//内存大小需要确认
+	//uint8_t pred[w][h];//内存大小需要确认
+	uint16_t **pred =  new uint16_t *[h];
+	for(int i = 0 ; i < h ; i++){
+		pred[i] = new uint16_t[w];
+	}
 	if(plane == 0 && b_data->use_filter_intra){
 		recursiveIntraPrdiction(w,h,pred,b_data,av1Ctx);
 	}else if( is_directional_mode( mode ) ){
@@ -2354,9 +2358,14 @@ int decode::predict_intra(int plane,int x,int y,int haveLeft,int haveAbove,
 			av1Ctx->currentFrame->CurrFrame[ plane ][ y + i ][ x + j ] = pred[ i ][ j ];
 		}	
 	}
+	
+	for(int i = 0 ; i < h ; i++){
+		delete [] pred[i];
+	}
+	delete [] pred;
 }
 //7.11.2.2
-void decode::basicIntraPrediction(int w, int h, uint8_t** pred,BlockData *b_data) {
+void decode::basicIntraPrediction(int w, int h, uint16_t** pred,BlockData *b_data) {
 
     // Perform intra prediction
     for (int i = 0; i < h; i++) {
@@ -2381,7 +2390,7 @@ void decode::basicIntraPrediction(int w, int h, uint8_t** pred,BlockData *b_data
 //output block by filtering this array
 //输入指定的区域，将之分割为一个一个的 4 * 2小块，进行一系列操作(预测，滤波)生成帧内预测样本
 //输出在 pred数组中
-int decode::recursiveIntraPrdiction(int w, int h,uint8_t **pred,BlockData *b_data,AV1DecodeContext *av1Ctx)
+int decode::recursiveIntraPrdiction(int w, int h,uint16_t **pred,BlockData *b_data,AV1DecodeContext *av1Ctx)
 {
 	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
 	int w4 = w >> 2;
@@ -2446,7 +2455,7 @@ int decode::recursiveIntraPrdiction(int w, int h,uint8_t **pred,BlockData *b_dat
 //使用“方向滤波器”和左侧、上边的像素进行帧内预测，生成帧内预测样本
 //这就是最常见的帧内预测模式
 int decode::directionalIntraPrediction(int plane,int x,int y,int haveLeft,int haveAbove,
-								int mode ,int w ,int h ,int maxX,int maxY,uint8_t **pred,
+								int mode ,int w ,int h ,int maxX,int maxY,uint16_t **pred,
 								BlockData *b_data ,AV1DecodeContext *av1Ctx){
 	int angleDelta = plane == 0 ? b_data->AngleDeltaY : b_data->AngleDeltaUV;
 	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
@@ -2599,7 +2608,7 @@ int decode::directionalIntraPrediction(int plane,int x,int y,int haveLeft,int ha
    否则只有行左侧列或者右侧行有效，则只考虑一边的平均值
    把平均值赋给块内每一个像素
 */
-int decode::DCIntraPrediction(int haveLeft ,int haveAbove,int log2W,int log2H,int w,int h,uint8_t **pred,
+int decode::DCIntraPrediction(int haveLeft ,int haveAbove,int log2W,int log2H,int w,int h,uint16_t **pred,
 								BlockData *b_data,AV1DecodeContext *av1Ctx)
 {
 
@@ -2673,7 +2682,7 @@ int decode::DCIntraPrediction(int haveLeft ,int haveAbove,int log2W,int log2H,in
 //7.11.2.7 
 //使用插值的方法生成预测像素
 //smWeights* 是一个权重值，用来
-int decode::smoothIntraPrediction(int mode, int log2W, int log2H, int w, int h, uint8_t **pred,BlockData *b_data){
+int decode::smoothIntraPrediction(int mode, int log2W, int log2H, int w, int h, uint16_t **pred,BlockData *b_data){
     if (mode == SMOOTH_PRED) {
         const int *smWeightsX;
         const int *smWeightsY;
@@ -3027,7 +3036,15 @@ genArray:
 		av1Ctx->RefUpscaledWidth[ -1 ] = frameHdr->MiCols * MI_SIZE;
 	}
 
-	uint8_t ***preds;
+	//uint8_t ***preds;
+	uint16_t ***preds = new uint16_t**[2];
+	for(int i = 0 ; i < 2 ; i++){
+		preds[i] = new uint16_t *[h];
+		for(int j = 0 ; j < h ; j++){
+			preds[i][j] = new uint16_t[w];
+		}	
+	}
+
 	if(useWarp == 0){
 		for(int i8 = 0 ; i8 < ((h-1) >> 3 );i8 ++){
 			for(int j8 = 0 ; j8 < ((w-1) >> 3) ;j8 ++){
@@ -3084,7 +3101,14 @@ genArray:
 	if(b_data->motion_mode == OBMC ){
 		overlappedMotionCompensation(plane,w,h,b_data,av1Ctx);
 	}
-
+	
+	for(int i = 0 ; i < 2 ; i++){
+		for(int j = 0 ; j < h ; j++){
+			delete [] preds[i][j];
+		}
+		delete [] preds[i];
+	}
+	delete [] preds;
 }
 //7.11.3.2
 int decode::roundingVariablesDerivation(int isCompound,AV1DecodeContext *av1Ctx){
@@ -3253,7 +3277,7 @@ int decode::motionVectorScaling(int plane, int refIdx, int x, int y, int mv[2],
 }
 ////7.11.3.5
 int decode::blockWarp(int useWarp,int plane,int refList,int x,int y,
-						int i8,int j8,int w,int h,uint8_t **pred,int LocalWarpParams[6],
+						int i8,int j8,int w,int h,uint16_t **pred,int LocalWarpParams[6],
 						BlockData *b_data,AV1DecodeContext *av1Ctx)
 {
 	frameHeader *frameHdr = &av1Ctx->frameHdr;
@@ -3342,7 +3366,7 @@ int decode::blockWarp(int useWarp,int plane,int refList,int x,int y,
 //vectors determine the filtering process. If the fractional part is zero, then the filtering is equivalent to a straight sample
 //copy
 int decode::block_inter_prediction(int plane, int refIdx, int x, int y, int xStep, int yStep, 
-						int w, int h, int candRow, int candCol,uint8_t **pred,
+						int w, int h, int candRow, int candCol,uint16_t **pred,
 						BlockData *b_data,AV1DecodeContext *av1Ctx) {
 	frameHeader *frameHdr = &av1Ctx->frameHdr;		
 	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
@@ -3507,7 +3531,7 @@ int decode::intraModeVariantMask(int w, int h,BlockData *b_data,AV1DecodeContext
 }
 //7.11.3.12
 //This process prepares an array Mask containing the blending weights for the luma samples
-int decode::differenceWeightMask(uint8_t ***preds, int w, int h,BlockData *b_data,  AV1DecodeContext *av1Ctx)
+int decode::differenceWeightMask(uint16_t ***preds, int w, int h,BlockData *b_data,  AV1DecodeContext *av1Ctx)
 {
 	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
 	for (int i = 0; i < h; i++)
@@ -3572,7 +3596,7 @@ int decode::distanceWeights(int candRow,int candCol,int *FwdWeight,int *BckWeigh
 //The process combines two predictions according to the mask. It makes use of an array Mask containing the blending
 //weights to apply (the weights are defined for the current plane samples if compound_type is equal to
 //COMPOUND_INTRA, or the luma plane otherwise).
-int decode::maskBlend(uint8_t ***preds,int plane , int dstX,int dstY,int w,int h,BlockData *b_data,AV1DecodeContext *av1Ctx){
+int decode::maskBlend(uint16_t ***preds,int plane , int dstX,int dstY,int w,int h,BlockData *b_data,AV1DecodeContext *av1Ctx){
 	
 	frameHeader *frameHdr = &av1Ctx->frameHdr;
 	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
@@ -3700,8 +3724,12 @@ int decode::predict_overlap(int MiSize,int plane ,int x4,int y4,int predW,int pr
 	int startX, startY, stepX, stepY;
 	motionVectorScaling(plane,refIdx,predX, predY, mv ,&startX,&startY,&stepX,&stepY,av1Ctx);
 
-	uint8_t obmcPred[predH][predW];
-	block_inter_prediction(plane, refIdx, startX, startY, stepX, stepY,predW, predH, candRow, candCol,(uint8_t **)obmcPred,
+	//uint8_t obmcPred[predH][predW];
+	uint16_t **obmcPred =  new uint16_t *[predH];
+	for(int i = 0 ; i < predH ; i++){
+		obmcPred[i] = new uint16_t[predW];
+	}
+	block_inter_prediction(plane, refIdx, startX, startY, stepX, stepY,predW, predH, candRow, candCol,obmcPred,
 										b_data,av1Ctx);
 
 	
@@ -3710,13 +3738,18 @@ int decode::predict_overlap(int MiSize,int plane ,int x4,int y4,int predW,int pr
 			obmcPred[ i ][ j ] = Clip1( obmcPred[ i ][ j ] ,seqHdr->color_config.BitDepth);
 		}
 	}
-	OverlapBlending(plane, predX, predY, predW, predH, pass,(uint8_t **)obmcPred,mask,av1Ctx);
+	OverlapBlending(plane, predX, predY, predW, predH, pass,obmcPred,mask,av1Ctx);
 
+	
+	for(int i = 0 ; i < predH ; i++){
+		delete [] obmcPred[i] ;
+	}
+	delete [] obmcPred ;
 }
 //7.11.3.10
 
 int decode::OverlapBlending(int plane ,int predX,int predY,int predW,int predH ,int pass,
-						uint8_t **obmcPred,uint8_t *mask,AV1DecodeContext *av1Ctx){
+						uint16_t **obmcPred,uint8_t *mask,AV1DecodeContext *av1Ctx){
 	int m;
 	for(int i = 0; i < predH;i++){
 		for(int j = 0; j < predW;j++){
@@ -3738,7 +3771,7 @@ int decode::predict_palette(int plane, int startX, int startY, int x, int y, int
 							BlockData *b_data,AV1DecodeContext *av1Ctx) {
     int w = Tx_Width[txSz]; // 获取变换块的宽度
     int h = Tx_Height[txSz]; // 获取变换块的高度
-    uint8_t *palette; // 调色板数组
+    uint16_t *palette; // 调色板数组
     uint8_t **map; // 颜色映射数组
 
     if (plane == 0) {
@@ -3864,7 +3897,11 @@ int decode::reconstruct(int plane, int x, int y, int txSz,BlockData *b_data,AV1D
 
         }
     }
-    int Residual[h][w];
+    //uint16_t Residual[h][w];
+	uint16_t **Residual = new uint16_t *[h];
+	for(int i = 0 ; i < h ; i ++){
+		Residual[i] = new uint16_t[w];
+	}
 	twoDInverseTransformBlock(txSz,(int **)Residual,b_data,av1Ctx);
 
     for (int i = 0; i < h; i++) {
@@ -3875,6 +3912,11 @@ int decode::reconstruct(int plane, int x, int y, int txSz,BlockData *b_data,AV1D
             av1Ctx->currentFrame->CurrFrame[plane][y + yy][x + xx] = Clip1(av1Ctx->currentFrame->CurrFrame[plane][y + yy][x + xx] + Residual[i][j],seqHdr->color_config.BitDepth);
         }
     }
+
+	for(int i = 0 ; i < h ; i ++){
+		delete []  Residual[i];
+	}
+	delete [] Residual;
     // 无损模式下 需要完全无损 ，因此 Residual 内的每个像素 用 1 + BitDepth位来表示，即比位深度还多一位
 	//确保不会溢出 ，保证数据 无损
     if (b_data->Lossless == 1) {
@@ -5107,11 +5149,19 @@ void decode::selfGuidedFilter(int plane,int unitRow,int unitCol, int x,int y,int
 	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
 	int set = av1Ctx->currentFrame->lrCtx->LrSgrSet[plane][unitRow][unitCol];
 	int pass = 0;
-	int flt0[h][w];
-	boxFilter(plane, x, y, w, h, set, pass,(int **)flt0,av1Ctx);
+	//int flt0[h][w];
+	int **flt0 =  new int *[h];
+	for(int i = 0 ; i < h ; i++){
+		flt0[i] = new int[w];
+	}
+	boxFilter(plane, x, y, w, h, set, pass,flt0,av1Ctx);
 	pass = 1;
-	int flt1[h][w];
-	boxFilter(plane, x, y, w, h, set, pass,(int **)flt1,av1Ctx);
+	//int flt1[h][w];
+	int **flt1 =  new int *[h];
+	for(int i = 0 ; i < h ; i++){
+		flt1[i] = new int[w];
+	}
+	boxFilter(plane, x, y, w, h, set, pass,flt1,av1Ctx);
 
 	// 计算权重和参数
 	int w0 = av1Ctx->currentFrame->lrCtx->LrSgrXqd[plane][unitRow][unitCol][0];
@@ -5142,6 +5192,12 @@ void decode::selfGuidedFilter(int plane,int unitRow,int unitCol, int x,int y,int
 			av1Ctx->currentFrame->lrCtx->LrFrame[plane][y + i][x + j] = Clip1(s,seqHdr->color_config.BitDepth);
 		}
 	}
+	for(int i = 0 ; i < h ; i ++){
+		delete [] flt0[i];
+		delete [] flt1[i];
+	}
+	delete flt0;
+	delete flt1;
 }
 //7.17.3
 void decode::boxFilter(int plane,int x,int y,int w,int h,int set ,int pass,int **F,

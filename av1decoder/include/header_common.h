@@ -335,11 +335,11 @@ typedef struct BlockData{
 
 // palette mode info
 	uint8_t PaletteSizeY;
-	uint8_t *palette_colors_y;
+	uint16_t *palette_colors_y;
 	uint8_t PaletteSizeUV;
-	uint8_t *palette_colors_u;
-	uint8_t *palette_colors_v;
-	uint8_t *PaletteCache;
+	uint16_t *palette_colors_u;
+	uint16_t *palette_colors_v;
+	uint16_t *PaletteCache; //size 不大确定
 
 	uint8_t use_filter_intra;
 	uint8_t filter_intra_mode;
@@ -370,7 +370,7 @@ typedef struct BlockData{
 	uint8_t ColorContextHash;
 
 	uint8_t TxSize;
-	uint8_t **TxTypes; //4 * 4 块为单位
+
 	int Mv[2][2]; //[ref][x/y]
 
  	//帧内预测
@@ -538,6 +538,8 @@ typedef struct AV1DecodeContext{
 	uint8_t SeenFrameHeader;
 	int ***MotionFieldMvs[8];// [ref][y][x][x/y] 
 	uint8_t **PrevSegmentIds;
+
+	uint8_t **TxTypes; //4 * 4 块为单位
 	
 }AV1DecodeContext;
 

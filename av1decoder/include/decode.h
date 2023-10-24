@@ -85,10 +85,10 @@ public:
 						BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int add_sample(int deltaRow,int deltaCol,
 				BlockData *b_data,AV1DecodeContext *av1Ctx);
-	void basicIntraPrediction(int w, int h, uint8_t** pred,BlockData *b_data) ;
-	int recursiveIntraPrdiction(int w, int h,uint8_t **pred,BlockData *b_data,AV1DecodeContext *av1Ctx);
+	void basicIntraPrediction(int w, int h, uint16_t** pred,BlockData *b_data) ;
+	int recursiveIntraPrdiction(int w, int h,uint16_t **pred,BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int directionalIntraPrediction(int plane,int x,int y,int haveLeft,int haveAbove,
-									int mode ,int w ,int h ,int maxX,int maxY,uint8_t **pred,
+									int mode ,int w ,int h ,int maxX,int maxY,uint16_t **pred,
 									BlockData *b_data ,AV1DecodeContext *av1Ctx);
 	int filterCornor(Array8 *LeftCol,Array8 *AboveRow);
 	int intrafilterType(int plane,BlockData *b_data,AV1DecodeContext *av1Ctx);
@@ -98,8 +98,8 @@ public:
 	int intraEdgeFilter(int sz, int strength, int left,BlockData *b_data);
 	int intraEdgeUpsampleSelection(int w, int h, int filterType, int delta);
 	int intraEdgeUpsample(int numPx,int dir,BlockData *b_data,AV1DecodeContext *av1Ctx);
-	int smoothIntraPrediction(int mode, int log2W, int log2H, int w, int h, uint8_t **pred,BlockData *b_data);
-	int DCIntraPrediction(int haveLeft ,int haveAbove,int log2W,int log2H,int w,int h,uint8_t **pred,
+	int smoothIntraPrediction(int mode, int log2W, int log2H, int w, int h, uint16_t **pred,BlockData *b_data);
+	int DCIntraPrediction(int haveLeft ,int haveAbove,int log2W,int log2H,int w,int h,uint16_t **pred,
 									BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int predict_inter(int plane, int x, int y,int w ,int h ,int candRow,int candCol,int IsInterIntra,
 							BlockData *b_data,AV1DecodeContext *av1Ctx);
@@ -110,22 +110,22 @@ public:
 	int motionVectorScaling(int plane, int refIdx, int x, int y, int mv[2],
 								int *startX,int *startY, int *stepX,int *stepY, AV1DecodeContext *av1Ctx);
 	int blockWarp(int useWarp,int plane,int refList,int x,int y,
-						int i8,int j8,int w,int h,uint8_t **pred,int LocalWarpParams[6],
+						int i8,int j8,int w,int h,uint16_t **pred,int LocalWarpParams[6],
 						BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int block_inter_prediction(int plane, int refIdx, int x, int y, int xStep, int yStep, 
-							int w, int h, int candRow, int candCol,uint8_t **pred,
+							int w, int h, int candRow, int candCol,uint16_t **pred,
 							BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int wedgeMask(int WMW,int WMH,BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int intraModeVariantMask(int w, int h,BlockData *b_data,AV1DecodeContext *av1Ctx);
-	int differenceWeightMask(uint8_t ***preds, int w, int h,BlockData *b_data,  AV1DecodeContext *av1Ctx);
+	int differenceWeightMask(uint16_t ***preds, int w, int h,BlockData *b_data,  AV1DecodeContext *av1Ctx);
 	int distanceWeights(int candRow,int candCol,int *FwdWeight,int *BckWeight,  
 							 AV1DecodeContext *av1Ctx);
-	int maskBlend(uint8_t ***preds,int plane , int dstX,int dstY,int w,int h,BlockData *b_data,AV1DecodeContext *av1Ctx);
+	int maskBlend(uint16_t ***preds,int plane , int dstX,int dstY,int w,int h,BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int overlappedMotionCompensation(int plane, int w ,int h,BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int predict_overlap(int MiSize,int plane ,int x4,int y4,int predW,int predH,int subX,int subY ,
 				int candRow,int candCol ,int pass,uint8_t *mask,BlockData *b_data, AV1DecodeContext *av1Ctx);
 	int OverlapBlending(int plane ,int predX,int predY,int predW,int predH ,int pass,
-							uint8_t **obmcPred,uint8_t *mask,AV1DecodeContext *av1Ctx);
+							uint16_t **obmcPred,uint8_t *mask,AV1DecodeContext *av1Ctx);
 	int predict_palette(int plane, int startX, int startY, int x, int y, int txSz,
 						BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int predict_chroma_from_luma(int plane, int startX, int startY, int txSz,BlockData *b_data,AV1DecodeContext *av1Ctx);

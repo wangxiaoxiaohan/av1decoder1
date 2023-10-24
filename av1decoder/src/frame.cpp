@@ -1240,6 +1240,10 @@ void frame::allocDecodeContext(AV1DecodeContext *av1Ctx){
 	for(int i  = 0 ; i < frameHdr->MiRows ; i++){
 		av1Ctx->PrevSegmentIds[i] = new uint8_t[frameHdr->MiCols];
 	}
+	av1Ctx->TxTypes = new uint8_t*[frameHdr->MiRows];
+	for(int i  = 0 ; i < frameHdr->MiRows ; i++){
+		av1Ctx->TxTypes[i] = new uint8_t[frameHdr->MiCols];
+	}
 
 }
 void frame::releaseDecodeContext(AV1DecodeContext *av1Ctx){
@@ -1382,6 +1386,10 @@ void frame::releaseDecodeContext(AV1DecodeContext *av1Ctx){
 		delete []  av1Ctx->PrevSegmentIds[i];
 	}
 	delete [] av1Ctx->PrevSegmentIds;
+	for(int i  = 0 ; i < frameHdr->MiRows ; i++){
+		delete []  av1Ctx->TxTypes[i];
+	}
+	delete [] av1Ctx->TxTypes;
 }
 //关于色度内存的分配还要再优化
 void frame::allocFrameContext(frameHeader *frameHdr ,FrameContext **fCtx){
@@ -2065,6 +2073,10 @@ int frame::decode_block(SymbolContext *sbCtx,bitSt *bs,int r,int c,int subSize, 
 				av1Ctx->DeltaLFs[r + y][c + x][i] = av1Ctx->DeltaLF[i];
 		}
 	}
+	delete [] b_data.palette_colors_y;
+	delete [] b_data.palette_colors_u;
+	delete [] b_data.palette_colors_v;
+	delete [] b_data.PaletteCache;
 }
 int frame::mode_info(SymbolContext *sbCtx,bitSt *bs,BlockData *b_data,AV1DecodeContext *av1Ctx){
 	frameHeader *frameHdr = &av1Ctx->frameHdr;
@@ -2623,6 +2635,7 @@ int frame::palette_mode_info(SymbolContext *sbCtx,bitSt *bs,
 	int bsizeCtx = Mi_Width_Log2[b_data->MiSize] + Mi_Height_Log2[b_data->MiSize] - 2;
 	int BitDepth = seqHdr->color_config.BitDepth;
 	int paletteBits;
+	int has_palette_y;
 	if (b_data->YMode == DC_PRED)
 	{
 		
@@ -2632,11 +2645,15 @@ int frame::palette_mode_info(SymbolContext *sbCtx,bitSt *bs,
 		if ( b_data->AvailL && av1Ctx->PaletteSizes[ 0 ][ b_data->MiRow ][ b_data->MiCol - 1 ] > 0 )
 			ctx += 1;
 		//has_palette_y; // S()
-		if (sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Palette_Y_Mode[bsizeCtx][ctx],3))
+		has_palette_y = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Palette_Y_Mode[bsizeCtx][ctx],3);
+		if (has_palette_y)
 		{
 		//	palette_size_y_minus_2; // S()
 			b_data->PaletteSizeY = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Palette_Y_Size[bsizeCtx],PALETTE_SIZES + 1) + 2;
+			b_data->palette_colors_y = new uint16_t[b_data->PaletteSizeY];
+			b_data->PaletteCache = new uint16_t[b_data->PaletteSizeY];
 			int cacheN = get_palette_cache(0,b_data,av1Ctx);
+			
 			int idx = 0;
 			for (int i = 0; i < cacheN && idx < b_data->PaletteSizeY; i++)
 			{
@@ -2679,6 +2696,11 @@ int frame::palette_mode_info(SymbolContext *sbCtx,bitSt *bs,
 		{
 			//palette_size_uv_minus_2; // S()
 			b_data->PaletteSizeUV = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Palette_Uv_Size[bsizeCtx],PALETTE_SIZES + 1) + 2;
+			b_data->palette_colors_u = new uint16_t[b_data->PaletteSizeUV];
+			b_data->palette_colors_v = new uint16_t[b_data->PaletteSizeUV];
+			if(!has_palette_y){
+				b_data->PaletteCache = new uint16_t[b_data->PaletteSizeUV];
+			}
 			int cacheN = get_palette_cache(1, b_data,av1Ctx);
 			int idx = 0;
 			for (int i = 0; i < cacheN && idx < b_data->PaletteSizeUV; i++)
@@ -3518,6 +3540,11 @@ int frame::palette_tokens(SymbolContext *sbCtx, bitSt *bs, BlockData *b_data, AV
 	if (b_data->PaletteSizeY)
 	{
 		int color_index_map_y = sb->readNS(sbCtx,bs,b_data->PaletteSizeY); // NS(PaletteSizeY)
+		b_data->ColorMapY = new  uint8_t*[blockHeight];
+		for(int i = 0 ; i < blockHeight; i++){
+			b_data->ColorMapY[i] = new uint8_t[blockWidth];
+		}
+
 		b_data->ColorMapY[0][0] = color_index_map_y;
 		for (int i = 1; i < onscreenHeight + onscreenWidth - 1; i++)
 		{
@@ -3562,9 +3589,17 @@ int frame::palette_tokens(SymbolContext *sbCtx, bitSt *bs, BlockData *b_data, AV
 	if (b_data->PaletteSizeUV)
 	{
 		int color_index_map_uv = sb->readNS(sbCtx,bs,b_data->PaletteSizeUV); // NS(PaletteSizeUV)
-		b_data->ColorMapUV[0][0] = color_index_map_uv;
 		blockHeight = blockHeight >> seqHdr->color_config.subsampling_y;
 		blockWidth = blockWidth >> seqHdr->color_config.subsampling_x;
+		
+		b_data->ColorMapUV[0][0] = color_index_map_uv;
+		if(!b_data->PaletteSizeY){
+			b_data->ColorMapY = new  uint8_t*[blockHeight];
+			for(int i = 0 ; i < blockHeight; i++){
+				b_data->ColorMapY[i] = new uint8_t[blockWidth];
+			}
+		}
+
 		onscreenHeight = onscreenHeight >> seqHdr->color_config.subsampling_y;
 		onscreenWidth = onscreenWidth >> seqHdr->color_config.subsampling_x;
 		if (blockWidth < 4)
