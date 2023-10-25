@@ -2575,9 +2575,9 @@ int decode::directionalIntraPrediction(int plane,int x,int y,int haveLeft,int ha
 	}
 	else if (pAngle == 90)
 	{
-		for (int i = 0; i < w; i++)
+		for (int j = 0; j < w; j++)
 		{
-			for (int j = 0; j < h; j++)
+			for (int i = 0; i < h; i++)
 			{
 				pred[i][j] = (*b_data->AboveRow)[j];
 			}
@@ -2585,9 +2585,9 @@ int decode::directionalIntraPrediction(int plane,int x,int y,int haveLeft,int ha
 	}
 	else if (pAngle == 180)
 	{
-		for (int i = 0; i < w; i++)
+		for (int j = 0; j < w; j++)
 		{
-			for (int j = 0; j < h; j++)
+			for (int i = 0; i < h; i++)
 			{
 				pred[i][j] = (*b_data->LeftCol)[i];
 			}
@@ -2762,7 +2762,7 @@ int decode::smoothIntraPrediction(int mode, int log2W, int log2H, int w, int h, 
 
 }
 //7.11.2.7 使用一个三抽头滤波器对 leftcol aboverow角落像素进行滤波
-int decode::filterCornor(Array8 *LeftCol,Array8 *AboveRow){
+int decode::filterCornor(Array16 *LeftCol,Array16 *AboveRow){
 	int s = (*LeftCol)[ 0 ] * 5 + (*AboveRow)[ -1 ] * 6 + (*AboveRow)[ 0 ] * 5;
 	LeftCol[-1] = Round2(s, 4);
 	AboveRow[-1] = Round2(s, 4);
@@ -2918,7 +2918,7 @@ int decode::intraEdgeUpsampleSelection(int w, int h, int filterType, int delta){
 }
 int decode::intraEdgeUpsample(int numPx,int dir,BlockData *b_data,AV1DecodeContext *av1Ctx){
 	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
-	Array8 *buf;
+	Array16 *buf;
 	if(dir == 0 )
 		buf = b_data->AboveRow;
 	else 
@@ -3174,7 +3174,7 @@ int decode::resolveDivisor(int d, int *divShift, int *divFactor){
     }
 }
 //7.11.3.8
-int decode::warpEstimation(int **CandList, int LocalWarpParams[6], int *LocalValid,BlockData *b_data,AV1DecodeContext *av1Ctx){
+int decode::warpEstimation(int CandList[4][4], int LocalWarpParams[6], int *LocalValid,BlockData *b_data,AV1DecodeContext *av1Ctx){
 	int A[2][2] = {{0}};
     int Bx[2] = {0};
     int By[2] = {0};

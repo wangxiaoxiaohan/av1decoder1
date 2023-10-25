@@ -1991,7 +1991,17 @@ int frame::decode_block(SymbolContext *sbCtx,bitSt *bs,int r,int c,int subSize, 
 	b_data.MiSize = subSize;
 	//block 宽高 4*4 为单位
 	int bw4 = Num_4x4_Blocks_Wide[subSize];
-	int bh4 = Num_4x4_Blocks_High[subSize];	
+	int bh4 = Num_4x4_Blocks_High[subSize];
+	int blockHeight = Block_Height[b_data.MiSize];
+	int blockWidth = Block_Width[b_data.MiSize];
+	b_data.AboveRow = new Array16(bw4 * MI_SIZE + bh4 * MI_SIZE);
+	b_data.LeftCol = new Array16(bw4 * MI_SIZE + bh4 * MI_SIZE);
+
+	b_data.Mask = new uint16_t*[blockHeight];
+	for(int i = 0 ; i < blockHeight ; i++){
+		b_data.Mask[i] = new uint16_t[blockWidth];
+	}
+	
 	if (bh4 == 1 && seqHdr->color_config.subsampling_y && (b_data.MiRow & 1) == 0)
 		b_data.HasChroma = 0 ;
 	else if (bw4 == 1 && seqHdr->color_config.subsampling_x && (b_data.MiCol & 1) == 0)
@@ -2048,6 +2058,7 @@ int frame::decode_block(SymbolContext *sbCtx,bitSt *bs,int r,int c,int subSize, 
 		}
 	}
 	compute_prediction(sbCtx,bs,&b_data,av1Ctx);
+	
 	decode_instance->residual(sbCtx,bs,&b_data,av1Ctx) ;
 	for (int y = 0; y < bh4; y++)
 	{
@@ -2077,6 +2088,29 @@ int frame::decode_block(SymbolContext *sbCtx,bitSt *bs,int r,int c,int subSize, 
 	delete [] b_data.palette_colors_u;
 	delete [] b_data.palette_colors_v;
 	delete [] b_data.PaletteCache;
+
+	if(b_data.PaletteSizeY){
+		for(int i = 0 ; i < blockHeight; i++){
+			delete [] b_data.ColorMapY[i] ;
+		}
+		delete [] b_data.ColorMapY;
+ 	}
+	if(b_data.PaletteSizeUV){
+		blockHeight = blockHeight >> seqHdr->color_config.subsampling_y;
+		blockWidth = blockWidth >> seqHdr->color_config.subsampling_x;
+		
+		for(int i = 0 ; i < blockHeight; i++){
+			delete [] b_data.ColorMapUV[i] ;
+		}
+		delete [] b_data.ColorMapUV;
+	}
+	delete b_data.AboveRow;
+	delete b_data.LeftCol;
+
+	for(int i = 0 ; i < blockHeight ; i++){
+		delete [] b_data.Mask[i];
+	}
+	delete [] b_data.Mask;
 }
 int frame::mode_info(SymbolContext *sbCtx,bitSt *bs,BlockData *b_data,AV1DecodeContext *av1Ctx){
 	frameHeader *frameHdr = &av1Ctx->frameHdr;
@@ -3592,13 +3626,12 @@ int frame::palette_tokens(SymbolContext *sbCtx, bitSt *bs, BlockData *b_data, AV
 		blockHeight = blockHeight >> seqHdr->color_config.subsampling_y;
 		blockWidth = blockWidth >> seqHdr->color_config.subsampling_x;
 		
-		b_data->ColorMapUV[0][0] = color_index_map_uv;
-		if(!b_data->PaletteSizeY){
-			b_data->ColorMapY = new  uint8_t*[blockHeight];
-			for(int i = 0 ; i < blockHeight; i++){
-				b_data->ColorMapY[i] = new uint8_t[blockWidth];
-			}
+		b_data->ColorMapUV = new  uint8_t*[blockHeight];
+		for(int i = 0 ; i < blockHeight; i++){
+			b_data->ColorMapUV[i] = new uint8_t[blockWidth];
 		}
+
+		b_data->ColorMapUV[0][0] = color_index_map_uv;
 
 		onscreenHeight = onscreenHeight >> seqHdr->color_config.subsampling_y;
 		onscreenWidth = onscreenWidth >> seqHdr->color_config.subsampling_x;

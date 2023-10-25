@@ -374,16 +374,16 @@ typedef struct BlockData{
 	int Mv[2][2]; //[ref][x/y]
 
  	//帧内预测
-	Array8 *AboveRow; //块上边的样本，是像素值
-	Array8 *LeftCol; //块左边的样本，是像素值
+	Array16 *AboveRow; //块上边的样本，是像素值
+	Array16 *LeftCol; //块左边的样本，是像素值
 
 	//帧间预测
-	int **Mask;
-	int **CandList;
+	uint16_t **Mask;
+	int CandList[4][4];//第一维size 不大确定
 
 	//量化
-	uint8_t *Quant;
-	uint8_t **Dequant;
+	uint16_t Quant[1024]; //先直接拉满
+	uint16_t Dequant[32][32];//先直接拉满
 
 	//reconstruct 重建图像
 	int PlaneTxType;

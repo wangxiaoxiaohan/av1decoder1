@@ -90,7 +90,7 @@ public:
 	int directionalIntraPrediction(int plane,int x,int y,int haveLeft,int haveAbove,
 									int mode ,int w ,int h ,int maxX,int maxY,uint16_t **pred,
 									BlockData *b_data ,AV1DecodeContext *av1Ctx);
-	int filterCornor(Array8 *LeftCol,Array8 *AboveRow);
+	int filterCornor(Array16 *LeftCol,Array16 *AboveRow);
 	int intrafilterType(int plane,BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int is_smooth(int row, int col, int plane,AV1DecodeContext *av1Ctx) ;
 	int get_filter_type(int plane,BlockData *b_data,AV1DecodeContext *av1Ctx) ;
@@ -104,7 +104,7 @@ public:
 	int predict_inter(int plane, int x, int y,int w ,int h ,int candRow,int candCol,int IsInterIntra,
 							BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int roundingVariablesDerivation(int isCompound,AV1DecodeContext *av1Ctx);
-	int warpEstimation(int **CandList, int LocalWarpParams[6], int *LocalValid,BlockData *b_data,AV1DecodeContext *av1Ctx);
+	int warpEstimation(int CandList[4][4], int LocalWarpParams[6], int *LocalValid,BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int setupShear(int *warpParams,int *warpValid,int *alpha,int *beta,int *gamma,int *delta);
 	int resolveDivisor(int d, int *divShift, int *divFactor);
 	int motionVectorScaling(int plane, int refIdx, int x, int y, int mv[2],
