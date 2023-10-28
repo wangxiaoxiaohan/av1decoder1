@@ -329,10 +329,10 @@ int obu::parseObuInfo(FILE* fp,int fileOffset,uint8_t *buf,int sz,AV1DecodeConte
 			} else {
 				ctx->SeenFrameHeader = 1;
 				frame::Instance().parseFrameHeader(sz, &bs,ctx, &ctx->seqHdr, &obu_header,&ctx->frameHdr);
-				//先假设分辨率不会变
+				//先假设分辨率不会变,就分配一次
 				if(ctx->decAlloced == 0){
 					frame::Instance().allocDecodeContext(ctx);
-					ctx->decAlloced == 1;
+					ctx->decAlloced = 1;
 				}
 				BitStreamAlign(&bs);//byte alignment
 				if ( ctx->currentFrame->frameHdr.show_existing_frame ) {

@@ -66,7 +66,7 @@ int decode::init_non_coeff_cdfs(CDFArrays *cdf){
     memcpy(cdf->Segment_Id,Default_Segment_Id_Cdf,sizeof(Default_Segment_Id_Cdf));
     memcpy(cdf->Segment_Id_Predicted,Default_Segment_Id_Predicted_Cdf,sizeof(Default_Segment_Id_Predicted_Cdf));
     for(int i = 0 ; i < MV_CONTEXTS ; i++){
-        for(int j = 0 ; i < 2 ; j++){
+        for(int j = 0 ; j < 2 ; j++){
             memcpy(cdf->Mv_Class0_Hp[i][j],Default_Mv_Class0_Hp_Cdf,sizeof(Default_Mv_Class0_Hp_Cdf));
             memcpy(cdf->Mv_Hp[i][j],Default_Mv_Hp_Cdf,sizeof(Default_Mv_Hp_Cdf));
             memcpy(cdf->Mv_Sign[i][j],Default_Mv_Sign_Cdf,sizeof(Default_Mv_Sign_Cdf));
@@ -188,9 +188,8 @@ int decode::setup_past_independence(AV1DecodeContext *av1Ctx){
 
 
 }
-int decode::init_coeff_cdfs(AV1DecodeContext *av1Ctx){
+int decode::init_coeff_cdfs(AV1DecodeContext *av1Ctx,CDFArrays *cdf){
 	frameHeader *frameHdr = &av1Ctx->frameHdr;
-    CDFArrays *cdf = &av1Ctx->currentFrame->cdfCtx;
     int idx;
     if(frameHdr->quantization_params.base_q_idx == 20){
         idx = 0 ;
@@ -1734,7 +1733,7 @@ int decode::transform_block(int plane,int baseX,int baseY,int txSz,int x,int y,S
 			av1Ctx->LoopfilterTxSizes[plane]
 							 [(row >> subY) + i]
 							 [(col >> subX) + j] = txSz;
-			av1Ctx->BlockDecoded[plane]
+			(*av1Ctx->BlockDecoded)[plane]
 						[(subBlockMiRow >> subY) + i]
 						[(subBlockMiCol >> subX) + j] = 1;
 		}
@@ -1762,7 +1761,7 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 	int dcCategory = 0;
 
 	int ctx = cacluteAllZeroCtx( plane, txSz,  x4, y4, w4, h4, b_data,av1Ctx);
-	int all_zero = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Txb_Skip[ txSzCtx ][ ctx ],3); // S()
+	int all_zero = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Txb_Skip[ txSzCtx ][ ctx ],3); // S()
 	if (all_zero)
 	{
 		int c = 0;
@@ -1789,44 +1788,44 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 		int ctx = ( get_tx_class( txType ) == TX_CLASS_2D ) ? 0 : 1;
 		if (eobMultisize == 0)
 		{
-			int eob_pt_16 = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Eob_Pt_16[ ptype ][ ctx ],6); // S()
+			int eob_pt_16 = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Eob_Pt_16[ ptype ][ ctx ],6); // S()
 			eobPt = eob_pt_16 + 1;
 		}
 		else if (eobMultisize == 1)
 		{
-			int eob_pt_32  = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Eob_Pt_32[ ptype ][ ctx ],7); // S()
+			int eob_pt_32  = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Eob_Pt_32[ ptype ][ ctx ],7); // S()
 			eobPt = eob_pt_32 + 1;
 		}
 		else if (eobMultisize == 2)
 		{
-			int eob_pt_64  = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Eob_Pt_64[ ptype ][ ctx ],8); // S()
+			int eob_pt_64  = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Eob_Pt_64[ ptype ][ ctx ],8); // S()
 			eobPt = eob_pt_64 + 1;
 		}
 		else if (eobMultisize == 3)
 		{
-			int eob_pt_128 = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Eob_Pt_128[ ptype ][ ctx ],9); // S()
+			int eob_pt_128 = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Eob_Pt_128[ ptype ][ ctx ],9); // S()
 			eobPt = eob_pt_128 + 1;
 		}
 		else if (eobMultisize == 4)
 		{
-			int eob_pt_256 = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Eob_Pt_256[ ptype ][ ctx ],10); // S()
+			int eob_pt_256 = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Eob_Pt_256[ ptype ][ ctx ],10); // S()
 			eobPt = eob_pt_256 + 1;
 		}
 		else if (eobMultisize == 5)
 		{
-			int eob_pt_512 = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Eob_Pt_512[ ptype ],11); // S()
+			int eob_pt_512 = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Eob_Pt_512[ ptype ],11); // S()
 			eobPt = eob_pt_512 + 1;
 		}
 		else
 		{
-			int eob_pt_1024 = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Eob_Pt_1024[ ptype ],12); // S()
+			int eob_pt_1024 = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Eob_Pt_1024[ ptype ],12); // S()
 			eobPt = eob_pt_1024 + 1;
 		}
 		eob = (eobPt < 2) ? eobPt : ((1 << (eobPt - 2)) + 1);
 		int eobShift = Max(-1, eobPt - 3);
 		if (eobShift >= 0)
 		{
-			int eob_extra = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Eob_Extra[ txSzCtx ][ ptype ][ eobPt - 3 ],12); // S()
+			int eob_extra = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Eob_Extra[ txSzCtx ][ ptype ][ eobPt - 3 ],12); // S()
 			if (eob_extra)
 			{
 				eob += (1 << eobShift);
@@ -1848,13 +1847,13 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 			if (c == (eob - 1))
 			{
 				ctx =  get_coeff_base_ctx(txSz, plane, x4, y4, scan[c], c, 1,b_data,av1Ctx) - SIG_COEF_CONTEXTS + SIG_COEF_CONTEXTS_EOB;
-				int coeff_base_eob = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Coeff_Base_Eob[ txSzCtx ][ ptype ][ ctx ],4);// S()
+				int coeff_base_eob = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Coeff_Base_Eob[ txSzCtx ][ ptype ][ ctx ],4);// S()
 				level = coeff_base_eob + 1;
 			}
 			else
 			{
 				ctx = get_coeff_base_ctx(txSz, plane, x4, y4, scan[c], c, 0,b_data,av1Ctx);
-				int coeff_base =  sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Coeff_Base[ txSzCtx ][ ptype ][ ctx ],5); // S()
+				int coeff_base =  sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Coeff_Base[ txSzCtx ][ ptype ][ ctx ],5); // S()
 				level = coeff_base;
 			}
 			if (level > NUM_BASE_LEVELS)
@@ -1925,7 +1924,7 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 						}
 					}
 				//------
-					int coeff_br = sb->decodeSymbol(sbCtx, bs, av1Ctx->currentFrame->cdfCtx.Coeff_Br[Min(txSzCtx, TX_32X32)][ptype][ctx], BR_CDF_SIZE + 1); // S()
+					int coeff_br = sb->decodeSymbol(sbCtx, bs, av1Ctx->tileSavedCdf.Coeff_Br[Min(txSzCtx, TX_32X32)][ptype][ctx], BR_CDF_SIZE + 1); // S()
 					level += coeff_br;
 					if (coeff_br < (BR_CDF_SIZE - 1))
 						break;
@@ -1993,7 +1992,7 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 						ctx = 0;
 					}
 				//---------
-					int dc_sign = sb->decodeSymbol(sbCtx, bs, av1Ctx->currentFrame->cdfCtx.Dc_Sign[ptype][ctx], BR_CDF_SIZE + 1); // S()
+					int dc_sign = sb->decodeSymbol(sbCtx, bs, av1Ctx->tileSavedCdf.Dc_Sign[ptype][ctx], BR_CDF_SIZE + 1); // S()
 					sign = dc_sign;
 				}
 				else
@@ -2148,13 +2147,13 @@ int decode::transform_type(int x4,int  y4,int txSz,SymbolContext *sbCtx,bitSt *b
 		if (b_data->is_inter)
 		{
 			if(set == TX_SET_INTER_1){
-				cdf = av1Ctx->currentFrame->cdfCtx.Inter_Tx_Type_Set1[ Tx_Size_Sqr[ txSz ] ];
+				cdf = av1Ctx->tileSavedCdf.Inter_Tx_Type_Set1[ Tx_Size_Sqr[ txSz ] ];
 				size = 17;
 			}else if(set == TX_SET_INTER_2){
-				cdf = av1Ctx->currentFrame->cdfCtx.Inter_Tx_Type_Set2;
+				cdf = av1Ctx->tileSavedCdf.Inter_Tx_Type_Set2;
 				size = 13;
 			}else if(set == TX_SET_INTER_3){
-				cdf = av1Ctx->currentFrame->cdfCtx.Inter_Tx_Type_Set3[ Tx_Size_Sqr[ txSz ] ];
+				cdf = av1Ctx->tileSavedCdf.Inter_Tx_Type_Set3[ Tx_Size_Sqr[ txSz ] ];
 				size = 3;
 			}
 			int inter_tx_type = sb->decodeSymbol(sbCtx,bs,cdf,size); // S()
@@ -2174,10 +2173,10 @@ int decode::transform_type(int x4,int  y4,int txSz,SymbolContext *sbCtx,bitSt *b
 				intraDir = b_data->YMode;
 			}
 			if(set == TX_SET_INTRA_1){
-				cdf = av1Ctx->currentFrame->cdfCtx.Intra_Tx_Type_Set1[ Tx_Size_Sqr[ txSz ] ][ intraDir ];
+				cdf = av1Ctx->tileSavedCdf.Intra_Tx_Type_Set1[ Tx_Size_Sqr[ txSz ] ][ intraDir ];
 				size = 8;
 			}else if(set == TX_SET_INTRA_2){
-				cdf = av1Ctx->currentFrame->cdfCtx.Intra_Tx_Type_Set1[ Tx_Size_Sqr[ txSz ] ][ intraDir ];
+				cdf = av1Ctx->tileSavedCdf.Intra_Tx_Type_Set1[ Tx_Size_Sqr[ txSz ] ][ intraDir ];
 				size = 6;
 			}
 			int intra_tx_type = sb->decodeSymbol(sbCtx,bs,cdf,size); // S()
@@ -3023,17 +3022,17 @@ genArray:
 		refIdx = -1;
 		//These values ensure that the motion vector scaling has no effect
 		//spec 是这样说的 ，但是还是没明白为啥
-		av1Ctx->RefFrameWidth[ -1 ] = frameHdr->si.FrameWidth;
-		av1Ctx->RefUpscaledWidth[ -1 ] = frameHdr->si.UpscaledWidth;
+		(*av1Ctx->RefFrameWidth)[ -1 ] = frameHdr->si.FrameWidth;
+		(*av1Ctx->RefUpscaledWidth)[ -1 ] = frameHdr->si.UpscaledWidth;
 	}
 	int startX,startY,stepX,stepY;
 	motionVectorScaling( plane,refIdx, x, y, mv, &startX,&startY,&stepX,&startY,av1Ctx);
 
 //These values are needed to avoid intrabc prediction being cropped to the frame boundaries
 	if(b_data->use_intrabc == 1){
-		av1Ctx->RefFrameWidth[ -1 ] = frameHdr->MiCols * MI_SIZE;
-		av1Ctx->RefFrameHeight[ -1 ] = frameHdr->MiRows * MI_SIZE;
-		av1Ctx->RefUpscaledWidth[ -1 ] = frameHdr->MiCols * MI_SIZE;
+		(*av1Ctx->RefFrameWidth)[ -1 ] = frameHdr->MiCols * MI_SIZE;
+		(*av1Ctx->RefFrameHeight)[ -1 ] = frameHdr->MiRows * MI_SIZE;
+		(*av1Ctx->RefUpscaledWidth)[ -1 ] = frameHdr->MiCols * MI_SIZE;
 	}
 
 	//uint8_t ***preds;

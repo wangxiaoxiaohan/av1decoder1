@@ -96,8 +96,11 @@ int Symbol::decodeSymbol(SymbolContext *sbCtx,bitSt *bs,uint16_t *cdfArray,int N
 
 //renormalized 这个过程会继续读入码流满15位，以便为后续的解码做准备
     int bits = 15 - FloorLog2( sbCtx->SymbolRange ); //需要继续读进来的数据位数
+
     sbCtx->numBits = Min( bits, Max(0, sbCtx->SymbolMaxBits) ); //修正需要读取位数
+
     int newData =  readBits(bs,sbCtx->numBits); //读取，接下来几步将新读进来的数据和之前剩下的组合起来，凑满15位
+
     int paddedData = newData << ( bits - sbCtx->numBits );
     sbCtx->SymbolValue = paddedData ^ ( ( ( sbCtx->SymbolValue + 1 ) << bits ) - 1 );
     sbCtx->SymbolMaxBits -= bits;

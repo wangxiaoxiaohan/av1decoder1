@@ -399,7 +399,7 @@ typedef struct LoopRestorationContext{
 	int ****LrWiener[3];
 	int **LrType[3];
 	int **LrSgrSet[3];
-	int ****LrSgrXqd;	
+	int ***LrSgrXqd[3];	
 	int PlaneEndX;   // 当前平面的水平边界
 	int PlaneEndY;   // 当前平面的垂直边界
 	int StripeStartY; // 当前条带的起始y坐标
@@ -464,8 +464,7 @@ typedef struct AV1DecodeContext{
 	frameHeader frameHdr;
 	int decAlloced;
 
-    CDFArrays cdfCtxs[NUM_REF_FRAMES];
-	
+    //CDFArrays cdfCtxs[NUM_REF_FRAMES];
 	CDFArrays tileSavedCdf;
 
 	uint8_t	RefValid[NUM_REF_FRAMES];
@@ -509,8 +508,8 @@ typedef struct AV1DecodeContext{
 	int *AboveDcContext[3];
 	int *LeftLevelContext[3];
 	int *LeftDcContext[3];
-	uint8_t *AboveSegPredContext;
-	uint8_t *LeftSegPredContext;
+	int *AboveSegPredContext;
+	int *LeftSegPredContext;
 	uint8_t DeltaLF[4];	
 
  // partition	 可以理解为 H264 中的 宏块，为固定大小（超级块的情况下为 128 * 128）?
@@ -518,10 +517,10 @@ typedef struct AV1DecodeContext{
  //都是以4 * 4 块为单位的
 	uint8_t **YModes;
 	uint8_t **UVModes;
-	uint8_t **RefFrames[2]; //?
+	int ***RefFrames; //?
 	uint8_t **CompGroupIdxs;
 	uint8_t **CompoundIdxs;
-	uint8_t **InterpFilters[2];
+	uint8_t ***InterpFilters;
 	int ****Mvs; // [row][col][ref][x/y] 
 	uint8_t **MiSizes;
 	uint8_t **SegmentIds;
@@ -531,7 +530,7 @@ typedef struct AV1DecodeContext{
 	uint8_t **TxSizes;
 	uint8_t **PaletteSizes[2];
 	uint8_t ***PaletteColors[2];
-	uint8_t **DeltaLFs[4];
+	uint8_t ***DeltaLFs;
 	uint8_t **InterTxSizes;
 
 

@@ -296,8 +296,15 @@ int frame::parseFrameHeader(int sz, bitSt *bs, AV1DecodeContext *av1Ctx, sequenc
 
 	if (out->primary_ref_frame == PRIMARY_REF_NONE)
 	{
-		 decode_instance->init_non_coeff_cdfs( &av1Ctx->currentFrame->cdfCtx);
-		 decode_instance->setup_past_independence(av1Ctx);
+		decode_instance->init_non_coeff_cdfs( &av1Ctx->tileSavedCdf);
+		if(! av1Ctx->PrevSegmentIds){
+			av1Ctx->PrevSegmentIds = new uint8_t*[out->MiRows];
+			for(int i  = 0 ; i < out->MiRows ; i++){
+				av1Ctx->PrevSegmentIds[i] = new uint8_t[out->MiCols];
+			}		
+		}
+
+		decode_instance->setup_past_independence(av1Ctx);
 	}
 	else
 	{
@@ -325,7 +332,7 @@ int frame::parseFrameHeader(int sz, bitSt *bs, AV1DecodeContext *av1Ctx, sequenc
 
 	if (out->primary_ref_frame == PRIMARY_REF_NONE)
 	{
-		 decode_instance->init_coeff_cdfs(av1Ctx);
+		 decode_instance->init_coeff_cdfs(av1Ctx,&av1Ctx->tileSavedCdf);
 	}
 	else
 	{
@@ -1139,6 +1146,7 @@ void frame::allocDecodeContext(AV1DecodeContext *av1Ctx){
 			for(int k = 0 ; k < frameHdr->MiCols ;k ++){
 				av1Ctx->SavedMvs[i][j][k] = new int[2];
 			}
+			
 		}
 	}
 	for(int i = 0 ; i < NUM_REF_FRAMES ; i ++){
@@ -1154,9 +1162,9 @@ void frame::allocDecodeContext(AV1DecodeContext *av1Ctx){
 	av1Ctx->RefRenderWidth = new Array16(NUM_REF_FRAMES);
 	av1Ctx->RefRenderHeight = new Array16(NUM_REF_FRAMES);
 
-	av1Ctx->BlockDecoded = new tArray8(3,frameHdr->MiCols,frameHdr->MiRows);
+	av1Ctx->BlockDecoded = new tArray8(3,frameHdr->MiRows,frameHdr->MiCols);
 	for(int i = 0 ; i < 3 ; i ++){
-		av1Ctx->LoopfilterTxSizes[i] = new uint8_t*[frameHdr->MiCols];
+		av1Ctx->LoopfilterTxSizes[i] = new uint8_t*[frameHdr->MiRows];
 		for(int j  = 0 ; j < frameHdr->MiRows ; j ++){
 			av1Ctx->LoopfilterTxSizes[i][j] = new uint8_t[frameHdr->MiCols];
 		}
@@ -1165,15 +1173,16 @@ void frame::allocDecodeContext(AV1DecodeContext *av1Ctx){
 		av1Ctx->LeftLevelContext[i] = new int[frameHdr->MiRows];
 		av1Ctx->LeftDcContext[i] = new int[frameHdr->MiRows];
 	}
-	av1Ctx->AboveSegPredContext = new uint8_t[frameHdr->MiCols];
-	av1Ctx->LeftSegPredContext = new uint8_t[frameHdr->MiRows];
+	av1Ctx->AboveSegPredContext = new int[frameHdr->MiCols];
+	av1Ctx->LeftSegPredContext = new int[frameHdr->MiRows];
 
 	av1Ctx->YModes = new uint8_t*[frameHdr->MiRows];
 	av1Ctx->UVModes = new uint8_t*[frameHdr->MiRows];
 	av1Ctx->CompGroupIdxs = new uint8_t*[frameHdr->MiRows];
 	av1Ctx->CompoundIdxs = new uint8_t*[frameHdr->MiRows];
 	av1Ctx->MiSizes = new uint8_t*[frameHdr->MiRows];
-	av1Ctx->SegmentIds = new uint8_t*[frameHdr->MiRows]  ;
+	av1Ctx->SegmentIds = new uint8_t*[frameHdr->MiRows];
+	av1Ctx->IsInters = new uint8_t*[frameHdr->MiRows];
 	av1Ctx->SkipModes = new uint8_t*[frameHdr->MiRows];
 	av1Ctx->Skips = new uint8_t*[frameHdr->MiRows];
 	av1Ctx->TxSizes = new uint8_t*[frameHdr->MiRows];
@@ -1185,6 +1194,7 @@ void frame::allocDecodeContext(AV1DecodeContext *av1Ctx){
 		av1Ctx->CompoundIdxs[i] = new uint8_t[frameHdr->MiCols];
 		av1Ctx->MiSizes[i] = new uint8_t[frameHdr->MiCols];
 		av1Ctx->SegmentIds[i] = new uint8_t[frameHdr->MiCols];
+		av1Ctx->IsInters[i] = new uint8_t[frameHdr->MiCols];
 		av1Ctx->SkipModes[i] = new uint8_t[frameHdr->MiCols];
 		av1Ctx->Skips[i] = new uint8_t[frameHdr->MiCols];
 		av1Ctx->TxSizes[i] = new uint8_t[frameHdr->MiCols];
@@ -1192,27 +1202,38 @@ void frame::allocDecodeContext(AV1DecodeContext *av1Ctx){
 	}
 
 	for(int i = 0 ; i < 2 ; i++){
-		av1Ctx->RefFrames[i] = new uint8_t*[frameHdr->MiRows];
-		av1Ctx->InterpFilters[i] = new uint8_t*[frameHdr->MiRows];
+
 		av1Ctx->PaletteSizes[i] = new uint8_t*[frameHdr->MiRows];
 		for(int j = 0 ; j < frameHdr->MiRows ; j++){
-			av1Ctx->RefFrames[i][j] = new uint8_t[frameHdr->MiCols];
-			av1Ctx->InterpFilters[i][j] = new uint8_t[frameHdr->MiCols];
 			av1Ctx->PaletteSizes[i][j] = new uint8_t[frameHdr->MiCols];
 		}
 	}
-	for(int i = 0 ; i < 4 ; i++){
-		av1Ctx->DeltaLFs[i] = new uint8_t*[frameHdr->MiRows];
-		for(int j = 0 ; j < frameHdr->MiRows ; j++){
-			av1Ctx->DeltaLFs[i][j] = new uint8_t[frameHdr->MiCols];
+	av1Ctx->RefFrames = new int**[frameHdr->MiRows];
+	av1Ctx->InterpFilters = new uint8_t**[frameHdr->MiRows];
+	for(int i = 0 ; i < frameHdr->MiRows ; i++){
+		av1Ctx->RefFrames[i] = new int*[frameHdr->MiCols];
+		av1Ctx->InterpFilters[i] = new uint8_t*[frameHdr->MiCols];
+		for(int j = 0 ; j < frameHdr->MiCols ; j++){
+			av1Ctx->RefFrames[i][j] = new int[2];
+			av1Ctx->InterpFilters[i][j] = new uint8_t[2];
 		}
 	}
+
+
+	av1Ctx->DeltaLFs = new uint8_t**[frameHdr->MiRows];
+	for(int i = 0 ; i < frameHdr->MiRows ; i++){
+		av1Ctx->DeltaLFs[i] = new uint8_t*[frameHdr->MiCols];
+		for(int j = 0 ; j < frameHdr->MiCols ; j++){
+			av1Ctx->DeltaLFs[i][j] = new uint8_t[FRAME_LF_COUNT];
+		}
+	}
+	
 	for(int i = 0 ; i < 2 ; i++){
 		av1Ctx->PaletteColors[i] = new uint8_t**[frameHdr->MiRows];
 		for(int j = 0 ; j < frameHdr->MiRows ; j++){
 			av1Ctx->PaletteColors[i][j] = new uint8_t*[frameHdr->MiCols];
 			for(int k = 0 ; k < frameHdr->MiCols ; k++){
-				//av1Ctx->PaletteColors[i][j][j] = new uint8_t[b_data.PaletteSizeY];
+				//av1Ctx->PaletteColors[i][j][k] = new uint8_t[b_data.PaletteSizeY];
 				//PaletteColors 的内存 在 decode_block 中分配
 			}
 		}
@@ -1236,14 +1257,12 @@ void frame::allocDecodeContext(AV1DecodeContext *av1Ctx){
 			}
 		}
 	}
-	av1Ctx->PrevSegmentIds = new uint8_t*[frameHdr->MiRows];
-	for(int i  = 0 ; i < frameHdr->MiRows ; i++){
-		av1Ctx->PrevSegmentIds[i] = new uint8_t[frameHdr->MiCols];
-	}
+
 	av1Ctx->TxTypes = new uint8_t*[frameHdr->MiRows];
 	for(int i  = 0 ; i < frameHdr->MiRows ; i++){
 		av1Ctx->TxTypes[i] = new uint8_t[frameHdr->MiCols];
 	}
+
 
 }
 void frame::releaseDecodeContext(AV1DecodeContext *av1Ctx){
@@ -1333,25 +1352,34 @@ void frame::releaseDecodeContext(AV1DecodeContext *av1Ctx){
 
 	for(int i = 0 ; i < 2 ; i++){
 		for(int j = 0 ; j < frameHdr->MiRows ; j++){
-			delete [] av1Ctx->RefFrames[i][j] ;
-			delete [] av1Ctx->InterpFilters[i][j] ;
 			delete [] av1Ctx->PaletteSizes[i][j] ;
 		}
-		delete [] av1Ctx->RefFrames[i] ;
-		delete [] av1Ctx->InterpFilters[i];
 		delete [] av1Ctx->PaletteSizes[i] ;	
 	}
-	for(int i = 0 ; i < 4 ; i++){
-		for(int j = 0 ; j < frameHdr->MiRows ; j++){
-			delete [] av1Ctx->DeltaLFs[i][j] ;
+
+	for(int i = 0 ; i < frameHdr->MiRows ; i++){
+		for(int j = 0 ; j < 2 ; j++){
+			delete [] av1Ctx->RefFrames[i][j] ;
+			delete [] av1Ctx->InterpFilters[i][j];
+		}
+		delete []av1Ctx->RefFrames[i] ;
+		delete [] av1Ctx->InterpFilters[i];
+	}
+	delete [] av1Ctx->RefFrames ;
+	delete [] av1Ctx->InterpFilters ;
+
+	for(int i = 0 ; i < frameHdr->MiRows ; i++){
+		for(int j = 0 ; j < frameHdr->MiCols ; j++){
+			delete [] av1Ctx->DeltaLFs[i];
 		}
 		delete [] av1Ctx->DeltaLFs[i] ;
 	}
+	delete [] av1Ctx->DeltaLFs ;
 
 	for(int i = 0 ; i < 2 ; i++){
 		for(int j = 0 ; j < frameHdr->MiRows ; j++){
 			for(int k = 0 ; k < frameHdr->MiCols ; k++){
-				delete [] av1Ctx->PaletteColors[i][j][j] ;
+				delete [] av1Ctx->PaletteColors[i][j][k] ;
 			}
 			delete [] av1Ctx->PaletteColors[i][j] ;
 		}
@@ -1482,6 +1510,11 @@ void frame::allocFrameContext(frameHeader *frameHdr ,FrameContext **fCtx){
 
 	fc->mvpCtx = (MVPredContext *)malloc(sizeof(MVPredContext));	
 
+	fc->cdef_idx = new uint8_t*[frameHdr->MiRows];
+	for(int i  = 0 ; i < frameHdr->MiRows ; i++){
+		fc->cdef_idx[i] = new uint8_t[frameHdr->MiCols];
+	}
+
 }
 void frame::releaseFrameContext(frameHeader *frameHdr ,FrameContext *fCtx){
 	
@@ -1564,6 +1597,11 @@ void frame::releaseFrameContext(frameHeader *frameHdr ,FrameContext *fCtx){
 
 	delete fCtx->mvpCtx ;
 
+
+	for(int i  = 0 ; i < frameHdr->MiRows ; i++){
+		delete [] fCtx->cdef_idx[i];
+	}
+	delete [] fCtx->cdef_idx;
 	delete fCtx ;
 }
 int copyCdf(CDFArrays *dst,CDFArrays *src,AV1DecodeContext *av1Ctx){
@@ -1728,6 +1766,7 @@ void frame::frame_end_update_cdf(AV1DecodeContext *av1Ctx){
     copyCdf(&av1Ctx->currentFrame->cdfCtx,&av1Ctx->tileSavedCdf,av1Ctx);
 }
 int frame::decodeFrame(int sz, bitSt *bs, AV1DecodeContext *av1Ctx){
+
 	frameHeader *frameHdr = &av1Ctx->frameHdr;
 
 	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
@@ -1773,6 +1812,7 @@ int frame::decodeFrame(int sz, bitSt *bs, AV1DecodeContext *av1Ctx){
 		//init_symbol( tileSize );
 		SymbolContext symCtx;
 		sb->initSymbol(&symCtx,bs,sz);
+		symCtx.isUpdate = !frameHdr->disable_cdf_update;
 		decode_tile(&symCtx,bs,av1Ctx);
 		exit_symbol(&symCtx,bs,TileNum,av1Ctx);
 	}
@@ -1788,7 +1828,6 @@ int frame::decodeFrame(int sz, bitSt *bs, AV1DecodeContext *av1Ctx){
 int frame::decode_tile(SymbolContext *sbCtx,bitSt *bs,AV1DecodeContext *av1Ctx){
 	frameHeader *frameHdr = &av1Ctx->frameHdr;
 	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
-
 	clear_above_context(av1Ctx );
 	for (int i = 0; i < FRAME_LF_COUNT; i++ )
 		av1Ctx->DeltaLF[ i ] = 0;
@@ -1847,19 +1886,19 @@ int frame::decode_partition(SymbolContext *sbCtx,bitSt *bs,
 	int ctx = left * 2 + above;
 
 	if(bsl == 1){
-		partitionCdf = av1Ctx->currentFrame->cdfCtx.Partition_W8[ctx];
+		partitionCdf = av1Ctx->tileSavedCdf.Partition_W8[ctx];
 		size = 5;
 	}else if(bsl == 2){
-		partitionCdf = av1Ctx->currentFrame->cdfCtx.Partition_W16[ctx];
+		partitionCdf = av1Ctx->tileSavedCdf.Partition_W16[ctx];
 		size = 9;
 	}else if(bsl == 3){
-		partitionCdf = av1Ctx->currentFrame->cdfCtx.Partition_W32[ctx];
+		partitionCdf = av1Ctx->tileSavedCdf.Partition_W32[ctx];
 		size = 9;
 	}else if(bsl == 4){
-		partitionCdf = av1Ctx->currentFrame->cdfCtx.Partition_W64[ctx];
+		partitionCdf = av1Ctx->tileSavedCdf.Partition_W64[ctx];
 		size = 9;
 	}else if(bsl == 5){
-		partitionCdf = av1Ctx->currentFrame->cdfCtx.Partition_W128[ctx];
+		partitionCdf = av1Ctx->tileSavedCdf.Partition_W128[ctx];
 		size = 11;
 	}
 
@@ -1989,6 +2028,7 @@ int frame::decode_block(SymbolContext *sbCtx,bitSt *bs,int r,int c,int subSize, 
 	b_data.MiRow = r;
 	b_data.MiCol = c;
 	b_data.MiSize = subSize;
+	printf("b_data.MiRow %d  b_data.MiCol %d  b_data.MiSize %d\n",b_data.MiRow,b_data.MiCol,b_data.MiSize);
 	//block 宽高 4*4 为单位
 	int bw4 = Num_4x4_Blocks_Wide[subSize];
 	int bh4 = Num_4x4_Blocks_High[subSize];
@@ -2036,8 +2076,10 @@ int frame::decode_block(SymbolContext *sbCtx,bitSt *bs,int r,int c,int subSize, 
 			av1Ctx->YModes[r + y][c + x] = b_data.YMode ;
 			if (b_data.RefFrame[0] == INTRA_FRAME && b_data.HasChroma)
 				av1Ctx->UVModes[r + y][c + x] = b_data.UVMode ;
-			for (int refList = 0; refList < 2; refList++)
+			for (int refList = 0; refList < 2; refList++){
 				av1Ctx->RefFrames[r + y][c + x][refList] = b_data.RefFrame[refList] ;
+			}
+				
 			if (b_data.is_inter)
 			{
 					if (!b_data.use_intrabc)
@@ -2146,7 +2188,7 @@ int frame::intra_frame_mode_info(SymbolContext *sbCtx,bitSt *bs,BlockData *b_dat
 		if ( b_data->AvailL )
 			ctx += av1Ctx->Skips[ b_data->MiRow ][ b_data->MiCol - 1 ];
 
-		b_data->skip =  sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Skip[ctx],3);//S()
+		b_data->skip =  sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Skip[ctx],3);//S()
 	}
 
 
@@ -2169,7 +2211,7 @@ int frame::intra_frame_mode_info(SymbolContext *sbCtx,bitSt *bs,BlockData *b_dat
 
 	if (frameHdr->allow_intrabc)
 	{
-		b_data->use_intrabc =  sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Intrabc,3);// S()
+		b_data->use_intrabc =  sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Intrabc,3);// S()
 	}
 	else
 	{
@@ -2194,7 +2236,7 @@ int frame::intra_frame_mode_info(SymbolContext *sbCtx,bitSt *bs,BlockData *b_dat
 	//	intra_frame_y_mode ;//S()
 		int abovemode = Intra_Mode_Context[ b_data->AvailU ? av1Ctx->YModes[ b_data->MiRow - 1 ][ b_data->MiCol ] : DC_PRED ];
 		int leftmode = Intra_Mode_Context[ b_data->AvailL ? av1Ctx->YModes[ b_data->MiRow ][ b_data->MiCol - 1] : DC_PRED ];
-		b_data->YMode = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Intra_Frame_Y_Mode[abovemode][leftmode],INTRA_MODES + 1);
+		b_data->YMode = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Intra_Frame_Y_Mode[abovemode][leftmode],INTRA_MODES + 1);
 		intra_angle_info_y( sbCtx,bs,b_data,av1Ctx) ;
 		if (b_data->HasChroma)
 		{
@@ -2204,15 +2246,15 @@ int frame::intra_frame_mode_info(SymbolContext *sbCtx,bitSt *bs,BlockData *b_dat
 			int size;
 			if(b_data->Lossless && 
 					BLOCK_4X4 == get_plane_residual_size( b_data->MiSize, 1 ,seqHdr->color_config.subsampling_x,seqHdr->color_config.subsampling_y)){
-					uv_mode_cdf = av1Ctx->currentFrame->cdfCtx.Uv_Mode_Cfl_Allowed[b_data->YMode];
+					uv_mode_cdf = av1Ctx->tileSavedCdf.Uv_Mode_Cfl_Allowed[b_data->YMode];
 					size = UV_INTRA_MODES_CFL_ALLOWED + 1;
 			// Block_Width[ x ] is defined to be equal to 4 * Num_4x4_Blocks_Wide[ x ].
 			//Block_Height[ x ] is defined to be equal to 4 * Num_4x4_Blocks_High[ x ].
 			}else if(!b_data->Lossless && Max( Block_Width[ b_data->MiSize ], Block_Height[ b_data->MiSize ] ) <= 32){
-					uv_mode_cdf = av1Ctx->currentFrame->cdfCtx.Uv_Mode_Cfl_Allowed[b_data->YMode];
+					uv_mode_cdf = av1Ctx->tileSavedCdf.Uv_Mode_Cfl_Allowed[b_data->YMode];
 					size = UV_INTRA_MODES_CFL_ALLOWED + 1;
 			}else{
-					uv_mode_cdf = av1Ctx->currentFrame->cdfCtx.Uv_Mode_Cfl_Not_Allowed[b_data->YMode];
+					uv_mode_cdf = av1Ctx->tileSavedCdf.Uv_Mode_Cfl_Not_Allowed[b_data->YMode];
 					size = UV_INTRA_MODES_CFL_NOT_ALLOWED + 1;
 			}
 			//uv_mode ;//S()
@@ -2263,7 +2305,7 @@ int frame::inter_frame_mode_info(SymbolContext *sbCtx, bitSt *bs, BlockData *b_d
 			ctx += av1Ctx->SkipModes[ b_data->MiRow - 1 ][ b_data->MiCol ];
 		if ( b_data->AvailL )
 			ctx += av1Ctx->SkipModes[ b_data->MiRow ][ b_data->MiCol - 1 ];
-		b_data->skip_mode = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Skip_Mode[ctx],3);// S()
+		b_data->skip_mode = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Skip_Mode[ctx],3);// S()
 	}
 
 	if (b_data->skip_mode)
@@ -2280,7 +2322,7 @@ int frame::inter_frame_mode_info(SymbolContext *sbCtx, bitSt *bs, BlockData *b_d
 			if ( b_data->AvailL )
 				ctx += av1Ctx->Skips[ b_data->MiRow ][ b_data->MiCol - 1 ];
 
-			b_data->skip =  sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Skip[ctx],3);
+			b_data->skip =  sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Skip[ctx],3);
 		}
 
 	}
@@ -2308,7 +2350,7 @@ int frame::inter_frame_mode_info(SymbolContext *sbCtx, bitSt *bs, BlockData *b_d
 		else
 			ctx = 0;
 
-		b_data->is_inter = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Is_Inter[ctx],3);//S()
+		b_data->is_inter = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Is_Inter[ctx],3);//S()
 	}
 
 	if (b_data->is_inter)
@@ -2355,7 +2397,7 @@ int frame::read_segment_id(SymbolContext *sbCtx,bitSt *bs,BlockData *b_data,AV1D
 			ctx = 1;
 		else
 			ctx = 0;
-		b_data->segment_id = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Segment_Id[ctx],MAX_SEGMENTS + 1);//S() 
+		b_data->segment_id = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Segment_Id[ctx],MAX_SEGMENTS + 1);//S() 
 		neg_deinterleave( b_data->segment_id, pred,
 						frameHdr->segmentation_params.LastActiveSegId + 1);
 	}
@@ -2394,7 +2436,7 @@ int frame::read_delta_qindex(SymbolContext *sbCtx,bitSt *bs,BlockData *b_data,AV
 		return ERROR_CODE;
 	if (av1Ctx->ReadDeltas)
 	{
-		int delta_q_abs =  sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Delta_Q,DELTA_Q_SMALL + 2);//S() 
+		int delta_q_abs =  sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Delta_Q,DELTA_Q_SMALL + 2);//S() 
 		if (delta_q_abs == DELTA_Q_SMALL)
 		{
 			int delta_q_rem_bits = sb->read_literal(sbCtx,bs,3);//L(3)
@@ -2430,9 +2472,9 @@ int frame::read_delta_lf(SymbolContext *sbCtx,bitSt *bs,BlockData *b_data,AV1Dec
 		{
 			int delta_lf_abs;
 			if(frameHdr->delta_lf_params.delta_lf_multi)
-				delta_lf_abs =  sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Delta_Lf_Muti[i],DELTA_LF_SMALL + 2); //S() 
+				delta_lf_abs =  sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Delta_Lf_Muti[i],DELTA_LF_SMALL + 2); //S() 
 			else
-				delta_lf_abs =  sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Delta_Lf,DELTA_LF_SMALL + 2); //S() 
+				delta_lf_abs =  sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Delta_Lf,DELTA_LF_SMALL + 2); //S() 
 
 			int deltaLfAbs;
 			if (delta_lf_abs == DELTA_LF_SMALL)
@@ -2547,7 +2589,7 @@ int frame::assign_mv(int isCompound,SymbolContext *sbCtx,bitSt *bs,BlockData *b_
 				MvCtx = 0;
 			}
 			//???????????
-			int mv_joint = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Mv_Joint[MvCtx],DELTA_LF_SMALL + 2);//S()
+			int mv_joint = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Mv_Joint[MvCtx],DELTA_LF_SMALL + 2);//S()
 			if ( mv_joint == MV_JOINT_HZVNZ || mv_joint == MV_JOINT_HNZVNZ )
 				diffMv[ 0 ] = read_mv_component(MvCtx, 0,sbCtx,bs,b_data,av1Ctx );
 			if ( mv_joint == MV_JOINT_HNZVZ || mv_joint == MV_JOINT_HNZVNZ )
@@ -2568,20 +2610,20 @@ int frame::read_mv_component(int MvCtx,int comp,SymbolContext *sbCtx,bitSt *bs,B
 	frameHeader *frameHdr = &av1Ctx->frameHdr;
 	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
 
-	int mv_sign = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Mv_Sign[MvCtx][comp],3);//S()
-	int mv_class = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Mv_Class[MvCtx][comp],MV_CLASSES + 1);//S() 
+	int mv_sign = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Mv_Sign[MvCtx][comp],3);//S()
+	int mv_class = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Mv_Class[MvCtx][comp],MV_CLASSES + 1);//S() 
 	int mag;
 	
 	if (mv_class == MV_CLASS_0)
 	{
 		int mv_class0_bit,mv_class0_fr,mv_class0_hp;
-		mv_class0_bit = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Mv_Class0_Bit[MvCtx][comp],3);//S() 
+		mv_class0_bit = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Mv_Class0_Bit[MvCtx][comp],3);//S() 
 		if (frameHdr->force_integer_mv)
 			mv_class0_fr = 3 ;
 		else
-			mv_class0_fr =  sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Mv_Class0_Fr[MvCtx][comp][mv_class0_bit],5);//S()
+			mv_class0_fr =  sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Mv_Class0_Fr[MvCtx][comp][mv_class0_bit],5);//S()
 		if (frameHdr->allow_high_precision_mv)
-			mv_class0_hp = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Mv_Class0_Hp[MvCtx][comp],3);//S() 
+			mv_class0_hp = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Mv_Class0_Hp[MvCtx][comp],3);//S() 
 		else 
 			mv_class0_hp = 1; 
 		mag = ((mv_class0_bit << 3) | (mv_class0_fr << 1) | mv_class0_hp) + 1;
@@ -2591,7 +2633,7 @@ int frame::read_mv_component(int MvCtx,int comp,SymbolContext *sbCtx,bitSt *bs,B
 		int mv_bit,mv_fr,mv_hp,mv_sign;
 		int d = 0 ;
 		for (int i = 0; i < mv_class; i++){
-			mv_bit = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Mv_Bit[MvCtx][comp][i],3);
+			mv_bit = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Mv_Bit[MvCtx][comp][i],3);
 			d |= mv_bit << i;
 		}
 			
@@ -2599,9 +2641,9 @@ int frame::read_mv_component(int MvCtx,int comp,SymbolContext *sbCtx,bitSt *bs,B
 		if (frameHdr->force_integer_mv) 
 			mv_fr = 3 ;
 		else 
-			mv_fr = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Mv_Fr[MvCtx][comp],3); //S()
+			mv_fr = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Mv_Fr[MvCtx][comp],3); //S()
 		if (frameHdr->allow_high_precision_mv) 
-			mv_hp = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Mv_Hp[MvCtx][comp],3); //S() 
+			mv_hp = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Mv_Hp[MvCtx][comp],3); //S() 
 		else 
 			mv_hp = 1 ;
 		mag += ((d << 3) | (mv_fr << 1) | mv_hp) + 1;
@@ -2612,7 +2654,7 @@ int frame::intra_angle_info_y(SymbolContext *sbCtx,bitSt *bs,BlockData *b_data,A
 	b_data->AngleDeltaY = 0;
 	if ( b_data->MiSize >= BLOCK_8X8 ) {
 		if ( is_directional_mode( b_data->YMode ) ) {
-			b_data->angle_delta_y = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Angle_Delta[b_data->YMode - V_PRED],(2 * MAX_ANGLE_DELTA + 1) + 1);// S()
+			b_data->angle_delta_y = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Angle_Delta[b_data->YMode - V_PRED],(2 * MAX_ANGLE_DELTA + 1) + 1);// S()
 			b_data->AngleDeltaY = b_data->angle_delta_y - MAX_ANGLE_DELTA;
 		}
 	}
@@ -2623,14 +2665,14 @@ int frame::intra_angle_info_uv(SymbolContext *sbCtx,bitSt *bs,BlockData *b_data,
 	b_data->AngleDeltaUV = 0;
 	if ( b_data->MiSize >= BLOCK_8X8 ) {
 		if ( is_directional_mode( b_data->UVMode ) ) {
-			b_data->angle_delta_uv = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Angle_Delta[b_data->UVMode - V_PRED],(2 * MAX_ANGLE_DELTA + 1) + 1); //S()
+			b_data->angle_delta_uv = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Angle_Delta[b_data->UVMode - V_PRED],(2 * MAX_ANGLE_DELTA + 1) + 1); //S()
 			b_data->AngleDeltaUV = b_data->angle_delta_uv - MAX_ANGLE_DELTA;
 		}
 	}
 }
 int frame::read_cfl_alphas(SymbolContext *sbCtx,bitSt *bs,BlockData *b_data,AV1DecodeContext *av1Ctx)
 {
-	int cfl_alpha_signs = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Cfl_Sign,CFL_JOINT_SIGNS + 1); // S()
+	int cfl_alpha_signs = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Cfl_Sign,CFL_JOINT_SIGNS + 1); // S()
 	int signU = (cfl_alpha_signs + 1) / 3;
 	int signV = (cfl_alpha_signs + 1) % 3;
 	if (signU != CFL_SIGN_ZERO)
@@ -2638,7 +2680,7 @@ int frame::read_cfl_alphas(SymbolContext *sbCtx,bitSt *bs,BlockData *b_data,AV1D
 		//cfl_alpha_u; // S()
 		int ctx = (signU - 1) * 3 + signV;
 
-		b_data->CflAlphaU = 1 + sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Cfl_Alpha[ctx],CFL_ALPHABET_SIZE + 1);
+		b_data->CflAlphaU = 1 + sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Cfl_Alpha[ctx],CFL_ALPHABET_SIZE + 1);
 		if (signU == CFL_SIGN_NEG)
 			b_data->CflAlphaU = -b_data->CflAlphaU;
 	}
@@ -2651,7 +2693,7 @@ int frame::read_cfl_alphas(SymbolContext *sbCtx,bitSt *bs,BlockData *b_data,AV1D
 	//	cfl_alpha_v; // S()
 		int ctx = (signV - 1) * 3 + signU;
 
-		b_data->CflAlphaV = 1 + sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Cfl_Alpha[ctx],CFL_ALPHABET_SIZE + 1);
+		b_data->CflAlphaV = 1 + sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Cfl_Alpha[ctx],CFL_ALPHABET_SIZE + 1);
 
 		if (signV == CFL_SIGN_NEG)
 			b_data->CflAlphaV = -b_data->CflAlphaV;
@@ -2679,11 +2721,11 @@ int frame::palette_mode_info(SymbolContext *sbCtx,bitSt *bs,
 		if ( b_data->AvailL && av1Ctx->PaletteSizes[ 0 ][ b_data->MiRow ][ b_data->MiCol - 1 ] > 0 )
 			ctx += 1;
 		//has_palette_y; // S()
-		has_palette_y = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Palette_Y_Mode[bsizeCtx][ctx],3);
+		has_palette_y = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Palette_Y_Mode[bsizeCtx][ctx],3);
 		if (has_palette_y)
 		{
 		//	palette_size_y_minus_2; // S()
-			b_data->PaletteSizeY = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Palette_Y_Size[bsizeCtx],PALETTE_SIZES + 1) + 2;
+			b_data->PaletteSizeY = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Palette_Y_Size[bsizeCtx],PALETTE_SIZES + 1) + 2;
 			b_data->palette_colors_y = new uint16_t[b_data->PaletteSizeY];
 			b_data->PaletteCache = new uint16_t[b_data->PaletteSizeY];
 			int cacheN = get_palette_cache(0,b_data,av1Ctx);
@@ -2726,10 +2768,10 @@ int frame::palette_mode_info(SymbolContext *sbCtx,bitSt *bs,
 	{
 		//has_palette_uv; // S()
 		int ctx = ( b_data->PaletteSizeY > 0 ) ? 1 : 0;
-		if (sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Palette_Uv_Mode[ctx],3))
+		if (sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Palette_Uv_Mode[ctx],3))
 		{
 			//palette_size_uv_minus_2; // S()
-			b_data->PaletteSizeUV = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Palette_Uv_Size[bsizeCtx],PALETTE_SIZES + 1) + 2;
+			b_data->PaletteSizeUV = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Palette_Uv_Size[bsizeCtx],PALETTE_SIZES + 1) + 2;
 			b_data->palette_colors_u = new uint16_t[b_data->PaletteSizeUV];
 			b_data->palette_colors_v = new uint16_t[b_data->PaletteSizeUV];
 			if(!has_palette_y){
@@ -2813,10 +2855,10 @@ int frame::filter_intra_mode_info(SymbolContext *sbCtx,bitSt *bs,BlockData *b_da
 		b_data->YMode == DC_PRED && b_data->PaletteSizeY == 0 &&
 		Max(Block_Width[b_data->MiSize], Block_Height[b_data->MiSize]) <= 32)
 	{
-		b_data->use_filter_intra = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Filter_Intra[b_data->MiSize],3); // S()
+		b_data->use_filter_intra = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Filter_Intra[b_data->MiSize],3); // S()
 		if (b_data->use_filter_intra)
 		{
-			b_data->filter_intra_mode = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Filter_Intra_Mode,6);// S()
+			b_data->filter_intra_mode = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Filter_Intra_Mode,6);// S()
 		}
 	}
 }
@@ -2922,7 +2964,7 @@ int frame::inter_segment_id(int preSkip,SymbolContext *sbCtx, bitSt *bs, BlockDa
 			if (frameHdr->segmentation_params.segmentation_temporal_update == 1)
 			{
 				int ctx = av1Ctx->LeftSegPredContext[ b_data->MiRow ] + av1Ctx->AboveSegPredContext[ b_data->MiCol ];
-				seg_id_predicted = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Segment_Id_Predicted[ctx],3); //S()
+				seg_id_predicted = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Segment_Id_Predicted[ctx],3); //S()
 				if (seg_id_predicted)
 					b_data->segment_id = predictedSegmentId;
 				else
@@ -2969,27 +3011,27 @@ int frame::inter_block_mode_info(SymbolContext *sbCtx, bitSt *bs, BlockData *b_d
 	{
 		int ctx = Compound_Mode_Ctx_Map[ av1Ctx->currentFrame->mvpCtx->RefMvContext >> 1 ][ Min(av1Ctx->currentFrame->mvpCtx->NewMvContext, COMP_NEWMV_CTXS - 1) ];
 		int compound_mode = 
-			sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Compound_Mode[ctx],COMPOUND_MODES + 1); //S()
+			sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Compound_Mode[ctx],COMPOUND_MODES + 1); //S()
 		b_data->YMode = NEAREST_NEARESTMV + compound_mode;
 	}
 	else
 	{
 		//new_mv; //S()
-		if (sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.New_Mv[av1Ctx->currentFrame->mvpCtx->NewMvContext],3) == 0)
+		if (sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.New_Mv[av1Ctx->currentFrame->mvpCtx->NewMvContext],3) == 0)
 		{
 			b_data->YMode = NEWMV;
 		}
 		else
 		{
 			//zero_mv; //S()
-			if (sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Zero_Mv[av1Ctx->currentFrame->mvpCtx->ZeroMvContext],3 ) == 0)
+			if (sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Zero_Mv[av1Ctx->currentFrame->mvpCtx->ZeroMvContext],3 ) == 0)
 			{
 				b_data->YMode = GLOBALMV;
 			}
 			else
 			{
 				//ref_mv; //S()
-				b_data->YMode = (sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Ref_Mv[av1Ctx->currentFrame->mvpCtx->RefMvContext],3 ) == 0) ? NEARESTMV : NEARMV;
+				b_data->YMode = (sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Ref_Mv[av1Ctx->currentFrame->mvpCtx->RefMvContext],3 ) == 0) ? NEARESTMV : NEARMV;
 			}
 		}
 	}
@@ -3002,7 +3044,7 @@ int frame::inter_block_mode_info(SymbolContext *sbCtx, bitSt *bs, BlockData *b_d
 			if (av1Ctx->currentFrame->mvpCtx->NumMvFound > idx + 1)
 			{
 				//drl_mode; // S()
-				if (sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Drl_Mode[av1Ctx->currentFrame->mvpCtx->DrlCtxStack[idx]],3 ) == 0)
+				if (sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Drl_Mode[av1Ctx->currentFrame->mvpCtx->DrlCtxStack[idx]],3 ) == 0)
 				{
 					av1Ctx->currentFrame->mvpCtx->RefMvIdx = idx;
 					break;
@@ -3019,7 +3061,7 @@ int frame::inter_block_mode_info(SymbolContext *sbCtx, bitSt *bs, BlockData *b_d
 			if (av1Ctx->currentFrame->mvpCtx->NumMvFound > idx + 1)
 			{
 				//drl_mode; // S()
-				if (sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Drl_Mode[av1Ctx->currentFrame->mvpCtx->DrlCtxStack[idx]],3 ) == 0)
+				if (sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Drl_Mode[av1Ctx->currentFrame->mvpCtx->DrlCtxStack[idx]],3 ) == 0)
 				{
 					av1Ctx->currentFrame->mvpCtx->RefMvIdx = idx;
 					break;
@@ -3062,7 +3104,7 @@ int frame::inter_block_mode_info(SymbolContext *sbCtx, bitSt *bs, BlockData *b_d
 				else
 					ctx += 3;
 
-				b_data->interp_filter[dir] = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Interp_Filter[ctx],INTERP_FILTERS + 1); // S()
+				b_data->interp_filter[dir] = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Interp_Filter[ctx],INTERP_FILTERS + 1); // S()
 			}
 			else
 			{
@@ -3086,7 +3128,7 @@ int frame::intra_block_mode_info(SymbolContext *sbCtx, bitSt *bs,BlockData *b_da
 	b_data->RefFrame[0] = INTRA_FRAME;
 	b_data->RefFrame[1] = NONE;
 	//y_mode; //S()
-	b_data->YMode = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Y_Mode[Size_Group[b_data->MiSize ]],INTRA_MODES + 1);
+	b_data->YMode = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Y_Mode[Size_Group[b_data->MiSize ]],INTRA_MODES + 1);
 	intra_angle_info_y(sbCtx,bs,b_data,av1Ctx);
 	if (b_data->HasChroma)
 	{
@@ -3095,15 +3137,15 @@ int frame::intra_block_mode_info(SymbolContext *sbCtx, bitSt *bs,BlockData *b_da
 		int size;
 		if(b_data->Lossless && 
 				BLOCK_4X4 == get_plane_residual_size( b_data->MiSize, 1 ,seqHdr->color_config.subsampling_x,seqHdr->color_config.subsampling_y)){
-				uv_mode_cdf = av1Ctx->currentFrame->cdfCtx.Uv_Mode_Cfl_Allowed[b_data->YMode];
+				uv_mode_cdf = av1Ctx->tileSavedCdf.Uv_Mode_Cfl_Allowed[b_data->YMode];
 				size = UV_INTRA_MODES_CFL_ALLOWED + 1;
 		// Block_Width[ x ] is defined to be equal to 4 * Num_4x4_Blocks_Wide[ x ].
 		//Block_Height[ x ] is defined to be equal to Block_Height[ x ].
 		}else if(!b_data->Lossless && Max( Block_Width[ b_data->MiSize ], Block_Height[ b_data->MiSize ] ) <= 32){
-				uv_mode_cdf = av1Ctx->currentFrame->cdfCtx.Uv_Mode_Cfl_Allowed[b_data->YMode];
+				uv_mode_cdf = av1Ctx->tileSavedCdf.Uv_Mode_Cfl_Allowed[b_data->YMode];
 				size = UV_INTRA_MODES_CFL_ALLOWED + 1;
 		}else{
-				uv_mode_cdf = av1Ctx->currentFrame->cdfCtx.Uv_Mode_Cfl_Not_Allowed[b_data->YMode];
+				uv_mode_cdf = av1Ctx->tileSavedCdf.Uv_Mode_Cfl_Not_Allowed[b_data->YMode];
 				size = UV_INTRA_MODES_CFL_NOT_ALLOWED + 1;
 		}
 		//uv_mode ;//S()
@@ -3132,18 +3174,18 @@ int frame::read_interintra_mode(int isCompound,SymbolContext *sbCtx,bitSt *bs,Bl
 	{
 		int ctx = Size_Group[ b_data->MiSize ] - 1;
 
-		b_data->interintra = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Inter_Intra[ctx],3); // S()
+		b_data->interintra = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Inter_Intra[ctx],3); // S()
 		if (b_data->interintra)
 		{
-			b_data->interintra_mode = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Inter_Intra_Mode[ctx],INTERINTRA_MODES + 1); //S()
+			b_data->interintra_mode = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Inter_Intra_Mode[ctx],INTERINTRA_MODES + 1); //S()
 			b_data->RefFrame[1] = INTRA_FRAME;
 			b_data->AngleDeltaY = 0;
 			b_data->AngleDeltaUV = 0;
 			b_data->use_filter_intra = 0;
-			b_data->wedge_interintra = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Wedge_Inter_Intra[b_data->MiSize],3); //S()
+			b_data->wedge_interintra = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Wedge_Inter_Intra[b_data->MiSize],3); //S()
 			if (b_data->wedge_interintra)
 			{
-				b_data->wedge_index = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Wedge_Index[b_data->MiSize],16 + 1); //S()
+				b_data->wedge_index = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Wedge_Index[b_data->MiSize],16 + 1); //S()
 				b_data->wedge_sign = 0;
 			}
 		}
@@ -3192,12 +3234,12 @@ int frame::read_motion_mode(int isCompound,SymbolContext *sbCtx,bitSt *bs,BlockD
 		!frameHdr->allow_warped_motion || is_scaled(b_data->RefFrame[0],frameHdr->ref_frame_idx,av1Ctx->RefUpscaledWidth,
 											av1Ctx->RefFrameHeight,frameHdr->si.FrameWidth,frameHdr->si.RenderHeight))
 	{
-		int use_obmc = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Use_Obmc[b_data->MiSize],3); // S()
+		int use_obmc = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Use_Obmc[b_data->MiSize],3); // S()
 		b_data->motion_mode = use_obmc ? OBMC : SIMPLE;
 	}
 	else
 	{
-		b_data->motion_mode = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Motion_Mode[b_data->MiSize],MOTION_MODES + 1); //S()
+		b_data->motion_mode = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Motion_Mode[b_data->MiSize],MOTION_MODES + 1); //S()
 	}
 }
 int frame::read_compound_type(int isCompound,SymbolContext *sbCtx,bitSt *bs,BlockData *b_data,AV1DecodeContext *av1Ctx)
@@ -3233,7 +3275,7 @@ int frame::read_compound_type(int isCompound,SymbolContext *sbCtx,bitSt *bs,Bloc
 			}
 			ctx = Min(5, ctx);
 
-			b_data->comp_group_idx = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Comp_Group_Idx[ctx],3); // S()
+			b_data->comp_group_idx = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Comp_Group_Idx[ctx],3); // S()
 		}
 		if (b_data->comp_group_idx == 0)
 		{
@@ -3257,7 +3299,7 @@ int frame::read_compound_type(int isCompound,SymbolContext *sbCtx,bitSt *bs,Bloc
 					else if (b_data->LeftRefFrame[0] == ALTREF_FRAME)
 						ctx++;
 				}
-				b_data->compound_idx = sb->decodeSymbol(sbCtx, bs, av1Ctx->currentFrame->cdfCtx.Compound_Idx[ctx], 3); // S()
+				b_data->compound_idx = sb->decodeSymbol(sbCtx, bs, av1Ctx->tileSavedCdf.Compound_Idx[ctx], 3); // S()
 				b_data->compound_type = b_data->compound_idx ? COMPOUND_AVERAGE : COMPOUND_DISTANCE;
 			}
 			else
@@ -3273,12 +3315,12 @@ int frame::read_compound_type(int isCompound,SymbolContext *sbCtx,bitSt *bs,Bloc
 			}
 			else
 			{
-				b_data->compound_type = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Compound_Type[b_data->MiSize],COMPOUND_TYPES + 1); // S()
+				b_data->compound_type = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Compound_Type[b_data->MiSize],COMPOUND_TYPES + 1); // S()
 			}
 		}
 		if (b_data->compound_type == COMPOUND_WEDGE)
 		{
-			b_data->wedge_index = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Wedge_Index[b_data->MiSize],16 + 1); // S()
+			b_data->wedge_index = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Wedge_Index[b_data->MiSize],16 + 1); // S()
 			b_data->wedge_sign = sb->read_literal(sbCtx,bs,1);	 // L(1)
 		}
 		else if (b_data->compound_type == COMPOUND_DIFFWTD)
@@ -3353,7 +3395,7 @@ int frame::read_ref_frames(SymbolContext *sbCtx, bitSt *bs, BlockData *b_data, A
 				ctx = 1;
 			}
 
-			b_data->comp_mode = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Comp_Mode[ctx],sizeof(av1Ctx->currentFrame->cdfCtx.Comp_Mode[ctx])/sizeof(uint16_t)); // S()
+			b_data->comp_mode = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Comp_Mode[ctx],sizeof(av1Ctx->tileSavedCdf.Comp_Mode[ctx])/sizeof(uint16_t)); // S()
 		}else{
 			b_data->comp_mode = SINGLE_REFERENCE;
 		}
@@ -3421,7 +3463,7 @@ int frame::read_ref_frames(SymbolContext *sbCtx, bitSt *bs, BlockData *b_data, A
 				ctx = 2;
 			}
 
-			int comp_ref_type = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Comp_Ref_Type[ctx],sizeof(av1Ctx->currentFrame->cdfCtx.Comp_Ref_Type[ctx])/sizeof(uint16_t)); // S()
+			int comp_ref_type = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Comp_Ref_Type[ctx],sizeof(av1Ctx->tileSavedCdf.Comp_Ref_Type[ctx])/sizeof(uint16_t)); // S()
 			if (comp_ref_type == UNIDIR_COMP_REFERENCE)
 			{
 				int fwdCount = count_refs( LAST_FRAME,b_data->AvailU,b_data->AvailL,b_data->AboveRefFrame,b_data->LeftRefFrame);
@@ -3433,7 +3475,7 @@ int frame::read_ref_frames(SymbolContext *sbCtx, bitSt *bs, BlockData *b_data, A
 				bwdCount += count_refs( ALTREF_FRAME,b_data->AvailU,b_data->AvailL,b_data->AboveRefFrame,b_data->LeftRefFrame );
 				ctx = ref_count_ctx( fwdCount, bwdCount );
 
-				int uni_comp_ref = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Uni_Comp_Ref[ctx][0],sizeof(av1Ctx->currentFrame->cdfCtx.Uni_Comp_Ref[ctx][0])/sizeof(uint16_t)); // S()
+				int uni_comp_ref = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Uni_Comp_Ref[ctx][0],sizeof(av1Ctx->tileSavedCdf.Uni_Comp_Ref[ctx][0])/sizeof(uint16_t)); // S()
 				if (uni_comp_ref)
 				{
 					b_data->RefFrame[0] = BWDREF_FRAME;
@@ -3446,14 +3488,14 @@ int frame::read_ref_frames(SymbolContext *sbCtx, bitSt *bs, BlockData *b_data, A
 									 count_refs( GOLDEN_FRAME ,b_data->AvailU,b_data->AvailL,b_data->AboveRefFrame,b_data->LeftRefFrame);
 					ctx = ref_count_ctx( last2Count, last3GoldCount );
 
-					int uni_comp_ref_p1 = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Uni_Comp_Ref[ctx][1],sizeof(av1Ctx->currentFrame->cdfCtx.Uni_Comp_Ref[ctx][1])/sizeof(uint16_t)); // S()
+					int uni_comp_ref_p1 = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Uni_Comp_Ref[ctx][1],sizeof(av1Ctx->tileSavedCdf.Uni_Comp_Ref[ctx][1])/sizeof(uint16_t)); // S()
 					if (uni_comp_ref_p1)
 					{
 						int last3Count = count_refs( LAST3_FRAME ,b_data->AvailU,b_data->AvailL,b_data->AboveRefFrame,b_data->LeftRefFrame);
 						int goldCount = count_refs( GOLDEN_FRAME,b_data->AvailU,b_data->AvailL,b_data->AboveRefFrame,b_data->LeftRefFrame );
 						ctx = ref_count_ctx( last3Count, goldCount );
 
-						int uni_comp_ref_p2 = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Uni_Comp_Ref[ctx][2],sizeof(av1Ctx->currentFrame->cdfCtx.Uni_Comp_Ref[ctx][2])/sizeof(uint16_t)); // S()
+						int uni_comp_ref_p2 = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Uni_Comp_Ref[ctx][2],sizeof(av1Ctx->tileSavedCdf.Uni_Comp_Ref[ctx][2])/sizeof(uint16_t)); // S()
 						if (uni_comp_ref_p2)
 						{
 							b_data->RefFrame[0] = LAST_FRAME;
@@ -3480,13 +3522,13 @@ int frame::read_ref_frames(SymbolContext *sbCtx, bitSt *bs, BlockData *b_data, A
 								count_refs( GOLDEN_FRAME,b_data->AvailU,b_data->AvailL,b_data->AboveRefFrame,b_data->LeftRefFrame );
 				ctx = ref_count_ctx( last12Count, last3GoldCount );
 
-				int comp_ref = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Comp_Ref[ctx][0],sizeof(av1Ctx->currentFrame->cdfCtx.Comp_Ref[ctx][0])/sizeof(uint16_t)); // S()
+				int comp_ref = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Comp_Ref[ctx][0],sizeof(av1Ctx->tileSavedCdf.Comp_Ref[ctx][0])/sizeof(uint16_t)); // S()
 				if (comp_ref == 0)
 				{
 					int lastCount = count_refs( LAST_FRAME,b_data->AvailU,b_data->AvailL,b_data->AboveRefFrame,b_data->LeftRefFrame );
 					int last2Count = count_refs( LAST2_FRAME,b_data->AvailU,b_data->AvailL,b_data->AboveRefFrame,b_data->LeftRefFrame );
 					ctx = ref_count_ctx( lastCount, last2Count );
-					int comp_ref_p1 = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Comp_Ref[ctx][1],sizeof(av1Ctx->currentFrame->cdfCtx.Comp_Ref[ctx][1])/sizeof(uint16_t)); // S()
+					int comp_ref_p1 = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Comp_Ref[ctx][1],sizeof(av1Ctx->tileSavedCdf.Comp_Ref[ctx][1])/sizeof(uint16_t)); // S()
 					b_data->RefFrame[0] = comp_ref_p1 ? LAST2_FRAME : LAST_FRAME;
 				}
 				else
@@ -3495,7 +3537,7 @@ int frame::read_ref_frames(SymbolContext *sbCtx, bitSt *bs, BlockData *b_data, A
 					int goldCount = count_refs( GOLDEN_FRAME,b_data->AvailU,b_data->AvailL,b_data->AboveRefFrame,b_data->LeftRefFrame  );
 					ctx = ref_count_ctx( last3Count, goldCount );
 
-					int comp_ref_p2 = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Comp_Ref[ctx][2],sizeof(av1Ctx->currentFrame->cdfCtx.Comp_Ref[ctx][2])/sizeof(uint16_t)); // S()
+					int comp_ref_p2 = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Comp_Ref[ctx][2],sizeof(av1Ctx->tileSavedCdf.Comp_Ref[ctx][2])/sizeof(uint16_t)); // S()
 					b_data->RefFrame[0] = comp_ref_p2 ? GOLDEN_FRAME : LAST3_FRAME;
 				}
 
@@ -3503,13 +3545,13 @@ int frame::read_ref_frames(SymbolContext *sbCtx, bitSt *bs, BlockData *b_data, A
 								count_refs( ALTREF2_FRAME,b_data->AvailU,b_data->AvailL,b_data->AboveRefFrame,b_data->LeftRefFrame );
 				int arfCount = count_refs( ALTREF_FRAME,b_data->AvailU,b_data->AvailL,b_data->AboveRefFrame,b_data->LeftRefFrame );
 				ctx = ref_count_ctx( brfarf2Count, arfCount );
-				int comp_bwdref = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Comp_Bwd_Ref[ctx][0],sizeof(av1Ctx->currentFrame->cdfCtx.Comp_Bwd_Ref[ctx][0])/sizeof(uint16_t)); /// S()
+				int comp_bwdref = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Comp_Bwd_Ref[ctx][0],sizeof(av1Ctx->tileSavedCdf.Comp_Bwd_Ref[ctx][0])/sizeof(uint16_t)); /// S()
 				if (comp_bwdref == 0)
 				{
 					int brfCount = count_refs( BWDREF_FRAME,b_data->AvailU,b_data->AvailL,b_data->AboveRefFrame,b_data->LeftRefFrame );
 					int arf2Count = count_refs( ALTREF2_FRAME ,b_data->AvailU,b_data->AvailL,b_data->AboveRefFrame,b_data->LeftRefFrame);
 					ctx = ref_count_ctx( brfCount, arf2Count );
-					int comp_bwdref_p1 = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Comp_Bwd_Ref[ctx][1],sizeof(av1Ctx->currentFrame->cdfCtx.Comp_Bwd_Ref[ctx][1])/sizeof(uint16_t)); // S()
+					int comp_bwdref_p1 = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Comp_Bwd_Ref[ctx][1],sizeof(av1Ctx->tileSavedCdf.Comp_Bwd_Ref[ctx][1])/sizeof(uint16_t)); // S()
 					b_data->RefFrame[1] = comp_bwdref_p1 ? ALTREF2_FRAME : BWDREF_FRAME;
 				}
 				else
@@ -3530,14 +3572,14 @@ int frame::read_ref_frames(SymbolContext *sbCtx, bitSt *bs, BlockData *b_data, A
 			bwdCount += count_refs( ALTREF_FRAME ,b_data->AvailU,b_data->AvailL,b_data->AboveRefFrame,b_data->LeftRefFrame);
 			ctx = ref_count_ctx( fwdCount, bwdCount );
 
-			int single_ref_p1 = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Single_Ref[ctx][0],sizeof(av1Ctx->currentFrame->cdfCtx.Single_Ref[ctx][0])/sizeof(uint16_t)); // S()
+			int single_ref_p1 = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Single_Ref[ctx][0],sizeof(av1Ctx->tileSavedCdf.Single_Ref[ctx][0])/sizeof(uint16_t)); // S()
 			if (single_ref_p1)
 			{
-				int single_ref_p2 = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Single_Ref[ctx][1],sizeof(av1Ctx->currentFrame->cdfCtx.Single_Ref[ctx][1])/sizeof(uint16_t)); // S()
+				int single_ref_p2 = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Single_Ref[ctx][1],sizeof(av1Ctx->tileSavedCdf.Single_Ref[ctx][1])/sizeof(uint16_t)); // S()
 				if (single_ref_p2 == 0)
 				{
 
-					int single_ref_p6 = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Single_Ref[ctx][5],sizeof(av1Ctx->currentFrame->cdfCtx.Single_Ref[ctx][5])/sizeof(uint16_t)); // S()
+					int single_ref_p6 = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Single_Ref[ctx][5],sizeof(av1Ctx->tileSavedCdf.Single_Ref[ctx][5])/sizeof(uint16_t)); // S()
 					b_data->RefFrame[0] = single_ref_p6 ? ALTREF2_FRAME : BWDREF_FRAME;
 				}
 				else
@@ -3547,15 +3589,15 @@ int frame::read_ref_frames(SymbolContext *sbCtx, bitSt *bs, BlockData *b_data, A
 			}
 			else
 			{
-				int single_ref_p3 = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Single_Ref[ctx][2],sizeof(av1Ctx->currentFrame->cdfCtx.Single_Ref[ctx][2])/sizeof(uint16_t)); // S()
+				int single_ref_p3 = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Single_Ref[ctx][2],sizeof(av1Ctx->tileSavedCdf.Single_Ref[ctx][2])/sizeof(uint16_t)); // S()
 				if (single_ref_p3)
 				{
-					int single_ref_p5 = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Single_Ref[ctx][4],sizeof(av1Ctx->currentFrame->cdfCtx.Single_Ref[ctx][4])/sizeof(uint16_t)); // S()
+					int single_ref_p5 = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Single_Ref[ctx][4],sizeof(av1Ctx->tileSavedCdf.Single_Ref[ctx][4])/sizeof(uint16_t)); // S()
 					b_data->RefFrame[0] = single_ref_p5 ? GOLDEN_FRAME : LAST3_FRAME;
 				}
 				else
 				{
-					int single_ref_p4 = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Single_Ref[ctx][3],sizeof(av1Ctx->currentFrame->cdfCtx.Single_Ref[ctx][3])/sizeof(uint16_t)); // S()
+					int single_ref_p4 = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Single_Ref[ctx][3],sizeof(av1Ctx->tileSavedCdf.Single_Ref[ctx][3])/sizeof(uint16_t)); // S()
 					b_data->RefFrame[0] = single_ref_p4 ? LAST2_FRAME : LAST_FRAME;
 				}
 			}
@@ -3590,13 +3632,13 @@ int frame::palette_tokens(SymbolContext *sbCtx, bitSt *bs, BlockData *b_data, AV
 				uint16_t *cdf;
 				int ctx = Palette_Color_Context[ b_data->ColorContextHash ];
 				switch(b_data->PaletteSizeY){
-					case 2: cdf = av1Ctx->currentFrame->cdfCtx.Palette_Size_2_Y_Color[ctx]; break;
-					case 3:	cdf = av1Ctx->currentFrame->cdfCtx.Palette_Size_3_Y_Color[ctx]; break;
-					case 4:	cdf = av1Ctx->currentFrame->cdfCtx.Palette_Size_4_Y_Color[ctx]; break;
-					case 5:	cdf = av1Ctx->currentFrame->cdfCtx.Palette_Size_5_Y_Color[ctx]; break;
-					case 6:	cdf = av1Ctx->currentFrame->cdfCtx.Palette_Size_6_Y_Color[ctx]; break;
-					case 7:	cdf = av1Ctx->currentFrame->cdfCtx.Palette_Size_7_Y_Color[ctx]; break;
-					case 8:	cdf = av1Ctx->currentFrame->cdfCtx.Palette_Size_8_Y_Color[ctx]; break;
+					case 2: cdf = av1Ctx->tileSavedCdf.Palette_Size_2_Y_Color[ctx]; break;
+					case 3:	cdf = av1Ctx->tileSavedCdf.Palette_Size_3_Y_Color[ctx]; break;
+					case 4:	cdf = av1Ctx->tileSavedCdf.Palette_Size_4_Y_Color[ctx]; break;
+					case 5:	cdf = av1Ctx->tileSavedCdf.Palette_Size_5_Y_Color[ctx]; break;
+					case 6:	cdf = av1Ctx->tileSavedCdf.Palette_Size_6_Y_Color[ctx]; break;
+					case 7:	cdf = av1Ctx->tileSavedCdf.Palette_Size_7_Y_Color[ctx]; break;
+					case 8:	cdf = av1Ctx->tileSavedCdf.Palette_Size_8_Y_Color[ctx]; break;
 					default:
 						break;
 				}
@@ -3653,13 +3695,13 @@ int frame::palette_tokens(SymbolContext *sbCtx, bitSt *bs, BlockData *b_data, AV
 				uint16_t *cdf;
 				int ctx = Palette_Color_Context[ b_data->ColorContextHash ];
 				switch(b_data->PaletteSizeY){
-					case 2: cdf = av1Ctx->currentFrame->cdfCtx.Palette_Size_2_Uv_Color[ctx]; break;
-					case 3:	cdf = av1Ctx->currentFrame->cdfCtx.Palette_Size_3_Uv_Color[ctx]; break;
-					case 4:	cdf = av1Ctx->currentFrame->cdfCtx.Palette_Size_4_Uv_Color[ctx]; break;
-					case 5:	cdf = av1Ctx->currentFrame->cdfCtx.Palette_Size_5_Uv_Color[ctx]; break;
-					case 6:	cdf = av1Ctx->currentFrame->cdfCtx.Palette_Size_6_Uv_Color[ctx]; break;
-					case 7:	cdf = av1Ctx->currentFrame->cdfCtx.Palette_Size_7_Uv_Color[ctx]; break;
-					case 8:	cdf = av1Ctx->currentFrame->cdfCtx.Palette_Size_8_Uv_Color[ctx]; break;
+					case 2: cdf = av1Ctx->tileSavedCdf.Palette_Size_2_Uv_Color[ctx]; break;
+					case 3:	cdf = av1Ctx->tileSavedCdf.Palette_Size_3_Uv_Color[ctx]; break;
+					case 4:	cdf = av1Ctx->tileSavedCdf.Palette_Size_4_Uv_Color[ctx]; break;
+					case 5:	cdf = av1Ctx->tileSavedCdf.Palette_Size_5_Uv_Color[ctx]; break;
+					case 6:	cdf = av1Ctx->tileSavedCdf.Palette_Size_6_Uv_Color[ctx]; break;
+					case 7:	cdf = av1Ctx->tileSavedCdf.Palette_Size_7_Uv_Color[ctx]; break;
+					case 8:	cdf = av1Ctx->tileSavedCdf.Palette_Size_8_Uv_Color[ctx]; break;
 					default:
 						break;
 				}
@@ -3790,11 +3832,11 @@ int frame::read_tx_size(int allowSelect, SymbolContext *sbCtx, bitSt *bs,BlockDa
 		uint16_t *cdf;
 		switch (maxTxDepth)
 		{
-			case 2 : cdf = av1Ctx->currentFrame->cdfCtx.Tx_16x16[ctx]; break;
-			case 3 : cdf = av1Ctx->currentFrame->cdfCtx.Tx_32x32[ctx]; break;
-			case 4 : cdf = av1Ctx->currentFrame->cdfCtx.Tx_64x64[ctx]; break;
+			case 2 : cdf = av1Ctx->tileSavedCdf.Tx_16x16[ctx]; break;
+			case 3 : cdf = av1Ctx->tileSavedCdf.Tx_32x32[ctx]; break;
+			case 4 : cdf = av1Ctx->tileSavedCdf.Tx_64x64[ctx]; break;
 			default:
-				cdf = av1Ctx->currentFrame->cdfCtx.Tx_8x8[ctx]; 
+				cdf = av1Ctx->tileSavedCdf.Tx_8x8[ctx]; 
 				break;
 		}
 		int size = maxTxDepth >= 2 ? MAX_TX_DEPTH + 2 : MAX_TX_DEPTH + 1;
@@ -3991,13 +4033,13 @@ int frame::clear_block_decoded_flags(int r, int c, int sbSize4, AV1DecodeContext
 			for (int x = -1; x <= (sbSize4 >> subX); x++)
 			{
 				if (y < 0 && x < sbWidth4)
-					av1Ctx->BlockDecoded[plane][y][x] = 1;
+					(*av1Ctx->BlockDecoded)[plane][y][x] = 1;
 				else if (x < 0 && y < sbHeight4)
-					av1Ctx->BlockDecoded[plane][y][x] = 1;
+					(*av1Ctx->BlockDecoded)[plane][y][x] = 1;
 				else
-					av1Ctx->BlockDecoded[plane][y][x] = 0;
+					(*av1Ctx->BlockDecoded)[plane][y][x] = 0;
 			}
-		av1Ctx->BlockDecoded[plane][sbSize4 >> subY][-1] = 0;
+		(*av1Ctx->BlockDecoded)[plane][sbSize4 >> subY][-1] = 0;
 	}
 }
 int frame::clear_cdef(int r, int c,AV1DecodeContext *av1Ctx)
@@ -4067,17 +4109,17 @@ int frame::read_lr_unit(SymbolContext *sbCtx, bitSt *bs,int plane,int unitRow,in
 	int restoration_type;
 	if (frameHdr->lr_params.FrameRestorationType[plane] == RESTORE_WIENER)
 	{
-		int use_wiener = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Use_Wiener ,2 + 1 ); // S()
+		int use_wiener = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Use_Wiener ,2 + 1 ); // S()
 		restoration_type = use_wiener ? RESTORE_WIENER : RESTORE_NONE;
 	}
 	else if (frameHdr->lr_params.FrameRestorationType[plane] == RESTORE_SGRPROJ)
 	{
-		int use_sgrproj = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Use_Sgrproj ,2 + 1 ); // S()
+		int use_sgrproj = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Use_Sgrproj ,2 + 1 ); // S()
 		restoration_type = use_sgrproj ? RESTORE_SGRPROJ : RESTORE_NONE;
 	}
 	else
 	{
-		restoration_type = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Restoration_Type ,RESTORE_SWITCHABLE + 1 ); // S()
+		restoration_type = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Restoration_Type ,RESTORE_SWITCHABLE + 1 ); // S()
 	}
 	av1Ctx->currentFrame->lrCtx->LrType[plane][unitRow][unitCol] = restoration_type;
 	int v;
@@ -4138,14 +4180,21 @@ int frame::read_lr_unit(SymbolContext *sbCtx, bitSt *bs,int plane,int unitRow,in
 int frame::clear_above_context(AV1DecodeContext  *av1Ctx)
 {
 	frameHeader *frameHdr = &av1Ctx->frameHdr;
-	memset(av1Ctx->AboveLevelContext,0,frameHdr->MiCols * sizeof(int));
-	memset(av1Ctx->AboveDcContext,0,frameHdr->MiCols * sizeof(int));
+
+	for(int i = 0 ; i < 3 ; i ++){
+		memset(av1Ctx->AboveLevelContext[i],0, frameHdr->MiCols * sizeof(int));
+		memset(av1Ctx->AboveDcContext[i],0,frameHdr->MiCols * sizeof(int));	
+	}
+
 	memset(av1Ctx->AboveSegPredContext,0,frameHdr->MiCols * sizeof(int));
+
 }
 int frame::clear_left_context(AV1DecodeContext  *av1Ctx)
 {
 	frameHeader *frameHdr = &av1Ctx->frameHdr;
-	memset(av1Ctx->LeftLevelContext,0,frameHdr->MiRows * sizeof(int));
-	memset(av1Ctx->LeftDcContext,0,frameHdr->MiRows * sizeof(int));
+	for(int i = 0 ; i < 3 ; i ++){
+		memset(av1Ctx->LeftLevelContext[i],0, frameHdr->MiRows * sizeof(int));
+		memset(av1Ctx->LeftDcContext[i],0, frameHdr->MiRows * sizeof(int));
+	}
 	memset(av1Ctx->LeftSegPredContext,0,frameHdr->MiRows * sizeof(int));
 }
