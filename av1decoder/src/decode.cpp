@@ -5067,11 +5067,16 @@ void decode::loopRestoration(AV1DecodeContext *av1Ctx){
 	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
 	//memcpy(av1Ctx->currentFrame->lrCtx->LrFrame,av1Ctx->currentFrame->UpscaledCdefFrame,size);
 	for(int i = 0; i < 3 ; i ++){
+		//printf("FrameHeight %d UpscaledWidth %d \n",frameHdr->si.FrameHeight,frameHdr->si.UpscaledWidth);
 		for(int j = 0 ; j < frameHdr->si.FrameHeight; j++){
-			memcpy(av1Ctx->currentFrame->lrCtx->LrFrame[i][j],
-				av1Ctx->currentFrame->UpscaledCdefFrame[i][j],frameHdr->si.UpscaledWidth * sizeof(uint16_t));
+			for(int k = 0 ; k < frameHdr->si.UpscaledWidth; k++){
+				av1Ctx->currentFrame->lrCtx->LrFrame[i][j][k] = av1Ctx->currentFrame->UpscaledCdefFrame[i][j][k] ;
+			}
+			//memcpy(av1Ctx->currentFrame->lrCtx->LrFrame[i][j],
+			//	av1Ctx->currentFrame->UpscaledCdefFrame[i][j],frameHdr->si.UpscaledWidth * sizeof(int));
 		}
 	}
+
 	// 如果不需要循环恢复，直接返回
 	if (frameHdr->lr_params.UsesLr == 0) {
 		return;
@@ -5311,7 +5316,7 @@ void decode::wienerFilter(int plane ,int unitRow,int unitCol,int x,int y,int w,i
 	}
 }
 //7.17.5
-void decode::wienerCoefficient(int coeff[3],int filter[7]){
+void decode::wienerCoefficient(uint16_t coeff[3],int filter[7]){
 	filter[ 3 ] = 128;
 	for (int i = 0; i < 3; i++ ) {
 		int c = coeff[ i ];
@@ -5372,8 +5377,8 @@ void decode::intermediateOutputPreparation(int *w,int *h,int *subX,int *subY,int
 		*bitDepth = av1Ctx->RefBitDepth[frameHdr->frame_to_show_map_idx];
 	} else {
 		// Copy from the current frame
-		*w = av1Ctx->currentFrame->si.UpscaledWidth;
-		*h = av1Ctx->currentFrame->si.FrameHeight;
+		*w = frameHdr->si.UpscaledWidth;
+		*h = frameHdr->si.FrameHeight;
 		*subX = seqHdr->color_config.subsampling_x;
 		*subY = seqHdr->color_config.subsampling_y;
 
@@ -5583,7 +5588,18 @@ void decode::addNoiseSynthesis(int GrainMin,int GrainMax,int * RandomRegister,in
 	frameHeader *frameHdr = &av1Ctx->frameHdr;
 	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
 	int lumaNum = 0;
-	int noiseStripe[(h + 1) / 2][3][34][w];
+	//First an array of noise data noiseStripe is generated for each 32 luma sample high stripe of the image.
+	//noiseStripe[ lumaNum ][ 0 ] is 34 samples high and w samples wide
+	int16_t ****noiseStripe = new int16_t***[(h + 16) / 32];
+	for(int i = 0 ; i < (h + 16) / 32 ; i++){
+		noiseStripe[i] = new int16_t**[3];
+		for(int j = 0 ; j < 3 ; j++){
+			noiseStripe[i][j] =  new int16_t*[34];
+			for(int k = 0 ; k < 34 ; k++){
+				noiseStripe[i][j][k] = new int16_t[w];
+			}
+		}
+	}
 	int rand,offsetX,offsetY,planeSubX,planeSubY,planeOffsetX,planeOffsetY,g,old;
 	for (int y = 0; y < (h + 1) / 2; y += 16)
 	{
@@ -5644,6 +5660,17 @@ void decode::addNoiseSynthesis(int GrainMin,int GrainMax,int * RandomRegister,in
 		}
 		lumaNum++;
 	}
+	
+	for(int i = 0 ; i < (h + 1) / 2 ; i++){	
+		for(int j = 0 ; j < 3 ; j++){
+			for(int k = 0 ; k < 34 ; k++){
+				delete [] noiseStripe[i][j][k];
+			}
+			delete [] noiseStripe[i][j];
+		}
+		delete [] noiseStripe[i];
+	}
+	delete [] noiseStripe;
 }
 //7.19
 void decode::motionFieldMotionVectorStorage(AV1DecodeContext *av1Ctx){
@@ -5685,11 +5712,11 @@ void decode::referenceFrameUpdate( AV1DecodeContext *av1Ctx){
 		if ((frameHdr->refresh_frame_flags >> i) & 1) {
 			av1Ctx->RefValid[i] = 1;
 			av1Ctx->RefFrameId[i] = frameHdr->current_frame_id;
-			(*av1Ctx->RefUpscaledWidth)[i] = av1Ctx->currentFrame->si.UpscaledWidth;
-			(*av1Ctx->RefFrameWidth)[i] = av1Ctx->currentFrame->si.FrameWidth;
-			(*av1Ctx->RefFrameHeight)[i] = av1Ctx->currentFrame->si.FrameHeight;
-			(*av1Ctx->RefRenderWidth)[i] = av1Ctx->currentFrame->si.RenderWidth;
-			(*av1Ctx->RefRenderHeight)[i] = av1Ctx->currentFrame->si.RenderHeight;
+			(*av1Ctx->RefUpscaledWidth)[i] = frameHdr->si.UpscaledWidth;
+			(*av1Ctx->RefFrameWidth)[i] = frameHdr->si.FrameWidth;
+			(*av1Ctx->RefFrameHeight)[i] = frameHdr->si.FrameHeight;
+			(*av1Ctx->RefRenderWidth)[i] = frameHdr->si.RenderWidth;
+			(*av1Ctx->RefRenderHeight)[i] = frameHdr->si.RenderHeight;
 			av1Ctx->RefMiCols[i] = frameHdr->MiCols;
 			av1Ctx->RefMiRows[i] = frameHdr->MiRows;
 			av1Ctx->RefFrameType[i] = frameHdr->frame_type;
@@ -5701,15 +5728,15 @@ void decode::referenceFrameUpdate( AV1DecodeContext *av1Ctx){
 				av1Ctx->SavedOrderHints[i][j + LAST_FRAME] = frameHdr->OrderHints[j + LAST_FRAME];
 			}
 
-			for (int y = 0; y < av1Ctx->currentFrame->si.FrameHeight; y++) {
-				for (int x = 0; x < av1Ctx->currentFrame->si.UpscaledWidth; x++) {
+			for (int y = 0; y < frameHdr->si.FrameHeight; y++) {
+				for (int x = 0; x < frameHdr->si.UpscaledWidth; x++) {
 					av1Ctx->FrameStore[i][0][y][x] = av1Ctx->currentFrame->lrCtx->LrFrame[0][y][x];
 				}
 			}
 
 			for (int plane = 1; plane <= 2; plane++) {
-				for (int y = 0; y < ((av1Ctx->currentFrame->si.FrameHeight + seqHdr->color_config.subsampling_y) >> seqHdr->color_config.subsampling_y); y++) {
-					for (int x = 0; x < ((av1Ctx->currentFrame->si.UpscaledWidth + seqHdr->color_config.subsampling_x) >> seqHdr->color_config.subsampling_x); x++) {
+				for (int y = 0; y < ((frameHdr->si.FrameHeight + seqHdr->color_config.subsampling_y) >> seqHdr->color_config.subsampling_y); y++) {
+					for (int x = 0; x < ((frameHdr->si.UpscaledWidth + seqHdr->color_config.subsampling_x) >> seqHdr->color_config.subsampling_x); x++) {
 						av1Ctx->FrameStore[i][plane][y][x] = av1Ctx->currentFrame->lrCtx->LrFrame[plane][y][x];
 					}
 				}
@@ -5754,11 +5781,11 @@ void decode::referenceFrameLoading( AV1DecodeContext *av1Ctx){
 	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
 
 	frameHdr->current_frame_id = av1Ctx->RefFrameId[frameHdr->frame_to_show_map_idx];//这里， spec 是不是写错了？？
-	av1Ctx->currentFrame->si.UpscaledWidth = (*av1Ctx->RefUpscaledWidth)[frameHdr->frame_to_show_map_idx];
-	av1Ctx->currentFrame->si.FrameWidth = (*av1Ctx->RefFrameWidth)[frameHdr->frame_to_show_map_idx];
-	av1Ctx->currentFrame->si.FrameHeight = (*av1Ctx->RefFrameHeight)[frameHdr->frame_to_show_map_idx];
-	av1Ctx->currentFrame->si.RenderWidth = (*av1Ctx->RefRenderWidth)[frameHdr->frame_to_show_map_idx];
-	av1Ctx->currentFrame->si.RenderHeight = (*av1Ctx->RefRenderHeight)[frameHdr->frame_to_show_map_idx];
+	frameHdr->si.UpscaledWidth = (*av1Ctx->RefUpscaledWidth)[frameHdr->frame_to_show_map_idx];
+	frameHdr->si.FrameWidth = (*av1Ctx->RefFrameWidth)[frameHdr->frame_to_show_map_idx];
+	frameHdr->si.FrameHeight = (*av1Ctx->RefFrameHeight)[frameHdr->frame_to_show_map_idx];
+	frameHdr->si.RenderWidth = (*av1Ctx->RefRenderWidth)[frameHdr->frame_to_show_map_idx];
+	frameHdr->si.RenderHeight = (*av1Ctx->RefRenderHeight)[frameHdr->frame_to_show_map_idx];
 	frameHdr->MiCols = av1Ctx->RefMiCols[frameHdr->frame_to_show_map_idx];
 	frameHdr->MiRows = av1Ctx->RefMiRows[frameHdr->frame_to_show_map_idx];
 	seqHdr->color_config.subsampling_x = av1Ctx->RefSubsamplingX[frameHdr->frame_to_show_map_idx];
@@ -5770,15 +5797,15 @@ void decode::referenceFrameLoading( AV1DecodeContext *av1Ctx){
 		frameHdr->OrderHints[j + LAST_FRAME] = av1Ctx->SavedOrderHints[frameHdr->frame_to_show_map_idx][j + LAST_FRAME];
 	}
 
-	for (int y = 0; y < av1Ctx->currentFrame->si.FrameHeight; y++) {
-		for (int x = 0; x < av1Ctx->currentFrame->si.UpscaledWidth; x++) {
+	for (int y = 0; y < frameHdr->si.FrameHeight; y++) {
+		for (int x = 0; x < frameHdr->si.UpscaledWidth; x++) {
 			av1Ctx->currentFrame->lrCtx->LrFrame[0][y][x] = av1Ctx->FrameStore[frameHdr->frame_to_show_map_idx][0][y][x];
 		}
 	}
 
 	for (int plane = 1; plane <= 2; plane++) {
-		for (int y = 0; y < ((av1Ctx->currentFrame->si.FrameHeight + seqHdr->color_config.subsampling_y) >> seqHdr->color_config.subsampling_y); y++) {
-			for (int x = 0; x < ((av1Ctx->currentFrame->si.UpscaledWidth + seqHdr->color_config.subsampling_x) >> seqHdr->color_config.subsampling_x); x++) {
+		for (int y = 0; y < ((frameHdr->si.FrameHeight + seqHdr->color_config.subsampling_y) >> seqHdr->color_config.subsampling_y); y++) {
+			for (int x = 0; x < ((frameHdr->si.UpscaledWidth + seqHdr->color_config.subsampling_x) >> seqHdr->color_config.subsampling_x); x++) {
 				av1Ctx->currentFrame->lrCtx->LrFrame[plane][y][x] = av1Ctx->FrameStore[frameHdr->frame_to_show_map_idx][plane][y][x];
 			}
 		}

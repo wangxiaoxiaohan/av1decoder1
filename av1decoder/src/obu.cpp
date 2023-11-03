@@ -232,6 +232,8 @@ int obu::parseSequenceHeader(int sz,bitSt *bs,sequenceHeader *out)
 		if ( out->color_config.subsampling_x && out->color_config.subsampling_y ) {
 			out->color_config.chroma_sample_position = readBits(bs,2);
 		}
+		out->color_config.separate_uv_delta_q = readOneBit(bs);
+
 	}
 
 	out->film_grain_params_present = readOneBit(bs);
@@ -344,8 +346,9 @@ int obu::parseObuInfo(FILE* fp,int fileOffset,uint8_t *buf,int sz,AV1DecodeConte
 				}
 			}
 			if(obu_header.obu_type == OBU_FRAME_HEADER) break;
-			frame::Instance().decodeFrame(sz - bs.offset, &bs,ctx);
+			
 		case OBU_TILE_GROUP:
+			frame::Instance().decodeFrame(obu_size - bs.offset, &bs,ctx);
 			break;
 		case OBU_METADATA:
 			//metadata_obu( )
@@ -358,15 +361,17 @@ int obu::parseObuInfo(FILE* fp,int fileOffset,uint8_t *buf,int sz,AV1DecodeConte
 			break;
 		default:
 			//reserved obu()
-			break;
-		int currentPosition  = get_position(&bs);
-		int payloadBits = currentPosition - startPosition;
-		if ( obu_size > 0 && obu_header.obu_type != OBU_TILE_GROUP &&
-			obu_header.obu_type != OBU_TILE_LIST &&
-			obu_header.obu_type != OBU_FRAME ) {
-			trailing_bits( &bs ,obu_size * 8 - payloadBits );
-		}
+			break;		
 
 	}
-    return total_size + obu_size;
+	int currentPosition  = get_position(&bs);
+	int payloadBits = currentPosition - startPosition;
+	if ( obu_size > 0 && obu_header.obu_type != OBU_TILE_GROUP &&
+		obu_header.obu_type != OBU_TILE_LIST &&
+		obu_header.obu_type != OBU_FRAME ) {
+			printf("%d %d\n",obu_size * 8,payloadBits);
+		trailing_bits( &bs ,obu_size * 8 - payloadBits );
+	}
+
+    return total_size += obu_size;
 }

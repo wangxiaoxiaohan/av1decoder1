@@ -174,7 +174,6 @@ typedef struct frameHeader{
 	struct {
 	    uint8_t base_q_idx;//后面几个语法元素的基准，这个也是Y分量的交流系数的量化参数
 	    int8_t DeltaQYDc;//y分量的直流量化参数，基于base_q_idx
-		uint8_t diff_uv_delta; //为1表示u和v的量化参数是分开的
 		int8_t DeltaQUDc, DeltaQUAc, DeltaQVDc, DeltaQVAc; //uv分量的直流 交流量化参数，基于base_q_idx
 		uint8_t using_qmatrix; // 是否使用自定义量化矩阵
         uint8_t qm, qm_y, qm_u, qm_v;//量化参数矩阵等级
@@ -192,7 +191,7 @@ typedef struct frameHeader{
 
 
 		uint8_t SegIdPreSkip;//它不是一个在码流中存在的语法元素，但是是解码必须的，为1表示在先读段id，再读skip相关语法，否则先读skip语法
-		uint8_t LastActiveSegId;//LastActiveSegId用于指示具有启用特征的最高分割ID编号。在解码段ID时，
+		int8_t LastActiveSegId;//LastActiveSegId用于指示具有启用特征的最高分割ID编号。在解码段ID时，
 		//这个值被用于只解码与使用的分割段相对应的选项.暂时没弄懂，标记！！！
 		uint8_t qindex[MAX_SEGMENTS];
 		uint8_t LosslessArray[MAX_SEGMENTS];
@@ -395,11 +394,11 @@ typedef struct BlockData{
 }BlockData;
 typedef struct LoopRestorationContext{
 	
-	uint8_t **LrFrame[3];
-	int ****LrWiener[3];
-	int **LrType[3];
-	int **LrSgrSet[3];
-	int ***LrSgrXqd[3];	
+	uint16_t **LrFrame[3];
+	uint16_t ****LrWiener[3];
+	uint16_t **LrType[3];
+	uint16_t **LrSgrSet[3];
+	uint16_t ***LrSgrXqd[3];	
 	int PlaneEndX;   // 当前平面的水平边界
 	int PlaneEndY;   // 当前平面的垂直边界
 	int StripeStartY; // 当前条带的起始y坐标
@@ -440,7 +439,7 @@ typedef struct MVPredContext{
 
 };
 typedef struct FrameContext{
-	sizeInfo si;
+	//sizeInfo si;
 	frameHeader frameHdr;
 	CDFArrays cdfCtx;
 	uint16_t **CurrFrame[3];

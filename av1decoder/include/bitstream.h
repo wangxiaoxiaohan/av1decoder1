@@ -22,7 +22,7 @@ void inline BitStreamAlign(bitSt *bs)
 }
 int inline get_position(bitSt *bs)
 {
-	bs->offset * 8 + bs->offsetInByte;
+	return bs->offset * 8 + bs->offsetInByte;
 }
 
 void  inline updateOffset(bitSt *bs)
@@ -52,6 +52,7 @@ uint32_t inline readBits(bitSt *bs,int len)
 }
 void inline trailing_bits(bitSt *bs ,int nbBits)
 {
+	if(nbBits == 0) return;
 	readOneBit(bs);
 	nbBits--;
 	while ( nbBits > 0 ) {

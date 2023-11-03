@@ -539,19 +539,22 @@ int frame::readQuantizationParams(bitSt *bs, sequenceHeader *seqHdr, frameHeader
 {
 	frameHdr->quantization_params.base_q_idx = readBits(bs, 8);
 
-	frameHdr->quantization_params.DeltaQYDc = read_delta_q(bs);
+	frameHdr->quantization_params.DeltaQYDc = readOneBit(bs) ? readsu(bs, 7) : 0;
 	if (seqHdr->color_config.NumPlanes > 1)
 	{
+		int diff_uv_delta;//为1表示u和v的量化参数是分开的
 		if (seqHdr->color_config.separate_uv_delta_q)
-			frameHdr->quantization_params.diff_uv_delta = readOneBit(bs);
+			diff_uv_delta = readOneBit(bs);
 		else
-			frameHdr->quantization_params.diff_uv_delta = 0;
-		frameHdr->quantization_params.DeltaQUDc = read_delta_q(bs);
-		frameHdr->quantization_params.DeltaQUAc = read_delta_q(bs);
-		if (frameHdr->quantization_params.diff_uv_delta)
+			diff_uv_delta = 0;
+		frameHdr->quantization_params.DeltaQUDc = readOneBit(bs) ? readsu(bs, 7) : 0;//read_delta_q(bs);
+		frameHdr->quantization_params.DeltaQUAc = readOneBit(bs) ? readsu(bs, 7) : 0;
+		    printf(" DeltaQUDc %d DeltaQUAc %d\n",frameHdr->quantization_params.DeltaQUDc,frameHdr->quantization_params.DeltaQUAc);
+		if (diff_uv_delta)
 		{
-			frameHdr->quantization_params.DeltaQVDc = read_delta_q(bs);
-			frameHdr->quantization_params.DeltaQVAc = read_delta_q(bs);
+			frameHdr->quantization_params.DeltaQVDc = readOneBit(bs) ? readsu(bs, 7) : 0;
+			frameHdr->quantization_params.DeltaQVAc = readOneBit(bs) ? readsu(bs, 7) : 0;
+			printf(" DeltaQVDc %d DeltaQVAc %d\n",frameHdr->quantization_params.DeltaQVDc,frameHdr->quantization_params.DeltaQVAc);
 		}
 		else
 		{
@@ -984,7 +987,6 @@ int frame::readDeltaQuantizerParams(bitSt *bs, frameHeader *frameHdr)
 	{
 		frameHdr->delta_q_params.delta_q_res = readBits(bs, 2);
 	}
-
 	return 0;
 }
 
@@ -1127,9 +1129,10 @@ void frame::allocDecodeContext(AV1DecodeContext *av1Ctx){
 
 	for(int i = 0 ; i < NUM_REF_FRAMES ; i ++){
 		for(int j = 0 ; j < 3 ; j ++){
-			av1Ctx->FrameStore[i][j] = new uint16_t*[frameHdr->si.FrameHeight];
-			for(int k = 0 ; k < frameHdr->si.FrameHeight ; k++){
-				av1Ctx->FrameStore[i][j][k] = new uint16_t[frameHdr->si.UpscaledWidth];
+			av1Ctx->FrameStore[i][j] = new uint16_t*[frameHdr-> MiRows  * MI_SIZE];
+			for(int k = 0 ; k < frameHdr-> MiRows  * MI_SIZE ; k++){
+				int w = frameHdr->si.UpscaledWidth > (frameHdr->MiCols * MI_SIZE) ? frameHdr->si.UpscaledWidth : (frameHdr->MiCols * MI_SIZE);
+				av1Ctx->FrameStore[i][j][k] = new uint16_t[w];
 			}
 		}
 	}
@@ -1429,50 +1432,56 @@ void frame::allocFrameContext(frameHeader *frameHdr ,FrameContext **fCtx){
 		fc->UpscaledCdefFrame[i] = new uint16_t*[frameHdr->MiRows  * MI_SIZE];
 		fc->UpscaledCurrFrame[i] = new uint16_t*[frameHdr->MiRows  * MI_SIZE];
 		for(int j = 0 ; j < frameHdr->MiRows * MI_SIZE; j++){
-			fc->CurrFrame[i][j] = new uint16_t[frameHdr->MiCols  * MI_SIZE];
-			fc->CdefFrame[i][j] = new uint16_t[frameHdr->MiCols  * MI_SIZE];
-			fc->UpscaledCdefFrame[i][j] = new uint16_t[frameHdr->MiCols  * MI_SIZE]; // 需要确定
-			fc->UpscaledCurrFrame[i][j] = new uint16_t[frameHdr->MiCols  * MI_SIZE];  // 需要确定
+			int w = frameHdr->si.UpscaledWidth > (frameHdr->MiCols * MI_SIZE) ? frameHdr->si.UpscaledWidth : (frameHdr->MiCols * MI_SIZE);
+			fc->CurrFrame[i][j] = new uint16_t[w];
+			fc->CdefFrame[i][j] = new uint16_t[w];
+			fc->UpscaledCdefFrame[i][j] = new uint16_t[w]; // 需要确定
+			fc->UpscaledCurrFrame[i][j] = new uint16_t[w];  // 需要确定
 		}
 	}
 //-------下面这几个内存大小(unit size维度)暂不确定
 	fc->lrCtx = (LoopRestorationContext *)malloc(sizeof(LoopRestorationContext));
+
+	printf("frameHdr-> MiRows  * MI_SIZE %d frameHdr->MiCols * MI_SIZE %d \n",frameHdr-> MiRows  * MI_SIZE,frameHdr->MiCols * MI_SIZE);
+	for(int i = 0 ; i < 3 ; i++){
+		fc->lrCtx->LrFrame[i] = new uint16_t*[frameHdr-> MiRows  * MI_SIZE];
+		for(int j = 0 ; j < frameHdr->MiRows  * MI_SIZE ; j++){
+			int w = frameHdr->si.UpscaledWidth > (frameHdr->MiCols * MI_SIZE) ? frameHdr->si.UpscaledWidth : (frameHdr->MiCols * MI_SIZE);
+			fc->lrCtx->LrFrame[i][j] =  new uint16_t[w];
+		}
+	}
+
 	for(int i = 0 ; i < 3 ; i ++){
-		fc->lrCtx->LrWiener[i]  = new int ***[frameHdr->MiRows];
+		fc->lrCtx->LrWiener[i]  = new uint16_t ***[frameHdr->MiRows];
 		for(int j = 0 ; j < frameHdr->MiRows; j++){
-			fc->lrCtx->LrWiener[i][j] = new int **[frameHdr->MiCols];
-			for(int k = 0 ; k < 2 ; k++){
-				fc->lrCtx->LrWiener[i][j][k] = new int *[2];
-				for(int m = 0 ; m < 3 ; m++){
-					fc->lrCtx->LrWiener[i][j][k][m] = new int[3];
+			fc->lrCtx->LrWiener[i][j] = new uint16_t **[frameHdr->MiCols];
+			for(int k = 0 ; k < frameHdr->MiCols ; k++){
+				fc->lrCtx->LrWiener[i][j][k] = new uint16_t *[2];
+				for(int m = 0 ; m < 2 ; m++){
+					fc->lrCtx->LrWiener[i][j][k][m] = new uint16_t[3];
 				}
 			}
 		}
 	}
-	for(int i = 0 ; i < 3 ; i++){
-		fc->lrCtx->LrFrame[i] = new uint8_t*[frameHdr->si.FrameHeight];
-		for(int j = 0 ; j < frameHdr->si.FrameHeight ; j++){
-			fc->lrCtx->LrFrame[i][j] =  new uint8_t[frameHdr->si.UpscaledWidth];
+
+	for(int i = 0 ; i < 3 ; i ++){
+		fc->lrCtx->LrType[i]  = new uint16_t *[frameHdr->MiRows];
+		for(int j = 0 ; j < frameHdr->MiRows; j++){
+			fc->lrCtx->LrType[i][j] = new uint16_t[frameHdr->MiCols];
 		}
 	}
 	for(int i = 0 ; i < 3 ; i ++){
-		fc->lrCtx->LrType[i]  = new int *[frameHdr->MiRows];
+		fc->lrCtx->LrSgrSet[i]  = new uint16_t *[frameHdr->MiRows];
 		for(int j = 0 ; j < frameHdr->MiRows; j++){
-			fc->lrCtx->LrType[i][j] = new int[frameHdr->MiCols];
+			fc->lrCtx->LrSgrSet[i][j] = new uint16_t[frameHdr->MiCols];
 		}
 	}
 	for(int i = 0 ; i < 3 ; i ++){
-		fc->lrCtx->LrSgrSet[i]  = new int *[frameHdr->MiRows];
+		fc->lrCtx->LrSgrXqd[i]  = new uint16_t **[frameHdr->MiRows];
 		for(int j = 0 ; j < frameHdr->MiRows; j++){
-			fc->lrCtx->LrSgrSet[i][j] = new int[frameHdr->MiCols];
-		}
-	}
-	for(int i = 0 ; i < 3 ; i ++){
-		fc->lrCtx->LrSgrXqd[i]  = new int **[frameHdr->MiRows];
-		for(int j = 0 ; j < frameHdr->MiRows; j++){
-			fc->lrCtx->LrSgrXqd[i][j] = new int*[frameHdr->MiCols];
+			fc->lrCtx->LrSgrXqd[i][j] = new uint16_t*[frameHdr->MiCols];
 			for(int k = 0 ; k < frameHdr->MiCols; k++){
-				fc->lrCtx->LrSgrXqd[i][j][k] = new int[2];
+				fc->lrCtx->LrSgrXqd[i][j][k] = new uint16_t[2];
 			}
 		}
 	}
@@ -1503,7 +1512,7 @@ void frame::allocFrameContext(frameHeader *frameHdr ,FrameContext **fCtx){
 	fc->mfmvCtx->MfMvs  = new int **[frameHdr->MiRows];
 	for(int i = 0 ; i < frameHdr->MiRows; i++){
 		fc->mfmvCtx->MfMvs[i] = new int*[frameHdr->MiCols];
-		for(int j = 0 ; j < frameHdr->MiRows; j++){
+		for(int j = 0 ; j < frameHdr->MiCols; j++){
 			fc->mfmvCtx->MfMvs[i][j] = new int[2];
 		}
 	}
@@ -1530,12 +1539,26 @@ void frame::releaseFrameContext(frameHeader *frameHdr ,FrameContext *fCtx){
 		delete [] fCtx->UpscaledCdefFrame[i] ;
 		delete [] fCtx->UpscaledCurrFrame[i] ;
 	}
+	
 	for(int i = 0 ; i < 3 ; i++){	
-		for(int j = 0 ; j < frameHdr->si.FrameHeight ; j++){
+		for(int j = 0 ; j < frameHdr->MiCols * MI_SIZE ; j++){
 			delete [] fCtx->lrCtx->LrFrame[i][j] ;
 		}
 		delete [] fCtx->lrCtx->LrFrame[i] ;
+	}	
+	for(int i = 0 ; i < 3 ; i ++){	
+		for(int j = 0 ; j < frameHdr->MiRows; j++){
+			for(int k = 0 ; k < frameHdr->MiCols ; k++){
+				for(int m = 0 ; m < 2 ; m++){
+					delete [] fCtx->lrCtx->LrWiener[i][j][k][m];
+				}
+				delete [] fCtx->lrCtx->LrWiener[i][j][k];
+			}
+			delete [] fCtx->lrCtx->LrWiener[i][j];
+		}
+		delete [] fCtx->lrCtx->LrWiener[i];
 	}
+
 	for(int i = 0 ; i < 3 ; i ++){
 		for(int j = 0 ; j < frameHdr->MiRows; j++){
 			delete [] fCtx->lrCtx->LrType[i][j] ;
@@ -1585,14 +1608,14 @@ void frame::releaseFrameContext(frameHeader *frameHdr ,FrameContext *fCtx){
 	}
 	delete [] fCtx->mfmvCtx->MfRefFrames  ;
 
-
 	for(int i = 0 ; i < frameHdr->MiRows; i++){
-		for(int j = 0 ; j < frameHdr->MiRows; j++){
-			delete [] fCtx->mfmvCtx->MfMvs[i][j];
+		for(int j = 0 ; j < frameHdr->MiCols; j++){
+			delete [] fCtx->mfmvCtx->MfMvs[i][j] ;
 		}
 		delete [] fCtx->mfmvCtx->MfMvs[i] ;
 	}
-	delete [] fCtx->mfmvCtx->MfMvs ;
+	delete [] fCtx->mfmvCtx->MfMvs;
+
 	delete fCtx->mfmvCtx ;
 
 	delete fCtx->mvpCtx ;
@@ -1848,7 +1871,7 @@ int frame::decode_tile(SymbolContext *sbCtx,bitSt *bs,AV1DecodeContext *av1Ctx){
 			av1Ctx->ReadDeltas = frameHdr->delta_q_params.delta_q_present;
 			clear_cdef( r, c ,av1Ctx);
 			clear_block_decoded_flags( r, c, sbSize4 ,av1Ctx);
-			read_lr(sbCtx,bs, r, c, sbSize,av1Ctx );
+			read_lr(sbCtx,bs, r, c, sbSize,av1Ctx);
 			//PartitionData p_data;
 			decode_partition(sbCtx, bs ,r, c, sbSize ,av1Ctx);
 		}
