@@ -209,14 +209,14 @@ typedef struct frameHeader{
 	uint8_t CodedLossless;
 	uint8_t AllLossless;
 	struct  {
-		uint8_t loop_filter_level[4]/*如果没有色度，则只有2个元素*/;//环路滤波等级
+		uint8_t loop_filter_level[4]/*[y][y][u][v] 如果没有色度，则只有2个元素*/;//环路滤波等级
 		uint8_t loop_filter_sharpness;//sharpness level
 		uint8_t loop_filter_delta_enabled;//是否开启 loop filter delta;
 		uint8_t loop_filter_delta_update;//为1表示 delta_lf_params在本帧会更新
-		uint8_t update_ref_delta[TOTAL_REFS_PER_FRAME];//为1表示接下来的loop_filter_ref_deltas存在
-		uint8_t loop_filter_ref_deltas[TOTAL_REFS_PER_FRAME];//相对于某个参考帧的loop filter 调整值
-		uint8_t update_mode_delta[2];//为1表示下面的loop_filter_mode_deltas存在
-		uint8_t loop_filter_mode_deltas[2];//对两种环路路滤波模式的调整值
+		//uint8_t update_ref_delta[TOTAL_REFS_PER_FRAME];//为1表示接下来的loop_filter_ref_deltas存在
+		int8_t loop_filter_ref_deltas[TOTAL_REFS_PER_FRAME];//相对于某个参考帧的loop filter 调整值
+		//uint8_t update_mode_delta[2];//为1表示下面的loop_filter_mode_deltas存在
+		int8_t loop_filter_mode_deltas[2];//对两种环路路滤波模式的调整值
 	}loop_filter_params;
 	struct  {
 		uint8_t CdefDamping;//cdef阻尼值    CdefDamping = cdef_damping_minus_3 + 3,

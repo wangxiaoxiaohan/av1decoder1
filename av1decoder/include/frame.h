@@ -34,7 +34,7 @@ public:
 	int readDeltaLoopfilterParams(bitSt *bs, frameHeader *frameHdr);
 	int readRenderSize(bitSt *bs,sequenceHeader *seqHdr,frameHeader *frameHdr,sizeInfo *out);
 	int readFrameSize(bitSt *bs,sequenceHeader *seqHdr,frameHeader *frameHdr,sizeInfo *out);
-	int parseFrameHeader(int sz,bitSt *bs,AV1DecodeContext * av1Ctx,sequenceHeader *seqHdr,obuHeader *obuheader, frameHeader *out);
+	int parseUncompressedHeader(int sz,bitSt *bs,AV1DecodeContext * av1Ctx,sequenceHeader *seqHdr,obuHeader *obuheader, frameHeader *out);
 	int read_delta_q(bitSt *bs);
 	int read_global_param(frameHeader *frameHdr,bitSt *bs, int type,int ref,int idx );
 

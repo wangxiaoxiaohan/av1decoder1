@@ -9,7 +9,7 @@ frame::frame(){
 frame::~frame(){
 	
 }
-int frame::parseFrameHeader(int sz, bitSt *bs, AV1DecodeContext *av1Ctx, sequenceHeader *seqHdr, obuHeader *obuheader, frameHeader *out)
+int frame::parseUncompressedHeader(int sz, bitSt *bs, AV1DecodeContext *av1Ctx, sequenceHeader *seqHdr, obuHeader *obuheader, frameHeader *out)
 {
 	int idLen = seqHdr->additional_frame_id_length + seqHdr->delta_frame_id_length;
 	if (seqHdr->reduced_still_picture_header)
@@ -684,24 +684,34 @@ int frame::readLoopFilterParams(bitSt *bs, frameHeader *frameHdr,sequenceHeader 
 			frameHdr->loop_filter_params.loop_filter_level[ 3 ] = readBits(bs, 6);//f(6)
 		}
 	}
-	frameHdr->loop_filter_params.loop_filter_sharpness = readBits(bs, 6); // f(3)
+	printf("loop_filter_level %d %d %d %d\n",frameHdr->loop_filter_params.loop_filter_level[0],
+				frameHdr->loop_filter_params.loop_filter_level[1],frameHdr->loop_filter_params.loop_filter_level[2],frameHdr->loop_filter_params.loop_filter_level[3]);
+	frameHdr->loop_filter_params.loop_filter_sharpness = readBits(bs, 3); // f(3)
 	frameHdr->loop_filter_params.loop_filter_delta_enabled = readOneBit(bs); //f(1)
 	if ( frameHdr->loop_filter_params.loop_filter_delta_enabled == 1 ) {
 		frameHdr->loop_filter_params.loop_filter_delta_update = readOneBit(bs);// f(1)
 			if ( frameHdr->loop_filter_params.loop_filter_delta_update == 1 ) {
 				for (int i = 0; i < TOTAL_REFS_PER_FRAME; i++ ) {
-					frameHdr->loop_filter_params.update_ref_delta[i] = readOneBit(bs);// f(1)
-				if ( frameHdr->loop_filter_params.update_ref_delta[i] == 1 )
-					frameHdr->loop_filter_params.loop_filter_ref_deltas[ i ] = readsu(bs, 1 + 6); //su(1+6)
-			}
-			for (int  i = 0; i < 2; i++ ) {
-				frameHdr->loop_filter_params.update_mode_delta[i] = readOneBit(bs);//f(1)
-				if ( frameHdr->loop_filter_params.update_mode_delta[i] == 1 )
-					frameHdr->loop_filter_params.loop_filter_mode_deltas[ i ] = readsu(bs, 1 + 6);//su(1+6)
-			}
+					int update_ref_delta = readOneBit(bs);// f(1)
+					if (update_ref_delta )
+						frameHdr->loop_filter_params.loop_filter_ref_deltas[ i ] = readsu(bs, 1 + 6); //su(1+6)
+				}
+				for (int  i = 0; i < 2; i++ ) {
+					int update_mode_delta = readOneBit(bs);//f(1)
+					if ( update_mode_delta )
+						frameHdr->loop_filter_params.loop_filter_mode_deltas[ i ] = readsu(bs, 1 + 6);//su(1+6)
+				}
 
 		}
 	}
+    for(int i  =0 ; i < 8 ; i++){
+		printf(" %d ",frameHdr->loop_filter_params.loop_filter_ref_deltas[ i ]);
+       
+    }
+    printf("\n");
+    for(int i  =0 ; i < 2 ; i++){
+         printf(" %d ",frameHdr->loop_filter_params.loop_filter_mode_deltas[ i ]);
+    }
 
 }
 int frame::readCdefParams(bitSt *bs, frameHeader *frameHdr,sequenceHeader *seqHeader)
@@ -879,7 +889,6 @@ int frame::readGlobalMotionParams(bitSt *bs, frameHeader *frameHdr)
 			read_global_param(frameHdr,bs,type,ref,1);
 		}
 	}
-
 }
 
 int frame::readFilmGrainParams(bitSt *bs, frameHeader *frameHdr,sequenceHeader *seqHdr,AV1DecodeContext *av1Ctx)
@@ -1802,8 +1811,8 @@ int frame::decodeFrame(int sz, bitSt *bs, AV1DecodeContext *av1Ctx){
 	int startpos = bs->offset;
 	if ( NumTiles > 1 )
 		tile_start_and_end_present_flag = readOneBit(bs);
-		if ( NumTiles == 1 || !tile_start_and_end_present_flag ) {
-			tg_start = 0;
+	if ( NumTiles == 1 || !tile_start_and_end_present_flag ) {
+		tg_start = 0;
 		tg_end = NumTiles - 1;
 	} else {
 		tileBits = frameHdr->tile_info.TileColsLog2 + frameHdr->tile_info.TileRowsLog2;
@@ -1834,6 +1843,7 @@ int frame::decodeFrame(int sz, bitSt *bs, AV1DecodeContext *av1Ctx){
 		//之所以 每个tile 进行一次 init_symbol 是因为tile内的所有语法元素和数据都是算术编码的，而tile层之上会有非算术编码的语法元素。
 		//init_symbol( tileSize );
 		SymbolContext symCtx;
+		printf("sz %d \n",sz);
 		sb->initSymbol(&symCtx,bs,sz);
 		symCtx.isUpdate = !frameHdr->disable_cdf_update;
 		decode_tile(&symCtx,bs,av1Ctx);
@@ -4142,8 +4152,14 @@ int frame::read_lr_unit(SymbolContext *sbCtx, bitSt *bs,int plane,int unitRow,in
 	}
 	else
 	{
+		printf("\n");
+		for(int i =  0 ; i < 20 ; i++){
+			printf("%2x ",bs->dataPtr[bs->offset + i]);
+		}
+		printf("\n");
 		restoration_type = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Restoration_Type ,RESTORE_SWITCHABLE + 1 ); // S()
 	}
+	printf("restoration_type %d\n",restoration_type);
 	av1Ctx->currentFrame->lrCtx->LrType[plane][unitRow][unitCol] = restoration_type;
 	int v;
 	if (restoration_type == RESTORE_WIENER)

@@ -2286,8 +2286,8 @@ typedef struct SymbolContext{
   int numBits;
   int buf;
   int paddedBuf;
-  int SymbolValue;
-  int SymbolRange;
+  uint32_t SymbolValue;
+  uint16_t SymbolRange;
   int SymbolMaxBits;
 
   int isUpdate;

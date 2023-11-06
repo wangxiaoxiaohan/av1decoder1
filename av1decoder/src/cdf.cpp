@@ -4,10 +4,15 @@
 #include <string.h>
 
 void Symbol::initSymbol(SymbolContext *sbCtx,bitSt *bs,int sz){
+
     sbCtx->numBits = Min( sz * 8, 15);
     sbCtx->buf = readBits(bs,sbCtx->numBits); //????
+    
+    //printf("sbCtx->buf %d\n",sbCtx->buf);
     sbCtx->paddedBuf  = ( sbCtx->buf << (15 - sbCtx->numBits) );
+    //printf("sbCtx->paddedBuf %d\n",sbCtx->paddedBuf);
     sbCtx->SymbolValue =   ((1 << 15) - 1) ^ sbCtx->paddedBuf;
+    //printf("sbCtx->SymbolValue %d\n",sbCtx->SymbolValue);
     sbCtx->SymbolRange = 1 << 15;
     sbCtx->SymbolMaxBits = 8 * sz - 15;
 }
@@ -65,6 +70,7 @@ int Symbol::readNS(SymbolContext *sbCtx,bitSt *bs,int n ) {
 
 int Symbol::decodeSymbol(SymbolContext *sbCtx,bitSt *bs,uint16_t *cdfArray,int N){
 
+    N -= 1;//用的地方都 用错了 ，暂时这里改
     int cur = sbCtx->SymbolRange;
     int symbol = -1;
     int prev;
@@ -73,12 +79,16 @@ int Symbol::decodeSymbol(SymbolContext *sbCtx,bitSt *bs,uint16_t *cdfArray,int N
     //SymbolValue和SymbolRange是上次解码的时候已经定下来的输入值
     //SymbolValue是待解码的符号，也就是源数据，SymbolRange是算术编码的范围
     //在loop中根据 cdf 数组来查到底是哪个值
+    // cur 代表当前
+    printf("SymbolValue %d SymbolRange %d\n",sbCtx->SymbolValue,sbCtx->SymbolRange);
     do {
         symbol++; //逐个尝试
         prev = cur;
         f = ( 1 << 15 ) - cdfArray[ symbol ]; //计算范围
         cur = ((sbCtx->SymbolRange >> 8) * (f >> EC_PROB_SHIFT)) >> (7 - EC_PROB_SHIFT); //将概率进行缩放
+        printf("curr  %d\n",cur);
         cur += EC_MIN_PROB * (N - symbol - 1);//进行修正，保证概率总和为1
+        printf("curr %d symbol %d cdfArray[ symbol ] %d \n",cur,symbol,cdfArray[ symbol ]);
     } while ( sbCtx->SymbolValue < cur );
     //更新算术编码的范围 和 输入符号，这只是部分过程，在renormalized过程还要继续更新，
     //  比如sbCtx->SymbolRange = prev - cur; 这个操作，你会发现SymbolRange会变得很小，在renormalized过程
@@ -91,8 +101,8 @@ int Symbol::decodeSymbol(SymbolContext *sbCtx,bitSt *bs,uint16_t *cdfArray,int N
                                       
     sbCtx->SymbolValue = sbCtx->SymbolValue - cur; //这里是为什么？为什么不是直接丢掉若干位？还是说编码器端也是这样做的
                                                    //所以默认这样做？    
-
-
+    //printf("SymbolValue %d SymbolRange %d\n",sbCtx->SymbolValue,sbCtx->SymbolRange);
+    
 
 //renormalized 这个过程会继续读入码流满15位，以便为后续的解码做准备
     int bits = 15 - FloorLog2( sbCtx->SymbolRange ); //需要继续读进来的数据位数

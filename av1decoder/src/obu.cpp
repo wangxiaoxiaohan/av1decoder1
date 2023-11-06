@@ -305,13 +305,13 @@ int obu::parseObuInfo(FILE* fp,int fileOffset,uint8_t *buf,int sz,AV1DecodeConte
 	int startPosition = get_position(&bs);
 
 	printf("obu_header.obu_type %d\n",obu_header.obu_type);
-	printf("obu_size  %d\n",obu_size);
+	printf("sz %d obu_size  %d\n",sz,obu_size);
 // read obu payload from file
 	uint8_t obubuffer[obu_size];
 	fread(obubuffer,obu_size,1,fp);
 	initBitStream(&bs,obubuffer);
 
-	
+	int startBitPos,endBitPos,headerBytes;
 	switch(obu_header.obu_type){
 		case OBU_SEQUENCE_HEADER:
 			if(!(&ctx->seqHdr)){
@@ -325,18 +325,18 @@ int obu::parseObuInfo(FILE* fp,int fileOffset,uint8_t *buf,int sz,AV1DecodeConte
 		case OBU_REDUNDANT_FRAME_HEADER:
 		case OBU_FRAME:	//frame obu = frame header obu + tile group obu
 		case OBU_FRAME_HEADER:
+			startBitPos = get_position(&bs);
 			if(ctx->SeenFrameHeader == 1){
 				//copy frame header...
 				break;
 			} else {
 				ctx->SeenFrameHeader = 1;
-				frame::Instance().parseFrameHeader(sz, &bs,ctx, &ctx->seqHdr, &obu_header,&ctx->frameHdr);
+				frame::Instance().parseUncompressedHeader(sz, &bs,ctx, &ctx->seqHdr, &obu_header,&ctx->frameHdr);
 				//先假设分辨率不会变,就分配一次
 				if(ctx->decAlloced == 0){
 					frame::Instance().allocDecodeContext(ctx);
 					ctx->decAlloced = 1;
 				}
-				BitStreamAlign(&bs);//byte alignment
 				if ( ctx->currentFrame->frameHdr.show_existing_frame ) {
 					decode::Instance().decode_frame_wrapup(ctx);
 					ctx->SeenFrameHeader = 0;
@@ -345,10 +345,19 @@ int obu::parseObuInfo(FILE* fp,int fileOffset,uint8_t *buf,int sz,AV1DecodeConte
 					ctx->SeenFrameHeader = 1;
 				}
 			}
-			if(obu_header.obu_type == OBU_FRAME_HEADER) break;
-			
+			if(obu_header.obu_type != OBU_FRAME) break;
+			BitStreamAlign(&bs);//byte alignment
+			endBitPos = get_position(&bs);
+			headerBytes = (endBitPos - startBitPos) / 8;
+			sz -= headerBytes;
+			printf("\n");
+			for(int i =  0 ; i < 20 ; i++){
+				printf("%2x ",bs.dataPtr[bs.offset + i]);
+			}
+			printf("\n");
+
 		case OBU_TILE_GROUP:
-			frame::Instance().decodeFrame(obu_size - bs.offset, &bs,ctx);
+			frame::Instance().decodeFrame(obu_size - headerBytes/*sz*/, &bs,ctx);
 			break;
 		case OBU_METADATA:
 			//metadata_obu( )

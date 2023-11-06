@@ -14,12 +14,7 @@ void inline initBitStream(bitSt *bs, uint8_t *data)
     bs->dataPtr = data;
 
 }
-void inline BitStreamAlign(bitSt *bs)
-{
-	if(bs->offsetInByte == 0) return;
-	bs->offsetInByte = 0;
-	bs->offset += 1;
-}
+
 int inline get_position(bitSt *bs)
 {
 	return bs->offset * 8 + bs->offsetInByte;
@@ -40,6 +35,11 @@ uint8_t inline readOneBit(bitSt *bs)
 	//printf("readOneBit %d\n",ret);
     return ret;
 
+}
+void inline BitStreamAlign(bitSt *bs)
+{
+	while ( get_position(bs) & 7 )
+		readOneBit(bs);
 }
 uint32_t inline readBits(bitSt *bs,int len)
 {
