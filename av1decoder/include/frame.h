@@ -12,10 +12,10 @@ public:
     frame();
 	~frame();
 	void allocDecodeContext(AV1DecodeContext *av1Ctx);
-	void allocFrameContext(frameHeader *frameHdr,FrameContext **fCtx);
+	void allocFrameContext(frameHeader *frameHdr,int wbuffersize,int hbuffersize,FrameContext **fCtx);
 
 	void releaseDecodeContext(AV1DecodeContext *av1Ctx);
-	void releaseFrameContext(frameHeader *frameHdr,FrameContext *fCtx);
+	void releaseFrameContext(frameHeader *frameHdr,int WBuffMiSize,int HBuffMiSize,FrameContext *fCtx);
 	void exit_symbol(SymbolContext *sbCtx,bitSt *bs,int TileNum,AV1DecodeContext *av1Ctx);
     void frame_end_update_cdf(AV1DecodeContext *av1Ctx);
 

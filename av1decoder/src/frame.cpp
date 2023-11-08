@@ -1130,41 +1130,51 @@ int frame::read_global_param(frameHeader *frameHdr,bitSt *bs, int type,int ref,i
 void frame::allocDecodeContext(AV1DecodeContext *av1Ctx){
 	frameHeader *frameHdr = &av1Ctx->frameHdr;
 	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
+	int use_superblock = seqHdr->use_128x128_superblock;
+	int WBuffMiSize;
+	int HBuffMiSize;
+	if(use_superblock){
+		WBuffMiSize = (frameHdr->MiCols % 32) ? (frameHdr->MiCols / 32 + 1) * 32 : (frameHdr->MiCols / 32) * 32;
+		HBuffMiSize = (frameHdr->MiRows % 32) ? (frameHdr->MiRows / 32 + 1) * 32 : (frameHdr->MiRows / 32) * 32;
+	}else{
+		WBuffMiSize = (frameHdr->MiCols % 16) ? (frameHdr->MiCols / 16 + 1) * 16 : (frameHdr->MiCols / 16) * 16;
+		HBuffMiSize = (frameHdr->MiRows % 16) ? (frameHdr->MiRows / 16 + 1) * 16 : (frameHdr->MiRows / 16) * 16;
+	}
 	
-	allocFrameContext(frameHdr,&av1Ctx->currentFrame);
+	allocFrameContext(frameHdr,WBuffMiSize,HBuffMiSize,&av1Ctx->currentFrame);
 	for(int i = 0 ; i < NUM_REF_FRAMES ; i ++){
-		allocFrameContext(frameHdr,&av1Ctx->ref_frames[i]);
+		allocFrameContext(frameHdr,WBuffMiSize,HBuffMiSize,&av1Ctx->ref_frames[i]);
 	}
 
 	for(int i = 0 ; i < NUM_REF_FRAMES ; i ++){
 		for(int j = 0 ; j < 3 ; j ++){
-			av1Ctx->FrameStore[i][j] = new uint16_t*[frameHdr-> MiRows  * MI_SIZE];
-			for(int k = 0 ; k < frameHdr-> MiRows  * MI_SIZE ; k++){
-				int w = frameHdr->si.UpscaledWidth > (frameHdr->MiCols * MI_SIZE) ? frameHdr->si.UpscaledWidth : (frameHdr->MiCols * MI_SIZE);
+			av1Ctx->FrameStore[i][j] = new uint16_t*[HBuffMiSize  * MI_SIZE];
+			for(int k = 0 ; k < HBuffMiSize  * MI_SIZE ; k++){
+				int w = frameHdr->si.UpscaledWidth > (WBuffMiSize * MI_SIZE) ? frameHdr->si.UpscaledWidth : (WBuffMiSize * MI_SIZE);
 				av1Ctx->FrameStore[i][j][k] = new uint16_t[w];
 			}
 		}
 	}
 	for(int i = 0 ; i < NUM_REF_FRAMES ; i ++){
-		av1Ctx->SavedRefFrames[i] = new uint8_t*[frameHdr->MiRows];
-		for(int j = 0 ; j < frameHdr->MiRows ; j++){
-			av1Ctx->SavedRefFrames[i][j] = new uint8_t[frameHdr->MiCols];
+		av1Ctx->SavedRefFrames[i] = new uint8_t*[HBuffMiSize];
+		for(int j = 0 ; j < HBuffMiSize ; j++){
+			av1Ctx->SavedRefFrames[i][j] = new uint8_t[WBuffMiSize];
 		}
 	}
 	for(int i = 0 ; i < NUM_REF_FRAMES ; i ++){
-		av1Ctx->SavedMvs[i] = new int**[frameHdr->MiRows];
-		for(int j = 0 ; j < frameHdr->MiRows ; j++){
-			av1Ctx->SavedMvs[i][j] = new int*[frameHdr->MiCols];
-			for(int k = 0 ; k < frameHdr->MiCols ;k ++){
+		av1Ctx->SavedMvs[i] = new int**[HBuffMiSize];
+		for(int j = 0 ; j < HBuffMiSize ; j++){
+			av1Ctx->SavedMvs[i][j] = new int*[WBuffMiSize];
+			for(int k = 0 ; k < WBuffMiSize ;k ++){
 				av1Ctx->SavedMvs[i][j][k] = new int[2];
 			}
 			
 		}
 	}
 	for(int i = 0 ; i < NUM_REF_FRAMES ; i ++){
-		av1Ctx->SavedSegmentIds[i] = new uint8_t*[frameHdr->MiRows];
-		for(int j = 0 ; j < frameHdr->MiRows ; j++){
-			av1Ctx->SavedSegmentIds[i][j] = new uint8_t[frameHdr->MiCols];
+		av1Ctx->SavedSegmentIds[i] = new uint8_t*[HBuffMiSize];
+		for(int j = 0 ; j < HBuffMiSize ; j++){
+			av1Ctx->SavedSegmentIds[i][j] = new uint8_t[WBuffMiSize];
 		}
 	}
 
@@ -1174,86 +1184,86 @@ void frame::allocDecodeContext(AV1DecodeContext *av1Ctx){
 	av1Ctx->RefRenderWidth = new Array16(NUM_REF_FRAMES);
 	av1Ctx->RefRenderHeight = new Array16(NUM_REF_FRAMES);
 
-	av1Ctx->BlockDecoded = new tArray8(3,frameHdr->MiRows,frameHdr->MiCols);
+	av1Ctx->BlockDecoded = new tArray8(3,HBuffMiSize,WBuffMiSize);
 	for(int i = 0 ; i < 3 ; i ++){
-		av1Ctx->LoopfilterTxSizes[i] = new uint8_t*[frameHdr->MiRows];
-		for(int j  = 0 ; j < frameHdr->MiRows ; j ++){
-			av1Ctx->LoopfilterTxSizes[i][j] = new uint8_t[frameHdr->MiCols];
+		av1Ctx->LoopfilterTxSizes[i] = new uint8_t*[HBuffMiSize];
+		for(int j  = 0 ; j < HBuffMiSize ; j ++){
+			av1Ctx->LoopfilterTxSizes[i][j] = new uint8_t[WBuffMiSize];
 		}
-		av1Ctx->AboveLevelContext[i] = new int[frameHdr->MiCols];
-		av1Ctx->AboveDcContext[i] = new int[frameHdr->MiCols];
-		av1Ctx->LeftLevelContext[i] = new int[frameHdr->MiRows];
-		av1Ctx->LeftDcContext[i] = new int[frameHdr->MiRows];
+		av1Ctx->AboveLevelContext[i] = new int[WBuffMiSize];
+		av1Ctx->AboveDcContext[i] = new int[WBuffMiSize];
+		av1Ctx->LeftLevelContext[i] = new int[HBuffMiSize];
+		av1Ctx->LeftDcContext[i] = new int[HBuffMiSize];
 	}
-	av1Ctx->AboveSegPredContext = new int[frameHdr->MiCols];
-	av1Ctx->LeftSegPredContext = new int[frameHdr->MiRows];
+	av1Ctx->AboveSegPredContext = new int[WBuffMiSize];
+	av1Ctx->LeftSegPredContext = new int[HBuffMiSize];
 
-	av1Ctx->YModes = new uint8_t*[frameHdr->MiRows];
-	av1Ctx->UVModes = new uint8_t*[frameHdr->MiRows];
-	av1Ctx->CompGroupIdxs = new uint8_t*[frameHdr->MiRows];
-	av1Ctx->CompoundIdxs = new uint8_t*[frameHdr->MiRows];
-	av1Ctx->MiSizes = new uint8_t*[frameHdr->MiRows];
-	av1Ctx->SegmentIds = new uint8_t*[frameHdr->MiRows];
-	av1Ctx->IsInters = new uint8_t*[frameHdr->MiRows];
-	av1Ctx->SkipModes = new uint8_t*[frameHdr->MiRows];
-	av1Ctx->Skips = new uint8_t*[frameHdr->MiRows];
-	av1Ctx->TxSizes = new uint8_t*[frameHdr->MiRows];
-	av1Ctx->InterTxSizes = new uint8_t*[frameHdr->MiRows];
-	for(int i = 0 ; i < frameHdr->MiRows ; i++){
-		av1Ctx->YModes[i] = new uint8_t[frameHdr->MiCols];
-		av1Ctx->UVModes[i] = new uint8_t[frameHdr->MiCols];
-		av1Ctx->CompGroupIdxs[i] = new uint8_t[frameHdr->MiCols];
-		av1Ctx->CompoundIdxs[i] = new uint8_t[frameHdr->MiCols];
-		av1Ctx->MiSizes[i] = new uint8_t[frameHdr->MiCols];
-		av1Ctx->SegmentIds[i] = new uint8_t[frameHdr->MiCols];
-		av1Ctx->IsInters[i] = new uint8_t[frameHdr->MiCols];
-		av1Ctx->SkipModes[i] = new uint8_t[frameHdr->MiCols];
-		av1Ctx->Skips[i] = new uint8_t[frameHdr->MiCols];
-		av1Ctx->TxSizes[i] = new uint8_t[frameHdr->MiCols];
-		av1Ctx->InterTxSizes[i] = new uint8_t[frameHdr->MiCols];
+	av1Ctx->YModes = new uint8_t*[HBuffMiSize];
+	av1Ctx->UVModes = new uint8_t*[HBuffMiSize];
+	av1Ctx->CompGroupIdxs = new uint8_t*[HBuffMiSize];
+	av1Ctx->CompoundIdxs = new uint8_t*[HBuffMiSize];
+	av1Ctx->MiSizes = new uint8_t*[HBuffMiSize];
+	av1Ctx->SegmentIds = new uint8_t*[HBuffMiSize];
+	av1Ctx->IsInters = new uint8_t*[HBuffMiSize];
+	av1Ctx->SkipModes = new uint8_t*[HBuffMiSize];
+	av1Ctx->Skips = new uint8_t*[HBuffMiSize];
+	av1Ctx->TxSizes = new uint8_t*[HBuffMiSize];
+	av1Ctx->InterTxSizes = new uint8_t*[HBuffMiSize];
+	for(int i = 0 ; i < HBuffMiSize ; i++){
+		av1Ctx->YModes[i] = new uint8_t[WBuffMiSize];
+		av1Ctx->UVModes[i] = new uint8_t[WBuffMiSize];
+		av1Ctx->CompGroupIdxs[i] = new uint8_t[WBuffMiSize];
+		av1Ctx->CompoundIdxs[i] = new uint8_t[WBuffMiSize];
+		av1Ctx->MiSizes[i] = new uint8_t[WBuffMiSize];
+		av1Ctx->SegmentIds[i] = new uint8_t[WBuffMiSize];
+		av1Ctx->IsInters[i] = new uint8_t[WBuffMiSize];
+		av1Ctx->SkipModes[i] = new uint8_t[WBuffMiSize];
+		av1Ctx->Skips[i] = new uint8_t[WBuffMiSize];
+		av1Ctx->TxSizes[i] = new uint8_t[WBuffMiSize];
+		av1Ctx->InterTxSizes[i] = new uint8_t[WBuffMiSize];
 	}
 
 	for(int i = 0 ; i < 2 ; i++){
 
-		av1Ctx->PaletteSizes[i] = new uint8_t*[frameHdr->MiRows];
-		for(int j = 0 ; j < frameHdr->MiRows ; j++){
-			av1Ctx->PaletteSizes[i][j] = new uint8_t[frameHdr->MiCols];
+		av1Ctx->PaletteSizes[i] = new uint8_t*[HBuffMiSize];
+		for(int j = 0 ; j < HBuffMiSize ; j++){
+			av1Ctx->PaletteSizes[i][j] = new uint8_t[WBuffMiSize];
 		}
 	}
-	av1Ctx->RefFrames = new int**[frameHdr->MiRows];
-	av1Ctx->InterpFilters = new uint8_t**[frameHdr->MiRows];
-	for(int i = 0 ; i < frameHdr->MiRows ; i++){
-		av1Ctx->RefFrames[i] = new int*[frameHdr->MiCols];
-		av1Ctx->InterpFilters[i] = new uint8_t*[frameHdr->MiCols];
-		for(int j = 0 ; j < frameHdr->MiCols ; j++){
+	av1Ctx->RefFrames = new int**[HBuffMiSize];
+	av1Ctx->InterpFilters = new uint8_t**[HBuffMiSize];
+	for(int i = 0 ; i < HBuffMiSize ; i++){
+		av1Ctx->RefFrames[i] = new int*[WBuffMiSize];
+		av1Ctx->InterpFilters[i] = new uint8_t*[WBuffMiSize];
+		for(int j = 0 ; j < WBuffMiSize ; j++){
 			av1Ctx->RefFrames[i][j] = new int[2];
 			av1Ctx->InterpFilters[i][j] = new uint8_t[2];
 		}
 	}
 
 
-	av1Ctx->DeltaLFs = new uint8_t**[frameHdr->MiRows];
-	for(int i = 0 ; i < frameHdr->MiRows ; i++){
-		av1Ctx->DeltaLFs[i] = new uint8_t*[frameHdr->MiCols];
-		for(int j = 0 ; j < frameHdr->MiCols ; j++){
+	av1Ctx->DeltaLFs = new uint8_t**[HBuffMiSize];
+	for(int i = 0 ; i < HBuffMiSize ; i++){
+		av1Ctx->DeltaLFs[i] = new uint8_t*[WBuffMiSize];
+		for(int j = 0 ; j < WBuffMiSize ; j++){
 			av1Ctx->DeltaLFs[i][j] = new uint8_t[FRAME_LF_COUNT];
 		}
 	}
 	
 	for(int i = 0 ; i < 2 ; i++){
-		av1Ctx->PaletteColors[i] = new uint8_t**[frameHdr->MiRows];
-		for(int j = 0 ; j < frameHdr->MiRows ; j++){
-			av1Ctx->PaletteColors[i][j] = new uint8_t*[frameHdr->MiCols];
-			for(int k = 0 ; k < frameHdr->MiCols ; k++){
+		av1Ctx->PaletteColors[i] = new uint8_t**[HBuffMiSize];
+		for(int j = 0 ; j < HBuffMiSize ; j++){
+			av1Ctx->PaletteColors[i][j] = new uint8_t*[WBuffMiSize];
+			for(int k = 0 ; k < WBuffMiSize ; k++){
 				//av1Ctx->PaletteColors[i][j][k] = new uint8_t[b_data.PaletteSizeY];
 				//PaletteColors 的内存 在 decode_block 中分配
 			}
 		}
 	}
-	av1Ctx->Mvs = new int***[frameHdr->MiRows];
-	for(int i = 0 ; i < frameHdr->MiRows ; i++){
-		av1Ctx->Mvs[i] = new int**[frameHdr->MiCols];
-		for(int j = 0 ; j < frameHdr->MiCols ; j++){
+	av1Ctx->Mvs = new int***[HBuffMiSize];
+	for(int i = 0 ; i < HBuffMiSize ; i++){
+		av1Ctx->Mvs[i] = new int**[WBuffMiSize];
+		for(int j = 0 ; j < WBuffMiSize ; j++){
 			av1Ctx->Mvs[i][j] = new int*[2];
 			for(int k  = 0 ; k < 2 ; k ++){
 				av1Ctx->Mvs[i][j][k] = new int[2];
@@ -1261,18 +1271,18 @@ void frame::allocDecodeContext(AV1DecodeContext *av1Ctx){
 		}
 	}
 	for(int i  = 0 ; i < 8 ; i++){
-		av1Ctx->MotionFieldMvs[i] = new int**[frameHdr->MiRows >> 1];
-		for(int j = 0 ; j < frameHdr->MiRows >> 1; j++ ){
-			av1Ctx->MotionFieldMvs[i][j] = new int*[frameHdr->MiCols >> 1];
-			for(int k = 0 ; k < frameHdr->MiCols >> 1 ;k ++){
+		av1Ctx->MotionFieldMvs[i] = new int**[HBuffMiSize >> 1];
+		for(int j = 0 ; j < HBuffMiSize >> 1; j++ ){
+			av1Ctx->MotionFieldMvs[i][j] = new int*[WBuffMiSize >> 1];
+			for(int k = 0 ; k < WBuffMiSize >> 1 ;k ++){
 				av1Ctx->MotionFieldMvs[i][j][k] = new int[2];
 			}
 		}
 	}
 
-	av1Ctx->TxTypes = new uint8_t*[frameHdr->MiRows];
-	for(int i  = 0 ; i < frameHdr->MiRows ; i++){
-		av1Ctx->TxTypes[i] = new uint8_t[frameHdr->MiCols];
+	av1Ctx->TxTypes = new uint8_t*[HBuffMiSize];
+	for(int i  = 0 ; i < HBuffMiSize ; i++){
+		av1Ctx->TxTypes[i] = new uint8_t[WBuffMiSize];
 	}
 
 
@@ -1281,9 +1291,19 @@ void frame::releaseDecodeContext(AV1DecodeContext *av1Ctx){
 	frameHeader *frameHdr = &av1Ctx->frameHdr;
 	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
 
-	releaseFrameContext(frameHdr,av1Ctx->currentFrame);
+	int WBuffMiSize;
+	int HBuffMiSize;
+	int use_superblock = seqHdr->use_128x128_superblock;
+	if(use_superblock){
+		WBuffMiSize = (frameHdr->MiCols % 32) ? (frameHdr->MiCols / 32 + 1) * 32 : (frameHdr->MiCols / 32) * 32;
+		HBuffMiSize = (frameHdr->MiRows % 32) ? (frameHdr->MiRows / 32 + 1) * 32 : (frameHdr->MiRows / 32) * 32;
+	}else{
+		WBuffMiSize = (frameHdr->MiCols % 16) ? (frameHdr->MiCols / 16 + 1) * 16 : (frameHdr->MiCols / 16) * 16;
+		HBuffMiSize = (frameHdr->MiRows % 16) ? (frameHdr->MiRows / 16 + 1) * 16 : (frameHdr->MiRows / 16) * 16;
+	}
+	releaseFrameContext(frameHdr,WBuffMiSize, HBuffMiSize,av1Ctx->currentFrame);
 	for(int i = 0 ; i < NUM_REF_FRAMES ; i ++){
-		releaseFrameContext(frameHdr,av1Ctx->ref_frames[i]);
+		releaseFrameContext(frameHdr,WBuffMiSize, HBuffMiSize,av1Ctx->ref_frames[i]);
 	}
 
 	for(int i = 0 ; i < NUM_REF_FRAMES ; i ++){
@@ -1295,14 +1315,14 @@ void frame::releaseDecodeContext(AV1DecodeContext *av1Ctx){
 		}
 	}
 	for(int i = 0 ; i < NUM_REF_FRAMES ; i ++){
-		for(int j = 0 ; j < frameHdr->MiRows ; j++){
+		for(int j = 0 ; j < HBuffMiSize ; j++){
 			delete[]  av1Ctx->SavedRefFrames[i][j] ;
 		}
 		delete[]  av1Ctx->SavedRefFrames[i];
 	}
 	for(int i = 0 ; i < NUM_REF_FRAMES ; i ++){
-		for(int j = 0 ; j < frameHdr->MiRows ; j++){
-			for(int k = 0 ; k < frameHdr->MiCols ;k ++){
+		for(int j = 0 ; j < HBuffMiSize ; j++){
+			for(int k = 0 ; k < WBuffMiSize ;k ++){
 				delete[] av1Ctx->SavedMvs[i][j][k] ;
 			}
 			delete[]  av1Ctx->SavedMvs[i][j] ;
@@ -1310,7 +1330,7 @@ void frame::releaseDecodeContext(AV1DecodeContext *av1Ctx){
 		delete[]  av1Ctx->SavedMvs[i] ;
 	}
 	for(int i = 0 ; i < NUM_REF_FRAMES ; i ++){
-		for(int j = 0 ; j < frameHdr->MiRows ; j++){
+		for(int j = 0 ; j < HBuffMiSize ; j++){
 			delete[]  av1Ctx->SavedSegmentIds[i][j] ;
 		}
 		delete[] av1Ctx->SavedSegmentIds[i] ;
@@ -1325,7 +1345,7 @@ void frame::releaseDecodeContext(AV1DecodeContext *av1Ctx){
 	delete av1Ctx->BlockDecoded;
 	for(int i = 0 ; i < 3 ; i ++){
 		
-		for(int j  = 0 ; j < frameHdr->MiRows ; j ++){
+		for(int j  = 0 ; j < HBuffMiSize ; j ++){
 			delete[] av1Ctx->LoopfilterTxSizes[i][j];
 		}
 		delete[]  av1Ctx->LoopfilterTxSizes[i];
@@ -1339,7 +1359,7 @@ void frame::releaseDecodeContext(AV1DecodeContext *av1Ctx){
 	delete [] av1Ctx->LeftSegPredContext;
 		
 
-	for(int i = 0 ; i < frameHdr->MiRows ; i++){
+	for(int i = 0 ; i < HBuffMiSize ; i++){
 		delete [] av1Ctx->YModes[i] ;
 		delete []av1Ctx->UVModes[i] ;
 		delete []av1Ctx->CompGroupIdxs[i] ;
@@ -1363,13 +1383,13 @@ void frame::releaseDecodeContext(AV1DecodeContext *av1Ctx){
 	delete [] av1Ctx->InterTxSizes ;
 
 	for(int i = 0 ; i < 2 ; i++){
-		for(int j = 0 ; j < frameHdr->MiRows ; j++){
+		for(int j = 0 ; j < HBuffMiSize ; j++){
 			delete [] av1Ctx->PaletteSizes[i][j] ;
 		}
 		delete [] av1Ctx->PaletteSizes[i] ;	
 	}
 
-	for(int i = 0 ; i < frameHdr->MiRows ; i++){
+	for(int i = 0 ; i < HBuffMiSize ; i++){
 		for(int j = 0 ; j < 2 ; j++){
 			delete [] av1Ctx->RefFrames[i][j] ;
 			delete [] av1Ctx->InterpFilters[i][j];
@@ -1380,8 +1400,8 @@ void frame::releaseDecodeContext(AV1DecodeContext *av1Ctx){
 	delete [] av1Ctx->RefFrames ;
 	delete [] av1Ctx->InterpFilters ;
 
-	for(int i = 0 ; i < frameHdr->MiRows ; i++){
-		for(int j = 0 ; j < frameHdr->MiCols ; j++){
+	for(int i = 0 ; i < HBuffMiSize ; i++){
+		for(int j = 0 ; j < WBuffMiSize ; j++){
 			delete [] av1Ctx->DeltaLFs[i];
 		}
 		delete [] av1Ctx->DeltaLFs[i] ;
@@ -1389,8 +1409,8 @@ void frame::releaseDecodeContext(AV1DecodeContext *av1Ctx){
 	delete [] av1Ctx->DeltaLFs ;
 
 	for(int i = 0 ; i < 2 ; i++){
-		for(int j = 0 ; j < frameHdr->MiRows ; j++){
-			for(int k = 0 ; k < frameHdr->MiCols ; k++){
+		for(int j = 0 ; j < HBuffMiSize ; j++){
+			for(int k = 0 ; k < WBuffMiSize ; k++){
 				delete [] av1Ctx->PaletteColors[i][j][k] ;
 			}
 			delete [] av1Ctx->PaletteColors[i][j] ;
@@ -1399,9 +1419,9 @@ void frame::releaseDecodeContext(AV1DecodeContext *av1Ctx){
 	}
 	
 	
-	for(int i = 0 ; i < frameHdr->MiRows ; i++){
+	for(int i = 0 ; i < HBuffMiSize ; i++){
 		
-		for(int j = 0 ; j < frameHdr->MiCols ; j++){
+		for(int j = 0 ; j < WBuffMiSize ; j++){
 			
 			for(int k  = 0 ; k < 2 ; k ++){
 				delete [] av1Ctx->Mvs[i][j][k];
@@ -1413,8 +1433,8 @@ void frame::releaseDecodeContext(AV1DecodeContext *av1Ctx){
 	delete [] av1Ctx->Mvs ;
 
 	for(int i  = 0 ; i < 8 ; i++){
-		for(int j = 0 ; j < frameHdr->MiRows >> 1; j++ ){
-			for(int k = 0 ; k < frameHdr->MiCols >> 1 ;k ++){
+		for(int j = 0 ; j < HBuffMiSize >> 1; j++ ){
+			for(int k = 0 ; k < WBuffMiSize >> 1 ;k ++){
 				delete [] av1Ctx->MotionFieldMvs[i][j][k];
 			}
 			delete [] av1Ctx->MotionFieldMvs[i][j];
@@ -1422,26 +1442,26 @@ void frame::releaseDecodeContext(AV1DecodeContext *av1Ctx){
 		delete [] av1Ctx->MotionFieldMvs[i] ;
 	}
 	
-	for(int i  = 0 ; i < frameHdr->MiRows ; i++){
+	for(int i  = 0 ; i < HBuffMiSize ; i++){
 		delete []  av1Ctx->PrevSegmentIds[i];
 	}
 	delete [] av1Ctx->PrevSegmentIds;
-	for(int i  = 0 ; i < frameHdr->MiRows ; i++){
+	for(int i  = 0 ; i < HBuffMiSize ; i++){
 		delete []  av1Ctx->TxTypes[i];
 	}
 	delete [] av1Ctx->TxTypes;
 }
 //关于色度内存的分配还要再优化
-void frame::allocFrameContext(frameHeader *frameHdr ,FrameContext **fCtx){
+void frame::allocFrameContext(frameHeader *frameHdr ,int WBuffMiSize,int HBuffMiSize,FrameContext **fCtx){
 	*fCtx  = (FrameContext *)malloc(sizeof(FrameContext));
 	FrameContext *fc = *fCtx;
 	for(int i = 0 ; i < 3 ; i++){
-		fc->CurrFrame[i] = new uint16_t*[frameHdr->MiRows  * MI_SIZE];
-		fc->CdefFrame[i] = new uint16_t*[frameHdr->MiRows  * MI_SIZE];
-		fc->UpscaledCdefFrame[i] = new uint16_t*[frameHdr->MiRows  * MI_SIZE];
-		fc->UpscaledCurrFrame[i] = new uint16_t*[frameHdr->MiRows  * MI_SIZE];
-		for(int j = 0 ; j < frameHdr->MiRows * MI_SIZE; j++){
-			int w = frameHdr->si.UpscaledWidth > (frameHdr->MiCols * MI_SIZE) ? frameHdr->si.UpscaledWidth : (frameHdr->MiCols * MI_SIZE);
+		fc->CurrFrame[i] = new uint16_t*[HBuffMiSize  * MI_SIZE];
+		fc->CdefFrame[i] = new uint16_t*[HBuffMiSize  * MI_SIZE];
+		fc->UpscaledCdefFrame[i] = new uint16_t*[HBuffMiSize  * MI_SIZE];
+		fc->UpscaledCurrFrame[i] = new uint16_t*[HBuffMiSize  * MI_SIZE];
+		for(int j = 0 ; j < HBuffMiSize * MI_SIZE; j++){
+			int w = frameHdr->si.UpscaledWidth > (WBuffMiSize * MI_SIZE) ? frameHdr->si.UpscaledWidth : (WBuffMiSize * MI_SIZE);
 			fc->CurrFrame[i][j] = new uint16_t[w];
 			fc->CdefFrame[i][j] = new uint16_t[w];
 			fc->UpscaledCdefFrame[i][j] = new uint16_t[w]; // 需要确定
@@ -1451,20 +1471,21 @@ void frame::allocFrameContext(frameHeader *frameHdr ,FrameContext **fCtx){
 //-------下面这几个内存大小(unit size维度)暂不确定
 	fc->lrCtx = (LoopRestorationContext *)malloc(sizeof(LoopRestorationContext));
 
-	printf("frameHdr-> MiRows  * MI_SIZE %d frameHdr->MiCols * MI_SIZE %d \n",frameHdr-> MiRows  * MI_SIZE,frameHdr->MiCols * MI_SIZE);
+
+	//printf("frameHdr-> MiRows  * MI_SIZE %d frameHdr->MiCols * MI_SIZE %d \n",frameHdr-> MiRows  * MI_SIZE,frameHdr->MiCols * MI_SIZE);
 	for(int i = 0 ; i < 3 ; i++){
 		fc->lrCtx->LrFrame[i] = new uint16_t*[frameHdr-> MiRows  * MI_SIZE];
-		for(int j = 0 ; j < frameHdr->MiRows  * MI_SIZE ; j++){
-			int w = frameHdr->si.UpscaledWidth > (frameHdr->MiCols * MI_SIZE) ? frameHdr->si.UpscaledWidth : (frameHdr->MiCols * MI_SIZE);
+		for(int j = 0 ; j < HBuffMiSize  * MI_SIZE ; j++){
+			int w = frameHdr->si.UpscaledWidth > (WBuffMiSize * MI_SIZE) ? frameHdr->si.UpscaledWidth : (WBuffMiSize * MI_SIZE);
 			fc->lrCtx->LrFrame[i][j] =  new uint16_t[w];
 		}
 	}
 
 	for(int i = 0 ; i < 3 ; i ++){
-		fc->lrCtx->LrWiener[i]  = new uint16_t ***[frameHdr->MiRows];
-		for(int j = 0 ; j < frameHdr->MiRows; j++){
-			fc->lrCtx->LrWiener[i][j] = new uint16_t **[frameHdr->MiCols];
-			for(int k = 0 ; k < frameHdr->MiCols ; k++){
+		fc->lrCtx->LrWiener[i]  = new uint16_t ***[HBuffMiSize];
+		for(int j = 0 ; j < HBuffMiSize; j++){
+			fc->lrCtx->LrWiener[i][j] = new uint16_t **[WBuffMiSize];
+			for(int k = 0 ; k < WBuffMiSize ; k++){
 				fc->lrCtx->LrWiener[i][j][k] = new uint16_t *[2];
 				for(int m = 0 ; m < 2 ; m++){
 					fc->lrCtx->LrWiener[i][j][k][m] = new uint16_t[3];
@@ -1474,22 +1495,22 @@ void frame::allocFrameContext(frameHeader *frameHdr ,FrameContext **fCtx){
 	}
 
 	for(int i = 0 ; i < 3 ; i ++){
-		fc->lrCtx->LrType[i]  = new uint16_t *[frameHdr->MiRows];
-		for(int j = 0 ; j < frameHdr->MiRows; j++){
-			fc->lrCtx->LrType[i][j] = new uint16_t[frameHdr->MiCols];
+		fc->lrCtx->LrType[i]  = new uint16_t *[HBuffMiSize];
+		for(int j = 0 ; j < HBuffMiSize; j++){
+			fc->lrCtx->LrType[i][j] = new uint16_t[WBuffMiSize];
 		}
 	}
 	for(int i = 0 ; i < 3 ; i ++){
-		fc->lrCtx->LrSgrSet[i]  = new uint16_t *[frameHdr->MiRows];
-		for(int j = 0 ; j < frameHdr->MiRows; j++){
-			fc->lrCtx->LrSgrSet[i][j] = new uint16_t[frameHdr->MiCols];
+		fc->lrCtx->LrSgrSet[i]  = new uint16_t *[HBuffMiSize];
+		for(int j = 0 ; j < HBuffMiSize; j++){
+			fc->lrCtx->LrSgrSet[i][j] = new uint16_t[WBuffMiSize];
 		}
 	}
 	for(int i = 0 ; i < 3 ; i ++){
-		fc->lrCtx->LrSgrXqd[i]  = new uint16_t **[frameHdr->MiRows];
-		for(int j = 0 ; j < frameHdr->MiRows; j++){
-			fc->lrCtx->LrSgrXqd[i][j] = new uint16_t*[frameHdr->MiCols];
-			for(int k = 0 ; k < frameHdr->MiCols; k++){
+		fc->lrCtx->LrSgrXqd[i]  = new uint16_t **[HBuffMiSize];
+		for(int j = 0 ; j < HBuffMiSize; j++){
+			fc->lrCtx->LrSgrXqd[i][j] = new uint16_t*[WBuffMiSize];
+			for(int k = 0 ; k < WBuffMiSize; k++){
 				fc->lrCtx->LrSgrXqd[i][j][k] = new uint16_t[2];
 			}
 		}
@@ -1513,31 +1534,31 @@ void frame::allocFrameContext(frameHeader *frameHdr ,FrameContext **fCtx){
 	fc->fgCtx = (FilmGainContext *)malloc(sizeof(FilmGainContext));	
 
 	fc->mfmvCtx = (MFMVContext *)malloc(sizeof(MFMVContext));
-	fc->mfmvCtx->MfRefFrames  = new int *[frameHdr->MiRows];
-	for(int i = 0 ; i < frameHdr->MiRows; i++){
-		fc->mfmvCtx->MfRefFrames[i] = new int[frameHdr->MiCols];
+	fc->mfmvCtx->MfRefFrames  = new int *[HBuffMiSize];
+	for(int i = 0 ; i < HBuffMiSize; i++){
+		fc->mfmvCtx->MfRefFrames[i] = new int[WBuffMiSize];
 	}
 
-	fc->mfmvCtx->MfMvs  = new int **[frameHdr->MiRows];
-	for(int i = 0 ; i < frameHdr->MiRows; i++){
-		fc->mfmvCtx->MfMvs[i] = new int*[frameHdr->MiCols];
-		for(int j = 0 ; j < frameHdr->MiCols; j++){
+	fc->mfmvCtx->MfMvs  = new int **[HBuffMiSize];
+	for(int i = 0 ; i < HBuffMiSize; i++){
+		fc->mfmvCtx->MfMvs[i] = new int*[WBuffMiSize];
+		for(int j = 0 ; j < WBuffMiSize; j++){
 			fc->mfmvCtx->MfMvs[i][j] = new int[2];
 		}
 	}
 
 	fc->mvpCtx = (MVPredContext *)malloc(sizeof(MVPredContext));	
 
-	fc->cdef_idx = new uint8_t*[frameHdr->MiRows];
-	for(int i  = 0 ; i < frameHdr->MiRows ; i++){
-		fc->cdef_idx[i] = new uint8_t[frameHdr->MiCols];
+	fc->cdef_idx = new uint8_t*[HBuffMiSize];
+	for(int i  = 0 ; i < HBuffMiSize ; i++){
+		fc->cdef_idx[i] = new uint8_t[WBuffMiSize];
 	}
 
 }
-void frame::releaseFrameContext(frameHeader *frameHdr ,FrameContext *fCtx){
+void frame::releaseFrameContext(frameHeader *frameHdr ,int WBuffMiSize,int HBuffMiSize,FrameContext *fCtx){
 	
 	for(int i = 0 ; i < 3 ; i++){
-		for(int j = 0 ; j < frameHdr->MiRows * MI_SIZE; j++){
+		for(int j = 0 ; j < HBuffMiSize * MI_SIZE; j++){
 			delete [] fCtx->CurrFrame[i][j];
 			delete [] fCtx->CdefFrame[i][j] ;
 			delete [] fCtx->UpscaledCdefFrame[i][j] ; 
@@ -1550,14 +1571,14 @@ void frame::releaseFrameContext(frameHeader *frameHdr ,FrameContext *fCtx){
 	}
 	
 	for(int i = 0 ; i < 3 ; i++){	
-		for(int j = 0 ; j < frameHdr->MiCols * MI_SIZE ; j++){
+		for(int j = 0 ; j < WBuffMiSize * MI_SIZE ; j++){
 			delete [] fCtx->lrCtx->LrFrame[i][j] ;
 		}
 		delete [] fCtx->lrCtx->LrFrame[i] ;
 	}	
 	for(int i = 0 ; i < 3 ; i ++){	
-		for(int j = 0 ; j < frameHdr->MiRows; j++){
-			for(int k = 0 ; k < frameHdr->MiCols ; k++){
+		for(int j = 0 ; j < HBuffMiSize; j++){
+			for(int k = 0 ; k < WBuffMiSize ; k++){
 				for(int m = 0 ; m < 2 ; m++){
 					delete [] fCtx->lrCtx->LrWiener[i][j][k][m];
 				}
@@ -1569,20 +1590,20 @@ void frame::releaseFrameContext(frameHeader *frameHdr ,FrameContext *fCtx){
 	}
 
 	for(int i = 0 ; i < 3 ; i ++){
-		for(int j = 0 ; j < frameHdr->MiRows; j++){
+		for(int j = 0 ; j < HBuffMiSize; j++){
 			delete [] fCtx->lrCtx->LrType[i][j] ;
 		}
 		delete [] fCtx->lrCtx->LrType[i] ;
 	}
 	for(int i = 0 ; i < 3 ; i ++){
-		for(int j = 0 ; j < frameHdr->MiRows; j++){
+		for(int j = 0 ; j < HBuffMiSize; j++){
 			delete [] fCtx->lrCtx->LrSgrSet[i][j];
 		}
 		delete [] fCtx->lrCtx->LrSgrSet[i];
 	}
 	for(int i = 0 ; i < 3 ; i ++){		
-		for(int j = 0 ; j < frameHdr->MiRows; j++){
-			for(int k = 0 ; k < frameHdr->MiCols; k++){
+		for(int j = 0 ; j < HBuffMiSize; j++){
+			for(int k = 0 ; k < WBuffMiSize; k++){
 				delete [] fCtx->lrCtx->LrSgrXqd[i][j][k] ;
 			}
 			delete [] fCtx->lrCtx->LrSgrXqd[i][j] ;
@@ -1612,13 +1633,13 @@ void frame::releaseFrameContext(frameHeader *frameHdr ,FrameContext *fCtx){
 	delete fCtx->fgCtx;	
 	
 	
-	for(int i = 0 ; i < frameHdr->MiRows; i++){
+	for(int i = 0 ; i < HBuffMiSize; i++){
 		delete [] fCtx->mfmvCtx->MfRefFrames[i] ;
 	}
 	delete [] fCtx->mfmvCtx->MfRefFrames  ;
 
-	for(int i = 0 ; i < frameHdr->MiRows; i++){
-		for(int j = 0 ; j < frameHdr->MiCols; j++){
+	for(int i = 0 ; i < HBuffMiSize; i++){
+		for(int j = 0 ; j < WBuffMiSize; j++){
 			delete [] fCtx->mfmvCtx->MfMvs[i][j] ;
 		}
 		delete [] fCtx->mfmvCtx->MfMvs[i] ;
@@ -1630,120 +1651,120 @@ void frame::releaseFrameContext(frameHeader *frameHdr ,FrameContext *fCtx){
 	delete fCtx->mvpCtx ;
 
 
-	for(int i  = 0 ; i < frameHdr->MiRows ; i++){
+	for(int i  = 0 ; i < HBuffMiSize ; i++){
 		delete [] fCtx->cdef_idx[i];
 	}
 	delete [] fCtx->cdef_idx;
 	delete fCtx ;
 }
 int copyCdf(CDFArrays *dst,CDFArrays *src,AV1DecodeContext *av1Ctx){
-   	memcpy(dst->Intra_Frame_Y_Mode,src->Intra_Frame_Y_Mode,sizeof(Default_Intra_Frame_Y_Mode_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Y_Mode,src->Y_Mode,sizeof(Default_Y_Mode_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Uv_Mode_Cfl_Not_Allowed,src->Uv_Mode_Cfl_Not_Allowed, sizeof(Default_Uv_Mode_Cfl_Not_Allowed_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Uv_Mode_Cfl_Allowed,src->Uv_Mode_Cfl_Allowed ,sizeof(Default_Uv_Mode_Cfl_Allowed_Cdf)/sizeof(uint16_t));
+   	memcpy(dst->Intra_Frame_Y_Mode,src->Intra_Frame_Y_Mode,sizeof(Default_Intra_Frame_Y_Mode_Cdf));
+    memcpy(dst->Y_Mode,src->Y_Mode,sizeof(Default_Y_Mode_Cdf));
+    memcpy(dst->Uv_Mode_Cfl_Not_Allowed,src->Uv_Mode_Cfl_Not_Allowed, sizeof(Default_Uv_Mode_Cfl_Not_Allowed_Cdf));
+    memcpy(dst->Uv_Mode_Cfl_Allowed,src->Uv_Mode_Cfl_Allowed ,sizeof(Default_Uv_Mode_Cfl_Allowed_Cdf));
 
-    memcpy(dst->Angle_Delta,src->Angle_Delta,sizeof(Default_Angle_Delta_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Intrabc,src->Intrabc,sizeof(Default_Intrabc_Cdf)/sizeof(uint16_t));
+    memcpy(dst->Angle_Delta,src->Angle_Delta,sizeof(Default_Angle_Delta_Cdf));
+    memcpy(dst->Intrabc,src->Intrabc,sizeof(Default_Intrabc_Cdf));
 
-    memcpy(dst->Partition_W8,src->Partition_W8,sizeof(Default_Partition_W8_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Partition_W16,src->Partition_W16 ,sizeof(Default_Partition_W16_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Partition_W32,src->Partition_W32 ,sizeof(Default_Partition_W32_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Partition_W64,src->Partition_W64 ,sizeof(Default_Partition_W64_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Partition_W128,src->Partition_W128 ,sizeof(Default_Partition_W128_Cdf)/sizeof(uint16_t));
+    memcpy(dst->Partition_W8,src->Partition_W8,sizeof(Default_Partition_W8_Cdf));
+    memcpy(dst->Partition_W16,src->Partition_W16 ,sizeof(Default_Partition_W16_Cdf));
+    memcpy(dst->Partition_W32,src->Partition_W32 ,sizeof(Default_Partition_W32_Cdf));
+    memcpy(dst->Partition_W64,src->Partition_W64 ,sizeof(Default_Partition_W64_Cdf));
+    memcpy(dst->Partition_W128,src->Partition_W128 ,sizeof(Default_Partition_W128_Cdf));
 
-    memcpy(dst->Tx_8x8,src->Tx_8x8,sizeof(Default_Tx_8x8_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Tx_16x16,src->Tx_16x16,sizeof(Default_Tx_16x16_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Tx_32x32,src->Tx_32x32,sizeof(Default_Tx_32x32_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Tx_64x64,src->Tx_64x64,sizeof(Default_Tx_64x64_Cdf)/sizeof(uint16_t));
+    memcpy(dst->Tx_8x8,src->Tx_8x8,sizeof(Default_Tx_8x8_Cdf));
+    memcpy(dst->Tx_16x16,src->Tx_16x16,sizeof(Default_Tx_16x16_Cdf));
+    memcpy(dst->Tx_32x32,src->Tx_32x32,sizeof(Default_Tx_32x32_Cdf));
+    memcpy(dst->Tx_64x64,src->Tx_64x64,sizeof(Default_Tx_64x64_Cdf));
 
-    memcpy(dst->Txfm_Split,src->Txfm_Split,sizeof(Default_Txfm_Split_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Filter_Intra_Mode,src->Filter_Intra_Mode,sizeof(Default_Filter_Intra_Mode_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Filter_Intra,src->Filter_Intra,sizeof(Default_Filter_Intra_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Segment_Id,src->Segment_Id,sizeof(Default_Segment_Id_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Segment_Id_Predicted,src->Segment_Id_Predicted,sizeof(Default_Segment_Id_Predicted_Cdf)/sizeof(uint16_t));
+    memcpy(dst->Txfm_Split,src->Txfm_Split,sizeof(Default_Txfm_Split_Cdf));
+    memcpy(dst->Filter_Intra_Mode,src->Filter_Intra_Mode,sizeof(Default_Filter_Intra_Mode_Cdf));
+    memcpy(dst->Filter_Intra,src->Filter_Intra,sizeof(Default_Filter_Intra_Cdf));
+    memcpy(dst->Segment_Id,src->Segment_Id,sizeof(Default_Segment_Id_Cdf));
+    memcpy(dst->Segment_Id_Predicted,src->Segment_Id_Predicted,sizeof(Default_Segment_Id_Predicted_Cdf));
     for(int i = 0 ; i < MV_CONTEXTS ; i++){
-        for(int j = 0 ; i < 2 ; j++){
-            memcpy(dst->Mv_Class0_Hp[i][j],src->Mv_Class0_Hp[i][j],sizeof(Default_Mv_Class0_Hp_Cdf)/sizeof(uint16_t));
-            memcpy(dst->Mv_Hp[i][j],src->Mv_Hp[i][j],sizeof(Default_Mv_Hp_Cdf)/sizeof(uint16_t));
-            memcpy(dst->Mv_Sign[i][j],src->Mv_Sign[i][j],sizeof(Default_Mv_Sign_Cdf)/sizeof(uint16_t));
-            memcpy(dst->Mv_Bit[i][j],src->Mv_Bit[i][j],sizeof(Default_Mv_Bit_Cdf)/sizeof(uint16_t));
-            memcpy(dst->Mv_Class0_Bit[i][j],src->Mv_Class0_Bit[i][j],sizeof(Default_Mv_Class0_Bit_Cdf)/sizeof(uint16_t));
+        for(int j = 0 ; j < 2 ; j++){
+            memcpy(dst->Mv_Class0_Hp[i][j],src->Mv_Class0_Hp[i][j],sizeof(Default_Mv_Class0_Hp_Cdf));
+            memcpy(dst->Mv_Hp[i][j],src->Mv_Hp[i][j],sizeof(Default_Mv_Hp_Cdf));
+            memcpy(dst->Mv_Sign[i][j],src->Mv_Sign[i][j],sizeof(Default_Mv_Sign_Cdf));
+            memcpy(dst->Mv_Bit[i][j],src->Mv_Bit[i][j],sizeof(Default_Mv_Bit_Cdf));
+            memcpy(dst->Mv_Class0_Bit[i][j],src->Mv_Class0_Bit[i][j],sizeof(Default_Mv_Class0_Bit_Cdf));
         }
     }
-    memcpy(dst->New_Mv,src->New_Mv,sizeof(Default_New_Mv_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Zero_Mv,src->Zero_Mv,sizeof(Default_Zero_Mv_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Ref_Mv,src->Ref_Mv,sizeof(Default_Ref_Mv_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Drl_Mode,src->Drl_Mode,sizeof(Default_Drl_Mode_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Is_Inter,src->Is_Inter,sizeof(Default_Is_Inter_Cdf)/sizeof(uint16_t));
+    memcpy(dst->New_Mv,src->New_Mv,sizeof(Default_New_Mv_Cdf));
+    memcpy(dst->Zero_Mv,src->Zero_Mv,sizeof(Default_Zero_Mv_Cdf));
+    memcpy(dst->Ref_Mv,src->Ref_Mv,sizeof(Default_Ref_Mv_Cdf));
+    memcpy(dst->Drl_Mode,src->Drl_Mode,sizeof(Default_Drl_Mode_Cdf));
+    memcpy(dst->Is_Inter,src->Is_Inter,sizeof(Default_Is_Inter_Cdf));
 
-    memcpy(dst->Is_Inter,src->Is_Inter,sizeof(Default_Is_Inter_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Comp_Mode,src->Comp_Mode,sizeof(Default_Comp_Mode_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Skip_Mode,src->Skip_Mode,sizeof(Default_Skip_Mode_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Skip,src->Skip,sizeof(Default_Skip_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Comp_Ref,src->Comp_Ref,sizeof(Default_Comp_Ref_Cdf)/sizeof(uint16_t));
+    memcpy(dst->Is_Inter,src->Is_Inter,sizeof(Default_Is_Inter_Cdf));
+    memcpy(dst->Comp_Mode,src->Comp_Mode,sizeof(Default_Comp_Mode_Cdf));
+    memcpy(dst->Skip_Mode,src->Skip_Mode,sizeof(Default_Skip_Mode_Cdf));
+    memcpy(dst->Skip,src->Skip,sizeof(Default_Skip_Cdf));
+    memcpy(dst->Comp_Ref,src->Comp_Ref,sizeof(Default_Comp_Ref_Cdf));
 
-    memcpy(dst->Comp_Bwd_Ref,src->Comp_Bwd_Ref,sizeof(Default_Comp_Bwd_Ref_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Single_Ref,src->Single_Ref,sizeof(Default_Single_Ref_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Compound_Mode,src->Compound_Mode,sizeof(Default_Compound_Mode_Cdf)/sizeof(uint16_t));
+    memcpy(dst->Comp_Bwd_Ref,src->Comp_Bwd_Ref,sizeof(Default_Comp_Bwd_Ref_Cdf));
+    memcpy(dst->Single_Ref,src->Single_Ref,sizeof(Default_Single_Ref_Cdf));
+    memcpy(dst->Compound_Mode,src->Compound_Mode,sizeof(Default_Compound_Mode_Cdf));
 
-    memcpy(dst->Interp_Filter,src->Interp_Filter,sizeof(Default_Interp_Filter_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Motion_Mode,src->Motion_Mode,sizeof(Default_Motion_Mode_Cdf)/sizeof(uint16_t));
+    memcpy(dst->Interp_Filter,src->Interp_Filter,sizeof(Default_Interp_Filter_Cdf));
+    memcpy(dst->Motion_Mode,src->Motion_Mode,sizeof(Default_Motion_Mode_Cdf));
 
     for(int i = 0 ; i < MV_CONTEXTS ; i++){
-        memcpy(dst->Mv_Joint[i],src->Mv_Joint[i],sizeof(Default_Mv_Joint_Cdf)/sizeof(uint16_t));
-        memcpy(dst->Mv_Class[i],src->Mv_Class[i],sizeof(Default_Mv_Class_Cdf)/sizeof(uint16_t));
-        memcpy(dst->Mv_Class0_Fr[i],src->Mv_Class0_Fr[i],sizeof(Default_Mv_Class0_Fr_Cdf)/sizeof(uint16_t));
-        memcpy(dst->Mv_Fr[i],src->Mv_Fr[i],sizeof(Default_Mv_Fr_Cdf)/sizeof(uint16_t));
+        memcpy(dst->Mv_Joint[i],src->Mv_Joint[i],sizeof(Default_Mv_Joint_Cdf));
+        memcpy(dst->Mv_Class[i],src->Mv_Class[i],sizeof(Default_Mv_Class_Cdf));
+        memcpy(dst->Mv_Class0_Fr[i],src->Mv_Class0_Fr[i],sizeof(Default_Mv_Class0_Fr_Cdf));
+        memcpy(dst->Mv_Fr[i],src->Mv_Fr[i],sizeof(Default_Mv_Fr_Cdf));
     }
-    memcpy(dst->Palette_Y_Size,src->Palette_Y_Size,sizeof(Default_Palette_Y_Size_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Palette_Uv_Size,src->Palette_Uv_Size,sizeof(Default_Palette_Uv_Size_Cdf)/sizeof(uint16_t));
+    memcpy(dst->Palette_Y_Size,src->Palette_Y_Size,sizeof(Default_Palette_Y_Size_Cdf));
+    memcpy(dst->Palette_Uv_Size,src->Palette_Uv_Size,sizeof(Default_Palette_Uv_Size_Cdf));
 
-    memcpy(dst->Palette_Size_2_Y_Color,src->Palette_Size_2_Y_Color,sizeof(Default_Palette_Size_2_Y_Color_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Palette_Size_3_Y_Color,src->Palette_Size_3_Y_Color,sizeof(Default_Palette_Size_3_Y_Color_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Palette_Size_4_Y_Color,src->Palette_Size_4_Y_Color,sizeof(Default_Palette_Size_4_Y_Color_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Palette_Size_5_Y_Color,src->Palette_Size_5_Y_Color,sizeof(Default_Palette_Size_5_Y_Color_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Palette_Size_6_Y_Color,src->Palette_Size_6_Y_Color,sizeof(Default_Palette_Size_6_Y_Color_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Palette_Size_7_Y_Color,src->Palette_Size_7_Y_Color,sizeof(Default_Palette_Size_7_Y_Color_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Palette_Size_8_Y_Color,src->Palette_Size_8_Y_Color,sizeof(Default_Palette_Size_8_Y_Color_Cdf)/sizeof(uint16_t));
+    memcpy(dst->Palette_Size_2_Y_Color,src->Palette_Size_2_Y_Color,sizeof(Default_Palette_Size_2_Y_Color_Cdf));
+    memcpy(dst->Palette_Size_3_Y_Color,src->Palette_Size_3_Y_Color,sizeof(Default_Palette_Size_3_Y_Color_Cdf));
+    memcpy(dst->Palette_Size_4_Y_Color,src->Palette_Size_4_Y_Color,sizeof(Default_Palette_Size_4_Y_Color_Cdf));
+    memcpy(dst->Palette_Size_5_Y_Color,src->Palette_Size_5_Y_Color,sizeof(Default_Palette_Size_5_Y_Color_Cdf));
+    memcpy(dst->Palette_Size_6_Y_Color,src->Palette_Size_6_Y_Color,sizeof(Default_Palette_Size_6_Y_Color_Cdf));
+    memcpy(dst->Palette_Size_7_Y_Color,src->Palette_Size_7_Y_Color,sizeof(Default_Palette_Size_7_Y_Color_Cdf));
+    memcpy(dst->Palette_Size_8_Y_Color,src->Palette_Size_8_Y_Color,sizeof(Default_Palette_Size_8_Y_Color_Cdf));
 
 
-    memcpy(dst->Palette_Size_2_Uv_Color,src->Palette_Size_2_Uv_Color,sizeof(Default_Palette_Size_2_Uv_Color_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Palette_Size_3_Uv_Color,src->Palette_Size_3_Uv_Color,sizeof(Default_Palette_Size_3_Uv_Color_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Palette_Size_4_Uv_Color,src->Palette_Size_4_Uv_Color,sizeof(Default_Palette_Size_4_Uv_Color_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Palette_Size_5_Uv_Color,src->Palette_Size_5_Uv_Color,sizeof(Default_Palette_Size_5_Uv_Color_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Palette_Size_6_Uv_Color,src->Palette_Size_6_Uv_Color,sizeof(Default_Palette_Size_6_Uv_Color_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Palette_Size_7_Uv_Color,src->Palette_Size_7_Uv_Color,sizeof(Default_Palette_Size_7_Uv_Color_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Palette_Size_8_Uv_Color,src->Palette_Size_8_Uv_Color,sizeof(Default_Palette_Size_8_Uv_Color_Cdf)/sizeof(uint16_t));
+    memcpy(dst->Palette_Size_2_Uv_Color,src->Palette_Size_2_Uv_Color,sizeof(Default_Palette_Size_2_Uv_Color_Cdf));
+    memcpy(dst->Palette_Size_3_Uv_Color,src->Palette_Size_3_Uv_Color,sizeof(Default_Palette_Size_3_Uv_Color_Cdf));
+    memcpy(dst->Palette_Size_4_Uv_Color,src->Palette_Size_4_Uv_Color,sizeof(Default_Palette_Size_4_Uv_Color_Cdf));
+    memcpy(dst->Palette_Size_5_Uv_Color,src->Palette_Size_5_Uv_Color,sizeof(Default_Palette_Size_5_Uv_Color_Cdf));
+    memcpy(dst->Palette_Size_6_Uv_Color,src->Palette_Size_6_Uv_Color,sizeof(Default_Palette_Size_6_Uv_Color_Cdf));
+    memcpy(dst->Palette_Size_7_Uv_Color,src->Palette_Size_7_Uv_Color,sizeof(Default_Palette_Size_7_Uv_Color_Cdf));
+    memcpy(dst->Palette_Size_8_Uv_Color,src->Palette_Size_8_Uv_Color,sizeof(Default_Palette_Size_8_Uv_Color_Cdf));
 
-    memcpy(dst->Delta_Q,src->Delta_Q,sizeof(Default_Delta_Q_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Delta_Lf,src->Delta_Lf,sizeof(Default_Delta_Lf_Cdf)/sizeof(uint16_t));
+    memcpy(dst->Delta_Q,src->Delta_Q,sizeof(Default_Delta_Q_Cdf));
+    memcpy(dst->Delta_Lf,src->Delta_Lf,sizeof(Default_Delta_Lf_Cdf));
 
     for(int i = 0 ; i < FRAME_LF_COUNT ; i++)
-        memcpy(dst->Delta_Lf_Muti[i],src->Delta_Lf_Muti[i],sizeof(Default_Delta_Lf_Cdf)/sizeof(uint16_t));
+        memcpy(dst->Delta_Lf_Muti[i],src->Delta_Lf_Muti[i],sizeof(Default_Delta_Lf_Cdf));
 
-    memcpy(dst->Intra_Tx_Type_Set1,src->Intra_Tx_Type_Set1,sizeof(Default_Intra_Tx_Type_Set1_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Intra_Tx_Type_Set2,src->Intra_Tx_Type_Set2,sizeof(Default_Intra_Tx_Type_Set2_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Inter_Tx_Type_Set1,src->Inter_Tx_Type_Set1,sizeof(Default_Inter_Tx_Type_Set1_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Inter_Tx_Type_Set2,src->Inter_Tx_Type_Set2,sizeof(Default_Inter_Tx_Type_Set2_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Inter_Tx_Type_Set3,src->Inter_Tx_Type_Set3,sizeof(Default_Inter_Tx_Type_Set3_Cdf)/sizeof(uint16_t));
+    memcpy(dst->Intra_Tx_Type_Set1,src->Intra_Tx_Type_Set1,sizeof(Default_Intra_Tx_Type_Set1_Cdf));
+    memcpy(dst->Intra_Tx_Type_Set2,src->Intra_Tx_Type_Set2,sizeof(Default_Intra_Tx_Type_Set2_Cdf));
+    memcpy(dst->Inter_Tx_Type_Set1,src->Inter_Tx_Type_Set1,sizeof(Default_Inter_Tx_Type_Set1_Cdf));
+    memcpy(dst->Inter_Tx_Type_Set2,src->Inter_Tx_Type_Set2,sizeof(Default_Inter_Tx_Type_Set2_Cdf));
+    memcpy(dst->Inter_Tx_Type_Set3,src->Inter_Tx_Type_Set3,sizeof(Default_Inter_Tx_Type_Set3_Cdf));
 
-    memcpy(dst->Compound_Idx,src->Compound_Idx,sizeof(Default_Compound_Idx_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Comp_Group_Idx,src->Comp_Group_Idx,sizeof(Default_Comp_Group_Idx_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Compound_Type,src->Compound_Type,sizeof(Default_Compound_Type_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Inter_Intra,src->Inter_Intra,sizeof(Default_Inter_Intra_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Inter_Intra_Mode,src->Inter_Intra_Mode,sizeof(Default_Inter_Intra_Mode_Cdf)/sizeof(uint16_t));
+    memcpy(dst->Compound_Idx,src->Compound_Idx,sizeof(Default_Compound_Idx_Cdf));
+    memcpy(dst->Comp_Group_Idx,src->Comp_Group_Idx,sizeof(Default_Comp_Group_Idx_Cdf));
+    memcpy(dst->Compound_Type,src->Compound_Type,sizeof(Default_Compound_Type_Cdf));
+    memcpy(dst->Inter_Intra,src->Inter_Intra,sizeof(Default_Inter_Intra_Cdf));
+    memcpy(dst->Inter_Intra_Mode,src->Inter_Intra_Mode,sizeof(Default_Inter_Intra_Mode_Cdf));
 
-    memcpy(dst->Wedge_Index,src->Wedge_Index,sizeof(Default_Wedge_Index_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Wedge_Inter_Intra,src->Wedge_Inter_Intra,sizeof(Default_Wedge_Inter_Intra_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Use_Obmc,src->Use_Obmc,sizeof(Default_Use_Obmc_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Comp_Ref_Type,src->Comp_Ref_Type,sizeof(Default_Comp_Ref_Type_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Uni_Comp_Ref,src->Uni_Comp_Ref,sizeof(Default_Uni_Comp_Ref_Cdf)/sizeof(uint16_t));
+    memcpy(dst->Wedge_Index,src->Wedge_Index,sizeof(Default_Wedge_Index_Cdf));
+    memcpy(dst->Wedge_Inter_Intra,src->Wedge_Inter_Intra,sizeof(Default_Wedge_Inter_Intra_Cdf));
+    memcpy(dst->Use_Obmc,src->Use_Obmc,sizeof(Default_Use_Obmc_Cdf));
+    memcpy(dst->Comp_Ref_Type,src->Comp_Ref_Type,sizeof(Default_Comp_Ref_Type_Cdf));
+    memcpy(dst->Uni_Comp_Ref,src->Uni_Comp_Ref,sizeof(Default_Uni_Comp_Ref_Cdf));
 
-    memcpy(dst->Cfl_Sign,src->Cfl_Sign,sizeof(Default_Cfl_Sign_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Cfl_Alpha,src->Cfl_Alpha,sizeof(Default_Cfl_Alpha_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Use_Wiener,src->Use_Wiener,sizeof(Default_Use_Wiener_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Use_Sgrproj,src->Use_Sgrproj,sizeof(Default_Use_Sgrproj_Cdf)/sizeof(uint16_t));
-    memcpy(dst->Restoration_Type,src->Restoration_Type,sizeof(Default_Restoration_Type_Cdf)/sizeof(uint16_t));
+    memcpy(dst->Cfl_Sign,src->Cfl_Sign,sizeof(Default_Cfl_Sign_Cdf));
+    memcpy(dst->Cfl_Alpha,src->Cfl_Alpha,sizeof(Default_Cfl_Alpha_Cdf));
+    memcpy(dst->Use_Wiener,src->Use_Wiener,sizeof(Default_Use_Wiener_Cdf));
+    memcpy(dst->Use_Sgrproj,src->Use_Sgrproj,sizeof(Default_Use_Sgrproj_Cdf));
+    memcpy(dst->Restoration_Type,src->Restoration_Type,sizeof(Default_Restoration_Type_Cdf));
 
 	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
     int idx;
@@ -1756,20 +1777,20 @@ int copyCdf(CDFArrays *dst,CDFArrays *src,AV1DecodeContext *av1Ctx){
     }else{
         idx = 3 ;
     }
-    memcpy(dst->Txb_Skip,src->Txb_Skip,sizeof(Default_Txb_Skip_Cdf[idx])/sizeof(uint16_t));
-    memcpy(dst->Eob_Pt_16,src->Eob_Pt_16,sizeof(Default_Eob_Pt_16_Cdf[idx])/sizeof(uint16_t));
-    memcpy(dst->Eob_Pt_32,src->Eob_Pt_32,sizeof(Default_Eob_Pt_32_Cdf[idx])/sizeof(uint16_t));
-    memcpy(dst->Eob_Pt_64,src->Eob_Pt_64,sizeof(Default_Eob_Pt_64_Cdf[idx])/sizeof(uint16_t));
-    memcpy(dst->Eob_Pt_128,src->Eob_Pt_128,sizeof(Default_Eob_Pt_128_Cdf[idx])/sizeof(uint16_t));
-    memcpy(dst->Eob_Pt_256,src->Eob_Pt_256,sizeof(Default_Eob_Pt_256_Cdf[idx])/sizeof(uint16_t));
-    memcpy(dst->Eob_Pt_512,src->Eob_Pt_512,sizeof(Default_Eob_Pt_512_Cdf[idx])/sizeof(uint16_t));
-    memcpy(dst->Eob_Pt_1024,src->Eob_Pt_1024,sizeof(Default_Eob_Pt_1024_Cdf[idx])/sizeof(uint16_t));
+    memcpy(dst->Txb_Skip,src->Txb_Skip,sizeof(Default_Txb_Skip_Cdf[idx]));
+    memcpy(dst->Eob_Pt_16,src->Eob_Pt_16,sizeof(Default_Eob_Pt_16_Cdf[idx]));
+    memcpy(dst->Eob_Pt_32,src->Eob_Pt_32,sizeof(Default_Eob_Pt_32_Cdf[idx]));
+    memcpy(dst->Eob_Pt_64,src->Eob_Pt_64,sizeof(Default_Eob_Pt_64_Cdf[idx]));
+    memcpy(dst->Eob_Pt_128,src->Eob_Pt_128,sizeof(Default_Eob_Pt_128_Cdf[idx]));
+    memcpy(dst->Eob_Pt_256,src->Eob_Pt_256,sizeof(Default_Eob_Pt_256_Cdf[idx]));
+    memcpy(dst->Eob_Pt_512,src->Eob_Pt_512,sizeof(Default_Eob_Pt_512_Cdf[idx]));
+    memcpy(dst->Eob_Pt_1024,src->Eob_Pt_1024,sizeof(Default_Eob_Pt_1024_Cdf[idx]));
 
-    memcpy(dst->Eob_Extra,src->Eob_Extra,sizeof(Default_Eob_Pt_32_Cdf[idx])/sizeof(uint16_t));
-    memcpy(dst->Dc_Sign,src->Dc_Sign,sizeof(Default_Eob_Pt_32_Cdf[idx])/sizeof(uint16_t));
-    memcpy(dst->Coeff_Base_Eob,src->Coeff_Base_Eob,sizeof(Default_Y_Mode_Cdf[idx])/sizeof(uint16_t));
-    memcpy(dst->Coeff_Base,src->Coeff_Base,sizeof(Default_Y_Mode_Cdf[idx])/sizeof(uint16_t));
-    memcpy(dst->Coeff_Br,src->Coeff_Br,sizeof(Default_Y_Mode_Cdf[idx])/sizeof(uint16_t));
+    memcpy(dst->Eob_Extra,src->Eob_Extra,sizeof(Default_Eob_Pt_32_Cdf[idx]));
+    memcpy(dst->Dc_Sign,src->Dc_Sign,sizeof(Default_Eob_Pt_32_Cdf[idx]));
+    memcpy(dst->Coeff_Base_Eob,src->Coeff_Base_Eob,sizeof(Default_Y_Mode_Cdf[idx]));
+    memcpy(dst->Coeff_Base,src->Coeff_Base,sizeof(Default_Y_Mode_Cdf[idx]));
+    memcpy(dst->Coeff_Br,src->Coeff_Br,sizeof(Default_Y_Mode_Cdf[idx]));
 
 }
 void frame::exit_symbol(SymbolContext *sbCtx,bitSt *bs,int TileNum,AV1DecodeContext *av1Ctx){
@@ -2110,6 +2131,7 @@ int frame::decode_block(SymbolContext *sbCtx,bitSt *bs,int r,int c,int subSize, 
 			if (b_data.RefFrame[0] == INTRA_FRAME && b_data.HasChroma)
 				av1Ctx->UVModes[r + y][c + x] = b_data.UVMode ;
 			for (int refList = 0; refList < 2; refList++){
+				//printf("bh4 %d bw4 %d  r %d c %d r + y %d, c + x %d mirows %d, micols %d\n",bh4, bw4 , r ,c,r + y,c + x,frameHdr->MiRows,frameHdr->MiCols);
 				av1Ctx->RefFrames[r + y][c + x][refList] = b_data.RefFrame[refList] ;
 			}
 				
@@ -4152,11 +4174,6 @@ int frame::read_lr_unit(SymbolContext *sbCtx, bitSt *bs,int plane,int unitRow,in
 	}
 	else
 	{
-		printf("\n");
-		for(int i =  0 ; i < 20 ; i++){
-			printf("%2x ",bs->dataPtr[bs->offset + i]);
-		}
-		printf("\n");
 		restoration_type = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Restoration_Type ,RESTORE_SWITCHABLE + 1 ); // S()
 	}
 	printf("restoration_type %d\n",restoration_type);

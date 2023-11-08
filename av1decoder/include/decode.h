@@ -148,7 +148,7 @@ public:
 	void inverseIdentityTransform16(int* T);
 	void inverseIdentityTransform32(int* T);
 	void inverseIdentityTransform(int *T,int n);
-	void twoDInverseTransformBlock(int txSz,int **Residual,BlockData *b_data,AV1DecodeContext *av1Ctx) ;
+	void twoDInverseTransformBlock(int txSz,uint16_t **Residual,BlockData *b_data,AV1DecodeContext *av1Ctx) ;
 
 
 	void loopFilter(AV1DecodeContext *av1Ctx);

@@ -382,7 +382,7 @@ typedef struct BlockData{
 
 	//量化
 	uint16_t Quant[1024]; //先直接拉满
-	uint16_t Dequant[32][32];//先直接拉满
+	uint16_t Dequant[64][64];//先直接拉满
 
 	//reconstruct 重建图像
 	int PlaneTxType;

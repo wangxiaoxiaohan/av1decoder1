@@ -3901,7 +3901,7 @@ int decode::reconstruct(int plane, int x, int y, int txSz,BlockData *b_data,AV1D
 	for(int i = 0 ; i < h ; i ++){
 		Residual[i] = new uint16_t[w];
 	}
-	twoDInverseTransformBlock(txSz,(int **)Residual,b_data,av1Ctx);
+	twoDInverseTransformBlock(txSz,Residual,b_data,av1Ctx);
 
     for (int i = 0; i < h; i++) {
         for (int j = 0; j < w; j++) {
@@ -4343,7 +4343,7 @@ void decode::inverseIdentityTransform(int *T,int n){
 		inverseIdentityTransform32(T);
 	}
 }
-void decode::twoDInverseTransformBlock(int txSz,int **Residual,BlockData *b_data, AV1DecodeContext *av1Ctx) {
+void decode::twoDInverseTransformBlock(int txSz,uint16_t **Residual,BlockData *b_data, AV1DecodeContext *av1Ctx) {
 	frameHeader *frameHdr = &av1Ctx->frameHdr;
 	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
 	int log2W = Tx_Width_Log2[ txSz ];
