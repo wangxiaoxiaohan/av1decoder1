@@ -5652,6 +5652,8 @@ void decode::addNoiseSynthesis(int GrainMin,int GrainMax,int * RandomRegister,in
 								g = old * 23 + g * 22;
 								g = Clip3(GrainMin, GrainMax, Round2(g, 5));
 							}
+							//[31 ][3][34][750]
+							printf("%d %d |%d %d %d %d g %d\n",(h + 16) / 32 ,w,lumaNum,plane,i,x+j,g);
 							noiseStripe[lumaNum][plane][i][x + j] = g;
 						}
 					}
@@ -5660,7 +5662,107 @@ void decode::addNoiseSynthesis(int GrainMin,int GrainMax,int * RandomRegister,in
 		}
 		lumaNum++;
 	}
+	uint16_t **noiseImage[3];
+	for(int i = 0; i < 3 ; i++){
+		noiseImage[i] = new uint16_t*[h];
+		for(int j = 0; j < h ; j++){
+			noiseImage[i][j] = new uint16_t[w];
+		}
+	}
+	for (int plane = 0; plane < seqHdr->color_config.NumPlanes; plane++ ) {  
+		int planeSubX = (plane > 0) ? subX : 0;  
+		int planeSubY = (plane > 0) ? subY : 0;  
+		for (int y = 0; y < ((h + planeSubY) >> planeSubY); y++ ) {  
+			int lumaNum = y >> (5 - planeSubY);  
+			int i = y - (lumaNum << (5 - planeSubY));  
+			for (int x = 0; x < ((w + planeSubX) >> planeSubX); x++ ) {  
+				int g = noiseStripe[lumaNum][plane][i][x];  
+				if (planeSubY == 0) {  
+					if (i < 2 && lumaNum > 0 && frameHdr->film_grain_params.overlap_flag) {  
+						int old = noiseStripe[lumaNum - 1][plane][i + 32][x];  
+						if (i == 0) {  
+							g = old * 27 + g * 17;  
+						} else {  
+							g = old * 17 + g * 27;  
+						}  
+						g = Clip3(GrainMin, GrainMax, Round2(g, 5));  
+					}  
+				} else {  
+					if (i < 1 && lumaNum > 0 && frameHdr->film_grain_params.overlap_flag) {  
+						int old = noiseStripe[lumaNum - 1][plane][i + 16][x];  
+						g = old * 23 + g * 22;  
+						g = Clip3(GrainMin, GrainMax, Round2(g, 5));  
+					}  
+				}  
+				noiseImage[plane][y][x] = g;  
+			}  
+		}  
+	}
+	int minValue,maxLuma,maxChroma;
+	if ( frameHdr->film_grain_params.clip_to_restricted_range  ) {  
+		minValue = 16 << (seqHdr->color_config.BitDepth - 8);  
+		maxLuma = 235 << (seqHdr->color_config.BitDepth - 8);  
+		if (seqHdr->color_config.matrix_coefficients == MC_IDENTITY )  
+			maxChroma = maxLuma;  
+		else  
+			maxChroma = 240 << (seqHdr->color_config.BitDepth - 8);  
+	} else {  
+		minValue = 0;  
+		maxLuma = (256 << (seqHdr->color_config.BitDepth - 8)) - 1;  
+		maxChroma = maxLuma;  
+	}  
+	//ScalingShift = grain_scaling_minus_8 + 8;  
+	int lumaX,lumaY,lumaNextX,averageLuma;
+	uint16_t orig,merged,combined,noise;
+	for (int y = 0; y < ( (h + subY) >> subY); y++ ) {  
+		for (int x = 0; x < ( (w + subX) >> subX); x++ ) {  
+			lumaX = x << subX;  
+			lumaY = y << subY;  
+			lumaNextX = Min( lumaX + 1, w - 1 );  
+			if ( subX )  
+				averageLuma = Round2( av1Ctx->currentFrame->OutY[ lumaY ][ lumaX ] + av1Ctx->currentFrame->OutY[ lumaY ][ lumaNextX ], 1 );  
+			else  
+				averageLuma = av1Ctx->currentFrame->OutY[ lumaY ][ lumaX ];  
+			if ( frameHdr->film_grain_params.num_cb_points > 0 || frameHdr->film_grain_params.chroma_scaling_from_luma ) {  
+				orig = av1Ctx->currentFrame->OutU[ y ][ x ];  
+				if ( frameHdr->film_grain_params.chroma_scaling_from_luma ) {  
+					merged = averageLuma;  
+				} else {  
+					combined = averageLuma * ( frameHdr->film_grain_params.cb_luma_mult - 128 ) + orig * ( frameHdr->film_grain_params.cb_mult - 128 );  
+					merged = Clip1( ( combined >> 6 ) + ( (frameHdr->film_grain_params.cb_offset - 256 ) << (seqHdr->color_config.BitDepth - 8) ),seqHdr->color_config.BitDepth);  
+				}  
+				noise = noiseImage[ 1 ][ y ][ x ];  
+				noise = Round2( scale_lut( 1, merged ,av1Ctx) * noise, frameHdr->film_grain_params.grain_scaling );  
+				av1Ctx->currentFrame->OutU[ y ][ x ] = Clip3( minValue, maxChroma, orig + noise );  
+			}  
+			if ( frameHdr->film_grain_params.num_cr_points > 0 || frameHdr->film_grain_params.chroma_scaling_from_luma) {  
+				orig = av1Ctx->currentFrame->OutV[ y ][ x ];  
+				if ( frameHdr->film_grain_params.chroma_scaling_from_luma ) {  
+					merged = averageLuma;  
+				} else {  
+					combined = averageLuma * ( frameHdr->film_grain_params.cr_luma_mult - 128 ) + orig * ( frameHdr->film_grain_params.cr_mult - 128 );  
+					merged = Clip1( ( combined >> 6 ) + ( (frameHdr->film_grain_params.cr_offset - 256 ) << (seqHdr->color_config.BitDepth - 8) ) ,seqHdr->color_config.BitDepth);  
+				}  
+				noise = noiseImage[ 2 ][ y ][ x ];  
+				noise = Round2( scale_lut( 2, merged ,av1Ctx) * noise, frameHdr->film_grain_params.grain_scaling );  
+				av1Ctx->currentFrame->OutV[ y ][ x ] = Clip3( minValue, maxChroma, orig + noise );  
+			}  
+		}  
+	}  
 	
+	for (int y = 0; y < h ; y++ ) {  
+		for (int x = 0; x < w ; x++ ) {  
+			orig = av1Ctx->currentFrame->OutY[ y ][ x ];  
+			noise = noiseImage[ 0 ][ y ][ x ];  
+			noise = Round2( scale_lut( 0, orig ,av1Ctx) * noise, frameHdr->film_grain_params.grain_scaling );  
+			if ( frameHdr->film_grain_params.num_y_points > 0 ) {  
+				av1Ctx->currentFrame->OutY[ y ][ x ] = Clip3( minValue, maxLuma, orig + noise );  
+			}  
+		}  
+	}
+
+
+
 	for(int i = 0 ; i < (h + 1) / 2 ; i++){	
 		for(int j = 0 ; j < 3 ; j++){
 			for(int k = 0 ; k < 34 ; k++){
@@ -5671,7 +5773,30 @@ void decode::addNoiseSynthesis(int GrainMin,int GrainMax,int * RandomRegister,in
 		delete [] noiseStripe[i];
 	}
 	delete [] noiseStripe;
+		
+	for(int i = 0; i < 3 ; i++){
+		delete [] noiseImage[i];
+		for(int j = 0; j < h ; j++){
+			delete [] noiseImage[i][j];
+		}
+	}
+	delete [] noiseImage;
 }
+int decode::scale_lut( int plane,int index ,AV1DecodeContext *av1Ctx) {
+	frameHeader *frameHdr = &av1Ctx->frameHdr;
+	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
+	int shift = seqHdr->color_config.BitDepth - 8;
+	int x = index >> shift;
+	int rem = index - ( x << shift );
+	if ( seqHdr->color_config.BitDepth == 8 || x == 255) {
+		
+	} else {
+		int start = av1Ctx->currentFrame->fgCtx->ScalingLut[ plane ][ x ];
+		int end = av1Ctx->currentFrame->fgCtx->ScalingLut[ plane ][ x + 1 ];
+		return start + Round2( (end - start) * rem, shift );
+	}
+}
+
 //7.19
 void decode::motionFieldMotionVectorStorage(AV1DecodeContext *av1Ctx){
 	frameHeader *frameHdr = &av1Ctx->frameHdr;

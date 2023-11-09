@@ -193,6 +193,7 @@ public:
 	void output(AV1DecodeContext *av1Ctx);
 	void intermediateOutputPreparation(int *w,int *h,int *subX,int *subY,int *bidepth,AV1DecodeContext *av1Ctx);
 	void filmGrainSynthesis(int w, int h, int subX, int subY,AV1DecodeContext *av1Ctx);
+	int scale_lut( int plane,int index ,AV1DecodeContext *av1Ctx);
 	int get_random_number( int bits ,int *RandomRegister);
 	void generateGrain(int GrainMin,int GrainMax, int *RandomRegister ,AV1DecodeContext *av1Ctx) ;
 	void scalingLookupInitialization(AV1DecodeContext *av1Ctx);
