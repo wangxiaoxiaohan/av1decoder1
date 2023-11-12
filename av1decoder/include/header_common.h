@@ -304,8 +304,8 @@ typedef struct BlockData{
 	uint8_t HasChroma;
 	uint8_t skip;
 	uint8_t skip_mode;
-	uint8_t MiRow; //block 在帧中起始位置 4* 4为单位
-	uint8_t MiCol; //block 在帧中起始位置 4* 4为单位
+	uint16_t MiRow; //block 在帧中起始位置 4* 4为单位
+	uint16_t MiCol; //block 在帧中起始位置 4* 4为单位
 	uint8_t MiSize; //block size/类型 看 em_SubSize
 	uint8_t AvailU;
 	uint8_t AvailL;

@@ -1140,7 +1140,7 @@ void frame::allocDecodeContext(AV1DecodeContext *av1Ctx){
 		WBuffMiSize = (frameHdr->MiCols % 16) ? (frameHdr->MiCols / 16 + 1) * 16 : (frameHdr->MiCols / 16) * 16;
 		HBuffMiSize = (frameHdr->MiRows % 16) ? (frameHdr->MiRows / 16 + 1) * 16 : (frameHdr->MiRows / 16) * 16;
 	}
-	
+	printf("WBuffMiSize %d HBuffMiSize %d \n",WBuffMiSize,HBuffMiSize);
 	allocFrameContext(frameHdr,WBuffMiSize,HBuffMiSize,&av1Ctx->currentFrame);
 	for(int i = 0 ; i < NUM_REF_FRAMES ; i ++){
 		allocFrameContext(frameHdr,WBuffMiSize,HBuffMiSize,&av1Ctx->ref_frames[i]);
@@ -1874,6 +1874,18 @@ int frame::decodeFrame(int sz, bitSt *bs, AV1DecodeContext *av1Ctx){
 		if ( !frameHdr->disable_frame_end_update_cdf ) {
 			frame_end_update_cdf(av1Ctx);
 		}
+		 for (int i = 0; i < 750; i++) {
+		 	for (int j = 0; j < 1000; j++) {
+		 		if(av1Ctx->currentFrame->CurrFrame[0][ i][ j] != 0 && av1Ctx->currentFrame->CurrFrame[0][ i][j] != 128){
+		 			printf("!!!!! y %d x %d  %d \n",i,j,av1Ctx->currentFrame->CurrFrame[0][ i][ j]);
+		 		}
+		 	}
+		 }
+		// for (int i = 0; i < 8; i++) {
+		// 	for (int j = 0; j < 8; j++) {
+		// 		printf("!! %d \n",av1Ctx->currentFrame->CurrFrame[0][56 + i][56 + j]);
+		// 	}
+		// }
 		decode_instance->decode_frame_wrapup(av1Ctx);
 		av1Ctx->SeenFrameHeader = 0;
 	}

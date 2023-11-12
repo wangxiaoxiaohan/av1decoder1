@@ -16,6 +16,11 @@ int decode::decode_frame_wrapup( AV1DecodeContext *av1Ctx){
 		if( frameHdr->loop_filter_params.loop_filter_level[ 0 ] != 0 || frameHdr->loop_filter_params.loop_filter_level[ 1 ] != 0){
 			loopFilter(av1Ctx); 
 		}
+		for (int i = 0; i < 8; i++) {
+			for (int j = 0; j < 8; j++) {
+				printf("!!!! %d \n",av1Ctx->currentFrame->CurrFrame[0][56 + i][56 + j]);
+			}
+		}
 		cdef(av1Ctx); 
 		upscalingProcess(av1Ctx->currentFrame->CdefFrame,av1Ctx->currentFrame->UpscaledCdefFrame,av1Ctx);
 		upscalingProcess(av1Ctx->currentFrame->CurrFrame,av1Ctx->currentFrame->UpscaledCurrFrame,av1Ctx);
@@ -3646,15 +3651,13 @@ int decode::overlappedMotionCompensation(int plane, int w ,int h,
 	frameHeader *frameHdr = &av1Ctx->frameHdr;
 	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
 
-    int AvailU = 1; // 上方是否可用
-    int AvailL = 1; // 左侧是否可用
     int pass;
     int w4, h4,x4, y4, nCount, nLimit;
     int candRow, candCol, candSz, step4, predW, predH;
 	uint8_t *mask;
 
 	int subX,subY;
-    if (AvailU) {
+    if (b_data->AvailU) {
         if (get_plane_residual_size(b_data->MiSize, plane,seqHdr->color_config.subsampling_x,seqHdr->color_config.subsampling_y) >= BLOCK_8X8) {
             pass = 0;
             w4 = Num_4x4_Blocks_Wide[b_data->MiSize];
@@ -3683,7 +3686,7 @@ int decode::overlappedMotionCompensation(int plane, int w ,int h,
         }
     }
 
-    if (AvailL) {
+    if (b_data->AvailL) {
         pass = 1;
         h4 = Num_4x4_Blocks_High[b_data->MiSize];
         x4 = b_data->MiCol;
@@ -4521,11 +4524,27 @@ void decode::edgeLoopFilter(int plane, int pass, int row, int col,AV1DecodeConte
 	if(lvl == 0){
 		adaptiveFilterStrength(prevRow,prevCol,plane,pass,&lvl,&limit,&blimit,&thresh,av1Ctx);
 	}
+
+	//  if(plane == 0 && row == 14 && col == 14){
+	//  	for (int i = 0; i < 4; i++) {
+	//  		for (int j = 0; j < 4; j++) {
+	//  			printf("@ %d \n",av1Ctx->currentFrame->CurrFrame[0][row * 4 + i][col * 4 + j]);
+	//  		}
+	//  	}
+	//  }
 	for(int i = 0 ; i < MI_SIZE ; i++){
 		if(applyFilter == 1 && lvl > 0){
 			sampleFiltering(xP + dy * i,yP + dx * i,plane, limit, blimit, thresh, dx, dy,filterSize,av1Ctx);
 		}
 	}
+	//  if(plane == 0&& row == 14 && col == 14){
+	//  for (int i = 0; i < 4; i++) {
+	//  	for (int j = 0; j < 4; j++) {
+	//  		printf("@@@ %d \n",av1Ctx->currentFrame->CurrFrame[0][row * 4 + i][col * 4 + j]);
+	//  	}
+	//  }
+	// }
+
 }
 //7.14.3
 //The purpose of this process is to reduce the width of the chroma filters and to ensure that different boundaries can be
@@ -4863,6 +4882,7 @@ void decode::cdefBlock(int r, int c, int idx,AV1DecodeContext *av1Ctx) {
         int priStr = frameHdr->cdef_params.cdef_y_pri_strength[idx] << coeffShift;
         int secStr = frameHdr->cdef_params.cdef_y_sec_strength[idx] << coeffShift;
         int dir = (priStr == 0) ? 0 : yDir;
+		//printf("var %d\n",var);
         int varStr = (var >> 6) ? Min(FloorLog2(var >> 6), 12) : 0;
         priStr = (var ? (priStr * (4 + varStr) + 8) >> 4 : 0);
         int damping = frameHdr->cdef_params.CdefDamping + coeffShift;
@@ -4900,11 +4920,13 @@ void decode::cdefDirectionProcess(int r, int c, int *yDir, int *var,
             partial[i][j] = 0;
         }
     }
-
+	int x;
+	//printf(" x0 %d y0 %d\n",x0,y0);
     for (int i = 0; i < 8; i++) {
         for (int j = 0; j < 8; j++) {
-            int x = (av1Ctx->currentFrame->CurrFrame[0][y0 + i][x0 + j] >> (seqHdr->color_config.BitDepth - 8)) - 128;
-            partial[0][i + j] += x;
+            x = (av1Ctx->currentFrame->CurrFrame[0][y0 + i][x0 + j] >> (seqHdr->color_config.BitDepth - 8)) - 128;
+			//printf(" x %d src %d",x,av1Ctx->currentFrame->CurrFrame[0][y0 + i][x0 + j]);
+			partial[0][i + j] += x;
             partial[1][i + j / 2] += x;
             partial[2][i] += x;
             partial[3][3 + i - j / 2] += x;
@@ -4914,7 +4936,6 @@ void decode::cdefDirectionProcess(int r, int c, int *yDir, int *var,
             partial[7][i / 2 + j] += x;
         }
     }
-
     for (int i = 0; i < 8; i++) {
         cost[2] += partial[2][i] * partial[2][i];
         cost[6] += partial[6][i] * partial[6][i];
@@ -4948,7 +4969,7 @@ void decode::cdefDirectionProcess(int r, int c, int *yDir, int *var,
             *yDir = i;
         }
     }
-
+	//printf("bestCost %d yDir %d cost %d %d %d %d %d %d %d %d\n",bestCost,*yDir,cost[0],cost[1],cost[2],cost[3],cost[4],cost[5],cost[6],cost[7]);
     *var = (bestCost - cost[(*yDir + 4) & 7]) >> 10;
 }
 //7.15.3
@@ -5590,6 +5611,7 @@ void decode::addNoiseSynthesis(int GrainMin,int GrainMax,int * RandomRegister,in
 	int lumaNum = 0;
 	//First an array of noise data noiseStripe is generated for each 32 luma sample high stripe of the image.
 	//noiseStripe[ lumaNum ][ 0 ] is 34 samples high and w samples wide
+	printf("addNoiseSynthesis \n");
 	int16_t ****noiseStripe = new int16_t***[(h + 16) / 32];
 	for(int i = 0 ; i < (h + 16) / 32 ; i++){
 		noiseStripe[i] = new int16_t**[3];
@@ -5642,6 +5664,7 @@ void decode::addNoiseSynthesis(int GrainMin,int GrainMax,int * RandomRegister,in
 								}
 								g = Clip3(GrainMin, GrainMax, Round2(g, 5));
 							}
+							//printf("%d %d |%d %d %d %d g %d\n",(h + 16) / 32 ,w,lumaNum,plane,i,x+j,g);
 							noiseStripe[lumaNum][plane][i][x * 2 + j] = g;
 						}
 						else
@@ -5653,7 +5676,7 @@ void decode::addNoiseSynthesis(int GrainMin,int GrainMax,int * RandomRegister,in
 								g = Clip3(GrainMin, GrainMax, Round2(g, 5));
 							}
 							//[31 ][3][34][750]
-							printf("%d %d |%d %d %d %d g %d\n",(h + 16) / 32 ,w,lumaNum,plane,i,x+j,g);
+							//printf("%d %d |%d %d %d %d g %d\n",(h + 16) / 32 ,w,lumaNum,plane,i,x+j,g);
 							noiseStripe[lumaNum][plane][i][x + j] = g;
 						}
 					}
@@ -5714,8 +5737,8 @@ void decode::addNoiseSynthesis(int GrainMin,int GrainMax,int * RandomRegister,in
 	//ScalingShift = grain_scaling_minus_8 + 8;  
 	int lumaX,lumaY,lumaNextX,averageLuma;
 	uint16_t orig,merged,combined,noise;
-	for (int y = 0; y < ( (h + subY) >> subY); y++ ) {  
-		for (int x = 0; x < ( (w + subX) >> subX); x++ ) {  
+	for (int y = 0; y < ( (h + subY) >> subY); y++ ) {
+		for (int x = 0; x < ( (w + subX) >> subX); x++ ) { 
 			lumaX = x << subX;  
 			lumaY = y << subY;  
 			lumaNextX = Min( lumaX + 1, w - 1 );  
