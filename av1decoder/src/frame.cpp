@@ -1549,9 +1549,9 @@ void frame::allocFrameContext(frameHeader *frameHdr ,int WBuffMiSize,int HBuffMi
 
 	fc->mvpCtx = (MVPredContext *)malloc(sizeof(MVPredContext));	
 
-	fc->cdef_idx = new uint8_t*[HBuffMiSize];
+	fc->cdef_idx = new int16_t*[HBuffMiSize];
 	for(int i  = 0 ; i < HBuffMiSize ; i++){
-		fc->cdef_idx[i] = new uint8_t[WBuffMiSize];
+		fc->cdef_idx[i] = new int16_t[WBuffMiSize];
 	}
 
 }
@@ -1799,8 +1799,8 @@ void frame::exit_symbol(SymbolContext *sbCtx,bitSt *bs,int TileNum,AV1DecodeCont
     int trailingBitPosition = get_position(bs) - Min(15, sbCtx->SymbolMaxBits + 15);
     readBits(bs,Max(0, sbCtx->SymbolMaxBits));
     int paddingEndPosition = get_position(bs);
-    if(!trailingBitPosition == 1)
-        return;
+    //if(trailingBitPosition != 1)
+    //    return;
     
     //待做 1
     //It is a requirement of bitstream conformance that the bit at position x is equal to 0 for values of x strictly between
@@ -1874,13 +1874,13 @@ int frame::decodeFrame(int sz, bitSt *bs, AV1DecodeContext *av1Ctx){
 		if ( !frameHdr->disable_frame_end_update_cdf ) {
 			frame_end_update_cdf(av1Ctx);
 		}
-		 for (int i = 0; i < 750; i++) {
-		 	for (int j = 0; j < 1000; j++) {
-		 		if(av1Ctx->currentFrame->CurrFrame[0][ i][ j] != 0 && av1Ctx->currentFrame->CurrFrame[0][ i][j] != 128){
-		 			printf("!!!!! y %d x %d  %d \n",i,j,av1Ctx->currentFrame->CurrFrame[0][ i][ j]);
-		 		}
-		 	}
-		 }
+		//  for (int i = 0; i < 750; i++) {
+		//  	for (int j = 0; j < 1000; j++) {
+		//  		if(av1Ctx->currentFrame->CurrFrame[0][ i][ j] != 0 && av1Ctx->currentFrame->CurrFrame[0][ i][j] != 128){
+		//  			printf("!!!!! y %d x %d  %d \n",i,j,av1Ctx->currentFrame->CurrFrame[0][ i][ j]);
+		//  		}
+		//  	}
+		//  }
 		// for (int i = 0; i < 8; i++) {
 		// 	for (int j = 0; j < 8; j++) {
 		// 		printf("!! %d \n",av1Ctx->currentFrame->CurrFrame[0][56 + i][56 + j]);
@@ -1977,6 +1977,7 @@ int frame::decode_partition(SymbolContext *sbCtx,bitSt *bs,
 		 //根据上边和左边的块来推出需要使用的cdf， 为什么MiSizes 还未初始化这里就在使用？
 		 //在最左上角的时候AvailU AvailL都是0，自然  AvailU && 后面的就不会调了，就没有问题
 		partition = sb->decodeSymbol(sbCtx,bs,partitionCdf,size);
+		printf("partition:%d \n",partition);
 	}
 	else if (hasCols)
 	{
@@ -2256,6 +2257,7 @@ int frame::intra_frame_mode_info(SymbolContext *sbCtx,bitSt *bs,BlockData *b_dat
 			ctx += av1Ctx->Skips[ b_data->MiRow ][ b_data->MiCol - 1 ];
 
 		b_data->skip =  sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Skip[ctx],3);//S()
+		printf("sb skip:%d\n",b_data->skip);
 	}
 
 
@@ -2304,6 +2306,7 @@ int frame::intra_frame_mode_info(SymbolContext *sbCtx,bitSt *bs,BlockData *b_dat
 		int abovemode = Intra_Mode_Context[ b_data->AvailU ? av1Ctx->YModes[ b_data->MiRow - 1 ][ b_data->MiCol ] : DC_PRED ];
 		int leftmode = Intra_Mode_Context[ b_data->AvailL ? av1Ctx->YModes[ b_data->MiRow ][ b_data->MiCol - 1] : DC_PRED ];
 		b_data->YMode = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Intra_Frame_Y_Mode[abovemode][leftmode],INTRA_MODES + 1);
+		printf("sb YMode:%d\n",b_data->YMode);
 		intra_angle_info_y( sbCtx,bs,b_data,av1Ctx) ;
 		if (b_data->HasChroma)
 		{
@@ -2326,6 +2329,7 @@ int frame::intra_frame_mode_info(SymbolContext *sbCtx,bitSt *bs,BlockData *b_dat
 			}
 			//uv_mode ;//S()
 			b_data->UVMode = sb->decodeSymbol(sbCtx,bs,uv_mode_cdf,size);
+			printf("sb UVMode:%d\n",b_data->UVMode);
 			if (b_data->UVMode == UV_CFL_PRED){
 				read_cfl_alphas( sbCtx,bs,b_data,av1Ctx);
 			} 
@@ -2465,6 +2469,7 @@ int frame::read_segment_id(SymbolContext *sbCtx,bitSt *bs,BlockData *b_data,AV1D
 		else
 			ctx = 0;
 		b_data->segment_id = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Segment_Id[ctx],MAX_SEGMENTS + 1);//S() 
+		printf("sb segment_id:%d\n",b_data->segment_id);
 		neg_deinterleave( b_data->segment_id, pred,
 						frameHdr->segmentation_params.LastActiveSegId + 1);
 	}
@@ -2483,6 +2488,7 @@ int frame::read_cdef(SymbolContext *sbCtx,bitSt *bs,BlockData *b_data,AV1DecodeC
 	if (av1Ctx->currentFrame->cdef_idx[r][c] == -1)
 	{
 		av1Ctx->currentFrame->cdef_idx[r][c] = sb->read_literal(sbCtx,bs,frameHdr->cdef_params.cdef_bits); //L(cdef_bits)
+		printf("sb cdef_idx:%d\n",av1Ctx->currentFrame->cdef_idx[r][c]);
 		int w4 = Num_4x4_Blocks_Wide[b_data->MiSize] ;
 		int h4 = Num_4x4_Blocks_High[b_data->MiSize] ;
 		for (int i = r; i < r + h4; i += cdefSize4)
@@ -2602,7 +2608,7 @@ int frame::assign_mv(int isCompound,SymbolContext *sbCtx,bitSt *bs,BlockData *b_
 					compMode = GLOBALMV;
 			}
 		}
-		uint8_t PredMv[2][2];
+		int PredMv[2][2];
 
 		if (b_data->use_intrabc)
 		{
@@ -2857,7 +2863,7 @@ int frame::palette_mode_info(SymbolContext *sbCtx,bitSt *bs,
 			}
 			if (idx < b_data->PaletteSizeUV)
 			{
-				b_data->palette_colors_u[idx]; // L(BitDepth)
+				b_data->palette_colors_u[idx] = sb->read_literal(sbCtx,bs,BitDepth); // L(BitDepth)
 				idx++;
 			}
 			if (idx < b_data->PaletteSizeUV)
@@ -3829,7 +3835,13 @@ int frame::read_var_tx_size(int row,int col,int txSz,int depth,SymbolContext *sb
 	}
 	else
 	{
-		txfm_split; // S()！！！
+		int above = decode_instance->get_above_tx_width( row, col ,b_data,av1Ctx) < Tx_Width[ txSz ];
+		int left = decode_instance->get_left_tx_height( row, col,b_data,av1Ctx ) < Tx_Height[ txSz ];
+		int size = Min( 64, Max( Block_Width[ b_data->MiSize ], Block_Height[ b_data->MiSize ] ) );
+		int maxTxSz = find_tx_size( size, size );
+		int txSzSqrUp = Tx_Size_Sqr_Up[ txSz ];
+		int ctx = (txSzSqrUp != maxTxSz) * 3 + (TX_SIZES - 1 - maxTxSz) * 6 + above + left;
+		txfm_split = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Txfm_Split[ctx],size); // S()！！！
 	}
 	int w4 = Tx_Width[txSz] / MI_SIZE;
 	int h4 = Tx_Height[txSz] / MI_SIZE;
@@ -3908,6 +3920,7 @@ int frame::read_tx_size(int allowSelect, SymbolContext *sbCtx, bitSt *bs,BlockDa
 		}
 		int size = maxTxDepth >= 2 ? MAX_TX_DEPTH + 2 : MAX_TX_DEPTH + 1;
 		int tx_depth = sb->decodeSymbol(sbCtx,bs,cdf,size); // S()
+		printf("sb tx_depth %d\n",tx_depth);
 		for (int i = 0; i < tx_depth; i++)
 			b_data->TxSize = Split_Tx_Size[b_data->TxSize];
 	}

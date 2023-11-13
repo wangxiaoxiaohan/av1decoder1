@@ -232,7 +232,7 @@ typedef struct frameHeader{
 		uint8_t lr_unit_shift; //亮度恢复 是否缩小一半
 		uint8_t lr_unit_extra_shift; //亮度恢复是否再缩小一半
 		uint8_t lr_uv_shift; //色度恢复是否缩小一半
-		uint8_t LoopRestorationSize[2]; //某个平面  loop restoration unit的大小，单位是sample(什么sample？ 标记！！)
+		uint8_t LoopRestorationSize[3]; //某个平面  loop restoration unit的大小，单位是sample(什么sample？ 标记！！)
 		uint8_t FrameRestorationType[3];
 	}lr_params;
 	struct  {
@@ -403,17 +403,17 @@ typedef struct LoopRestorationContext{
 	int PlaneEndY;   // 当前平面的垂直边界
 	int StripeStartY; // 当前条带的起始y坐标
 	int StripeEndY;   // 当前条带的结束y坐标
-};
+}LoopRestorationContext;
 typedef struct FilmGainContext{
 	int LumaGrain[73][82];
 	int CbGrain[38][44]; //负值？？？
 	int CrGrain[38][44];
 	int ScalingLut[3][256];
-};
+}FilmGainContext;
 typedef struct MFMVContext{
 	int **MfRefFrames;
 	int ***MfMvs;
-};
+}MFMVContext;
 typedef struct MVPredContext{
 	uint8_t NewMvContext;
 	uint8_t RefMvContext;
@@ -437,7 +437,7 @@ typedef struct MVPredContext{
 	uint8_t NumSamples;
 	uint8_t NumSamplesScanned;
 
-};
+}MVPredContext;
 typedef struct FrameContext{
 	//sizeInfo si;
 	frameHeader frameHdr;
@@ -453,8 +453,8 @@ typedef struct FrameContext{
 	FilmGainContext *fgCtx;
 	MFMVContext *mfmvCtx;
 	MVPredContext *mvpCtx;
-	uint8_t **cdef_idx;
-};
+	int16_t **cdef_idx;
+}FrameContext;
 
 typedef struct AV1DecodeContext{
 	FrameContext 	*ref_frames[NUM_REF_FRAMES];
