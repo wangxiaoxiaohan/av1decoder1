@@ -2280,14 +2280,14 @@ typedef struct CDFArrays{
   uint16_t Coeff_Base[TX_SIZES][PLANE_TYPES][SIG_COEF_CONTEXTS][5];
   uint16_t Coeff_Br[TX_SIZES][PLANE_TYPES][LEVEL_CONTEXTS][BR_CDF_SIZE + 1];
                            
-};
+}CDFArrays;
 
 typedef struct SymbolContext{
   int numBits;
   int buf;
   int paddedBuf;
   uint32_t SymbolValue;
-  uint16_t SymbolRange;
+  uint32_t SymbolRange;
   int SymbolMaxBits;
 
   int isUpdate;

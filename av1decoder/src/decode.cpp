@@ -3062,7 +3062,7 @@ genArray:
 		block_inter_prediction(plane, refIdx,startX, startY, stepX, stepY, w, h, candRow, candCol,preds[refList],b_data,av1Ctx);
 	}
 
-	if(isCompound == 1){
+	if(isCompound == 1 && refList == 0){
 		refList = 1;
 		goto genArray;
 	}

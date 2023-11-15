@@ -380,8 +380,8 @@ int frame::parseUncompressedHeader(int sz, bitSt *bs, AV1DecodeContext *av1Ctx, 
 	if ( out->CodedLossless == 1 ) {
 		out->TxMode = ONLY_4X4;
 	} else {
-		out->tx_mode_select  = readOneBit(bs);
-		if ( out->tx_mode_select ) {
+		int tx_mode_select  = readOneBit(bs);
+		if ( tx_mode_select ) {
 			out->TxMode = TX_MODE_SELECT;
 		} else {
 			out->TxMode = TX_MODE_LARGEST;
@@ -2469,9 +2469,9 @@ int frame::read_segment_id(SymbolContext *sbCtx,bitSt *bs,BlockData *b_data,AV1D
 		else
 			ctx = 0;
 		b_data->segment_id = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Segment_Id[ctx],MAX_SEGMENTS + 1);//S() 
-		printf("sb segment_id:%d\n",b_data->segment_id);
-		neg_deinterleave( b_data->segment_id, pred,
+		b_data->segment_id  = neg_deinterleave( b_data->segment_id, pred,
 						frameHdr->segmentation_params.LastActiveSegId + 1);
+		printf("sb segment_id:%d\n",b_data->segment_id);
 	}
 }
 int frame::read_cdef(SymbolContext *sbCtx,bitSt *bs,BlockData *b_data,AV1DecodeContext *av1Ctx){
@@ -3808,6 +3808,7 @@ int frame::read_block_tx_size(SymbolContext *sbCtx, bitSt *bs,BlockData *b_data,
 		b_data->MiSize > BLOCK_4X4 && b_data->is_inter &&
 		!b_data->skip && !b_data->Lossless)
 	{
+		printf("read_var_tx_size\n");
 		int maxTxSz = Max_Tx_Size_Rect[b_data->MiSize];
 		int txW4 = Tx_Width[maxTxSz] / MI_SIZE;
 		int txH4 = Tx_Height[maxTxSz] / MI_SIZE;
@@ -3817,7 +3818,9 @@ int frame::read_block_tx_size(SymbolContext *sbCtx, bitSt *bs,BlockData *b_data,
 	}
 	else
 	{
+		printf("read_tx_size\n");
 		read_tx_size(!b_data->skip || !b_data->is_inter,sbCtx, bs, b_data,av1Ctx);
+		printf("read_tx_size 2\n");
 		for (int row = b_data->MiRow; row < b_data->MiRow + bh4; row++)
 			for (int col = b_data->MiCol; col < b_data->MiCol + bw4; col++)
 				av1Ctx->InterTxSizes[row][col] = b_data->TxSize;
@@ -3867,14 +3870,19 @@ int frame::read_tx_size(int allowSelect, SymbolContext *sbCtx, bitSt *bs,BlockDa
 {
 	frameHeader *frameHdr = &av1Ctx->frameHdr;
 	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
+	printf("read_tx_size 11\n");
 	if (b_data->Lossless)
 	{
+		printf("read_tx_size 12\n");
 		b_data->TxSize = TX_4X4;
 		return ERROR_CODE;
 	}
+	printf("read_tx_size 13\n");
 	int maxRectTxSize = Max_Tx_Size_Rect[b_data->MiSize];
 	int maxTxDepth = Max_Tx_Depth[b_data->MiSize];
 	b_data->TxSize = maxRectTxSize;
+	printf(" b_data->TxSize  %d\n",b_data->TxSize );
+	//printf("read_tx_size %d %d %d %d\n",b_data->MiSize ,BLOCK_4X4, allowSelect , frameHdr->TxMode);
 	if (b_data->MiSize > BLOCK_4X4 && allowSelect && frameHdr->TxMode == TX_MODE_SELECT)
 	{
 		int ctx;

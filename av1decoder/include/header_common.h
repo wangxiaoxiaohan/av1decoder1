@@ -278,7 +278,7 @@ typedef struct frameHeader{
 		uint8_t overlap_flag;
 		uint8_t clip_to_restricted_range;
 	}film_grain_params;
-	uint8_t tx_mode_select;
+	//uint8_t tx_mode_select;
 	uint8_t TxMode;
 	uint8_t reference_select;
 
