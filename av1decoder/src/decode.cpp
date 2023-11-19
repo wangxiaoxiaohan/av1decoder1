@@ -115,8 +115,7 @@ int decode::init_non_coeff_cdfs(CDFArrays *cdf){
     memcpy(cdf->Palette_Size_6_Y_Color,Default_Palette_Size_6_Y_Color_Cdf,sizeof(Default_Palette_Size_6_Y_Color_Cdf));
     memcpy(cdf->Palette_Size_7_Y_Color,Default_Palette_Size_7_Y_Color_Cdf,sizeof(Default_Palette_Size_7_Y_Color_Cdf));
     memcpy(cdf->Palette_Size_8_Y_Color,Default_Palette_Size_8_Y_Color_Cdf,sizeof(Default_Palette_Size_8_Y_Color_Cdf));
-
-
+    
     memcpy(cdf->Palette_Size_2_Uv_Color,Default_Palette_Size_2_Uv_Color_Cdf,sizeof(Default_Palette_Size_2_Uv_Color_Cdf));
     memcpy(cdf->Palette_Size_3_Uv_Color,Default_Palette_Size_3_Uv_Color_Cdf,sizeof(Default_Palette_Size_3_Uv_Color_Cdf));
     memcpy(cdf->Palette_Size_4_Uv_Color,Default_Palette_Size_4_Uv_Color_Cdf,sizeof(Default_Palette_Size_4_Uv_Color_Cdf));
@@ -125,6 +124,9 @@ int decode::init_non_coeff_cdfs(CDFArrays *cdf){
     memcpy(cdf->Palette_Size_7_Uv_Color,Default_Palette_Size_7_Uv_Color_Cdf,sizeof(Default_Palette_Size_7_Uv_Color_Cdf));
     memcpy(cdf->Palette_Size_8_Uv_Color,Default_Palette_Size_8_Uv_Color_Cdf,sizeof(Default_Palette_Size_8_Uv_Color_Cdf));
 
+	memcpy(cdf->Palette_Y_Mode,Default_Palette_Y_Mode_Cdf,sizeof(Default_Palette_Y_Mode_Cdf));
+    memcpy(cdf->Palette_Uv_Mode,Default_Palette_Uv_Mode_Cdf,sizeof(Default_Palette_Uv_Mode_Cdf));
+	
     memcpy(cdf->Delta_Q,Default_Delta_Q_Cdf,sizeof(Default_Delta_Q_Cdf));
     memcpy(cdf->Delta_Lf,Default_Delta_Lf_Cdf,sizeof(Default_Delta_Lf_Cdf));
 
@@ -214,11 +216,11 @@ int decode::init_coeff_cdfs(AV1DecodeContext *av1Ctx,CDFArrays *cdf){
     memcpy(cdf->Eob_Pt_512,Default_Eob_Pt_512_Cdf[idx],sizeof(Default_Eob_Pt_512_Cdf[idx]));
     memcpy(cdf->Eob_Pt_1024,Default_Eob_Pt_1024_Cdf[idx],sizeof(Default_Eob_Pt_1024_Cdf[idx]));
 
-    memcpy(cdf->Eob_Extra,Default_Eob_Extra_Cdf[idx],sizeof(Default_Eob_Pt_32_Cdf[idx]));
-    memcpy(cdf->Dc_Sign,Default_Dc_Sign_Cdf[idx],sizeof(Default_Eob_Pt_32_Cdf[idx]));
-    memcpy(cdf->Coeff_Base_Eob,Default_Coeff_Base_Eob_Cdf[idx],sizeof(Default_Y_Mode_Cdf[idx]));
-    memcpy(cdf->Coeff_Base,Default_Coeff_Base_Cdf[idx],sizeof(Default_Y_Mode_Cdf[idx]));
-    memcpy(cdf->Coeff_Br,Default_Coeff_Br_Cdf[idx],sizeof(Default_Y_Mode_Cdf[idx]));
+    memcpy(cdf->Eob_Extra,Default_Eob_Extra_Cdf[idx],sizeof(Default_Eob_Extra_Cdf[idx]));
+    memcpy(cdf->Dc_Sign,Default_Dc_Sign_Cdf[idx],sizeof(Default_Dc_Sign_Cdf[idx]));
+    memcpy(cdf->Coeff_Base_Eob,Default_Coeff_Base_Eob_Cdf[idx],sizeof(Default_Coeff_Base_Eob_Cdf[idx]));
+    memcpy(cdf->Coeff_Base,Default_Coeff_Base_Cdf[idx],sizeof(Default_Coeff_Base_Cdf[idx]));
+    memcpy(cdf->Coeff_Br,Default_Coeff_Br_Cdf[idx],sizeof(Default_Coeff_Br_Cdf[idx]));
 }
 //从参考帧上下文拷贝cdf到当前framecontext
 int decode::load_cdfs(AV1DecodeContext *av1Ctx,int ctx){
@@ -1766,6 +1768,7 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 	int dcCategory = 0;
 
 	int ctx = cacluteAllZeroCtx( plane, txSz,  x4, y4, w4, h4, b_data,av1Ctx);
+	printf("decodeSymbol all_zero\n");
 	int all_zero = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Txb_Skip[ txSzCtx ][ ctx ],3); // S()
 	if (all_zero)
 	{
@@ -1793,36 +1796,43 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 		int ctx = ( get_tx_class( txType ) == TX_CLASS_2D ) ? 0 : 1;
 		if (eobMultisize == 0)
 		{
+			printf("decodeSymbol eob_pt_16\n");
 			int eob_pt_16 = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Eob_Pt_16[ ptype ][ ctx ],6); // S()
 			eobPt = eob_pt_16 + 1;
 		}
 		else if (eobMultisize == 1)
 		{
+			printf("decodeSymbol eob_pt_32\n");
 			int eob_pt_32  = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Eob_Pt_32[ ptype ][ ctx ],7); // S()
 			eobPt = eob_pt_32 + 1;
 		}
 		else if (eobMultisize == 2)
 		{
+			printf("decodeSymbol eob_pt_64\n");
 			int eob_pt_64  = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Eob_Pt_64[ ptype ][ ctx ],8); // S()
 			eobPt = eob_pt_64 + 1;
 		}
 		else if (eobMultisize == 3)
 		{
+			printf("decodeSymbol eob_pt_128\n");
 			int eob_pt_128 = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Eob_Pt_128[ ptype ][ ctx ],9); // S()
 			eobPt = eob_pt_128 + 1;
 		}
 		else if (eobMultisize == 4)
 		{
+			printf("decodeSymbol eob_pt_256\n");
 			int eob_pt_256 = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Eob_Pt_256[ ptype ][ ctx ],10); // S()
 			eobPt = eob_pt_256 + 1;
 		}
 		else if (eobMultisize == 5)
 		{
+			printf("decodeSymbol eob_pt_512\n");
 			int eob_pt_512 = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Eob_Pt_512[ ptype ],11); // S()
 			eobPt = eob_pt_512 + 1;
 		}
 		else
 		{
+			printf("decodeSymbol eob_pt_1024\n");
 			int eob_pt_1024 = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Eob_Pt_1024[ ptype ],12); // S()
 			eobPt = eob_pt_1024 + 1;
 		}
@@ -1830,7 +1840,8 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 		int eobShift = Max(-1, eobPt - 3);
 		if (eobShift >= 0)
 		{
-			int eob_extra = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Eob_Extra[ txSzCtx ][ ptype ][ eobPt - 3 ],12); // S()
+			printf("decodeSymbol eob_extra\n");
+			int eob_extra = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Eob_Extra[ txSzCtx ][ ptype ][ eobPt - 3 ],3); // S()
 			if (eob_extra)
 			{
 				eob += (1 << eobShift);
@@ -1838,6 +1849,7 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 			for (int i = 1; i < Max(0, eobPt - 2); i++)
 			{
 				eobShift = Max(0, eobPt - 2) - 1 - i;
+				printf("read_literal eob_extra_bit\n");
 				int eob_extra_bit = sb->read_literal(sbCtx,bs,1); // L(1)
 				if (eob_extra_bit)
 				{
@@ -1852,12 +1864,14 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 			if (c == (eob - 1))
 			{
 				ctx =  get_coeff_base_ctx(txSz, plane, x4, y4, scan[c], c, 1,b_data,av1Ctx) - SIG_COEF_CONTEXTS + SIG_COEF_CONTEXTS_EOB;
+				printf("decodeSymbol coeff_base_eob\n");
 				int coeff_base_eob = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Coeff_Base_Eob[ txSzCtx ][ ptype ][ ctx ],4);// S()
 				level = coeff_base_eob + 1;
 			}
 			else
 			{
 				ctx = get_coeff_base_ctx(txSz, plane, x4, y4, scan[c], c, 0,b_data,av1Ctx);
+				printf("decodeSymbol coeff_base\n");
 				int coeff_base =  sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Coeff_Base[ txSzCtx ][ ptype ][ ctx ],5); // S()
 				level = coeff_base;
 			}
@@ -1929,6 +1943,7 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 						}
 					}
 				//------
+				printf("decodeSymbol coeff_br\n");
 					int coeff_br = sb->decodeSymbol(sbCtx, bs, av1Ctx->tileSavedCdf.Coeff_Br[Min(txSzCtx, TX_32X32)][ptype][ctx], BR_CDF_SIZE + 1); // S()
 					level += coeff_br;
 					if (coeff_br < (BR_CDF_SIZE - 1))
@@ -1997,11 +2012,13 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 						ctx = 0;
 					}
 				//---------
-					int dc_sign = sb->decodeSymbol(sbCtx, bs, av1Ctx->tileSavedCdf.Dc_Sign[ptype][ctx], BR_CDF_SIZE + 1); // S()
+				printf("decodeSymbol dc_sign\n");
+					int dc_sign = sb->decodeSymbol(sbCtx, bs, av1Ctx->tileSavedCdf.Dc_Sign[ptype][ctx], 3); // S()
 					sign = dc_sign;
 				}
 				else
 				{
+					printf("read_literal sign_bit\n");
 					int sign_bit = sb->read_literal(sbCtx,bs,1); // L(1)
 					sign = sign_bit;
 				}
@@ -2017,12 +2034,14 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 				do
 				{
 					length++;
+					printf("read_literal golomb_length_bit\n");
 					golomb_length_bit = sb->read_literal(sbCtx,bs,1); // L(1)
 				} while (!golomb_length_bit);
 				int x = 1;
 				int golomb_data_bit;
 				for (int i = length - 2; i >= 0; i--)
 				{
+					printf("read_literal golomb_data_bit\n");
 					golomb_data_bit = sb->read_literal(sbCtx,bs,1); // L(1)
 					x = (x << 1) | golomb_data_bit;
 				}
@@ -2161,6 +2180,7 @@ int decode::transform_type(int x4,int  y4,int txSz,SymbolContext *sbCtx,bitSt *b
 				cdf = av1Ctx->tileSavedCdf.Inter_Tx_Type_Set3[ Tx_Size_Sqr[ txSz ] ];
 				size = 3;
 			}
+			printf("decodeSymbol inter_tx_type\n");
 			int inter_tx_type = sb->decodeSymbol(sbCtx,bs,cdf,size); // S()
 			if (set == TX_SET_INTER_1)
 				TxType = Tx_Type_Inter_Inv_Set1[inter_tx_type];
@@ -2184,6 +2204,7 @@ int decode::transform_type(int x4,int  y4,int txSz,SymbolContext *sbCtx,bitSt *b
 				cdf = av1Ctx->tileSavedCdf.Intra_Tx_Type_Set1[ Tx_Size_Sqr[ txSz ] ][ intraDir ];
 				size = 6;
 			}
+			printf("decodeSymbol intra_tx_type\n");
 			int intra_tx_type = sb->decodeSymbol(sbCtx,bs,cdf,size); // S()
 			if (set == TX_SET_INTRA_1)
 				TxType = Tx_Type_Intra_Inv_Set1[intra_tx_type];
@@ -2768,8 +2789,8 @@ int decode::smoothIntraPrediction(int mode, int log2W, int log2H, int w, int h, 
 //7.11.2.7 使用一个三抽头滤波器对 leftcol aboverow角落像素进行滤波
 int decode::filterCornor(Array16 *LeftCol,Array16 *AboveRow){
 	int s = (*LeftCol)[ 0 ] * 5 + (*AboveRow)[ -1 ] * 6 + (*AboveRow)[ 0 ] * 5;
-	LeftCol[-1] = Round2(s, 4);
-	AboveRow[-1] = Round2(s, 4);
+	(*LeftCol)[-1] = Round2(s, 4);
+	(*AboveRow)[-1] = Round2(s, 4);
 }
 //7.11.2.8
 //如果左边或上边的块使用了smooth mode ，则返回值为1
@@ -2959,7 +2980,6 @@ int decode::intraEdgeFilter(int sz, int strength, int left,BlockData *b_data){
 
     for (int i = 1; i < sz; i++) {
         int s = 0;
-
 
         for (int j = 0; j < INTRA_EDGE_TAPS; j++) {
             int k = Clip3(0, sz - 1, i - 2 + j);

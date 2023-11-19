@@ -1,0 +1,43 @@
+待做：
+1.根据过程 ，整理规划变量 ，添加新的上下文 *
+2.编译问题 
+3. 分配内存，size确定 *
+4.确定 所有 memcpy的size *
+5 .6.10.25. Assign mv semantics 里面有一个 is_mv_vaild函数 
+6. sort函数 *
+7.确定所有 memcpy 多维数组的时候 ，是否内存连续 *
+8. 7.11.3.3
+9.结构体分配内后 memset
+10. 所有return ERROR_CODE的地方是否正确 *
+11.大量 数组作为二级/三级 指针传递问题！！！ 大量函数内定义 临时 二级 三级指针却没有分配内存 
+        解决方法：一定要用 new或者malloc 分配，这样子传给给函数可以使用 [][]访问 *
+12.BLOCKDATA 内存2还没没分配！*
+13. cdf 数组和frameheader 在 framecontext和av1context之间的转换逻辑
+14. 注意动态分配的多维数组的内存 memset的时候也必须 循环给子数组 memset
+15 . decode.cpp 5071 行到底有什么问题？
+16 .initSymbol 的时候 就出错了 sz 错误
+
+!!问题在 init symbol上面
+
+-------从头开始 用 gdb 一步一步的查
+验证某个 obu 读取的 size 和 它的 obu_size是否 对得上
+
+解决 readbits 某些情况下 会有符号的问题
+
+DAV1D obu.c1387 开始 将 getbis 指针引用 转移到熵解码上下文中
+dav1d decode.c 3548 拷贝数据
+
+
+从 skip segment id 开始就不对了？
+symbol填数据 仔细看看 有什么问题
+
+*releaseDecodeContext 释放内存 函数没有调用
+* 把new/delete 换成 malloc/free
+
+疑难问题1:
+问题： delete array16的时候出现double free，原因:使用 array的时候没有使用 (* x)[]这种方法访问
+而是直接x[],这没有访问到数据，反而修改到x指向的内存地址，导致delete的时候出现问题。
+疑难问题2:
+  delete [] palette_delta_y出现问题 并不是必现，为什么删除的时候 判断都为空？
+  gdb 調試发现，has_palette_x 的值为 255，应该是某处 memset 或者内存操作越界,?
+  解决方法，构建BLOCKDATA结构体之后 ,内存置为0;

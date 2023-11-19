@@ -363,6 +363,8 @@ typedef struct BlockData{
 	uint8_t wedge_sign;
 
 	//palette 调色板
+	uint8_t has_palette_y;
+	uint8_t has_palette_uv;
 	uint8_t **ColorMapY;
 	uint8_t **ColorMapUV;
 	uint8_t ColorOrder[PALETTE_COLORS];

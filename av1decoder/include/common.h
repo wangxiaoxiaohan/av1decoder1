@@ -253,11 +253,11 @@ typedef struct Array8
 	uint8_t *data;
 	uint8_t &operator[](int i)
 	{
-		return data[i + 1];
+		return data[i + 2];
 	}
 	Array8(int size)
 	{
-		data = new uint8_t[size + 1];
+		data = new uint8_t[size + 2];
 	}
 	~Array8()
 	{
@@ -271,12 +271,12 @@ typedef struct dArray8
 	uint16_t mSize1;
 	Array8 &operator[](int i)
 	{
-		return *(data[i + 1]);
+		return *(data[i + 2]);
 	}
 
 	dArray8(int size1, int size2)
 	{
-		mSize1 = size1 + 1;
+		mSize1 = size1 + 2;
 		data = new Array8 *[mSize1];
 		for (int i = 0; i < mSize1; i++)
 		{
@@ -299,12 +299,12 @@ typedef struct tArray8
 	uint16_t mSize1;
 	dArray8 &operator[](int i)
 	{
-		return *(data[i + 1]);
+		return *(data[i + 2]);
 	}
 
 	tArray8(int size1, int size2, int size3)
 	{
-		mSize1 = size1 + 1;
+		mSize1 = size1 + 2;
 		data = new dArray8 *[mSize1];
 		for (int i = 0; i < mSize1; i++)
 		{
@@ -327,16 +327,19 @@ typedef struct Array16
 	uint16_t *data;
 	uint16_t &operator[](int i)
 	{
-		return data[i + 1];
+		return data[i + 2];
 	}
 	Array16(int size)
 	{
-		data = new uint16_t[size + 1];
+		data = new uint16_t[size + 2];
 	}
 	~Array16()
 	{
+		printf("delete array addr %d 11\n",data);
 		delete[] data;
+		printf("delete array 22\n");
 		data = NULL;
+		printf("delete array 33\n");
 	}
 };
 typedef struct dArray16
@@ -345,12 +348,12 @@ typedef struct dArray16
 	uint16_t mSize1;
 	Array16 &operator[](int i)
 	{
-		return *(data[i + 1]);
+		return *(data[i + 2]);
 	}
 
 	dArray16(int size1, int size2)
 	{
-		mSize1 = size1 + 1;
+		mSize1 = size1 + 2;
 		data = new Array16 *[mSize1];
 		for (int i = 0; i < mSize1; i++)
 		{
@@ -373,12 +376,12 @@ typedef struct tArray16
 	uint16_t mSize1;
 	dArray16 &operator[](int i)
 	{
-		return *(data[i + 1]);
+		return *(data[i + 2]);
 	}
 
 	tArray16(int size1, int size2, int size3)
 	{
-		mSize1 = size1 + 1;
+		mSize1 = size1 + 2;
 		data = new dArray16 *[mSize1];
 		for (int i = 0; i < mSize1; i++)
 		{
@@ -401,11 +404,11 @@ typedef struct Array32
 	uint32_t *data;
 	uint32_t &operator[](int i)
 	{
-		return data[i + 1];
+		return data[i + 2];
 	}
 	Array32(int size)
 	{
-		data = new uint32_t[size + 1];
+		data = new uint32_t[size + 2];
 	}
 	~Array32()
 	{
@@ -419,12 +422,12 @@ typedef struct dArray32
 	uint32_t mSize1;
 	Array32 &operator[](int i)
 	{
-		return *(data[i + 1]);
+		return *(data[i + 2]);
 	}
 
 	dArray32(int size1, int size2)
 	{
-		mSize1 = size1 + 1;
+		mSize1 = size1 + 2;
 		data = new Array32 *[mSize1];
 		for (int i = 0; i < mSize1; i++)
 		{
@@ -447,7 +450,7 @@ typedef struct tArray32
 	uint32_t mSize1;
 	dArray32 &operator[](int i)
 	{
-		return *(data[i + 1]);
+		return *(data[i + 2]);
 	}
 
 	tArray32(int size1, int size2, int size3)
@@ -8974,7 +8977,7 @@ int inline is_directional_mode(int mode)
 	}
 	return 0;
 }
-void inline av1sort(int *array, int min, int max)
+void inline av1sort(uint16_t *array, int min, int max)
 {
 	std::sort(array + min, array + max);
 }
