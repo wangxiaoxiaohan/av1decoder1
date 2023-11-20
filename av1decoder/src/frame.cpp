@@ -3857,7 +3857,7 @@ int frame::palette_tokens(SymbolContext *sbCtx, bitSt *bs, BlockData *b_data, AV
 				get_palette_color_context(b_data->ColorMapUV, (i - j), j, b_data->PaletteSizeUV,b_data);
 				uint16_t *cdf;
 				int ctx = Palette_Color_Context[ b_data->ColorContextHash ];
-				switch(b_data->PaletteSizeY){
+				switch(b_data->PaletteSizeUV){
 					case 2: cdf = av1Ctx->tileSavedCdf.Palette_Size_2_Uv_Color[ctx]; break;
 					case 3:	cdf = av1Ctx->tileSavedCdf.Palette_Size_3_Uv_Color[ctx]; break;
 					case 4:	cdf = av1Ctx->tileSavedCdf.Palette_Size_4_Uv_Color[ctx]; break;
@@ -3869,7 +3869,7 @@ int frame::palette_tokens(SymbolContext *sbCtx, bitSt *bs, BlockData *b_data, AV
 						break;
 				}
 				printf("decodeSymbol palette_color_idx_uv\n");
-				int palette_color_idx_uv = sb->decodeSymbol(sbCtx,bs,cdf, b_data->PaletteSizeY + 1); // S()
+				int palette_color_idx_uv = sb->decodeSymbol(sbCtx,bs,cdf, b_data->PaletteSizeUV + 1); // S()
 				b_data->ColorMapUV[i - j][j] = b_data->ColorOrder[palette_color_idx_uv];
 			}
 		}
