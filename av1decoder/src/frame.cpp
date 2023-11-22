@@ -1737,7 +1737,7 @@ int copyCdf(CDFArrays *dst,CDFArrays *src,AV1DecodeContext *av1Ctx){
     memcpy(dst->Palette_Size_8_Uv_Color,src->Palette_Size_8_Uv_Color,sizeof(Default_Palette_Size_8_Uv_Color_Cdf));
 
 	memcpy(dst->Palette_Y_Mode,src->Palette_Y_Mode,sizeof(Default_Palette_Y_Mode_Cdf));
-    memcpy(dst->Palette_Uv_Mode,src->Palette_Y_Mode,sizeof(Default_Palette_Uv_Mode_Cdf));
+    memcpy(dst->Palette_Uv_Mode,src->Palette_Uv_Mode,sizeof(Default_Palette_Uv_Mode_Cdf));
     memcpy(dst->Delta_Q,src->Delta_Q,sizeof(Default_Delta_Q_Cdf));
     memcpy(dst->Delta_Lf,src->Delta_Lf,sizeof(Default_Delta_Lf_Cdf));
 
@@ -1958,16 +1958,16 @@ int frame::decode_partition(SymbolContext *sbCtx,bitSt *bs,
 		size = 5;
 	}else if(bsl == 2){
 		partitionCdf = av1Ctx->tileSavedCdf.Partition_W16[ctx];
-		size = 9;
+		size = 11;
 	}else if(bsl == 3){
 		partitionCdf = av1Ctx->tileSavedCdf.Partition_W32[ctx];
-		size = 9;
+		size = 11;
 	}else if(bsl == 4){
 		partitionCdf = av1Ctx->tileSavedCdf.Partition_W64[ctx];
-		size = 9;
+		size = 11;
 	}else if(bsl == 5){
 		partitionCdf = av1Ctx->tileSavedCdf.Partition_W128[ctx];
-		size = 11;
+		size = 9;
 	}
 
 	if (bSize < BLOCK_8X8)
@@ -2103,6 +2103,7 @@ int frame::decode_block(SymbolContext *sbCtx,bitSt *bs,int r,int c,int subSize, 
 	//block 宽高 4*4 为单位
 	int bw4 = Num_4x4_Blocks_Wide[subSize];
 	int bh4 = Num_4x4_Blocks_High[subSize];
+	printf("!!!!!!!!!!!!!!!!!!!!!!!!!!bw4  %d bh4 %d\n",bw4,bh4);
 	int blockHeight = Block_Height[b_data.MiSize];
 	int blockWidth = Block_Width[b_data.MiSize];
 
@@ -2110,9 +2111,9 @@ int frame::decode_block(SymbolContext *sbCtx,bitSt *bs,int r,int c,int subSize, 
 
 	b_data.LeftCol = new Array16(blockWidth + blockHeight);
 
-	b_data.Mask = new uint16_t*[blockHeight];
-	for(int i = 0 ; i < blockHeight ; i++){
-		b_data.Mask[i] = new uint16_t[blockWidth];
+	b_data.Mask = new uint16_t*[2 * blockHeight + 2];
+	for(int i = 0 ; i < (2 * blockHeight + 2) ; i++){
+		b_data.Mask[i] = new uint16_t[2 * blockWidth + 2];
 	}
 	
 	if (bh4 == 1 && seqHdr->color_config.subsampling_y && (b_data.MiRow & 1) == 0)
@@ -2231,7 +2232,7 @@ int frame::decode_block(SymbolContext *sbCtx,bitSt *bs,int r,int c,int subSize, 
 	printf("delete 22\n");
 	delete b_data.LeftCol;
 
-	for(int i = 0 ; i < blockHeight ; i++){
+	for(int i = 0 ; i < (2 * blockHeight + 2)  ; i++){
 		delete [] b_data.Mask[i];
 	}
 	delete [] b_data.Mask;

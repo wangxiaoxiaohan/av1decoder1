@@ -82,11 +82,9 @@ int decode::init_non_coeff_cdfs(CDFArrays *cdf){
     memcpy(cdf->New_Mv,Default_New_Mv_Cdf,sizeof(Default_New_Mv_Cdf));
     memcpy(cdf->Zero_Mv,Default_Zero_Mv_Cdf,sizeof(Default_Zero_Mv_Cdf));
     memcpy(cdf->Ref_Mv,Default_Ref_Mv_Cdf,sizeof(Default_Ref_Mv_Cdf));
-    memcpy(cdf->Ref_Mv,Default_Ref_Mv_Cdf,sizeof(Default_Ref_Mv_Cdf));
     memcpy(cdf->Drl_Mode,Default_Drl_Mode_Cdf,sizeof(Default_Drl_Mode_Cdf));
     memcpy(cdf->Is_Inter,Default_Is_Inter_Cdf,sizeof(Default_Is_Inter_Cdf));
 
-    memcpy(cdf->Is_Inter,Default_Is_Inter_Cdf,sizeof(Default_Is_Inter_Cdf));
     memcpy(cdf->Comp_Mode,Default_Comp_Mode_Cdf,sizeof(Default_Comp_Mode_Cdf));
     memcpy(cdf->Skip_Mode,Default_Skip_Mode_Cdf,sizeof(Default_Skip_Mode_Cdf));
     memcpy(cdf->Skip,Default_Skip_Cdf,sizeof(Default_Skip_Cdf));
@@ -2201,7 +2199,7 @@ int decode::transform_type(int x4,int  y4,int txSz,SymbolContext *sbCtx,bitSt *b
 				cdf = av1Ctx->tileSavedCdf.Intra_Tx_Type_Set1[ Tx_Size_Sqr[ txSz ] ][ intraDir ];
 				size = 8;
 			}else if(set == TX_SET_INTRA_2){
-				cdf = av1Ctx->tileSavedCdf.Intra_Tx_Type_Set1[ Tx_Size_Sqr[ txSz ] ][ intraDir ];
+				cdf = av1Ctx->tileSavedCdf.Intra_Tx_Type_Set2[ Tx_Size_Sqr[ txSz ] ][ intraDir ];
 				size = 6;
 			}
 			printf("decodeSymbol intra_tx_type\n");

@@ -86,9 +86,11 @@ int Symbol::decodeSymbol(SymbolContext *sbCtx,bitSt *bs,uint16_t *cdfArray,int N
         prev = cur;
         f = ( 1 << 15 ) - cdfArray[ symbol ]; //计算范围
         cur = ((sbCtx->SymbolRange >> 8) * (f >> EC_PROB_SHIFT)) >> (7 - EC_PROB_SHIFT); //将概率进行缩放
-        //printf("curr  %d\n",cur);
         cur += EC_MIN_PROB * (N - symbol - 1);//进行修正，保证概率总和为1
-      //  printf("curr %d symbol %d cdfArray[ symbol ] %d \n",cur,symbol,cdfArray[ symbol ]);
+        if(symbol >= N){
+            printf("symbol out of range\n");
+        }
+       // printf("curr %d symbol %d cdfArray[ symbol ] %d \n",cur,symbol,cdfArray[ symbol ]);
     } while ( sbCtx->SymbolValue < cur );
     //更新算术编码的范围 和 输入符号，这只是部分过程，在renormalized过程还要继续更新，
     //  比如sbCtx->SymbolRange = prev - cur; 这个操作，你会发现SymbolRange会变得很小，在renormalized过程
@@ -106,16 +108,16 @@ int Symbol::decodeSymbol(SymbolContext *sbCtx,bitSt *bs,uint16_t *cdfArray,int N
 
 //renormalized 这个过程会继续读入码流满15位，以便为后续的解码做准备
     int bits = 15 - FloorLog2( sbCtx->SymbolRange ); //需要继续读进来的数据位数
- //   printf("SymbolRange 1  %d\n",sbCtx->SymbolRange);
+  //  printf("SymbolRange 1  %d\n",sbCtx->SymbolRange);
     sbCtx->SymbolRange = sbCtx->SymbolRange << bits;
-//   printf("SymbolRange 2  %d\n",sbCtx->SymbolRange);
+ //  printf("SymbolRange 2  %d\n",sbCtx->SymbolRange);
     sbCtx->numBits = Min( bits, Max(0, sbCtx->SymbolMaxBits) ); //修正需要读取位数
 
     int newData =  readBits(bs,sbCtx->numBits); //读取，接下来几步将新读进来的数据和之前剩下的组合起来，凑满15位
-  //  printf("newData  %d\n",newData);
+   // printf("newData  %d\n",newData);
 
     int paddedData = newData << ( bits - sbCtx->numBits );
-  //  printf("paddedData  %d\n",paddedData);
+   // printf("paddedData  %d\n",paddedData);
  //   printf("SymbolValue 1  %d\n",sbCtx->SymbolValue);
     sbCtx->SymbolValue = paddedData ^ ( ( ( sbCtx->SymbolValue + 1 ) << bits ) - 1 );
 //    printf("SymbolValue 2  %d\n",sbCtx->SymbolValue);
