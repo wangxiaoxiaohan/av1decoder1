@@ -2002,13 +2002,13 @@ int frame::decode_partition(SymbolContext *sbCtx,bitSt *bs,
 	}
 	else if (hasRows)
 	{
-		int psum = ( partitionCdf[ PARTITION_VERT ] - partitionCdf[ PARTITION_VERT - 1 ] +
+		int psum = ( partitionCdf[ PARTITION_HORZ ] - partitionCdf[ PARTITION_HORZ - 1 ] +
 		partitionCdf[ PARTITION_SPLIT ] - partitionCdf[ PARTITION_SPLIT - 1 ] +
 		partitionCdf[ PARTITION_HORZ_A ] - partitionCdf[ PARTITION_HORZ_A - 1 ] +
 		partitionCdf[ PARTITION_VERT_A ] - partitionCdf[ PARTITION_VERT_A - 1 ] +
 		partitionCdf[ PARTITION_VERT_B ] - partitionCdf[ PARTITION_VERT_B - 1 ] );
 		if ( bSize != BLOCK_128X128 )
-		psum += partitionCdf[ PARTITION_VERT_4 ] - partitionCdf[ PARTITION_VERT_4 - 1 ];
+		psum += partitionCdf[ PARTITION_HORZ_4 ] - partitionCdf[ PARTITION_HORZ_4 - 1 ];
 		uint16_t cdf[3];
 		cdf[0] = ( 1 << 15 ) - psum;
 		cdf[1] = 1 << 15;
