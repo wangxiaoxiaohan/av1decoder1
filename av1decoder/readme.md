@@ -41,3 +41,8 @@ symbol填数据 仔细看看 有什么问题
   delete [] palette_delta_y出现问题 并不是必现，为什么删除的时候 判断都为空？
   gdb 調試发现，has_palette_x 的值为 255，应该是某处 memset 或者内存操作越界,?
   解决方法，构建BLOCKDATA结构体之后 ,内存置为0;
+
+
+
+对比 DAV1D ： 第二个partition的restoration_type 就有问题，对比 一直有问题 ，巧合?
+对比 coef中解码的 参数 数量 ，值

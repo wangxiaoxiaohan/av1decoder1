@@ -1897,6 +1897,11 @@ int frame::decode_tile(SymbolContext *sbCtx,bitSt *bs,AV1DecodeContext *av1Ctx){
 	frameHeader *frameHdr = &av1Ctx->frameHdr;
 	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
 	clear_above_context(av1Ctx );
+	printf("ts\n");
+    for(int i =  0 ; i < 20 ; i++){
+        printf(" %2x ",bs->dataPtr[bs->offset] + i);
+    }
+    printf("\n");
 	for (int i = 0; i < FRAME_LF_COUNT; i++ )
 		av1Ctx->DeltaLF[ i ] = 0;
 	for (int plane = 0; plane < seqHdr->color_config.NumPlanes; plane++ ) {
@@ -1980,7 +1985,6 @@ int frame::decode_partition(SymbolContext *sbCtx,bitSt *bs,
 		 //在最左上角的时候AvailU AvailL都是0，自然  AvailU && 后面的就不会调了，就没有问题
 		 printf("decodeSymbol partition\n");
 		partition = sb->decodeSymbol(sbCtx,bs,partitionCdf,size);
-		printf("partition:%d \n",partition);
 	}
 	else if (hasCols)
 	{
@@ -2023,7 +2027,7 @@ int frame::decode_partition(SymbolContext *sbCtx,bitSt *bs,
 	}
 	int subSize = Partition_Subsize[partition][bSize];
 	int splitSize = Partition_Subsize[PARTITION_SPLIT][bSize] ;
-	
+	printf("partition:%d \n",partition);
 	if (partition == PARTITION_NONE)
 	{
 		decode_block(sbCtx,bs,r, c, subSize,av1Ctx);
@@ -2217,6 +2221,10 @@ int frame::decode_block(SymbolContext *sbCtx,bitSt *bs,int r,int c,int subSize, 
 		}
 		delete [] b_data.ColorMapY;
  	}
+	for(int i = 0 ; i < (2 * blockHeight + 2)  ; i++){
+		delete [] b_data.Mask[i];
+	}
+	delete [] b_data.Mask;
 	if(b_data.PaletteSizeUV){
 		blockHeight = blockHeight >> seqHdr->color_config.subsampling_y;
 		blockWidth = blockWidth >> seqHdr->color_config.subsampling_x;
@@ -2232,10 +2240,6 @@ int frame::decode_block(SymbolContext *sbCtx,bitSt *bs,int r,int c,int subSize, 
 	printf("delete 22\n");
 	delete b_data.LeftCol;
 
-	for(int i = 0 ; i < (2 * blockHeight + 2)  ; i++){
-		delete [] b_data.Mask[i];
-	}
-	delete [] b_data.Mask;
 }
 int frame::mode_info(SymbolContext *sbCtx,bitSt *bs,BlockData *b_data,AV1DecodeContext *av1Ctx){
 	frameHeader *frameHdr = &av1Ctx->frameHdr;
@@ -3910,9 +3914,9 @@ int frame::read_block_tx_size(SymbolContext *sbCtx, bitSt *bs,BlockData *b_data,
 	}
 	else
 	{
-		printf("read_tx_size\n");
+		//printf("read_tx_size\n");
 		read_tx_size(!b_data->skip || !b_data->is_inter,sbCtx, bs, b_data,av1Ctx);
-		printf("read_tx_size 2\n");
+		//printf("read_tx_size 2\n");
 		for (int row = b_data->MiRow; row < b_data->MiRow + bh4; row++)
 			for (int col = b_data->MiCol; col < b_data->MiCol + bw4; col++)
 				av1Ctx->InterTxSizes[row][col] = b_data->TxSize;
@@ -3938,6 +3942,7 @@ int frame::read_var_tx_size(int row,int col,int txSz,int depth,SymbolContext *sb
 		int ctx = (txSzSqrUp != maxTxSz) * 3 + (TX_SIZES - 1 - maxTxSz) * 6 + above + left;
 		printf("decodeSymbol txfm_split\n");
 		txfm_split = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Txfm_Split[ctx],3); // S()！！！
+		printf(" txfm_split %d\n",txfm_split);
 	}
 	int w4 = Tx_Width[txSz] / MI_SIZE;
 	int h4 = Tx_Height[txSz] / MI_SIZE;
@@ -4304,6 +4309,11 @@ int frame::read_lr_unit(SymbolContext *sbCtx, bitSt *bs,int plane,int unitRow,in
 	else
 	{
 		printf("decodeSymbol restoration_type\n");
+		 printf(" \n");
+		 for(int i =  0 ; i < 20 ; i++){
+		 	printf(" %2x ",bs->dataPtr[bs->offset] + i);
+		 }
+		 printf("\n");
 		restoration_type = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Restoration_Type ,RESTORE_SWITCHABLE + 1 ); // S()
 	}
 	printf("restoration_type %d\n",restoration_type);
@@ -4339,6 +4349,7 @@ int frame::read_lr_unit(SymbolContext *sbCtx, bitSt *bs,int plane,int unitRow,in
 	{
 		printf("read_literal lr_sgr_set\n");
 		int lr_sgr_set = sb->read_literal(sbCtx,bs,SGRPROJ_PARAMS_BITS); // L(SGRPROJ_PARAMS_BITS)
+		printf(" lr_sgr_set %d\n",lr_sgr_set);
 		av1Ctx->currentFrame->lrCtx->LrSgrSet[plane][unitRow][unitCol] = lr_sgr_set;
 		for (int i = 0; i < 2; i++)
 		{
@@ -4350,6 +4361,7 @@ int frame::read_lr_unit(SymbolContext *sbCtx, bitSt *bs,int plane,int unitRow,in
 				v = sb->decode_signed_subexp_with_ref_bool(sbCtx,bs,
 						min, max + 1, SGRPROJ_PRJ_SUBEXP_K,
 						av1Ctx->RefSgrXqd[plane][i]);
+				printf("v %d\n",v);
 			}  
 			else
 			{
