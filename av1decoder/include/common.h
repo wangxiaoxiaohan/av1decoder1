@@ -9263,89 +9263,89 @@ int inline get_tx_class(int txType)
 	else
 		return TX_CLASS_2D;
 }
-inline uint16_t *get_mrow_scan(int txSz)
+inline const uint16_t *get_mrow_scan(int txSz)
 {
 	if (txSz == TX_4X4)
-		return (uint16_t *)Mrow_Scan_4x4;
+		return Mrow_Scan_4x4;
 	else if (txSz == TX_4X8)
-		return (uint16_t *)Mrow_Scan_4x8;
+		return Mrow_Scan_4x8;
 	else if (txSz == TX_8X4)
-		return (uint16_t *)Mrow_Scan_8x4;
+		return Mrow_Scan_8x4;
 	else if (txSz == TX_8X8)
-		return (uint16_t *)Mrow_Scan_8x8;
+		return Mrow_Scan_8x8;
 	else if (txSz == TX_8X16)
-		return (uint16_t *)Mrow_Scan_8x16;
+		return Mrow_Scan_8x16;
 	else if (txSz == TX_16X8)
-		return (uint16_t *)Mrow_Scan_16x8;
+		return Mrow_Scan_16x8;
 	else if (txSz == TX_16X16)
-		return (uint16_t *)Mrow_Scan_16x16;
+		return Mrow_Scan_16x16;
 	else if (txSz == TX_4X16)
-		return (uint16_t *)Mrow_Scan_4x16;
-	return (uint16_t *)Mrow_Scan_16x4;
+		return Mrow_Scan_4x16;
+	return Mrow_Scan_16x4;
 }
-inline uint16_t *get_mcol_scan(int txSz)
+inline const uint16_t *get_mcol_scan(int txSz)
 {
 	if (txSz == TX_4X4)
-		return (uint16_t *)Mcol_Scan_4x4;
+		return Mcol_Scan_4x4;
 	else if (txSz == TX_4X8)
-		return (uint16_t *)Mcol_Scan_4x8;
+		return Mcol_Scan_4x8;
 	else if (txSz == TX_8X4)
-		return (uint16_t *)Mcol_Scan_8x4;
+		return Mcol_Scan_8x4;
 	else if (txSz == TX_8X8)
-		return (uint16_t *)Mcol_Scan_8x8;
+		return Mcol_Scan_8x8;
 	else if (txSz == TX_8X16)
-		return (uint16_t *)Mcol_Scan_8x16;
+		return Mcol_Scan_8x16;
 	else if (txSz == TX_16X8)
-		return (uint16_t *)Mcol_Scan_16x8;
+		return Mcol_Scan_16x8;
 	else if (txSz == TX_16X16)
-		return (uint16_t *)Mcol_Scan_16x16;
+		return Mcol_Scan_16x16;
 	else if (txSz == TX_4X16)
-		return (uint16_t *)Mcol_Scan_4x16;
-	return (uint16_t *)Mcol_Scan_16x4;
+		return Mcol_Scan_4x16;
+	return Mcol_Scan_16x4;
 }
-inline uint16_t *get_default_scan(int txSz)
+inline const uint16_t *get_default_scan(int txSz)
 {
 	if (txSz == TX_4X4)
-		return (uint16_t *)Default_Scan_4x4;
+		return Default_Scan_4x4;
 	else if (txSz == TX_4X8)
-		return (uint16_t *)Default_Scan_4x8;
+		return Default_Scan_4x8;
 	else if (txSz == TX_8X4)
-		return (uint16_t *)Default_Scan_8x4;
+		return Default_Scan_8x4;
 	else if (txSz == TX_8X8)
-		return (uint16_t *)Default_Scan_8x8;
+		return Default_Scan_8x8;
 	else if (txSz == TX_8X16)
-		return (uint16_t *)Default_Scan_8x16;
+		return Default_Scan_8x16;
 	else if (txSz == TX_16X8)
-		return (uint16_t *)Default_Scan_16x8;
+		return Default_Scan_16x8;
 	else if (txSz == TX_16X16)
-		return (uint16_t *)Default_Scan_16x16;
+		return Default_Scan_16x16;
 	else if (txSz == TX_16X32)
-		return (uint16_t *)Default_Scan_16x32;
+		return Default_Scan_16x32;
 	else if (txSz == TX_32X16)
-		return (uint16_t *)Default_Scan_32x16;
+		return Default_Scan_32x16;
 	else if (txSz == TX_4X16)
-		return (uint16_t *)Default_Scan_4x16;
+		return Default_Scan_4x16;
 	else if (txSz == TX_16X4)
-		return (uint16_t *)Default_Scan_16x4;
+		return Default_Scan_16x4;
 	else if (txSz == TX_8X32)
-		return (uint16_t *)Default_Scan_8x32;
+		return Default_Scan_8x32;
 	else if (txSz == TX_32X8)
-		return (uint16_t *)Default_Scan_32x8;
-	return (uint16_t *)Default_Scan_32x32;
+		return Default_Scan_32x8;
+	return Default_Scan_32x32;
 }
-inline uint16_t *get_scan(int txSz, int PlaneTxType)
+inline const uint16_t *get_scan(int txSz, int PlaneTxType)
 {
 	if (txSz == TX_16X64)
 	{
-		return (uint16_t *)Default_Scan_16x32;
+		return Default_Scan_16x32;
 	}
 	if (txSz == TX_64X16)
 	{
-		return (uint16_t *)Default_Scan_32x16;
+		return Default_Scan_32x16;
 	}
 	if (Tx_Size_Sqr_Up[txSz] == TX_64X64)
 	{
-		return (uint16_t *)Default_Scan_32x32;
+		return Default_Scan_32x32;
 	}
 	if (PlaneTxType == IDTX)
 	{

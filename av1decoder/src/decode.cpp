@@ -1787,7 +1787,7 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 		if (plane == 0)
 			transform_type(x4, y4,txSz,sbCtx,bs,b_data,av1Ctx);
 		b_data->PlaneTxType = compute_tx_type(plane, txSz, x4, y4,b_data,av1Ctx);
-		uint16_t  *scan = get_scan(txSz,b_data->PlaneTxType);
+		const uint16_t  *scan = get_scan(txSz,b_data->PlaneTxType);
 		int eobMultisize = Min(Tx_Width_Log2[txSz], 5) + Min(Tx_Height_Log2[txSz], 5) - 4;
 		int eobPt;
 		int txType = compute_tx_type( plane, txSz, x4, y4,b_data,av1Ctx);
@@ -1884,6 +1884,7 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 			{
 				for (int idx = 0; idx < COEFF_BASE_RANGE / (BR_CDF_SIZE - 1); idx++)
 				{
+				//to do 这里写法可以 优化，计算ctx的过程只需要一次		
 				//-------- compute coeff_br symbol ctx
 					int adjTxSz = Adjusted_Tx_Size[txSz];
 					int bwl = Tx_Width_Log2[adjTxSz];
@@ -1894,10 +1895,10 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 					int mag = 0 ;
 					int txType = compute_tx_type(plane, txSz, x4, y4,b_data,av1Ctx);
 					int txClass = get_tx_class(txType);
-					for (idx = 0; idx < 3; idx++)
+					for (int i = 0; i < 3; i++)
 					{
-						int refRow = row + Mag_Ref_Offset_With_Tx_Class[txClass][idx][0];
-						int refCol = col + Mag_Ref_Offset_With_Tx_Class[txClass][idx][1];
+						int refRow = row + Mag_Ref_Offset_With_Tx_Class[txClass][i][0];
+						int refCol = col + Mag_Ref_Offset_With_Tx_Class[txClass][i][1];
 						if ( refRow >= 0 &&
 						refCol >= 0 &&
 						refRow < txh &&
@@ -1949,7 +1950,7 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 					}
 				//------
 					int coeff_br = sb->decodeSymbol(sbCtx, bs, av1Ctx->tileSavedCdf.Coeff_Br[Min(txSzCtx, TX_32X32)][ptype][ctx], BR_CDF_SIZE + 1); // S()
-					printf("decodeSymbol coeff_br ctx %d %d\n",ctx,coeff_br);
+					printf("decodeSymbol coeff_br %d  Min(txSzCtx, TX_32X32) %d ptype %d ctx %d c %d pos %d idx %d\n",coeff_br,Min(txSzCtx, TX_32X32),ptype,ctx,c,pos,idx);
 					level += coeff_br;
 					if (coeff_br < (BR_CDF_SIZE - 1))
 						break;
