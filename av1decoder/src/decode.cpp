@@ -1744,6 +1744,72 @@ int decode::transform_block(int plane,int baseX,int baseY,int txSz,int x,int y,S
 		}
 	}
 }
+int decode::calculateCoeffBrCtx(int txSz,int plane, int x4,int y4,int pos,BlockData *b_data,AV1DecodeContext *av1Ctx){
+	int ctx;
+	int adjTxSz = Adjusted_Tx_Size[txSz];
+	int bwl = Tx_Width_Log2[adjTxSz];
+	int txw = Tx_Width[adjTxSz];
+	int txh = Tx_Height[adjTxSz];
+	int row = pos >> bwl;
+	int col = pos - (row << bwl);
+	int mag = 0 ;
+	int txType = compute_tx_type(plane, txSz, x4, y4,b_data,av1Ctx);
+	int txClass = get_tx_class(txType);
+	for (int i = 0; i < 3; i++)
+	{
+		int refRow = row + Mag_Ref_Offset_With_Tx_Class[txClass][i][0];
+		int refCol = col + Mag_Ref_Offset_With_Tx_Class[txClass][i][1];
+		if ( refRow >= 0 &&
+		refCol >= 0 &&
+		refRow < txh &&
+		refCol < (1 << bwl) ) {
+			mag += Min( b_data->Quant[ refRow * txw + refCol ], COEFF_BASE_RANGE + NUM_BASE_LEVELS + 1 );
+		}
+
+	}
+	mag = Min((mag + 1) >> 1, 6) ;
+	if (pos == 0)
+	{
+		ctx = mag;
+	}
+	else if (txClass == 0)
+	{
+		if ((row < 2) && (col < 2))
+		{
+			ctx = mag + 7;
+		}
+		else
+		{
+			ctx = mag + 14;
+		}
+	}
+	else
+	{
+		if (txClass == 1)
+		{
+			if (col == 0)
+			{
+				ctx = mag + 7;
+			}
+			else
+			{
+				ctx = mag + 14;
+			}
+		}
+		else
+		{
+			if (row == 0)
+			{
+				ctx = mag + 7;
+			}
+			else
+			{
+				ctx = mag + 14;
+			}
+		}
+	}
+	return ctx;
+}
 int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx,bitSt *bs,
 							 BlockData *b_data, AV1DecodeContext *av1Ctx)
 {
@@ -1882,75 +1948,15 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 			}
 			if (level > NUM_BASE_LEVELS)
 			{
+				//-------- compute coeff_br symbol ctx
+				int ctx = calculateCoeffBrCtx(txSz,plane,x4,y4,pos,b_data,av1Ctx);
+				printf("coeff_br ctx %d\n",ctx);
+				//------
 				for (int idx = 0; idx < COEFF_BASE_RANGE / (BR_CDF_SIZE - 1); idx++)
 				{
 				//to do 这里写法可以 优化，计算ctx的过程只需要一次		
-				//-------- compute coeff_br symbol ctx
-					int adjTxSz = Adjusted_Tx_Size[txSz];
-					int bwl = Tx_Width_Log2[adjTxSz];
-					int txw = Tx_Width[adjTxSz];
-					int txh = Tx_Height[adjTxSz];
-					int row = pos >> bwl;
-					int col = pos - (row << bwl);
-					int mag = 0 ;
-					int txType = compute_tx_type(plane, txSz, x4, y4,b_data,av1Ctx);
-					int txClass = get_tx_class(txType);
-					for (int i = 0; i < 3; i++)
-					{
-						int refRow = row + Mag_Ref_Offset_With_Tx_Class[txClass][i][0];
-						int refCol = col + Mag_Ref_Offset_With_Tx_Class[txClass][i][1];
-						if ( refRow >= 0 &&
-						refCol >= 0 &&
-						refRow < txh &&
-						refCol < (1 << bwl) ) {
-							mag += Min( b_data->Quant[ refRow * txw + refCol ], COEFF_BASE_RANGE + NUM_BASE_LEVELS + 1 );
-						}
-
-					}
-					mag = Min((mag + 1) >> 1, 6) ;
-					if (pos == 0)
-					{
-						ctx = mag;
-					}
-					else if (txClass == 0)
-					{
-						if ((row < 2) && (col < 2))
-						{
-							ctx = mag + 7;
-						}
-						else
-						{
-							ctx = mag + 14;
-						}
-					}
-					else
-					{
-						if (txClass == 1)
-						{
-							if (col == 0)
-							{
-								ctx = mag + 7;
-							}
-							else
-							{
-								ctx = mag + 14;
-							}
-						}
-						else
-						{
-							if (row == 0)
-							{
-								ctx = mag + 7;
-							}
-							else
-							{
-								ctx = mag + 14;
-							}
-						}
-					}
-				//------
 					int coeff_br = sb->decodeSymbol(sbCtx, bs, av1Ctx->tileSavedCdf.Coeff_Br[Min(txSzCtx, TX_32X32)][ptype][ctx], BR_CDF_SIZE + 1); // S()
-					printf("decodeSymbol coeff_br %d  Min(txSzCtx, TX_32X32) %d ptype %d ctx %d c %d pos %d idx %d\n",coeff_br,Min(txSzCtx, TX_32X32),ptype,ctx,c,pos,idx);
+					printf("decodeSymbol coeff_br %d  Min(txSzCtx, TX_32X32) %d ptype %d  c %d pos %d idx %d\n",coeff_br,Min(txSzCtx, TX_32X32),ptype,c,pos,idx);
 					level += coeff_br;
 					if (coeff_br < (BR_CDF_SIZE - 1))
 						break;
