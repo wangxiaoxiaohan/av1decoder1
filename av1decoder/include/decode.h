@@ -56,7 +56,8 @@ public:
 	int setup_global_mv(int refList,int *mv,
 								 BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int calculateCoeffBrCtx(int txSz,int plane, int x4,int y4,int pos,BlockData *b_data,AV1DecodeContext *av1Ctx);
-	
+	int calculateDcSignCtx(int plane, int x4,int y4,int w4,int h4,AV1DecodeContext *av1Ctx);
+		
 	int lower_mv_precision(AV1DecodeContext *av1Ctx,int *candMv);
 	int lower_precision(int *candMv,AV1DecodeContext *av1Ctx);
 	int add_tpl_ref_mv(int deltaRow, int deltaCol, int isCompound,BlockData *b_data,AV1DecodeContext *av1Ctx);

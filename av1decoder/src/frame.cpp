@@ -4356,6 +4356,7 @@ int frame::read_lr_unit(SymbolContext *sbCtx, bitSt *bs,int plane,int unitRow,in
 			int radius = Sgr_Params[lr_sgr_set][i * 2];
 			int min = Sgrproj_Xqd_Min[i];
 			int max = Sgrproj_Xqd_Max[i];
+			printf("radius %d\n",radius);
 			if (radius)
 			{
 				v = sb->decode_signed_subexp_with_ref_bool(sbCtx,bs,

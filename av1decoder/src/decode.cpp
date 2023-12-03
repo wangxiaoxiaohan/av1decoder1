@@ -1810,6 +1810,64 @@ int decode::calculateCoeffBrCtx(int txSz,int plane, int x4,int y4,int pos,BlockD
 	}
 	return ctx;
 }
+int decode::calculateDcSignCtx(int plane, int x4,int y4,int w4,int h4,AV1DecodeContext *av1Ctx)
+{
+	int ctx;
+	frameHeader *frameHdr = &av1Ctx->frameHdr;
+	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
+	int maxX4 = frameHdr->MiCols;
+	int maxY4 = frameHdr->MiRows;
+	if (plane > 0)
+	{
+		maxX4 = maxX4 >> seqHdr->color_config.subsampling_x;
+		maxY4 = maxY4 >> seqHdr->color_config.subsampling_y;
+	}
+	int dcSign = 0;
+	int sign;
+	for (int k = 0; k < w4; k++)
+	{
+		if (x4 + k < maxX4)
+		{
+			sign = av1Ctx->AboveDcContext[plane][x4 + k];
+			if (sign == 1)
+			{
+				dcSign--;
+			}
+			else if (sign == 2)
+			{
+				dcSign++;
+			}
+		}
+	}
+	for (int k = 0; k < h4; k++)
+	{
+		if (y4 + k < maxY4)
+		{
+			sign = av1Ctx->LeftDcContext[plane][y4 + k];
+			if (sign == 1)
+			{
+				dcSign--;
+			}
+			else if (sign == 2)
+			{
+				dcSign++;
+			}
+		}
+	}
+	if (dcSign < 0)
+	{
+		ctx = 1;
+	}
+	else if (dcSign > 0)
+	{
+		ctx = 2;
+	}
+	else
+	{
+		ctx = 0;
+	}
+	return ctx;
+}
 int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx,bitSt *bs,
 							 BlockData *b_data, AV1DecodeContext *av1Ctx)
 {
@@ -1907,7 +1965,7 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 		if (eobShift >= 0)
 		{
 			int eob_extra = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Eob_Extra[ txSzCtx ][ ptype ][ eobPt - 3 ],3); // S()
-			printf("decodeSymbol eob_extra %d\n",eob_extra);
+			printf("decodeSymbol eob_extra %d eobPt - 3: %d\n",eob_extra,eobPt - 3);
 			if (eob_extra)
 			{
 				eob += (1 << eobShift);
@@ -1925,11 +1983,12 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 			}
 		}
 		printf("eob %d\n",eob);
-		//ac
+		//eob + ac + dc， 最后一个下标0是 dc
 		for (int c = eob - 1; c >= 0; c--)
 		{
 			int pos = scan[c];
 			int level;
+			//eob
 			if (c == (eob - 1))
 			{
 				ctx =  get_coeff_base_ctx(txSz, plane, x4, y4, scan[c], c, 1,b_data,av1Ctx) - SIG_COEF_CONTEXTS + SIG_COEF_CONTEXTS_EOB;
@@ -1938,14 +1997,16 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 				printf("decodeSymbol coeff_base_eob %d\n",coeff_base_eob);
 				level = coeff_base_eob + 1;
 			}
+			//ac + dc
 			else
 			{
 				ctx = get_coeff_base_ctx(txSz, plane, x4, y4, scan[c], c, 0,b_data,av1Ctx);
 				
 				int coeff_base =  sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Coeff_Base[ txSzCtx ][ ptype ][ ctx ],5); // S()
-				printf("decodeSymbol coeff_base %d \n",coeff_base);
+				printf("decodeSymbol coeff_base %d  txSzCtx %d ptype %d ,ctx %d\n",coeff_base,txSzCtx,ptype,ctx);
 				level = coeff_base;
 			}
+			//printf("level %d\n",level);
 			if (level > NUM_BASE_LEVELS)
 			{
 				//-------- compute coeff_br symbol ctx
@@ -1954,7 +2015,6 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 				//------
 				for (int idx = 0; idx < COEFF_BASE_RANGE / (BR_CDF_SIZE - 1); idx++)
 				{
-				//to do 这里写法可以 优化，计算ctx的过程只需要一次		
 					int coeff_br = sb->decodeSymbol(sbCtx, bs, av1Ctx->tileSavedCdf.Coeff_Br[Min(txSzCtx, TX_32X32)][ptype][ctx], BR_CDF_SIZE + 1); // S()
 					printf("decodeSymbol coeff_br %d  Min(txSzCtx, TX_32X32) %d ptype %d  c %d pos %d idx %d\n",coeff_br,Min(txSzCtx, TX_32X32),ptype,c,pos,idx);
 					level += coeff_br;
@@ -1970,62 +2030,14 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 			int sign;
 			if (b_data->Quant[pos] != 0)
 			{
+				//第一个, dc
 				if (c == 0)
 				{
 				//-------- 
-					int maxX4 = frameHdr->MiCols;
-					int maxY4 = frameHdr->MiRows;
-					if (plane > 0)
-					{
-						maxX4 = maxX4 >> seqHdr->color_config.subsampling_x;
-						maxY4 = maxY4 >> seqHdr->color_config.subsampling_y;
-					}
-					int dcSign = 0;
-					for (int k = 0; k < w4; k++)
-					{
-						if (x4 + k < maxX4)
-						{
-							sign = av1Ctx->AboveDcContext[plane][x4 + k];
-							if (sign == 1)
-							{
-								dcSign--;
-							}
-							else if (sign == 2)
-							{
-								dcSign++;
-							}
-						}
-					}
-					for (int k = 0; k < h4; k++)
-					{
-						if (y4 + k < maxY4)
-						{
-							sign = av1Ctx->LeftDcContext[plane][y4 + k];
-							if (sign == 1)
-							{
-								dcSign--;
-							}
-							else if (sign == 2)
-							{
-								dcSign++;
-							}
-						}
-					}
-					if (dcSign < 0)
-					{
-						ctx = 1;
-					}
-					else if (dcSign > 0)
-					{
-						ctx = 2;
-					}
-					else
-					{
-						ctx = 0;
-					}
+				int dcSignCtx = calculateDcSignCtx( plane,  x4, y4, w4, h4, av1Ctx);
 				//---------
 				printf("decodeSymbol dc_sign\n");
-					int dc_sign = sb->decodeSymbol(sbCtx, bs, av1Ctx->tileSavedCdf.Dc_Sign[ptype][ctx], 3); // S()
+					int dc_sign = sb->decodeSymbol(sbCtx, bs, av1Ctx->tileSavedCdf.Dc_Sign[ptype][dcSignCtx], 3); // S()
 					sign = dc_sign;
 				}
 				else
@@ -2058,6 +2070,7 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 					golomb_data_bit = sb->read_literal(sbCtx,bs,1); // L(1)
 					x = (x << 1) | golomb_data_bit;
 				}
+				printf("golomb_data_bit x %d\n",x);
 			 	b_data->Quant[pos] = x + COEFF_BASE_RANGE + NUM_BASE_LEVELS;
 			}
 			if (pos == 0 && b_data->Quant[pos] > 0)

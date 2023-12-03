@@ -48,3 +48,9 @@ symbol填数据 仔细看看 有什么问题
 对比 coef中解码的 参数 数量 ，值
 
 最后一次解码 coeff_br 和DAV1d对不上
+
+read_lr_unit    decode_signed_subexp_with_ref_bool 读了一次 ，dav1d 读了两次。对不上
+
+
+eob 512?
+检查 get_coeff_base_ctx
