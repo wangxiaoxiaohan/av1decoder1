@@ -335,11 +335,8 @@ typedef struct Array16
 	}
 	~Array16()
 	{
-		printf("delete array addr %d 11\n",data);
 		delete[] data;
-		printf("delete array 22\n");
 		data = NULL;
-		printf("delete array 33\n");
 	}
 };
 typedef struct dArray16

@@ -1919,7 +1919,7 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 		if (eobMultisize == 0)
 		{
 			int eob_pt_16 = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Eob_Pt_16[ ptype ][ ctx ],6); // S()
-			printf("decodeSymbol eob_pt_128 %d \n",eob_pt_16);
+			printf("decodeSymbol eob_pt_16 %d \n",eob_pt_16);
 			eobPt = eob_pt_16 + 1;
 		}
 		else if (eobMultisize == 1)
@@ -1994,7 +1994,7 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 				ctx =  get_coeff_base_ctx(txSz, plane, x4, y4, scan[c], c, 1,b_data,av1Ctx) - SIG_COEF_CONTEXTS + SIG_COEF_CONTEXTS_EOB;
 				
 				int coeff_base_eob = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Coeff_Base_Eob[ txSzCtx ][ ptype ][ ctx ],4);// S()
-				printf("decodeSymbol coeff_base_eob %d\n",coeff_base_eob);
+				printf("decodeSymbol coeff_base_eob %d ctx %d\n",coeff_base_eob,ctx);
 				level = coeff_base_eob + 1;
 			}
 			//ac + dc

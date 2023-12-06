@@ -1989,10 +1989,10 @@ int frame::decode_partition(SymbolContext *sbCtx,bitSt *bs,
 	else if (hasCols)
 	{
 		int psum = ( partitionCdf[ PARTITION_VERT ] - partitionCdf[ PARTITION_VERT - 1 ] +
-		partitionCdf[ PARTITION_SPLIT ] - partitionCdf[ PARTITION_SPLIT - 1 ] +
-		partitionCdf[ PARTITION_HORZ_A ] - partitionCdf[ PARTITION_HORZ_A - 1 ] +
-		partitionCdf[ PARTITION_VERT_A ] - partitionCdf[ PARTITION_VERT_A - 1 ] +
-		partitionCdf[ PARTITION_VERT_B ] - partitionCdf[ PARTITION_VERT_B - 1 ] );
+					partitionCdf[ PARTITION_SPLIT ] - partitionCdf[ PARTITION_SPLIT - 1 ] +
+					partitionCdf[ PARTITION_HORZ_A ] - partitionCdf[ PARTITION_HORZ_A - 1 ] +
+					partitionCdf[ PARTITION_VERT_A ] - partitionCdf[ PARTITION_VERT_A - 1 ] +
+					partitionCdf[ PARTITION_VERT_B ] - partitionCdf[ PARTITION_VERT_B - 1 ] );
 		if ( bSize != BLOCK_128X128 )
 		psum += partitionCdf[ PARTITION_VERT_4 ] - partitionCdf[ PARTITION_VERT_4 - 1 ];
 		uint16_t cdf[3];
@@ -2007,10 +2007,10 @@ int frame::decode_partition(SymbolContext *sbCtx,bitSt *bs,
 	else if (hasRows)
 	{
 		int psum = ( partitionCdf[ PARTITION_HORZ ] - partitionCdf[ PARTITION_HORZ - 1 ] +
-		partitionCdf[ PARTITION_SPLIT ] - partitionCdf[ PARTITION_SPLIT - 1 ] +
-		partitionCdf[ PARTITION_HORZ_A ] - partitionCdf[ PARTITION_HORZ_A - 1 ] +
-		partitionCdf[ PARTITION_VERT_A ] - partitionCdf[ PARTITION_VERT_A - 1 ] +
-		partitionCdf[ PARTITION_VERT_B ] - partitionCdf[ PARTITION_VERT_B - 1 ] );
+					partitionCdf[ PARTITION_SPLIT ] - partitionCdf[ PARTITION_SPLIT - 1 ] +
+					partitionCdf[ PARTITION_HORZ_A ] - partitionCdf[ PARTITION_HORZ_A - 1 ] +
+					partitionCdf[ PARTITION_HORZ_B ] - partitionCdf[ PARTITION_HORZ_B - 1 ] +
+					partitionCdf[ PARTITION_VERT_A ] - partitionCdf[ PARTITION_VERT_A - 1 ] );
 		if ( bSize != BLOCK_128X128 )
 		psum += partitionCdf[ PARTITION_HORZ_4 ] - partitionCdf[ PARTITION_HORZ_4 - 1 ];
 		uint16_t cdf[3];
@@ -2112,10 +2112,11 @@ int frame::decode_block(SymbolContext *sbCtx,bitSt *bs,int r,int c,int subSize, 
 	int blockWidth = Block_Width[b_data.MiSize];
 
 	b_data.AboveRow = new Array16(blockWidth + blockHeight);
-
+	printf("AboveRow addr %x data addr %x\n ",b_data.AboveRow,&(*b_data.AboveRow)[0]);
 	b_data.LeftCol = new Array16(blockWidth + blockHeight);
 
 	b_data.Mask = new uint16_t*[2 * blockHeight + 2];
+	printf("Mask addr %x\n",b_data.Mask);
 	for(int i = 0 ; i < (2 * blockHeight + 2) ; i++){
 		b_data.Mask[i] = new uint16_t[2 * blockWidth + 2];
 	}
@@ -2173,7 +2174,7 @@ int frame::decode_block(SymbolContext *sbCtx,bitSt *bs,int r,int c,int subSize, 
 					for (int refList = 0; refList < 1 + isCompound; refList++)
 					{
 						//p_data->Mvs[r + y][c + x][refList] = b_data.Mv[refList];
-						memcpy(av1Ctx->Mvs[r + y][c + x][refList],b_data.Mv[refList],sizeof(uint8_t) * 2);
+						memcpy(av1Ctx->Mvs[r + y][c + x][refList],b_data.Mv[refList],sizeof(int) * 2);
 					}
 			}
 		}
@@ -2234,10 +2235,10 @@ int frame::decode_block(SymbolContext *sbCtx,bitSt *bs,int r,int c,int subSize, 
 		}
 		delete [] b_data.ColorMapUV;
 	}
-	printf("AboveRow addr %d\n",	b_data.AboveRow);
-	printf("LeftCol addr %d\n",	b_data.LeftCol);
+	
+	printf("AboveRow addr %x data addr %x\n ",b_data.AboveRow,&(*b_data.AboveRow)[0]);
 	delete b_data.AboveRow;
-	printf("delete 22\n");
+	printf("LeftCol addr %x\n",	b_data.LeftCol);
 	delete b_data.LeftCol;
 
 }

@@ -54,3 +54,4 @@ read_lr_unit    decode_signed_subexp_with_ref_bool 读了一次 ，dav1d 读了�
 
 eob 512?
 检查 get_coeff_base_ctx
+检查 进入 错误的 block之后 sbCtx->SymbolValue 出现问题

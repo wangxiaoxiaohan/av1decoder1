@@ -90,7 +90,7 @@ int Symbol::decodeSymbol(SymbolContext *sbCtx,bitSt *bs,uint16_t *cdfArray,int N
         if(symbol >= N){
             printf("symbol out of range\n");
         }
-        //printf("curr %d symbol %d cdfArray[ symbol ] %d \n",cur,symbol,cdfArray[ symbol ]);
+        //printf("curr %d sbCtx->SymbolValue %d symbol %d  \n",cur,sbCtx->SymbolValue,symbol);
     } while ( sbCtx->SymbolValue < cur );
     //更新算术编码的范围 和 输入符号，这只是部分过程，在renormalized过程还要继续更新，
     //  比如sbCtx->SymbolRange = prev - cur; 这个操作，你会发现SymbolRange会变得很小，在renormalized过程
@@ -103,24 +103,18 @@ int Symbol::decodeSymbol(SymbolContext *sbCtx,bitSt *bs,uint16_t *cdfArray,int N
                                       
     sbCtx->SymbolValue = sbCtx->SymbolValue - cur; //这里是为什么？为什么不是直接丢掉若干位？还是说编码器端也是这样做的
                                                    //所以默认这样做？    
-    //printf("SymbolValue %d SymbolRange %d\n",sbCtx->SymbolValue,sbCtx->SymbolRange);
     
 
 //renormalized 这个过程会继续读入码流满15位，以便为后续的解码做准备
     int bits = 15 - FloorLog2( sbCtx->SymbolRange ); //需要继续读进来的数据位数
-  //  printf("SymbolRange 1  %d\n",sbCtx->SymbolRange);
     sbCtx->SymbolRange = sbCtx->SymbolRange << bits;
- //  printf("SymbolRange 2  %d\n",sbCtx->SymbolRange);
     sbCtx->numBits = Min( bits, Max(0, sbCtx->SymbolMaxBits) ); //修正需要读取位数
 
     int newData =  readBits(bs,sbCtx->numBits); //读取，接下来几步将新读进来的数据和之前剩下的组合起来，凑满15位
-   // printf("newData  %d\n",newData);
 
     int paddedData = newData << ( bits - sbCtx->numBits );
-   // printf("paddedData  %d\n",paddedData);
- //   printf("SymbolValue 1  %d\n",sbCtx->SymbolValue);
     sbCtx->SymbolValue = paddedData ^ ( ( ( sbCtx->SymbolValue + 1 ) << bits ) - 1 );
-//    printf("SymbolValue 2  %d\n",sbCtx->SymbolValue);
+
     sbCtx->SymbolMaxBits -= bits;
 //update
     if(sbCtx->isUpdate){
