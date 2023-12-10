@@ -9179,7 +9179,7 @@ int inline brev(int numBits, int x)
 	return t;
 }
 // butterfly rotation
-void inline B(int a, int b, int angle, int flip, int r, int T[])
+void inline B(int a, int b, int angle, int flip, int r, int16_t T[])
 {
 	int x = T[a] * cos128(angle) - T[b] * sin128(angle);
 	int y = T[a] * sin128(angle) + T[b] * cos128(angle);
@@ -9194,7 +9194,7 @@ void inline B(int a, int b, int angle, int flip, int r, int T[])
 	}
 }
 // Hadamard rotation
-void inline H(int a, int b, int flip, int r, int T[])
+void inline H(int a, int b, int flip, int r, int16_t T[])
 {
 	int x = T[a];
 	int y = T[b];

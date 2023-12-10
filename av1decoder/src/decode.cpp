@@ -18,7 +18,7 @@ int decode::decode_frame_wrapup( AV1DecodeContext *av1Ctx){
 		}
 		for (int i = 0; i < 8; i++) {
 			for (int j = 0; j < 8; j++) {
-				printf("!!!! %d \n",av1Ctx->currentFrame->CurrFrame[0][56 + i][56 + j]);
+				//printf("!!!! %d \n",av1Ctx->currentFrame->CurrFrame[0][56 + i][56 + j]);
 			}
 		}
 		cdef(av1Ctx); 
@@ -1890,7 +1890,7 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 	int dcCategory = 0;
 
 	int ctx = cacluteAllZeroCtx( plane, txSz,  x4, y4, w4, h4, b_data,av1Ctx);
-	printf("decodeSymbol all_zero\n");
+	//printf("decodeSymbol all_zero\n");
 	int all_zero = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Txb_Skip[ txSzCtx ][ ctx ],3); // S()
 	if (all_zero)
 	{
@@ -1919,45 +1919,45 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 		if (eobMultisize == 0)
 		{
 			int eob_pt_16 = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Eob_Pt_16[ ptype ][ ctx ],6); // S()
-			printf("decodeSymbol eob_pt_16 %d \n",eob_pt_16);
+			//printf("decodeSymbol eob_pt_16 %d \n",eob_pt_16);
 			eobPt = eob_pt_16 + 1;
 		}
 		else if (eobMultisize == 1)
 		{
 			int eob_pt_32  = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Eob_Pt_32[ ptype ][ ctx ],7); // S()
-			printf("decodeSymbol eob_pt_32 %d \n",eob_pt_32);
+			//printf("decodeSymbol eob_pt_32 %d \n",eob_pt_32);
 			eobPt = eob_pt_32 + 1;
 		}
 		else if (eobMultisize == 2)
 		{
 			int eob_pt_64  = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Eob_Pt_64[ ptype ][ ctx ],8); // S()
-			printf("decodeSymbol eob_pt_64 %d \n",eob_pt_64);
+			//printf("decodeSymbol eob_pt_64 %d \n",eob_pt_64);
 			eobPt = eob_pt_64 + 1;
 		}
 		else if (eobMultisize == 3)
 		{
 			int eob_pt_128 = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Eob_Pt_128[ ptype ][ ctx ],9); // S()
-			printf("decodeSymbol eob_pt_128 %d \n",eob_pt_128);
+			//printf("decodeSymbol eob_pt_128 %d \n",eob_pt_128);
 			eobPt = eob_pt_128 + 1;
 		}
 		else if (eobMultisize == 4)
 		{
 			int eob_pt_256 = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Eob_Pt_256[ ptype ][ ctx ],10); // S()
-			printf("decodeSymbol eob_pt_256 %d \n",eob_pt_256);
+			//printf("decodeSymbol eob_pt_256 %d \n",eob_pt_256);
 			eobPt = eob_pt_256 + 1;
 		}
 		else if (eobMultisize == 5)
 		{
 			
 			int eob_pt_512 = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Eob_Pt_512[ ptype ],11); // S()
-			printf("decodeSymbol eob_pt_512 %d \n",eob_pt_512);
+			//printf("decodeSymbol eob_pt_512 %d \n",eob_pt_512);
 			eobPt = eob_pt_512 + 1;
 		}
 		else
 		{
 			
 			int eob_pt_1024 = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Eob_Pt_1024[ ptype ],12); // S()
-			printf("decodeSymbol eob_pt_1024 %d\n",eob_pt_1024);
+			//printf("decodeSymbol eob_pt_1024 %d\n",eob_pt_1024);
 			eobPt = eob_pt_1024 + 1;
 		}
 		eob = (eobPt < 2) ? eobPt : ((1 << (eobPt - 2)) + 1);
@@ -1965,7 +1965,7 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 		if (eobShift >= 0)
 		{
 			int eob_extra = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Eob_Extra[ txSzCtx ][ ptype ][ eobPt - 3 ],3); // S()
-			printf("decodeSymbol eob_extra %d eobPt - 3: %d\n",eob_extra,eobPt - 3);
+			//printf("decodeSymbol eob_extra %d eobPt - 3: %d\n",eob_extra,eobPt - 3);
 			if (eob_extra)
 			{
 				eob += (1 << eobShift);
@@ -1975,15 +1975,16 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 				eobShift = Max(0, eobPt - 2) - 1 - i;
 				
 				int eob_extra_bit = sb->read_literal(sbCtx,bs,1); // L(1)
-				printf("read_literal eob_extra_bit %d\n",eob_extra_bit);
+				//printf("read_literal eob_extra_bit %d\n",eob_extra_bit);
 				if (eob_extra_bit)
 				{
 					eob += (1 << eobShift);
 				}
 			}
 		}
-		printf("eob %d\n",eob);
+		//printf("eob %d\n",eob);
 		//eob + ac + dc， 最后一个下标0是 dc
+		printf("coeffs\n");
 		for (int c = eob - 1; c >= 0; c--)
 		{
 			int pos = scan[c];
@@ -1994,7 +1995,7 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 				ctx =  get_coeff_base_ctx(txSz, plane, x4, y4, scan[c], c, 1,b_data,av1Ctx) - SIG_COEF_CONTEXTS + SIG_COEF_CONTEXTS_EOB;
 				
 				int coeff_base_eob = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Coeff_Base_Eob[ txSzCtx ][ ptype ][ ctx ],4);// S()
-				printf("decodeSymbol coeff_base_eob %d ctx %d\n",coeff_base_eob,ctx);
+				//printf("decodeSymbol coeff_base_eob %d ctx %d\n",coeff_base_eob,ctx);
 				level = coeff_base_eob + 1;
 			}
 			//ac + dc
@@ -2003,27 +2004,29 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 				ctx = get_coeff_base_ctx(txSz, plane, x4, y4, scan[c], c, 0,b_data,av1Ctx);
 				
 				int coeff_base =  sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Coeff_Base[ txSzCtx ][ ptype ][ ctx ],5); // S()
-				printf("decodeSymbol coeff_base %d  txSzCtx %d ptype %d ,ctx %d\n",coeff_base,txSzCtx,ptype,ctx);
+				//printf("decodeSymbol coeff_base %d  txSzCtx %d ptype %d ,ctx %d\n",coeff_base,txSzCtx,ptype,ctx);
 				level = coeff_base;
 			}
-			//printf("level %d\n",level);
+			////printf("level %d\n",level);
 			if (level > NUM_BASE_LEVELS)
 			{
 				//-------- compute coeff_br symbol ctx
 				int ctx = calculateCoeffBrCtx(txSz,plane,x4,y4,pos,b_data,av1Ctx);
-				printf("coeff_br ctx %d\n",ctx);
+				//printf("coeff_br ctx %d\n",ctx);
 				//------
 				for (int idx = 0; idx < COEFF_BASE_RANGE / (BR_CDF_SIZE - 1); idx++)
 				{
 					int coeff_br = sb->decodeSymbol(sbCtx, bs, av1Ctx->tileSavedCdf.Coeff_Br[Min(txSzCtx, TX_32X32)][ptype][ctx], BR_CDF_SIZE + 1); // S()
-					printf("decodeSymbol coeff_br %d  Min(txSzCtx, TX_32X32) %d ptype %d  c %d pos %d idx %d\n",coeff_br,Min(txSzCtx, TX_32X32),ptype,c,pos,idx);
+					//printf("decodeSymbol coeff_br %d  Min(txSzCtx, TX_32X32) %d ptype %d  c %d pos %d idx %d\n",coeff_br,Min(txSzCtx, TX_32X32),ptype,c,pos,idx);
 					level += coeff_br;
 					if (coeff_br < (BR_CDF_SIZE - 1))
 						break;
 				}
 			}
 			b_data->Quant[pos] = level;
+			printf(" qu1 %d |",b_data->Quant[pos]);
 		}
+		printf("coeffs 2\n");
 		for (int c = 0; c < eob; c++)
 		{
 			int pos = scan[c];
@@ -2036,16 +2039,16 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 				//-------- 
 				int dcSignCtx = calculateDcSignCtx( plane,  x4, y4, w4, h4, av1Ctx);
 				//---------
-				printf("decodeSymbol dc_sign\n");
-					int dc_sign = sb->decodeSymbol(sbCtx, bs, av1Ctx->tileSavedCdf.Dc_Sign[ptype][dcSignCtx], 3); // S()
-					sign = dc_sign;
+				//printf("decodeSymbol dc_sign\n");
+					sign = sb->decodeSymbol(sbCtx, bs, av1Ctx->tileSavedCdf.Dc_Sign[ptype][dcSignCtx], 3); // S()
+					//sign = dc_sign;
 				}
 				else
 				{
 					
-					int sign_bit = sb->read_literal(sbCtx,bs,1); // L(1)
-					printf("read_literal sign_bit %d\n",sign_bit);
-					sign = sign_bit;
+					sign = sb->read_literal(sbCtx,bs,1); // L(1)
+					//printf("read_literal sign_bit %d\n",sign_bit);
+					//sign = sign_bit;
 				}
 			}
 			else
@@ -2059,18 +2062,18 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 				do
 				{
 					length++;
-					printf("read_literal golomb_length_bit\n");
+					//printf("read_literal golomb_length_bit\n");
 					golomb_length_bit = sb->read_literal(sbCtx,bs,1); // L(1)
 				} while (!golomb_length_bit);
 				int x = 1;
 				int golomb_data_bit;
 				for (int i = length - 2; i >= 0; i--)
 				{
-					printf("read_literal golomb_data_bit\n");
+					//printf("read_literal golomb_data_bit\n");
 					golomb_data_bit = sb->read_literal(sbCtx,bs,1); // L(1)
 					x = (x << 1) | golomb_data_bit;
 				}
-				printf("golomb_data_bit x %d\n",x);
+				//printf("golomb_data_bit x %d\n",x);
 			 	b_data->Quant[pos] = x + COEFF_BASE_RANGE + NUM_BASE_LEVELS;
 			}
 			if (pos == 0 && b_data->Quant[pos] > 0)
@@ -2078,6 +2081,7 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 				dcCategory = sign ? 1 : 2;
 			}
 			b_data->Quant[pos] = b_data->Quant[pos] & 0xFFFFF;
+			printf("qu2 %d |",b_data->Quant[pos]);
 			culLevel += b_data->Quant[pos];
 			if (sign)
 				b_data->Quant[pos] = -b_data->Quant[pos];
@@ -2206,7 +2210,7 @@ int decode::transform_type(int x4,int  y4,int txSz,SymbolContext *sbCtx,bitSt *b
 				cdf = av1Ctx->tileSavedCdf.Inter_Tx_Type_Set3[ Tx_Size_Sqr[ txSz ] ];
 				size = 3;
 			}
-			printf("decodeSymbol inter_tx_type\n");
+			//printf("decodeSymbol inter_tx_type\n");
 			int inter_tx_type = sb->decodeSymbol(sbCtx,bs,cdf,size); // S()
 			if (set == TX_SET_INTER_1)
 				TxType = Tx_Type_Inter_Inv_Set1[inter_tx_type];
@@ -2230,7 +2234,7 @@ int decode::transform_type(int x4,int  y4,int txSz,SymbolContext *sbCtx,bitSt *b
 				cdf = av1Ctx->tileSavedCdf.Intra_Tx_Type_Set2[ Tx_Size_Sqr[ txSz ] ][ intraDir ];
 				size = 6;
 			}
-			printf("decodeSymbol intra_tx_type\n");
+			//printf("decodeSymbol intra_tx_type\n");
 			int intra_tx_type = sb->decodeSymbol(sbCtx,bs,cdf,size); // S()
 			if (set == TX_SET_INTRA_1)
 				TxType = Tx_Type_Intra_Inv_Set1[intra_tx_type];
@@ -2404,12 +2408,14 @@ int decode::predict_intra(int plane,int x,int y,int haveLeft,int haveAbove,
 	}else if(mode == PAETH_PRED){
 		basicIntraPrediction(w,h,pred,b_data);
 	}
+	printf("pred\n");
 	for(int i = 0 ; i < h ;i ++){
 		for(int j = 0 ; j < w ;j ++){
 			av1Ctx->currentFrame->CurrFrame[ plane ][ y + i ][ x + j ] = pred[ i ][ j ];
+			printf("%d ",pred[ i ][ j ]);
 		}	
 	}
-	
+	printf("\n");
 	for(int i = 0 ; i < h ; i++){
 		delete [] pred[i];
 	}
@@ -2669,6 +2675,7 @@ int decode::DCIntraPrediction(int haveLeft ,int haveAbove,int log2W,int log2H,in
 	// Calculate the average of available edge samples
 	if (haveLeft == 1 && haveAbove == 1)
 	{
+		printf("l & a \n");
 		// Case 1: Both left and above samples are available
 		sum = 0;
 		for (int k = 0; k < h; k++)
@@ -2677,7 +2684,7 @@ int decode::DCIntraPrediction(int haveLeft ,int haveAbove,int log2W,int log2H,in
 			sum += (*b_data->AboveRow)[k];
 		sum += (w + h) >> 1;
 		avg = sum / (w + h);
-
+		printf("sum %d  avg %d w+h %d\n",sum,avg,w+h);
 		for (int i = 0; i < h; i++)
 		{
 			for (int j = 0; j < w; j++)
@@ -2688,12 +2695,14 @@ int decode::DCIntraPrediction(int haveLeft ,int haveAbove,int log2W,int log2H,in
 	}
 	else if (haveLeft == 1 && haveAbove == 0)
 	{
+		printf("l  \n");
 		// Case 2: Only left samples are available
 		for (int k = 0; k < h; k++)
 		{
 			sum += (*b_data->LeftCol)[k];
 		}
 		leftAvg = Clip1((sum + (h >> 1)) >> log2H,seqHdr->color_config.BitDepth);
+		printf("sum %d  leftAvg %d\n",sum,leftAvg);
 		for (int i = 0; i < h; i++)
 		{
 			for (int j = 0; j < w; j++)
@@ -2704,12 +2713,14 @@ int decode::DCIntraPrediction(int haveLeft ,int haveAbove,int log2W,int log2H,in
 	}
 	else if (haveLeft == 0 && haveAbove == 1)
 	{
+		printf(" a \n");
 		// Case 3: Only above samples are available
 		for (int k = 0; k < w; k++)
 		{
 			sum += (*b_data->AboveRow)[k];
 		}
 		aboveAvg = Clip1((sum + (w >> 1)) >> log2W,seqHdr->color_config.BitDepth);
+		printf("sum %d  aboveAvg %d\n",sum,aboveAvg);
 		for (int i = 0; i < h; i++)
 		{
 			for (int j = 0; j < w; j++)
@@ -2720,6 +2731,8 @@ int decode::DCIntraPrediction(int haveLeft ,int haveAbove,int log2W,int log2H,in
 	}
 	else
 	{
+		printf("l & a either \n");
+		printf("Avg %d\n",1 << ( seqHdr->color_config.BitDepth - 1));
 		// Case 4: No valid samples available
 		for (int i = 0; i < h; i++)
 		{
@@ -2986,6 +2999,7 @@ int decode::intraEdgeUpsample(int numPx,int dir,BlockData *b_data,AV1DecodeConte
 
 
     (*buf)[-2] = dup[0];
+	//printf("numPx 11%d \n",numPx);
     for (int i = 0; i < numPx; i++) {
         int s = -dup[i] + (9 * dup[i + 1]) + (9 * dup[i + 2]) - dup[i + 3];
         s = Clip1(Round2(s, 4),seqHdr->color_config.BitDepth);
@@ -3927,7 +3941,7 @@ int decode::reconstruct(int plane, int x, int y, int txSz,BlockData *b_data,AV1D
     int th = Min(32, h);
     int flipUD = (b_data->PlaneTxType == FLIPADST_DCT || b_data->PlaneTxType == FLIPADST_ADST || b_data->PlaneTxType == V_FLIPADST || b_data->PlaneTxType == FLIPADST_FLIPADST) ? 1 : 0;
     int flipLR = (b_data->PlaneTxType == DCT_FLIPADST || b_data->PlaneTxType == ADST_FLIPADST || b_data->PlaneTxType == H_FLIPADST || b_data->PlaneTxType == FLIPADST_FLIPADST) ? 1 : 0;
-    
+    printf("residual 11\n");
     for (int i = 0; i < th; i++) {
         for (int j = 0; j < tw; j++) {
             int q = (i == 0 && j == 0) ? 
@@ -3940,27 +3954,28 @@ int decode::reconstruct(int plane, int x, int y, int txSz,BlockData *b_data,AV1D
             int dq = b_data->Quant[i * tw + j] * q2;
             int sign = (dq < 0) ? -1 : 1;
             int dq2 = sign * (Abs(dq) & 0xFFFFFF) / dqDenom;
-            
+            printf("idx %d ,%d @ %d  @ %d ",i * tw + j,q2,b_data->Quant[i * tw + j],dq2);
 			b_data->Dequant[ i ][ j ] = Clip3( - ( 1 << ( 7 + seqHdr->color_config.BitDepth ) ), ( 1 << ( 7 + seqHdr->color_config.BitDepth ) ) - 1, dq2 );
-
+			printf("@ %d |||",b_data->Dequant[ i ][ j ]);
         }
     }
     //uint16_t Residual[h][w];
-	uint16_t **Residual = new uint16_t *[h];
+	int16_t **Residual = new int16_t *[h];
 	for(int i = 0 ; i < h ; i ++){
-		Residual[i] = new uint16_t[w];
+		Residual[i] = new int16_t[w];
 	}
+	printf("residual 22\n");
 	twoDInverseTransformBlock(txSz,Residual,b_data,av1Ctx);
-
+	printf("residual 33 \n");
     for (int i = 0; i < h; i++) {
         for (int j = 0; j < w; j++) {
             int xx = flipLR ? (w - j - 1) : j;
             int yy = flipUD ? (h - i - 1) : i;
-            
+            printf("%d ",Residual[i][j]);
             av1Ctx->currentFrame->CurrFrame[plane][y + yy][x + xx] = Clip1(av1Ctx->currentFrame->CurrFrame[plane][y + yy][x + xx] + Residual[i][j],seqHdr->color_config.BitDepth);
         }
     }
-
+	printf("\n");
 	for(int i = 0 ; i < h ; i ++){
 		delete []  Residual[i];
 	}
@@ -3972,18 +3987,18 @@ int decode::reconstruct(int plane, int x, int y, int txSz,BlockData *b_data,AV1D
     }
 }
 //7.13.2.2 翻转数组
-int decode::inverseDCTArrayPermutation(int T[],int n)
+int decode::inverseDCTArrayPermutation(int16_t T[],int n)
 {
-    int copyT[1 << n];
+    int16_t copyT[1 << n];
     // 复制数组 T 到 copyT
-	memcpy(copyT,T,(1 << n) * sizeof(int));
+	memcpy(copyT,T,(1 << n) * sizeof(int16_t));
     // 根据位翻转函数 brev(n, i) 重新排列数组 T
     for (int i = 0; i < (1 << n); i++) {
         T[i] = copyT[brev(n, i)];
     }
 }
 //7.13.2.3 一维反 DCT 变换
-int decode::inverseDCT(int T[], int n, int r) {
+int decode::inverseDCT(int16_t T[], int n, int r) {
     // 步骤1：执行逆 DCT 排列
     inverseDCTArrayPermutation(T, n);
 
@@ -4143,11 +4158,11 @@ int decode::inverseDCT(int T[], int n, int r) {
 	}
 }
 //7.13.2.4
-void decode::inverseADSTInputArrayPermutation(int* T, int n) {
+void decode::inverseADSTInputArrayPermutation(int16_t* T, int n) {
     int n0 = 1 << n;
-    int copyT[n0]; 
+    int16_t copyT[n0]; 
 
-	memcpy(copyT,T,n0 * sizeof(int));
+	memcpy(copyT,T,n0 * sizeof(int16_t));
     // 执行位逆序排列
     for (int i = 0; i < n0; i++) {
 		 //区分奇偶
@@ -4157,10 +4172,10 @@ void decode::inverseADSTInputArrayPermutation(int* T, int n) {
 
 }
 //7.13.2.5
-void decode::inverseADSTOutputArrayPermutation(int* T, int n) {
+void decode::inverseADSTOutputArrayPermutation(int16_t* T, int n) {
     int n0 = 1 << n;
-    int copyT[n0];
-	memcpy(copyT,T,n0* sizeof(int));
+    int16_t copyT[n0];
+	memcpy(copyT,T,n0* sizeof(int16_t));
     // 执行输出数组排列
     for (int i = 0; i < n0; i++) {
         int a = ((i >> 3) & 1);
@@ -4174,7 +4189,7 @@ void decode::inverseADSTOutputArrayPermutation(int* T, int n) {
     }
 }
 //7.13.2.6
-void decode::inverseADST4(int* T, int r) {
+void decode::inverseADST4(int16_t* T, int r) {
 
     int s[7];
     int x[4];
@@ -4208,7 +4223,7 @@ void decode::inverseADST4(int* T, int r) {
     T[3] = Round2(x[3], 12);
 }
 //7.13.2.7
-void decode::inverseADST8(int* T, int r) {
+void decode::inverseADST8(int16_t* T, int r) {
 
     int n = 3;
 	inverseADSTInputArrayPermutation(T,3);
@@ -4254,7 +4269,7 @@ void decode::inverseADST8(int* T, int r) {
 	inverseADSTOutputArrayPermutation(T,3);
 }
 //7.13.2.8
-void decode::inverseADST16(int* T, int r) {
+void decode::inverseADST16(int16_t* T, int r) {
     // Step 1: Invoke the ADST input array permutation process with n = 4
     int n = 4;
     int copyT[16];
@@ -4324,7 +4339,7 @@ void decode::inverseADST16(int* T, int r) {
 
 
 //7.13.2.9. 
-void decode::inverseADST(int T[],int n,int r){
+void decode::inverseADST(int16_t *T,int n,int r){
 	if(n == 2 ){
 		inverseADST4(T,r);
 	}else if(n == 3){
@@ -4334,7 +4349,7 @@ void decode::inverseADST(int T[],int n,int r){
 	}
 }
 //7.13.2.10
-void decode::inverseWalshHadamardTransform(int* T, int shift) {
+void decode::inverseWalshHadamardTransform(int16_t* T, int shift) {
     int a = T[0] >> shift;
     int c = T[1] >> shift;
     int d = T[2] >> shift;
@@ -4353,35 +4368,35 @@ void decode::inverseWalshHadamardTransform(int* T, int shift) {
     T[3] = d;
 }
 //7.13.2.11
-void decode::inverseIdentityTransform4(int* T){
+void decode::inverseIdentityTransform4(int16_t* T){
 	for(int i = 0 ; i < 4 ; i ++){
 		T[ i ] = Round2( T[ i ] * 5793, 12 );
 	}
 }
 
 //7.13.2.12
-void decode::inverseIdentityTransform8(int* T){
+void decode::inverseIdentityTransform8(int16_t* T){
 	for(int i = 0 ; i < 8 ; i ++){
 		T[ i ] = T[ i ] * 2;
 	}
 }
 
 //7.13.2.13
-void decode::inverseIdentityTransform16(int* T){
+void decode::inverseIdentityTransform16(int16_t* T){
 	for(int i = 0 ; i < 16 ; i ++){
 		T[ i ] = Round2( T[ i ] * 11586, 12 );
 	}
 }
 
 //7.13.2.14
-void decode::inverseIdentityTransform32(int* T){
+void decode::inverseIdentityTransform32(int16_t* T){
 	for(int i = 0 ; i < 32 ; i ++){
 		T[ i ] = T[ i ] * 4;
 	}
 }
 
 //7.13.2.15
-void decode::inverseIdentityTransform(int *T,int n){
+void decode::inverseIdentityTransform(int16_t *T,int n){
 	if( n == 2){
 		inverseIdentityTransform4(T);
 	}else if(n == 3){
@@ -4392,7 +4407,7 @@ void decode::inverseIdentityTransform(int *T,int n){
 		inverseIdentityTransform32(T);
 	}
 }
-void decode::twoDInverseTransformBlock(int txSz,uint16_t **Residual,BlockData *b_data, AV1DecodeContext *av1Ctx) {
+void decode::twoDInverseTransformBlock(int txSz,int16_t **Residual,BlockData *b_data, AV1DecodeContext *av1Ctx) {
 	frameHeader *frameHdr = &av1Ctx->frameHdr;
 	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
 	int log2W = Tx_Width_Log2[ txSz ];
@@ -4404,7 +4419,8 @@ void decode::twoDInverseTransformBlock(int txSz,uint16_t **Residual,BlockData *b
     int rowClampRange = seqHdr->color_config.BitDepth + 8;
     int colClampRange = Max(seqHdr->color_config.BitDepth + 6, 16);
 
-	int T[w];
+	int16_t T[w];
+	printf("Residual 11\n");
     for (int i = 0; i < h; i++) {
         for (int j = 0; j < w; j++) {
             if (i < 32 && j < 32) {
@@ -4423,7 +4439,16 @@ void decode::twoDInverseTransformBlock(int txSz,uint16_t **Residual,BlockData *b
         if (b_data->Lossless) {
             inverseWalshHadamardTransform(T, 2);
         } else if (b_data->PlaneTxType == DCT_DCT || b_data->PlaneTxType == ADST_DCT || b_data->PlaneTxType == FLIPADST_DCT || b_data->PlaneTxType == H_DCT) {
-            inverseDCT(T, log2W, rowClampRange);
+			printf("T 11 aa\n");
+			for (int j = 0; j < w; j++) {
+				printf("%d ",T[j]);
+			}
+			printf("T 11 bb\n");   
+			inverseDCT(T, log2W, rowClampRange);
+			for (int j = 0; j < w; j++) {
+				printf("%d ",T[j]);
+			}
+			printf("T 11 cc\n"); 
         } else if (b_data->PlaneTxType == DCT_ADST || b_data->PlaneTxType == ADST_ADST || b_data->PlaneTxType == DCT_FLIPADST ||
                    b_data->PlaneTxType == FLIPADST_FLIPADST || b_data->PlaneTxType == ADST_FLIPADST || b_data->PlaneTxType == FLIPADST_ADST ||
                    b_data->PlaneTxType == H_ADST || b_data->PlaneTxType == H_FLIPADST) {
@@ -4431,20 +4456,27 @@ void decode::twoDInverseTransformBlock(int txSz,uint16_t **Residual,BlockData *b
         } else {
             inverseIdentityTransform(T, log2W);
         }
-
+		printf("Residual 11 dd\n"); 
         for (int j = 0; j < w; j++) {
             Residual[i][j] = Round2(T[j], rowShift);
+			printf("%d ",Residual[i][j]);
         }
+		
     }
-
+	printf("\n");
+	printf("Residual 22\n");
     for (int i = 0; i < h; i++) {
+		
         for (int j = 0; j < w; j++) {
             Residual[i][j] = Min(Max(-((1 << (colClampRange - 1))), Residual[i][j]), ((1 << (colClampRange - 1)) - 1));
-        }
+			printf("%d ",Residual[i][j]);
+		}
+		
     }
-
+	printf("\n");
+	printf("Residual 33\n");
     for (int j = 0; j < w; j++) {
-        int T[h];
+        int16_t T[h];
         for (int i = 0; i < h; i++) {
             T[i] = Residual[i][j];
         }
@@ -4460,11 +4492,14 @@ void decode::twoDInverseTransformBlock(int txSz,uint16_t **Residual,BlockData *b
         } else {
             inverseIdentityTransform(T, log2H);
         }
-
+		
         for (int i = 0; i < h; i++) {
             Residual[i][j] = Round2(T[i], colShift);
+			printf("%d ",Residual[i][j]);
         }
+		
     }
+	printf("\n");
 }
 //7.14
 void decode::loopFilter(AV1DecodeContext *av1Ctx){
@@ -4574,7 +4609,7 @@ void decode::edgeLoopFilter(int plane, int pass, int row, int col,AV1DecodeConte
 	//  if(plane == 0 && row == 14 && col == 14){
 	//  	for (int i = 0; i < 4; i++) {
 	//  		for (int j = 0; j < 4; j++) {
-	//  			printf("@ %d \n",av1Ctx->currentFrame->CurrFrame[0][row * 4 + i][col * 4 + j]);
+	//  			//printf("@ %d \n",av1Ctx->currentFrame->CurrFrame[0][row * 4 + i][col * 4 + j]);
 	//  		}
 	//  	}
 	//  }
@@ -4586,7 +4621,7 @@ void decode::edgeLoopFilter(int plane, int pass, int row, int col,AV1DecodeConte
 	//  if(plane == 0&& row == 14 && col == 14){
 	//  for (int i = 0; i < 4; i++) {
 	//  	for (int j = 0; j < 4; j++) {
-	//  		printf("@@@ %d \n",av1Ctx->currentFrame->CurrFrame[0][row * 4 + i][col * 4 + j]);
+	//  		//printf("@@@ %d \n",av1Ctx->currentFrame->CurrFrame[0][row * 4 + i][col * 4 + j]);
 	//  	}
 	//  }
 	// }
@@ -4928,7 +4963,7 @@ void decode::cdefBlock(int r, int c, int idx,AV1DecodeContext *av1Ctx) {
         int priStr = frameHdr->cdef_params.cdef_y_pri_strength[idx] << coeffShift;
         int secStr = frameHdr->cdef_params.cdef_y_sec_strength[idx] << coeffShift;
         int dir = (priStr == 0) ? 0 : yDir;
-		//printf("var %d\n",var);
+		////printf("var %d\n",var);
         int varStr = (var >> 6) ? Min(FloorLog2(var >> 6), 12) : 0;
         priStr = (var ? (priStr * (4 + varStr) + 8) >> 4 : 0);
         int damping = frameHdr->cdef_params.CdefDamping + coeffShift;
@@ -4967,11 +5002,11 @@ void decode::cdefDirectionProcess(int r, int c, int *yDir, int *var,
         }
     }
 	int x;
-	//printf(" x0 %d y0 %d\n",x0,y0);
+	////printf(" x0 %d y0 %d\n",x0,y0);
     for (int i = 0; i < 8; i++) {
         for (int j = 0; j < 8; j++) {
             x = (av1Ctx->currentFrame->CurrFrame[0][y0 + i][x0 + j] >> (seqHdr->color_config.BitDepth - 8)) - 128;
-			//printf(" x %d src %d",x,av1Ctx->currentFrame->CurrFrame[0][y0 + i][x0 + j]);
+			////printf(" x %d src %d",x,av1Ctx->currentFrame->CurrFrame[0][y0 + i][x0 + j]);
 			partial[0][i + j] += x;
             partial[1][i + j / 2] += x;
             partial[2][i] += x;
@@ -5015,7 +5050,7 @@ void decode::cdefDirectionProcess(int r, int c, int *yDir, int *var,
             *yDir = i;
         }
     }
-	//printf("bestCost %d yDir %d cost %d %d %d %d %d %d %d %d\n",bestCost,*yDir,cost[0],cost[1],cost[2],cost[3],cost[4],cost[5],cost[6],cost[7]);
+	////printf("bestCost %d yDir %d cost %d %d %d %d %d %d %d %d\n",bestCost,*yDir,cost[0],cost[1],cost[2],cost[3],cost[4],cost[5],cost[6],cost[7]);
     *var = (bestCost - cost[(*yDir + 4) & 7]) >> 10;
 }
 //7.15.3
@@ -5134,7 +5169,7 @@ void decode::loopRestoration(AV1DecodeContext *av1Ctx){
 	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
 	//memcpy(av1Ctx->currentFrame->lrCtx->LrFrame,av1Ctx->currentFrame->UpscaledCdefFrame,size);
 	for(int i = 0; i < 3 ; i ++){
-		//printf("FrameHeight %d UpscaledWidth %d \n",frameHdr->si.FrameHeight,frameHdr->si.UpscaledWidth);
+		////printf("FrameHeight %d UpscaledWidth %d \n",frameHdr->si.FrameHeight,frameHdr->si.UpscaledWidth);
 		for(int j = 0 ; j < frameHdr->si.FrameHeight; j++){
 			for(int k = 0 ; k < frameHdr->si.UpscaledWidth; k++){
 				av1Ctx->currentFrame->lrCtx->LrFrame[i][j][k] = av1Ctx->currentFrame->UpscaledCdefFrame[i][j][k] ;
@@ -5657,7 +5692,7 @@ void decode::addNoiseSynthesis(int GrainMin,int GrainMax,int * RandomRegister,in
 	int lumaNum = 0;
 	//First an array of noise data noiseStripe is generated for each 32 luma sample high stripe of the image.
 	//noiseStripe[ lumaNum ][ 0 ] is 34 samples high and w samples wide
-	printf("addNoiseSynthesis \n");
+	//printf("addNoiseSynthesis \n");
 	int16_t ****noiseStripe = new int16_t***[(h + 16) / 32];
 	for(int i = 0 ; i < (h + 16) / 32 ; i++){
 		noiseStripe[i] = new int16_t**[3];
@@ -5710,7 +5745,7 @@ void decode::addNoiseSynthesis(int GrainMin,int GrainMax,int * RandomRegister,in
 								}
 								g = Clip3(GrainMin, GrainMax, Round2(g, 5));
 							}
-							//printf("%d %d |%d %d %d %d g %d\n",(h + 16) / 32 ,w,lumaNum,plane,i,x+j,g);
+							////printf("%d %d |%d %d %d %d g %d\n",(h + 16) / 32 ,w,lumaNum,plane,i,x+j,g);
 							noiseStripe[lumaNum][plane][i][x * 2 + j] = g;
 						}
 						else
@@ -5722,7 +5757,7 @@ void decode::addNoiseSynthesis(int GrainMin,int GrainMax,int * RandomRegister,in
 								g = Clip3(GrainMin, GrainMax, Round2(g, 5));
 							}
 							//[31 ][3][34][750]
-							//printf("%d %d |%d %d %d %d g %d\n",(h + 16) / 32 ,w,lumaNum,plane,i,x+j,g);
+							////printf("%d %d |%d %d %d %d g %d\n",(h + 16) / 32 ,w,lumaNum,plane,i,x+j,g);
 							noiseStripe[lumaNum][plane][i][x + j] = g;
 						}
 					}

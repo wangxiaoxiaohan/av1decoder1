@@ -52,6 +52,9 @@ symbol填数据 仔细看看 有什么问题
 read_lr_unit    decode_signed_subexp_with_ref_bool 读了一次 ，dav1d 读了两次。对不上
 
 
-eob 512?
-检查 get_coeff_base_ctx
-检查 进入 错误的 block之后 sbCtx->SymbolValue 出现问题
+eob 512?--
+*检查 get_coeff_base_ctx
+*检查 进入 错误的 block之后 sbCtx->SymbolValue 出现问题
+
+Quant的数据 不对，赋值的时候 是正常的
+b decode.cpp 2029 2100
