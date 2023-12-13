@@ -2024,7 +2024,7 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 				}
 			}
 			b_data->Quant[pos] = level;
-			printf(" qu1 %d |",b_data->Quant[pos]);
+			//printf(" qu1 %d |",b_data->Quant[pos]);
 		}
 		printf("coeffs 2\n");
 		for (int c = 0; c < eob; c++)
@@ -2081,7 +2081,7 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 				dcCategory = sign ? 1 : 2;
 			}
 			b_data->Quant[pos] = b_data->Quant[pos] & 0xFFFFF;
-			printf("qu2 %d |",b_data->Quant[pos]);
+			//printf("qu2 %d |",b_data->Quant[pos]);
 			culLevel += b_data->Quant[pos];
 			if (sign)
 				b_data->Quant[pos] = -b_data->Quant[pos];
@@ -2412,7 +2412,7 @@ int decode::predict_intra(int plane,int x,int y,int haveLeft,int haveAbove,
 	for(int i = 0 ; i < h ;i ++){
 		for(int j = 0 ; j < w ;j ++){
 			av1Ctx->currentFrame->CurrFrame[ plane ][ y + i ][ x + j ] = pred[ i ][ j ];
-			printf("%d ",pred[ i ][ j ]);
+			//printf("%d ",pred[ i ][ j ]);
 		}	
 	}
 	printf("\n");
@@ -3954,9 +3954,9 @@ int decode::reconstruct(int plane, int x, int y, int txSz,BlockData *b_data,AV1D
             int dq = b_data->Quant[i * tw + j] * q2;
             int sign = (dq < 0) ? -1 : 1;
             int dq2 = sign * (Abs(dq) & 0xFFFFFF) / dqDenom;
-            printf("idx %d ,%d @ %d  @ %d ",i * tw + j,q2,b_data->Quant[i * tw + j],dq2);
+            //printf("idx %d ,%d @ %d  @ %d ",i * tw + j,q2,b_data->Quant[i * tw + j],dq2);
 			b_data->Dequant[ i ][ j ] = Clip3( - ( 1 << ( 7 + seqHdr->color_config.BitDepth ) ), ( 1 << ( 7 + seqHdr->color_config.BitDepth ) ) - 1, dq2 );
-			printf("@ %d |||",b_data->Dequant[ i ][ j ]);
+			//printf("@ %d |||",b_data->Dequant[ i ][ j ]);
         }
     }
     //uint16_t Residual[h][w];
@@ -3971,9 +3971,10 @@ int decode::reconstruct(int plane, int x, int y, int txSz,BlockData *b_data,AV1D
         for (int j = 0; j < w; j++) {
             int xx = flipLR ? (w - j - 1) : j;
             int yy = flipUD ? (h - i - 1) : i;
-            printf("%d ",Residual[i][j]);
+            
             av1Ctx->currentFrame->CurrFrame[plane][y + yy][x + xx] = Clip1(av1Ctx->currentFrame->CurrFrame[plane][y + yy][x + xx] + Residual[i][j],seqHdr->color_config.BitDepth);
-        }
+        	//printf("%d ",av1Ctx->currentFrame->CurrFrame[plane][y + yy][x + xx]);
+		}
     }
 	printf("\n");
 	for(int i = 0 ; i < h ; i ++){
@@ -4420,7 +4421,7 @@ void decode::twoDInverseTransformBlock(int txSz,int16_t **Residual,BlockData *b_
     int colClampRange = Max(seqHdr->color_config.BitDepth + 6, 16);
 
 	int16_t T[w];
-	printf("Residual 11\n");
+	//printf("Residual 11\n");
     for (int i = 0; i < h; i++) {
         for (int j = 0; j < w; j++) {
             if (i < 32 && j < 32) {
@@ -4439,16 +4440,16 @@ void decode::twoDInverseTransformBlock(int txSz,int16_t **Residual,BlockData *b_
         if (b_data->Lossless) {
             inverseWalshHadamardTransform(T, 2);
         } else if (b_data->PlaneTxType == DCT_DCT || b_data->PlaneTxType == ADST_DCT || b_data->PlaneTxType == FLIPADST_DCT || b_data->PlaneTxType == H_DCT) {
-			printf("T 11 aa\n");
+			//printf("T 11 aa\n");
 			for (int j = 0; j < w; j++) {
-				printf("%d ",T[j]);
+				//printf("%d ",T[j]);
 			}
-			printf("T 11 bb\n");   
+			//printf("T 11 bb\n");   
 			inverseDCT(T, log2W, rowClampRange);
 			for (int j = 0; j < w; j++) {
-				printf("%d ",T[j]);
+				//printf("%d ",T[j]);
 			}
-			printf("T 11 cc\n"); 
+			//printf("T 11 cc\n"); 
         } else if (b_data->PlaneTxType == DCT_ADST || b_data->PlaneTxType == ADST_ADST || b_data->PlaneTxType == DCT_FLIPADST ||
                    b_data->PlaneTxType == FLIPADST_FLIPADST || b_data->PlaneTxType == ADST_FLIPADST || b_data->PlaneTxType == FLIPADST_ADST ||
                    b_data->PlaneTxType == H_ADST || b_data->PlaneTxType == H_FLIPADST) {
@@ -4456,25 +4457,25 @@ void decode::twoDInverseTransformBlock(int txSz,int16_t **Residual,BlockData *b_
         } else {
             inverseIdentityTransform(T, log2W);
         }
-		printf("Residual 11 dd\n"); 
+		//printf("Residual 11 dd\n"); 
         for (int j = 0; j < w; j++) {
             Residual[i][j] = Round2(T[j], rowShift);
-			printf("%d ",Residual[i][j]);
+			//printf("%d ",Residual[i][j]);
         }
 		
     }
-	printf("\n");
-	printf("Residual 22\n");
+	//printf("\n");
+	//printf("Residual 22\n");
     for (int i = 0; i < h; i++) {
 		
         for (int j = 0; j < w; j++) {
             Residual[i][j] = Min(Max(-((1 << (colClampRange - 1))), Residual[i][j]), ((1 << (colClampRange - 1)) - 1));
-			printf("%d ",Residual[i][j]);
+			//printf("%d ",Residual[i][j]);
 		}
 		
     }
-	printf("\n");
-	printf("Residual 33\n");
+	//printf("\n");
+	//printf("Residual 33\n");
     for (int j = 0; j < w; j++) {
         int16_t T[h];
         for (int i = 0; i < h; i++) {
@@ -4495,7 +4496,7 @@ void decode::twoDInverseTransformBlock(int txSz,int16_t **Residual,BlockData *b_
 		
         for (int i = 0; i < h; i++) {
             Residual[i][j] = Round2(T[i], colShift);
-			printf("%d ",Residual[i][j]);
+			//printf("%d ",Residual[i][j]);
         }
 		
     }
@@ -4963,7 +4964,7 @@ void decode::cdefBlock(int r, int c, int idx,AV1DecodeContext *av1Ctx) {
         int priStr = frameHdr->cdef_params.cdef_y_pri_strength[idx] << coeffShift;
         int secStr = frameHdr->cdef_params.cdef_y_sec_strength[idx] << coeffShift;
         int dir = (priStr == 0) ? 0 : yDir;
-		////printf("var %d\n",var);
+		printf("var %d\n",var);
         int varStr = (var >> 6) ? Min(FloorLog2(var >> 6), 12) : 0;
         priStr = (var ? (priStr * (4 + varStr) + 8) >> 4 : 0);
         int damping = frameHdr->cdef_params.CdefDamping + coeffShift;
@@ -4988,9 +4989,9 @@ void decode::cdefDirectionProcess(int r, int c, int *yDir, int *var,
 								 AV1DecodeContext *av1Ctx) {
 	frameHeader *frameHdr = &av1Ctx->frameHdr;
 	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
-    int cost[8];
+    int64_t cost[8];
     int partial[8][15];
-    int bestCost = 0;
+    int64_t bestCost = 0;
     *yDir = 0;
     int x0 = c << MI_SIZE_LOG2;
     int y0 = r << MI_SIZE_LOG2;
@@ -5693,13 +5694,13 @@ void decode::addNoiseSynthesis(int GrainMin,int GrainMax,int * RandomRegister,in
 	//First an array of noise data noiseStripe is generated for each 32 luma sample high stripe of the image.
 	//noiseStripe[ lumaNum ][ 0 ] is 34 samples high and w samples wide
 	//printf("addNoiseSynthesis \n");
-	int16_t ****noiseStripe = new int16_t***[(h + 16) / 32];
-	for(int i = 0 ; i < (h + 16) / 32 ; i++){
+	int16_t ****noiseStripe = new int16_t***[(h + 32) / 32];
+	for(int i = 0 ; i < (h + 32) / 32 ; i++){
 		noiseStripe[i] = new int16_t**[3];
 		for(int j = 0 ; j < 3 ; j++){
 			noiseStripe[i][j] =  new int16_t*[34];
 			for(int k = 0 ; k < 34 ; k++){
-				noiseStripe[i][j][k] = new int16_t[w];
+				noiseStripe[i][j][k] = new int16_t[w + 34];
 			}
 		}
 	}
@@ -5717,7 +5718,7 @@ void decode::addNoiseSynthesis(int GrainMin,int GrainMax,int * RandomRegister,in
 			for (int plane = 0; plane < seqHdr->color_config.NumPlanes; plane++)
 			{
 				planeSubX = (plane > 0) ? subX : 0;
-				planeSubY = (plane > 0) ? subY : 0;
+				planeSubY = (plane > 0) ? subY : 0; 
 				planeOffsetX = planeSubX ? 6 + offsetX : 9 + offsetX * 2;
 				planeOffsetY = planeSubY ? 6 + offsetY : 9 + offsetY * 2;
 				for (int i = 0; i < 34 >> planeSubY; i++)
@@ -5745,7 +5746,7 @@ void decode::addNoiseSynthesis(int GrainMin,int GrainMax,int * RandomRegister,in
 								}
 								g = Clip3(GrainMin, GrainMax, Round2(g, 5));
 							}
-							////printf("%d %d |%d %d %d %d g %d\n",(h + 16) / 32 ,w,lumaNum,plane,i,x+j,g);
+							//printf("1 %d %d |%d %d %d %d g %d\n",h,(h + 32) / 32 ,w,lumaNum,plane,i,x * 2+j,g);
 							noiseStripe[lumaNum][plane][i][x * 2 + j] = g;
 						}
 						else
@@ -5757,7 +5758,7 @@ void decode::addNoiseSynthesis(int GrainMin,int GrainMax,int * RandomRegister,in
 								g = Clip3(GrainMin, GrainMax, Round2(g, 5));
 							}
 							//[31 ][3][34][750]
-							////printf("%d %d |%d %d %d %d g %d\n",(h + 16) / 32 ,w,lumaNum,plane,i,x+j,g);
+							//printf("2,%d %d |%d %d %d %d g %d\n",h,(h + 32) / 32 ,w,lumaNum,plane,i,x+j,g);
 							noiseStripe[lumaNum][plane][i][x + j] = g;
 						}
 					}
@@ -5867,7 +5868,7 @@ void decode::addNoiseSynthesis(int GrainMin,int GrainMax,int * RandomRegister,in
 
 
 
-	for(int i = 0 ; i < (h + 1) / 2 ; i++){	
+	for(int i = 0 ; i < (h + 32) / 32 ; i++){
 		for(int j = 0 ; j < 3 ; j++){
 			for(int k = 0 ; k < 34 ; k++){
 				delete [] noiseStripe[i][j][k];
@@ -5877,14 +5878,14 @@ void decode::addNoiseSynthesis(int GrainMin,int GrainMax,int * RandomRegister,in
 		delete [] noiseStripe[i];
 	}
 	delete [] noiseStripe;
-		
+
 	for(int i = 0; i < 3 ; i++){
-		delete [] noiseImage[i];
 		for(int j = 0; j < h ; j++){
 			delete [] noiseImage[i][j];
 		}
+		delete [] noiseImage[i];
 	}
-	delete [] noiseImage;
+
 }
 int decode::scale_lut( int plane,int index ,AV1DecodeContext *av1Ctx) {
 	frameHeader *frameHdr = &av1Ctx->frameHdr;
