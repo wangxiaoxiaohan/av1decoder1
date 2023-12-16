@@ -25,7 +25,7 @@ int decode::decode_frame_wrapup( AV1DecodeContext *av1Ctx){
 		upscalingProcess(av1Ctx->currentFrame->CdefFrame,av1Ctx->currentFrame->UpscaledCdefFrame,av1Ctx);
 		upscalingProcess(av1Ctx->currentFrame->CurrFrame,av1Ctx->currentFrame->UpscaledCurrFrame,av1Ctx);
 		loopRestoration(av1Ctx); 
-		motion_field_estimation(av1Ctx);
+		motionFieldMotionVectorStorage(av1Ctx);
 		if(frameHdr->segmentation_params.segmentation_enabled == 1 && frameHdr->segmentation_params.segmentation_update_map ==0){
 			for(int row = 0 ; row < frameHdr->MiRows ; row ++ ){
 				for(int col = 0 ; col < frameHdr->MiCols ; col ++ ){
@@ -2081,7 +2081,7 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 				dcCategory = sign ? 1 : 2;
 			}
 			b_data->Quant[pos] = b_data->Quant[pos] & 0xFFFFF;
-			//printf("qu2 %d |",b_data->Quant[pos]);
+			printf("qu2 %d |",b_data->Quant[pos]);
 			culLevel += b_data->Quant[pos];
 			if (sign)
 				b_data->Quant[pos] = -b_data->Quant[pos];
@@ -3942,23 +3942,30 @@ int decode::reconstruct(int plane, int x, int y, int txSz,BlockData *b_data,AV1D
     int flipUD = (b_data->PlaneTxType == FLIPADST_DCT || b_data->PlaneTxType == FLIPADST_ADST || b_data->PlaneTxType == V_FLIPADST || b_data->PlaneTxType == FLIPADST_FLIPADST) ? 1 : 0;
     int flipLR = (b_data->PlaneTxType == DCT_FLIPADST || b_data->PlaneTxType == ADST_FLIPADST || b_data->PlaneTxType == H_FLIPADST || b_data->PlaneTxType == FLIPADST_FLIPADST) ? 1 : 0;
     printf("residual 11\n");
+
     for (int i = 0; i < th; i++) {
         for (int j = 0; j < tw; j++) {
             int q = (i == 0 && j == 0) ? 
 					get_dc_quant(plane,b_data,av1Ctx) : 
 					get_ac_quant(plane,b_data,av1Ctx);
-            
-            int q2 = frameHdr->quantization_params.using_qmatrix ?
-			 Round2(q * Quantizer_Matrix[frameHdr->quantization_params.SegQMLevel[plane][b_data->segment_id]][plane > 0][Qm_Offset[txSz] + i * tw + j], 5) : q;
-            
+            int q2;
+    		if(frameHdr->quantization_params.using_qmatrix == 1 &&
+				b_data->PlaneTxType < IDTX &&
+				frameHdr->quantization_params.SegQMLevel[ plane ][ b_data->segment_id ] < 15)
+			{
+				q2 = Round2(q * Quantizer_Matrix[frameHdr->quantization_params.SegQMLevel[plane][b_data->segment_id]][plane > 0][Qm_Offset[txSz] + i * tw + j], 5);
+			}else{
+				q2 = q;
+			}        
             int dq = b_data->Quant[i * tw + j] * q2;
             int sign = (dq < 0) ? -1 : 1;
             int dq2 = sign * (Abs(dq) & 0xFFFFFF) / dqDenom;
             //printf("idx %d ,%d @ %d  @ %d ",i * tw + j,q2,b_data->Quant[i * tw + j],dq2);
 			b_data->Dequant[ i ][ j ] = Clip3( - ( 1 << ( 7 + seqHdr->color_config.BitDepth ) ), ( 1 << ( 7 + seqHdr->color_config.BitDepth ) ) - 1, dq2 );
-			//printf("@ %d |||",b_data->Dequant[ i ][ j ]);
+			printf("%d ",b_data->Dequant[ i ][ j ]);
         }
     }
+	//反变换
     //uint16_t Residual[h][w];
 	int16_t **Residual = new int16_t *[h];
 	for(int i = 0 ; i < h ; i ++){
@@ -3967,13 +3974,14 @@ int decode::reconstruct(int plane, int x, int y, int txSz,BlockData *b_data,AV1D
 	printf("residual 22\n");
 	twoDInverseTransformBlock(txSz,Residual,b_data,av1Ctx);
 	printf("residual 33 \n");
+
     for (int i = 0; i < h; i++) {
         for (int j = 0; j < w; j++) {
             int xx = flipLR ? (w - j - 1) : j;
             int yy = flipUD ? (h - i - 1) : i;
             
             av1Ctx->currentFrame->CurrFrame[plane][y + yy][x + xx] = Clip1(av1Ctx->currentFrame->CurrFrame[plane][y + yy][x + xx] + Residual[i][j],seqHdr->color_config.BitDepth);
-        	//printf("%d ",av1Ctx->currentFrame->CurrFrame[plane][y + yy][x + xx]);
+        	printf("%d ",Residual[i][j]);
 		}
     }
 	printf("\n");
@@ -4476,26 +4484,27 @@ void decode::twoDInverseTransformBlock(int txSz,int16_t **Residual,BlockData *b_
     }
 	//printf("\n");
 	//printf("Residual 33\n");
+	int16_t T1[h];
     for (int j = 0; j < w; j++) {
-        int16_t T[h];
+        
         for (int i = 0; i < h; i++) {
-            T[i] = Residual[i][j];
+            T1[i] = Residual[i][j];
         }
 
         if (b_data->Lossless) {
-            inverseWalshHadamardTransform(T, 0);
+            inverseWalshHadamardTransform(T1, 0);
         } else if (b_data->PlaneTxType == DCT_DCT || b_data->PlaneTxType == DCT_ADST || b_data->PlaneTxType == DCT_FLIPADST || b_data->PlaneTxType == V_DCT) {
-            inverseDCT(T, log2H, colClampRange);
+            inverseDCT(T1, log2H, colClampRange);
         } else if (b_data->PlaneTxType == ADST_DCT || b_data->PlaneTxType == ADST_ADST || b_data->PlaneTxType == FLIPADST_DCT ||
                    b_data->PlaneTxType == FLIPADST_FLIPADST || b_data->PlaneTxType == ADST_FLIPADST || b_data->PlaneTxType == FLIPADST_ADST ||
                    b_data->PlaneTxType == V_ADST || b_data->PlaneTxType == V_FLIPADST) {
-            inverseADST(T, log2H, colClampRange);
+            inverseADST(T1, log2H, colClampRange);
         } else {
-            inverseIdentityTransform(T, log2H);
+            inverseIdentityTransform(T1, log2H);
         }
 		
         for (int i = 0; i < h; i++) {
-            Residual[i][j] = Round2(T[i], colShift);
+            Residual[i][j] = Round2(T1[i], colShift);
 			//printf("%d ",Residual[i][j]);
         }
 		
@@ -5485,19 +5494,31 @@ void decode::intermediateOutputPreparation(int *w,int *h,int *subX,int *subY,int
 		*subX = seqHdr->color_config.subsampling_x;
 		*subY = seqHdr->color_config.subsampling_y;
 
+		//FILE *fp = fopen("test.yuv", "wb");
+
 		for (int y = 0; y < *h; y++) {
+			//uint8_t buf[*w];
 			for (int x = 0; x < *w; x++) {
 				av1Ctx->currentFrame->OutY[y][x] = av1Ctx->currentFrame->lrCtx->LrFrame[0][y][x];
+				//printf("%d ",av1Ctx->currentFrame->OutY[y][x]);
+				//buf[x] = av1Ctx->currentFrame->OutY[y][x];
 			}
+			//fwrite(buf, sizeof(uint8_t),*w, fp);
 		}
-
+		
 		for (int y = 0; y < ((*h + *subY) >> *subY); y++) {
+			//uint8_t buf[((*w + *subX) >> *subX ) * 2];
+
 			for (int x = 0; x < ((*w + *subX) >> *subX); x++) {
 				av1Ctx->currentFrame->OutU[y][x] = av1Ctx->currentFrame->lrCtx->LrFrame[1][y][x];
 				av1Ctx->currentFrame->OutV[y][x] = av1Ctx->currentFrame->lrCtx->LrFrame[2][y][x];
+				//buf[x * 2] = av1Ctx->currentFrame->OutU[y][x];
+				//buf[x * 2 + 1]  = av1Ctx->currentFrame->OutV[y][x];
 			}
+			//fwrite(buf, sizeof(uint8_t),((*w + *subX) >> *subX ) * 2, fp);
+			
 		}
-
+		//fclose(fp);
 		*bitDepth = av1Ctx->RefBitDepth[0];  // BitDepth for each sample
 	}
 
@@ -5520,7 +5541,7 @@ void decode::filmGrainSynthesis(int w, int h, int subX, int subY,AV1DecodeContex
     // 初始化缩放查找表
     scalingLookupInitialization(av1Ctx);
     
-    // 添加噪音
+    // 添加噪声
     addNoiseSynthesis(GrainMin,GrainMax,&RandomRegister, w, h, subX, subY,av1Ctx);
 
 }

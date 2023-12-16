@@ -1419,7 +1419,9 @@ const static uint16_t Ac_Qlookup[3][256] = {
 		18766, 19134, 19502, 19886, 20270, 20670, 21070, 21486,
 		21902, 22334, 22766, 23214, 23662, 24126, 24590, 25070,
 		25551, 26047, 26559, 27071, 27599, 28143, 28687, 29247}};
-
+//Note: The cos128 function implements the expression 4096 * cos( angle * pi / 128 ) rounded to the nearest
+//integer. The sin128 function implements the expression 4096 * sin( angle * pi / 128 ) rounded to the nearest
+//integer
 const static uint16_t Cos128_Lookup[65] = {
 	4096, 4095, 4091, 4085, 4076, 4065, 4052, 4036,
 	4017, 3996, 3973, 3948, 3920, 3889, 3857, 3822,
@@ -9181,6 +9183,18 @@ int inline brev(int numBits, int x)
 // butterfly rotation
 void inline B(int a, int b, int angle, int flip, int r, int16_t T[])
 {
+	// When the angle is equal to 32 + 64 * k for integer k the butterfly rotation can be equivalently performed with two fewer
+	// multiplications (because the magnitude of cos128( 32 + 64 * k ) is always equal to that of sin128( 32 + 64 * k )) by the
+	// following process:
+	// 1. The variable v is set equal to (angle & 64) ? T[ a ] + T[ b ] : T[ a ] - T[ b ].
+	// Note: The cos128 function implements the expression 4096 * cos( angle * pi / 128 ) rounded to the nearest
+	// integer. The sin128 function implements the expression 4096 * sin( angle * pi / 128 ) rounded to the nearest
+	// integer.
+	// 2. The variable w is set equal to (angle & 64) ? -T[ a ] + T[ b ] : T[ a ] + T[ b ].
+	// 3. The variable x is set equal to v * cos128( angle ).
+	// 4. The variable y is set equal to w * cos128( angle ).
+	// 5. T[ a ] is set equal to Round2( x, 12 ).
+	// 6. T[ b ] is set equal to Round2( y, 12 )
 	int x = T[a] * cos128(angle) - T[b] * sin128(angle);
 	int y = T[a] * sin128(angle) + T[b] * cos128(angle);
 	T[a] = Round2(x, 12);
@@ -9192,21 +9206,24 @@ void inline B(int a, int b, int angle, int flip, int r, int16_t T[])
 		T[a] = T[b];
 		T[b] = temp;
 	}
+	//It is a requirement of bitstream conformance that the values saved into the array T by this function are representable by a
+	//signed integer using r bits of precision.
 }
 // Hadamard rotation
 void inline H(int a, int b, int flip, int r, int16_t T[])
 {
+	if (flip)
+	{
+		int temp = a;
+		a = b;
+		b = temp;
+	}
 	int x = T[a];
 	int y = T[b];
 	T[a] = Clip3(-(1 << (r - 1)), (1 << (r - 1)) - 1, x + y);
 	T[b] = Clip3(-(1 << (r - 1)), (1 << (r - 1)) - 1, x - y);
-
-	if (flip)
-	{
-		int temp = T[a];
-		T[a] = T[b];
-		T[b] = temp;
-	}
+	//It is a requirement of bitstream conformance that the values saved into the array T by this function are representable by a
+	//signed integer using r bits of precision.
 }
 
 
