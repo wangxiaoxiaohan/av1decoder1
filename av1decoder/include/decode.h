@@ -137,20 +137,20 @@ public:
 	int reconstruct(int plane, int x, int y, int txSz,BlockData *b_data,AV1DecodeContext *av1Ctx);
 
 
-	int inverseDCTArrayPermutation(int16_t T[],int n);
-	int inverseDCT(int16_t T[], int n, int r);
-	void inverseADSTInputArrayPermutation(int16_t* T, int n);
-	void inverseADSTOutputArrayPermutation(int16_t* T, int n);
-	void inverseADST4(int16_t* T, int r);
-	void inverseADST8(int16_t* T, int r);
-	void inverseADST16(int16_t* T, int r);
-	void inverseADST(int16_t T[],int n,int r);
-	void inverseWalshHadamardTransform(int16_t* T, int shift) ;
-	void inverseIdentityTransform4(int16_t* T);
-	void inverseIdentityTransform8(int16_t* T);
-	void inverseIdentityTransform16(int16_t* T);
-	void inverseIdentityTransform32(int16_t* T);
-	void inverseIdentityTransform(int16_t *T,int n);
+	int inverseDCTArrayPermutation(int32_t T[],int n);
+	int inverseDCT(int32_t T[], int n, int r);
+	void inverseADSTInputArrayPermutation(int32_t* T, int n);
+	void inverseADSTOutputArrayPermutation(int32_t* T, int n);
+	void inverseADST4(int32_t* T, int r);
+	void inverseADST8(int32_t* T, int r);
+	void inverseADST16(int32_t* T, int r);
+	void inverseADST(int32_t T[],int n,int r);
+	void inverseWalshHadamardTransform(int32_t* T, int shift) ;
+	void inverseIdentityTransform4(int32_t* T);
+	void inverseIdentityTransform8(int32_t* T);
+	void inverseIdentityTransform16(int32_t* T);
+	void inverseIdentityTransform32(int32_t* T);
+	void inverseIdentityTransform(int32_t *T,int n);
 	void twoDInverseTransformBlock(int txSz,int16_t **Residual,BlockData *b_data,AV1DecodeContext *av1Ctx) ;
 
 

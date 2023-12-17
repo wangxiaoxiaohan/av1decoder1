@@ -9181,7 +9181,7 @@ int inline brev(int numBits, int x)
 	return t;
 }
 // butterfly rotation
-void inline B(int a, int b, int angle, int flip, int r, int16_t T[])
+void inline B(int a, int b, int angle, int flip, int r, int32_t T[])
 {
 	// When the angle is equal to 32 + 64 * k for integer k the butterfly rotation can be equivalently performed with two fewer
 	// multiplications (because the magnitude of cos128( 32 + 64 * k ) is always equal to that of sin128( 32 + 64 * k )) by the
@@ -9210,14 +9210,11 @@ void inline B(int a, int b, int angle, int flip, int r, int16_t T[])
 	//signed integer using r bits of precision.
 }
 // Hadamard rotation
-void inline H(int a, int b, int flip, int r, int16_t T[])
+void inline H(int a, int b, int flip, int r, int32_t T[])
 {
-	if (flip)
-	{
-		int temp = a;
-		a = b;
-		b = temp;
-	}
+
+	if(flip)
+		return H(b,a,0,r,T);
 	int x = T[a];
 	int y = T[b];
 	T[a] = Clip3(-(1 << (r - 1)), (1 << (r - 1)) - 1, x + y);

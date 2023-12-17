@@ -2081,7 +2081,7 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 				dcCategory = sign ? 1 : 2;
 			}
 			b_data->Quant[pos] = b_data->Quant[pos] & 0xFFFFF;
-			printf("qu2 %d |",b_data->Quant[pos]);
+			//printf("qu2 %d |",b_data->Quant[pos]);
 			culLevel += b_data->Quant[pos];
 			if (sign)
 				b_data->Quant[pos] = -b_data->Quant[pos];
@@ -3962,7 +3962,7 @@ int decode::reconstruct(int plane, int x, int y, int txSz,BlockData *b_data,AV1D
             int dq2 = sign * (Abs(dq) & 0xFFFFFF) / dqDenom;
             //printf("idx %d ,%d @ %d  @ %d ",i * tw + j,q2,b_data->Quant[i * tw + j],dq2);
 			b_data->Dequant[ i ][ j ] = Clip3( - ( 1 << ( 7 + seqHdr->color_config.BitDepth ) ), ( 1 << ( 7 + seqHdr->color_config.BitDepth ) ) - 1, dq2 );
-			printf("%d ",b_data->Dequant[ i ][ j ]);
+			//printf("%d ",b_data->Dequant[ i ][ j ]);
         }
     }
 	//反变换
@@ -3981,7 +3981,7 @@ int decode::reconstruct(int plane, int x, int y, int txSz,BlockData *b_data,AV1D
             int yy = flipUD ? (h - i - 1) : i;
             
             av1Ctx->currentFrame->CurrFrame[plane][y + yy][x + xx] = Clip1(av1Ctx->currentFrame->CurrFrame[plane][y + yy][x + xx] + Residual[i][j],seqHdr->color_config.BitDepth);
-        	printf("%d ",Residual[i][j]);
+        	//printf("%d ",Residual[i][j]);
 		}
     }
 	printf("\n");
@@ -3996,18 +3996,23 @@ int decode::reconstruct(int plane, int x, int y, int txSz,BlockData *b_data,AV1D
     }
 }
 //7.13.2.2 翻转数组
-int decode::inverseDCTArrayPermutation(int16_t T[],int n)
+int decode::inverseDCTArrayPermutation(int32_t T[],int n)
 {
-    int16_t copyT[1 << n];
+    int32_t copyT[1 << n];
     // 复制数组 T 到 copyT
-	memcpy(copyT,T,(1 << n) * sizeof(int16_t));
+	memcpy(copyT,T,(1 << n) * sizeof(int32_t));
+	// for(int i = 0 ; i < (1 << n) ; i++){
+	// 	copyT[i] = T[i];
+	// }
     // 根据位翻转函数 brev(n, i) 重新排列数组 T
     for (int i = 0; i < (1 << n); i++) {
         T[i] = copyT[brev(n, i)];
+		//printf("%d ",copyT[i]);
     }
+
 }
 //7.13.2.3 一维反 DCT 变换
-int decode::inverseDCT(int16_t T[], int n, int r) {
+int decode::inverseDCT(int32_t T[], int n, int r) {
     // 步骤1：执行逆 DCT 排列
     inverseDCTArrayPermutation(T, n);
 
@@ -4167,11 +4172,11 @@ int decode::inverseDCT(int16_t T[], int n, int r) {
 	}
 }
 //7.13.2.4
-void decode::inverseADSTInputArrayPermutation(int16_t* T, int n) {
+void decode::inverseADSTInputArrayPermutation(int32_t* T, int n) {
     int n0 = 1 << n;
-    int16_t copyT[n0]; 
+    int32_t copyT[n0]; 
 
-	memcpy(copyT,T,n0 * sizeof(int16_t));
+	memcpy(copyT,T,n0 * sizeof(int32_t));
     // 执行位逆序排列
     for (int i = 0; i < n0; i++) {
 		 //区分奇偶
@@ -4181,10 +4186,10 @@ void decode::inverseADSTInputArrayPermutation(int16_t* T, int n) {
 
 }
 //7.13.2.5
-void decode::inverseADSTOutputArrayPermutation(int16_t* T, int n) {
+void decode::inverseADSTOutputArrayPermutation(int32_t* T, int n) {
     int n0 = 1 << n;
-    int16_t copyT[n0];
-	memcpy(copyT,T,n0* sizeof(int16_t));
+    int32_t copyT[n0];
+	memcpy(copyT,T,n0* sizeof(int32_t));
     // 执行输出数组排列
     for (int i = 0; i < n0; i++) {
         int a = ((i >> 3) & 1);
@@ -4198,7 +4203,7 @@ void decode::inverseADSTOutputArrayPermutation(int16_t* T, int n) {
     }
 }
 //7.13.2.6
-void decode::inverseADST4(int16_t* T, int r) {
+void decode::inverseADST4(int32_t* T, int r) {
 
     int s[7];
     int x[4];
@@ -4232,7 +4237,7 @@ void decode::inverseADST4(int16_t* T, int r) {
     T[3] = Round2(x[3], 12);
 }
 //7.13.2.7
-void decode::inverseADST8(int16_t* T, int r) {
+void decode::inverseADST8(int32_t* T, int r) {
 
     int n = 3;
 	inverseADSTInputArrayPermutation(T,3);
@@ -4278,7 +4283,7 @@ void decode::inverseADST8(int16_t* T, int r) {
 	inverseADSTOutputArrayPermutation(T,3);
 }
 //7.13.2.8
-void decode::inverseADST16(int16_t* T, int r) {
+void decode::inverseADST16(int32_t* T, int r) {
     // Step 1: Invoke the ADST input array permutation process with n = 4
     int n = 4;
     int copyT[16];
@@ -4348,7 +4353,7 @@ void decode::inverseADST16(int16_t* T, int r) {
 
 
 //7.13.2.9. 
-void decode::inverseADST(int16_t *T,int n,int r){
+void decode::inverseADST(int32_t *T,int n,int r){
 	if(n == 2 ){
 		inverseADST4(T,r);
 	}else if(n == 3){
@@ -4358,7 +4363,7 @@ void decode::inverseADST(int16_t *T,int n,int r){
 	}
 }
 //7.13.2.10
-void decode::inverseWalshHadamardTransform(int16_t* T, int shift) {
+void decode::inverseWalshHadamardTransform(int32_t* T, int shift) {
     int a = T[0] >> shift;
     int c = T[1] >> shift;
     int d = T[2] >> shift;
@@ -4377,35 +4382,35 @@ void decode::inverseWalshHadamardTransform(int16_t* T, int shift) {
     T[3] = d;
 }
 //7.13.2.11
-void decode::inverseIdentityTransform4(int16_t* T){
+void decode::inverseIdentityTransform4(int32_t* T){
 	for(int i = 0 ; i < 4 ; i ++){
 		T[ i ] = Round2( T[ i ] * 5793, 12 );
 	}
 }
 
 //7.13.2.12
-void decode::inverseIdentityTransform8(int16_t* T){
+void decode::inverseIdentityTransform8(int32_t* T){
 	for(int i = 0 ; i < 8 ; i ++){
 		T[ i ] = T[ i ] * 2;
 	}
 }
 
 //7.13.2.13
-void decode::inverseIdentityTransform16(int16_t* T){
+void decode::inverseIdentityTransform16(int32_t* T){
 	for(int i = 0 ; i < 16 ; i ++){
 		T[ i ] = Round2( T[ i ] * 11586, 12 );
 	}
 }
 
 //7.13.2.14
-void decode::inverseIdentityTransform32(int16_t* T){
+void decode::inverseIdentityTransform32(int32_t* T){
 	for(int i = 0 ; i < 32 ; i ++){
 		T[ i ] = T[ i ] * 4;
 	}
 }
 
 //7.13.2.15
-void decode::inverseIdentityTransform(int16_t *T,int n){
+void decode::inverseIdentityTransform(int32_t *T,int n){
 	if( n == 2){
 		inverseIdentityTransform4(T);
 	}else if(n == 3){
@@ -4428,7 +4433,7 @@ void decode::twoDInverseTransformBlock(int txSz,int16_t **Residual,BlockData *b_
     int rowClampRange = seqHdr->color_config.BitDepth + 8;
     int colClampRange = Max(seqHdr->color_config.BitDepth + 6, 16);
 
-	int16_t T[w];
+	int32_t T[w];
 	//printf("Residual 11\n");
     for (int i = 0; i < h; i++) {
         for (int j = 0; j < w; j++) {
@@ -4447,17 +4452,9 @@ void decode::twoDInverseTransformBlock(int txSz,int16_t **Residual,BlockData *b_
 
         if (b_data->Lossless) {
             inverseWalshHadamardTransform(T, 2);
-        } else if (b_data->PlaneTxType == DCT_DCT || b_data->PlaneTxType == ADST_DCT || b_data->PlaneTxType == FLIPADST_DCT || b_data->PlaneTxType == H_DCT) {
-			//printf("T 11 aa\n");
-			for (int j = 0; j < w; j++) {
-				//printf("%d ",T[j]);
-			}
-			//printf("T 11 bb\n");   
+        } else if (b_data->PlaneTxType == DCT_DCT || b_data->PlaneTxType == ADST_DCT || b_data->PlaneTxType == FLIPADST_DCT || b_data->PlaneTxType == H_DCT) {  
 			inverseDCT(T, log2W, rowClampRange);
-			for (int j = 0; j < w; j++) {
-				//printf("%d ",T[j]);
-			}
-			//printf("T 11 cc\n"); 
+
         } else if (b_data->PlaneTxType == DCT_ADST || b_data->PlaneTxType == ADST_ADST || b_data->PlaneTxType == DCT_FLIPADST ||
                    b_data->PlaneTxType == FLIPADST_FLIPADST || b_data->PlaneTxType == ADST_FLIPADST || b_data->PlaneTxType == FLIPADST_ADST ||
                    b_data->PlaneTxType == H_ADST || b_data->PlaneTxType == H_FLIPADST) {
@@ -4465,10 +4462,10 @@ void decode::twoDInverseTransformBlock(int txSz,int16_t **Residual,BlockData *b_
         } else {
             inverseIdentityTransform(T, log2W);
         }
-		//printf("Residual 11 dd\n"); 
         for (int j = 0; j < w; j++) {
+			printf("%d ",T[j]);
             Residual[i][j] = Round2(T[j], rowShift);
-			//printf("%d ",Residual[i][j]);
+			//printf("%d ",T[j]);
         }
 		
     }
@@ -4483,8 +4480,8 @@ void decode::twoDInverseTransformBlock(int txSz,int16_t **Residual,BlockData *b_
 		
     }
 	//printf("\n");
-	//printf("Residual 33\n");
-	int16_t T1[h];
+	printf("Residual 33\n");
+	int32_t T1[h];
     for (int j = 0; j < w; j++) {
         
         for (int i = 0; i < h; i++) {
@@ -4502,10 +4499,9 @@ void decode::twoDInverseTransformBlock(int txSz,int16_t **Residual,BlockData *b_
         } else {
             inverseIdentityTransform(T1, log2H);
         }
-		
         for (int i = 0; i < h; i++) {
             Residual[i][j] = Round2(T1[i], colShift);
-			//printf("%d ",Residual[i][j]);
+			printf("%d ",T1[i]);
         }
 		
     }
@@ -5494,31 +5490,31 @@ void decode::intermediateOutputPreparation(int *w,int *h,int *subX,int *subY,int
 		*subX = seqHdr->color_config.subsampling_x;
 		*subY = seqHdr->color_config.subsampling_y;
 
-		//FILE *fp = fopen("test.yuv", "wb");
+		FILE *fp = fopen("test.yuv", "wb");
 
 		for (int y = 0; y < *h; y++) {
-			//uint8_t buf[*w];
+			uint8_t buf[*w];
 			for (int x = 0; x < *w; x++) {
 				av1Ctx->currentFrame->OutY[y][x] = av1Ctx->currentFrame->lrCtx->LrFrame[0][y][x];
 				//printf("%d ",av1Ctx->currentFrame->OutY[y][x]);
-				//buf[x] = av1Ctx->currentFrame->OutY[y][x];
+				buf[x] = av1Ctx->currentFrame->OutY[y][x];
 			}
-			//fwrite(buf, sizeof(uint8_t),*w, fp);
+			fwrite(buf, sizeof(uint8_t),*w, fp);
 		}
 		
 		for (int y = 0; y < ((*h + *subY) >> *subY); y++) {
-			//uint8_t buf[((*w + *subX) >> *subX ) * 2];
+			uint8_t buf[((*w + *subX) >> *subX ) * 2];
 
 			for (int x = 0; x < ((*w + *subX) >> *subX); x++) {
 				av1Ctx->currentFrame->OutU[y][x] = av1Ctx->currentFrame->lrCtx->LrFrame[1][y][x];
 				av1Ctx->currentFrame->OutV[y][x] = av1Ctx->currentFrame->lrCtx->LrFrame[2][y][x];
-				//buf[x * 2] = av1Ctx->currentFrame->OutU[y][x];
-				//buf[x * 2 + 1]  = av1Ctx->currentFrame->OutV[y][x];
+				buf[x * 2] = av1Ctx->currentFrame->OutU[y][x];
+				buf[x * 2 + 1]  = av1Ctx->currentFrame->OutV[y][x];
 			}
-			//fwrite(buf, sizeof(uint8_t),((*w + *subX) >> *subX ) * 2, fp);
+			fwrite(buf, sizeof(uint8_t),((*w + *subX) >> *subX ) * 2, fp);
 			
 		}
-		//fclose(fp);
+		fclose(fp);
 		*bitDepth = av1Ctx->RefBitDepth[0];  // BitDepth for each sample
 	}
 

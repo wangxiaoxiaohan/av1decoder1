@@ -56,5 +56,6 @@ eob 512?--
 *检查 get_coeff_base_ctx
 *检查 进入 错误的 block之后 sbCtx->SymbolValue 出现问题
 
-Quant的数据 不对，赋值的时候 是正常的
+
 b decode.cpp 2029 2100
+开始反变换之前是完全正确的
