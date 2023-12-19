@@ -323,11 +323,8 @@ typedef struct BlockData{
 	uint8_t motion_mode;
 	uint8_t compound_type;
 	uint8_t interp_filter[2];
-	uint8_t comp_mode;
 	uint8_t AngleDeltaY;
 	uint8_t AngleDeltaUV;
-	uint8_t angle_delta_y;
-	uint8_t angle_delta_uv;
 
 	uint8_t CflAlphaU;
 	uint8_t CflAlphaV;

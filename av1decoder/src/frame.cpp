@@ -1876,18 +1876,25 @@ int frame::decodeFrame(int sz, bitSt *bs, AV1DecodeContext *av1Ctx){
 		if ( !frameHdr->disable_frame_end_update_cdf ) {
 			frame_end_update_cdf(av1Ctx);
 		}
-		//  for (int i = 0; i < 750; i++) {
-		//  	for (int j = 0; j < 1000; j++) {
-		//  		if(av1Ctx->currentFrame->CurrFrame[0][ i][ j] != 0 && av1Ctx->currentFrame->CurrFrame[0][ i][j] != 128){
-		//  			printf("!!!!! y %d x %d  %d \n",i,j,av1Ctx->currentFrame->CurrFrame[0][ i][ j]);
-		//  		}
-		//  	}
-		//  }
-		// for (int i = 0; i < 8; i++) {
-		// 	for (int j = 0; j < 8; j++) {
-		// 		printf("!! %d \n",av1Ctx->currentFrame->CurrFrame[0][56 + i][56 + j]);
-		// 	}
-		// }
+		int subX = av1Ctx->seqHdr.color_config.subsampling_x;
+		int subY = av1Ctx->seqHdr.color_config.subsampling_y;
+		FILE *fp = fopen("test.yuv", "wb");
+		uint8_t buf[750];
+		for (int i = 0; i < 1000; i++) {
+			for (int j = 0; j < 750; j++) {
+				buf[j] = av1Ctx->currentFrame->CurrFrame[0][ i][ j];
+			}
+			fwrite(buf, sizeof(uint8_t),750, fp);
+		}
+		uint8_t buf1[((750 + subX) >> subX ) * 2];
+		for (int i = 0; i < (1000 + subY) >> subY ; i++) {
+			for (int j = 0; j < (750 + subX) >> subX; j++) {
+				buf1[j * 2] = av1Ctx->currentFrame->CurrFrame[1][ i][ j];
+				buf1[j * 2 + 1] = av1Ctx->currentFrame->CurrFrame[2][ i][ j];
+			}
+			fwrite(buf1, sizeof(uint8_t),((750 + subX) >> subX ) * 2, fp);
+		}
+		fclose(fp);
 		decode_instance->decode_frame_wrapup(av1Ctx);
 		av1Ctx->SeenFrameHeader = 0;
 	}
@@ -2781,8 +2788,8 @@ int frame::intra_angle_info_y(SymbolContext *sbCtx,bitSt *bs,BlockData *b_data,A
 	if ( b_data->MiSize >= BLOCK_8X8 ) {
 		if ( is_directional_mode( b_data->YMode ) ) {
 			printf("decodeSymbol angle_delta_y\n");
-			b_data->angle_delta_y = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Angle_Delta[b_data->YMode - V_PRED],(2 * MAX_ANGLE_DELTA + 1) + 1);// S()
-			b_data->AngleDeltaY = b_data->angle_delta_y - MAX_ANGLE_DELTA;
+			int angle_delta_y = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Angle_Delta[b_data->YMode - V_PRED],(2 * MAX_ANGLE_DELTA + 1) + 1);// S()
+			b_data->AngleDeltaY = angle_delta_y - MAX_ANGLE_DELTA;
 		}
 	}
 }
@@ -2793,8 +2800,8 @@ int frame::intra_angle_info_uv(SymbolContext *sbCtx,bitSt *bs,BlockData *b_data,
 	if ( b_data->MiSize >= BLOCK_8X8 ) {
 		if ( is_directional_mode( b_data->UVMode ) ) {
 			printf("decodeSymbol angle_delta_uv\n");
-			b_data->angle_delta_uv = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Angle_Delta[b_data->UVMode - V_PRED],(2 * MAX_ANGLE_DELTA + 1) + 1); //S()
-			b_data->AngleDeltaUV = b_data->angle_delta_uv - MAX_ANGLE_DELTA;
+			int angle_delta_uv = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Angle_Delta[b_data->UVMode - V_PRED],(2 * MAX_ANGLE_DELTA + 1) + 1); //S()
+			b_data->AngleDeltaUV = angle_delta_uv - MAX_ANGLE_DELTA;
 		}
 	}
 }
@@ -3532,6 +3539,7 @@ int frame::read_ref_frames(SymbolContext *sbCtx, bitSt *bs, BlockData *b_data, A
 	{
 		int bw4 = Num_4x4_Blocks_Wide[b_data->MiSize];
 		int bh4 = Num_4x4_Blocks_High[b_data->MiSize];
+		int comp_mode;
 		if (frameHdr->reference_select && (Min(bw4, bh4) >= 2)){
 			int ctx;
 			if (b_data->AvailU && b_data->AvailL)
@@ -3564,11 +3572,11 @@ int frame::read_ref_frames(SymbolContext *sbCtx, bitSt *bs, BlockData *b_data, A
 				ctx = 1;
 			}
 			printf("decodeSymbol comp_mode\n");
-			b_data->comp_mode = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Comp_Mode[ctx],3); // S()
+			comp_mode = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Comp_Mode[ctx],3); // S()
 		}else{
-			b_data->comp_mode = SINGLE_REFERENCE;
+			comp_mode = SINGLE_REFERENCE;
 		}
-		if (b_data->comp_mode == COMPOUND_REFERENCE)
+		if (comp_mode == COMPOUND_REFERENCE)
 		{
 			int ctx;
 			int above0 = b_data->AboveRefFrame[0];

@@ -1,0 +1,29 @@
+decode_sb 就是 decode_partition
+
+1.reconstruct过程在recon_tmpl.c中
+   XXrecon_b_inter/XXrecon_b_intra  函数指针执行重建过程
+  包含預測過程 反量化 反变换 残差叠加
+
+
+  帧内过程:
+    dsp->ipred.intra_pred...预测
+    decode_coefs 读取系数
+    dsp->itx.itxfm_add 反变换 并叠加 
+
+  inv_txfm_add_c 反变换的C语言实现
+  使用 C语言版本 变换 :注释   itx_tmpl.c dav1d_itx_dsp_init 函数最后的赋汇编函数代码
+  inv_txfm_add_c 函数{
+    coeff指针 指向 spec中quant数组经过处理后的dequant数组。
+    接下来就是两次一维反变换
+    
+  }
+idx1d.c 一维反变换 C语言实现
+first_1d_fn second_1d_fn 指向 dav1d_inv_系列函数，见
+itx_tmpl.c的 这个宏定义：
+#define inv_txfm_fn(type1, type2, w, h, shift, has_dconly) \
+
+
+
+2.熵解码 
+    使用C语言版本 熵解码代码：
+    msac.h 文件中注释相关汇编函数定义即可

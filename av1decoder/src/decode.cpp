@@ -1613,12 +1613,15 @@ int decode::residual(SymbolContext *sbCtx,bitSt *bs,BlockData *b_data, AV1Decode
 				{
 					int baseXBlock = (b_data->MiCol >> subX) * MI_SIZE;
 					int baseYBlock = (b_data->MiRow >> subY) * MI_SIZE;
+					printf("residual b_data->MiCol:%d b_data->MiRow :%d subX:%d subY:%d\n",
+							b_data->MiCol,b_data->MiRow,subX,subY);
 					for (int y = 0; y < num4x4H; y += stepY)
-						for (int x = 0; x < num4x4W; x += stepX)
+						for (int x = 0; x < num4x4W; x += stepX){
 							transform_block(plane, baseXBlock, baseYBlock, txSz,
 											x + ((chunkX << 4) >> subX),
 											y + ((chunkY << 4) >> subY),
 											sbCtx,bs,b_data,av1Ctx);
+						}
 				}
 			}
 		}
@@ -1670,6 +1673,7 @@ int decode::transform_block(int plane,int baseX,int baseY,int txSz,int x,int y,S
 {
 	frameHeader *frameHdr = &av1Ctx->frameHdr;
 	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
+	printf("transform_block baseX:%d baseY:%d x:%d y:%d\n",baseX,baseY,x,y);
 	int startX = baseX + 4 * x;
 	int startY = baseY + 4 * y;
 	int subX = (plane > 0) ? seqHdr->color_config.subsampling_x : 0;
@@ -2366,8 +2370,9 @@ int decode::predict_intra(int plane,int x,int y,int haveLeft,int haveAbove,
             int aboveLimit = x + (haveAboveRight ? 2 * w : w) - 1;
             (*b_data->AboveRow)[i] = av1Ctx->currentFrame->CurrFrame[plane][y - 1][Min(aboveLimit, x+i)];
         }
-
+		printf("AboveRow:%d ",(*b_data->AboveRow)[i]);
     }
+	printf("\n");
     for (int i = 0; i < w + h - 1; i++) {
         if (haveLeft == 0 && haveAbove == 1) {
             // 如果haveLeft为0且haveAbove为1，设置LeftCol[i]等于上方的像素值
@@ -2380,6 +2385,7 @@ int decode::predict_intra(int plane,int x,int y,int haveLeft,int haveAbove,
             int leftLimit = y + (haveBelowLeft ? 2 * h : h) - 1;
             (*b_data->LeftCol)[i] = av1Ctx->currentFrame->CurrFrame[plane][Min(leftLimit, y+i)][x - 1];
         }
+		printf("LeftCol:%d ",(*b_data->LeftCol)[i]);
     }
 	if(haveAbove == 1 && haveLeft == 1){
 		(*b_data->AboveRow)[ -1 ] = av1Ctx->currentFrame->CurrFrame[ plane ][ y-1 ][x-1 ];
@@ -2397,22 +2403,28 @@ int decode::predict_intra(int plane,int x,int y,int haveLeft,int haveAbove,
 	for(int i = 0 ; i < h ; i++){
 		pred[i] = new uint16_t[w];
 	}
+	printf("pred\n");
 	if(plane == 0 && b_data->use_filter_intra){
+		printf("recursiveIntraPrdiction\n");
 		recursiveIntraPrdiction(w,h,pred,b_data,av1Ctx);
 	}else if( is_directional_mode( mode ) ){
+		printf("directionalIntraPrediction\n");
 		directionalIntraPrediction( plane, x, y, haveLeft, haveAbove, mode, w, h, maxX, maxY,pred, b_data,av1Ctx);
 	}else if(mode == SMOOTH_PRED || mode == SMOOTH_V_PRED  || mode == SMOOTH_H_PRED ){
+		printf("smoothIntraPrediction\n");
 		smoothIntraPrediction(mode, log2W, log2H, w,h,pred,b_data); 
 	}else if(mode == DC_PRED){
+		printf("DCIntraPrediction\n");
 		DCIntraPrediction( haveLeft, haveAbove, log2W, log2H, w, h,pred,b_data,av1Ctx );
 	}else if(mode == PAETH_PRED){
+		printf("basicIntraPrediction\n");
 		basicIntraPrediction(w,h,pred,b_data);
 	}
 	printf("pred\n");
 	for(int i = 0 ; i < h ;i ++){
 		for(int j = 0 ; j < w ;j ++){
 			av1Ctx->currentFrame->CurrFrame[ plane ][ y + i ][ x + j ] = pred[ i ][ j ];
-			//printf("%d ",pred[ i ][ j ]);
+			printf("%d ",pred[ i ][ j ]);
 		}	
 	}
 	printf("\n");
@@ -2524,7 +2536,8 @@ int decode::directionalIntraPrediction(int plane,int x,int y,int haveLeft,int ha
 		if(pAngle != 90 && pAngle != 180){
 			if(pAngle > 90 && pAngle < 180 && (w + h)){
 				//7.11.2.7
-				filterCornor(b_data->LeftCol,b_data->AboveRow);
+				(*b_data->LeftCol)[-1] = (*b_data->AboveRow)[-1] =
+					filterCornor(b_data->LeftCol,b_data->AboveRow);
 			}
 			//7.11.2.8
 			filterType = intrafilterType(plane,b_data,av1Ctx); 
@@ -2748,33 +2761,34 @@ int decode::DCIntraPrediction(int haveLeft ,int haveAbove,int log2W,int log2H,in
 //smWeights* 是一个权重值，用来
 int decode::smoothIntraPrediction(int mode, int log2W, int log2H, int w, int h, uint16_t **pred,BlockData *b_data){
     if (mode == SMOOTH_PRED) {
-        const int *smWeightsX;
-        const int *smWeightsY;
+        const uint8_t *smWeightsX;
+        const uint8_t *smWeightsY;
  		if(log2W == 2){
-			smWeightsX = (int *)Sm_Weights_Tx_4x4;
+			smWeightsX = Sm_Weights_Tx_4x4;
 		}else if(log2W == 3){
-			smWeightsX = (int *)Sm_Weights_Tx_8x8;
+			smWeightsX = Sm_Weights_Tx_8x8;
 		}else if(log2W == 4){
-			smWeightsX = (int *)Sm_Weights_Tx_16x16;
+			smWeightsX = Sm_Weights_Tx_16x16;
 		}else if(log2W == 5){	
-			smWeightsX = (int *)Sm_Weights_Tx_32x32;
+			smWeightsX = Sm_Weights_Tx_32x32;
 		}else if(log2W == 6){
-			smWeightsX = (int *)Sm_Weights_Tx_64x64;
+			smWeightsX = Sm_Weights_Tx_64x64;
 		}
 
  		if(log2H == 2){
-			 smWeightsY = (int *)Sm_Weights_Tx_4x4; 
+			 smWeightsY = Sm_Weights_Tx_4x4; 
 		}else if(log2H == 3){
-			smWeightsY = (int *)Sm_Weights_Tx_8x8;
+			smWeightsY = Sm_Weights_Tx_8x8;
 		}else if(log2H == 4){
-			smWeightsY = (int *)Sm_Weights_Tx_16x16;
+			smWeightsY = Sm_Weights_Tx_16x16;
 		}else if(log2H == 5){	
-			smWeightsY = (int *)Sm_Weights_Tx_32x32;
+			smWeightsY = Sm_Weights_Tx_32x32;
 		}else if(log2H == 6){
-			smWeightsY = (int *)Sm_Weights_Tx_64x64;
+			smWeightsY = Sm_Weights_Tx_64x64;
 		}
         for (int i = 0; i < h; i++) {
             for (int j = 0; j < w; j++) {
+				//printf("(*b_data->AboveRow)[j] %d",(*b_data->AboveRow)[j]);
                 int smoothPred = smWeightsY[i] * (*b_data->AboveRow)[j] +
                                  (256 - smWeightsY[i]) * (*b_data->LeftCol)[h - 1] +
                                  smWeightsX[j] * (*b_data->LeftCol)[i] +
@@ -2783,17 +2797,17 @@ int decode::smoothIntraPrediction(int mode, int log2W, int log2H, int w, int h, 
             }
         }
     } else if (mode == SMOOTH_V_PRED) {
-        const int *smWeights;
+        const uint8_t *smWeights;
  		if(log2W == 2){
-			smWeights = (int *)Sm_Weights_Tx_4x4;
+			smWeights = Sm_Weights_Tx_4x4;
 		}else if(log2W == 3){
-			smWeights = (int *)Sm_Weights_Tx_8x8;
+			smWeights = Sm_Weights_Tx_8x8;
 		}else if(log2W == 4){
-			smWeights = (int *)Sm_Weights_Tx_16x16;
+			smWeights = Sm_Weights_Tx_16x16;
 		}else if(log2W == 5){	
-			smWeights = (int *)Sm_Weights_Tx_32x32;
+			smWeights = Sm_Weights_Tx_32x32;
 		}else if(log2W == 6){
-			smWeights = (int *)Sm_Weights_Tx_64x64;
+			smWeights = Sm_Weights_Tx_64x64;
 		}
         for (int i = 0; i < h; i++) {
             for (int j = 0; j < w; j++) {
@@ -2803,17 +2817,17 @@ int decode::smoothIntraPrediction(int mode, int log2W, int log2H, int w, int h, 
             }
         }
     } else if (mode == SMOOTH_H_PRED) {
-        const int *smWeights;
+        const uint8_t *smWeights;
  		if(log2W == 2){
-			smWeights = (int *)Sm_Weights_Tx_4x4;
+			smWeights = Sm_Weights_Tx_4x4;
 		}else if(log2W == 3){
-			smWeights = (int *)Sm_Weights_Tx_8x8;
+			smWeights = Sm_Weights_Tx_8x8;
 		}else if(log2W == 4){
-			smWeights = (int *)Sm_Weights_Tx_16x16;
+			smWeights = Sm_Weights_Tx_16x16;
 		}else if(log2W == 5){	
-			smWeights = (int *)Sm_Weights_Tx_32x32;
+			smWeights = Sm_Weights_Tx_32x32;
 		}else if(log2W == 6){
-			smWeights = (int *)Sm_Weights_Tx_64x64;
+			smWeights = Sm_Weights_Tx_64x64;
 		}
         for (int i = 0; i < h; i++) {
             for (int j = 0; j < w; j++) {
@@ -2828,8 +2842,7 @@ int decode::smoothIntraPrediction(int mode, int log2W, int log2H, int w, int h, 
 //7.11.2.7 使用一个三抽头滤波器对 leftcol aboverow角落像素进行滤波
 int decode::filterCornor(Array16 *LeftCol,Array16 *AboveRow){
 	int s = (*LeftCol)[ 0 ] * 5 + (*AboveRow)[ -1 ] * 6 + (*AboveRow)[ 0 ] * 5;
-	(*LeftCol)[-1] = Round2(s, 4);
-	(*AboveRow)[-1] = Round2(s, 4);
+	return Round2(s,4);
 }
 //7.11.2.8
 //如果左边或上边的块使用了smooth mode ，则返回值为1
@@ -2843,8 +2856,8 @@ int decode::is_smooth(int row, int col, int plane,AV1DecodeContext *av1Ctx) {
     if (plane == 0) {
         mode = av1Ctx->YModes[row][col];
     } else {
-            return 0;
         if (av1Ctx->RefFrames[row][col][0] > INTRA_FRAME) {
+			return 0;
         }
         mode = av1Ctx->UVModes[row][col];
     }
@@ -3935,6 +3948,7 @@ int decode::reconstruct(int plane, int x, int y, int txSz,BlockData *b_data,AV1D
     }
     int log2W = Tx_Width_Log2[txSz];
     int log2H = Tx_Height_Log2[txSz];
+	printf("!!!!!!!txSZ %d log2W %d log2H %d\n",txSz,log2W,log2H);
     int w = 1 << log2W;
     int h = 1 << log2H;
     int tw = Min(32, w);
@@ -3975,15 +3989,20 @@ int decode::reconstruct(int plane, int x, int y, int txSz,BlockData *b_data,AV1D
 	twoDInverseTransformBlock(txSz,Residual,b_data,av1Ctx);
 	printf("residual 33 \n");
 
+	int X = x;
+	int Y = y;
     for (int i = 0; i < h; i++) {
         for (int j = 0; j < w; j++) {
             int xx = flipLR ? (w - j - 1) : j;
             int yy = flipUD ? (h - i - 1) : i;
-            
-            av1Ctx->currentFrame->CurrFrame[plane][y + yy][x + xx] = Clip1(av1Ctx->currentFrame->CurrFrame[plane][y + yy][x + xx] + Residual[i][j],seqHdr->color_config.BitDepth);
-        	//printf("%d ",Residual[i][j]);
+            //printf("%d|%d ",av1Ctx->currentFrame->CurrFrame[plane][Y + yy][X + xx] , Residual[i][j]);
+            av1Ctx->currentFrame->CurrFrame[plane][Y + yy][X + xx] = Clip1(av1Ctx->currentFrame->CurrFrame[plane][Y + yy][X + xx] + Residual[i][j],seqHdr->color_config.BitDepth);
+        	//printf("x:%d y:%d xx:%d yy:%d ---",X,Y,xx,yy);
+			
 		}
     }
+	printf("\n");
+	printf("x:%d y:%d  ---",X,Y);
 	printf("\n");
 	for(int i = 0 ; i < h ; i ++){
 		delete []  Residual[i];
@@ -3996,23 +4015,18 @@ int decode::reconstruct(int plane, int x, int y, int txSz,BlockData *b_data,AV1D
     }
 }
 //7.13.2.2 翻转数组
-int decode::inverseDCTArrayPermutation(int32_t T[],int n)
+int decode::inverseDCTArrayPermutation(int16_t T[],int n)
 {
-    int32_t copyT[1 << n];
+    int16_t copyT[1 << n];
     // 复制数组 T 到 copyT
-	memcpy(copyT,T,(1 << n) * sizeof(int32_t));
-	// for(int i = 0 ; i < (1 << n) ; i++){
-	// 	copyT[i] = T[i];
-	// }
+	memcpy(copyT,T,(1 << n) * sizeof(int16_t));
     // 根据位翻转函数 brev(n, i) 重新排列数组 T
     for (int i = 0; i < (1 << n); i++) {
         T[i] = copyT[brev(n, i)];
-		//printf("%d ",copyT[i]);
     }
-
 }
 //7.13.2.3 一维反 DCT 变换
-int decode::inverseDCT(int32_t T[], int n, int r) {
+int decode::inverseDCT(int16_t T[], int n, int r) {
     // 步骤1：执行逆 DCT 排列
     inverseDCTArrayPermutation(T, n);
 
@@ -4172,11 +4186,11 @@ int decode::inverseDCT(int32_t T[], int n, int r) {
 	}
 }
 //7.13.2.4
-void decode::inverseADSTInputArrayPermutation(int32_t* T, int n) {
+void decode::inverseADSTInputArrayPermutation(int16_t* T, int n) {
     int n0 = 1 << n;
-    int32_t copyT[n0]; 
+    int16_t copyT[n0]; 
 
-	memcpy(copyT,T,n0 * sizeof(int32_t));
+	memcpy(copyT,T,n0 * sizeof(int16_t));
     // 执行位逆序排列
     for (int i = 0; i < n0; i++) {
 		 //区分奇偶
@@ -4186,10 +4200,10 @@ void decode::inverseADSTInputArrayPermutation(int32_t* T, int n) {
 
 }
 //7.13.2.5
-void decode::inverseADSTOutputArrayPermutation(int32_t* T, int n) {
+void decode::inverseADSTOutputArrayPermutation(int16_t* T, int n) {
     int n0 = 1 << n;
-    int32_t copyT[n0];
-	memcpy(copyT,T,n0* sizeof(int32_t));
+    int16_t copyT[n0];
+	memcpy(copyT,T,n0* sizeof(int16_t));
     // 执行输出数组排列
     for (int i = 0; i < n0; i++) {
         int a = ((i >> 3) & 1);
@@ -4203,7 +4217,7 @@ void decode::inverseADSTOutputArrayPermutation(int32_t* T, int n) {
     }
 }
 //7.13.2.6
-void decode::inverseADST4(int32_t* T, int r) {
+void decode::inverseADST4(int16_t* T, int r) {
 
     int s[7];
     int x[4];
@@ -4237,7 +4251,7 @@ void decode::inverseADST4(int32_t* T, int r) {
     T[3] = Round2(x[3], 12);
 }
 //7.13.2.7
-void decode::inverseADST8(int32_t* T, int r) {
+void decode::inverseADST8(int16_t* T, int r) {
 
     int n = 3;
 	inverseADSTInputArrayPermutation(T,3);
@@ -4283,7 +4297,7 @@ void decode::inverseADST8(int32_t* T, int r) {
 	inverseADSTOutputArrayPermutation(T,3);
 }
 //7.13.2.8
-void decode::inverseADST16(int32_t* T, int r) {
+void decode::inverseADST16(int16_t* T, int r) {
     // Step 1: Invoke the ADST input array permutation process with n = 4
     int n = 4;
     int copyT[16];
@@ -4353,7 +4367,7 @@ void decode::inverseADST16(int32_t* T, int r) {
 
 
 //7.13.2.9. 
-void decode::inverseADST(int32_t *T,int n,int r){
+void decode::inverseADST(int16_t *T,int n,int r){
 	if(n == 2 ){
 		inverseADST4(T,r);
 	}else if(n == 3){
@@ -4363,7 +4377,7 @@ void decode::inverseADST(int32_t *T,int n,int r){
 	}
 }
 //7.13.2.10
-void decode::inverseWalshHadamardTransform(int32_t* T, int shift) {
+void decode::inverseWalshHadamardTransform(int16_t* T, int shift) {
     int a = T[0] >> shift;
     int c = T[1] >> shift;
     int d = T[2] >> shift;
@@ -4382,35 +4396,35 @@ void decode::inverseWalshHadamardTransform(int32_t* T, int shift) {
     T[3] = d;
 }
 //7.13.2.11
-void decode::inverseIdentityTransform4(int32_t* T){
+void decode::inverseIdentityTransform4(int16_t* T){
 	for(int i = 0 ; i < 4 ; i ++){
 		T[ i ] = Round2( T[ i ] * 5793, 12 );
 	}
 }
 
 //7.13.2.12
-void decode::inverseIdentityTransform8(int32_t* T){
+void decode::inverseIdentityTransform8(int16_t* T){
 	for(int i = 0 ; i < 8 ; i ++){
 		T[ i ] = T[ i ] * 2;
 	}
 }
 
 //7.13.2.13
-void decode::inverseIdentityTransform16(int32_t* T){
+void decode::inverseIdentityTransform16(int16_t* T){
 	for(int i = 0 ; i < 16 ; i ++){
 		T[ i ] = Round2( T[ i ] * 11586, 12 );
 	}
 }
 
 //7.13.2.14
-void decode::inverseIdentityTransform32(int32_t* T){
+void decode::inverseIdentityTransform32(int16_t* T){
 	for(int i = 0 ; i < 32 ; i ++){
 		T[ i ] = T[ i ] * 4;
 	}
 }
 
 //7.13.2.15
-void decode::inverseIdentityTransform(int32_t *T,int n){
+void decode::inverseIdentityTransform(int16_t *T,int n){
 	if( n == 2){
 		inverseIdentityTransform4(T);
 	}else if(n == 3){
@@ -4433,7 +4447,7 @@ void decode::twoDInverseTransformBlock(int txSz,int16_t **Residual,BlockData *b_
     int rowClampRange = seqHdr->color_config.BitDepth + 8;
     int colClampRange = Max(seqHdr->color_config.BitDepth + 6, 16);
 
-	int32_t T[w];
+	int16_t T[w];
 	//printf("Residual 11\n");
     for (int i = 0; i < h; i++) {
         for (int j = 0; j < w; j++) {
@@ -4452,9 +4466,17 @@ void decode::twoDInverseTransformBlock(int txSz,int16_t **Residual,BlockData *b_
 
         if (b_data->Lossless) {
             inverseWalshHadamardTransform(T, 2);
-        } else if (b_data->PlaneTxType == DCT_DCT || b_data->PlaneTxType == ADST_DCT || b_data->PlaneTxType == FLIPADST_DCT || b_data->PlaneTxType == H_DCT) {  
+        } else if (b_data->PlaneTxType == DCT_DCT || b_data->PlaneTxType == ADST_DCT || b_data->PlaneTxType == FLIPADST_DCT || b_data->PlaneTxType == H_DCT) {
+			//printf("T 11 aa\n");
+			for (int j = 0; j < w; j++) {
+				//printf("%d ",T[j]);
+			}
+			//printf("T 11 bb\n");   
 			inverseDCT(T, log2W, rowClampRange);
-
+			for (int j = 0; j < w; j++) {
+				//printf("%d ",T[j]);
+			}
+			//printf("T 11 cc\n"); 
         } else if (b_data->PlaneTxType == DCT_ADST || b_data->PlaneTxType == ADST_ADST || b_data->PlaneTxType == DCT_FLIPADST ||
                    b_data->PlaneTxType == FLIPADST_FLIPADST || b_data->PlaneTxType == ADST_FLIPADST || b_data->PlaneTxType == FLIPADST_ADST ||
                    b_data->PlaneTxType == H_ADST || b_data->PlaneTxType == H_FLIPADST) {
@@ -4462,10 +4484,10 @@ void decode::twoDInverseTransformBlock(int txSz,int16_t **Residual,BlockData *b_
         } else {
             inverseIdentityTransform(T, log2W);
         }
+		//printf("Residual 11 dd\n"); 
         for (int j = 0; j < w; j++) {
-			printf("%d ",T[j]);
             Residual[i][j] = Round2(T[j], rowShift);
-			//printf("%d ",T[j]);
+			//printf("%d ",Residual[i][j]);
         }
 		
     }
@@ -4480,8 +4502,8 @@ void decode::twoDInverseTransformBlock(int txSz,int16_t **Residual,BlockData *b_
 		
     }
 	//printf("\n");
-	printf("Residual 33\n");
-	int32_t T1[h];
+	//printf("Residual 33\n");
+	int16_t T1[h];
     for (int j = 0; j < w; j++) {
         
         for (int i = 0; i < h; i++) {
@@ -4499,13 +4521,14 @@ void decode::twoDInverseTransformBlock(int txSz,int16_t **Residual,BlockData *b_
         } else {
             inverseIdentityTransform(T1, log2H);
         }
+		
         for (int i = 0; i < h; i++) {
             Residual[i][j] = Round2(T1[i], colShift);
-			printf("%d ",T1[i]);
+			//printf("%d ",Residual[i][j]);
         }
 		
     }
-	printf("\n");
+	//printf("\n");
 }
 //7.14
 void decode::loopFilter(AV1DecodeContext *av1Ctx){
@@ -5490,31 +5513,31 @@ void decode::intermediateOutputPreparation(int *w,int *h,int *subX,int *subY,int
 		*subX = seqHdr->color_config.subsampling_x;
 		*subY = seqHdr->color_config.subsampling_y;
 
-		FILE *fp = fopen("test.yuv", "wb");
+		//FILE *fp = fopen("test.yuv", "wb");
 
 		for (int y = 0; y < *h; y++) {
-			uint8_t buf[*w];
+			//uint8_t buf[*w];
 			for (int x = 0; x < *w; x++) {
 				av1Ctx->currentFrame->OutY[y][x] = av1Ctx->currentFrame->lrCtx->LrFrame[0][y][x];
 				//printf("%d ",av1Ctx->currentFrame->OutY[y][x]);
-				buf[x] = av1Ctx->currentFrame->OutY[y][x];
+				//buf[x] = av1Ctx->currentFrame->OutY[y][x];
 			}
-			fwrite(buf, sizeof(uint8_t),*w, fp);
+			//fwrite(buf, sizeof(uint8_t),*w, fp);
 		}
 		
 		for (int y = 0; y < ((*h + *subY) >> *subY); y++) {
-			uint8_t buf[((*w + *subX) >> *subX ) * 2];
+			//uint8_t buf[((*w + *subX) >> *subX ) * 2];
 
 			for (int x = 0; x < ((*w + *subX) >> *subX); x++) {
 				av1Ctx->currentFrame->OutU[y][x] = av1Ctx->currentFrame->lrCtx->LrFrame[1][y][x];
 				av1Ctx->currentFrame->OutV[y][x] = av1Ctx->currentFrame->lrCtx->LrFrame[2][y][x];
-				buf[x * 2] = av1Ctx->currentFrame->OutU[y][x];
-				buf[x * 2 + 1]  = av1Ctx->currentFrame->OutV[y][x];
+				//buf[x * 2] = av1Ctx->currentFrame->OutU[y][x];
+				//buf[x * 2 + 1]  = av1Ctx->currentFrame->OutV[y][x];
 			}
-			fwrite(buf, sizeof(uint8_t),((*w + *subX) >> *subX ) * 2, fp);
+			//fwrite(buf, sizeof(uint8_t),((*w + *subX) >> *subX ) * 2, fp);
 			
 		}
-		fclose(fp);
+		//fclose(fp);
 		*bitDepth = av1Ctx->RefBitDepth[0];  // BitDepth for each sample
 	}
 
