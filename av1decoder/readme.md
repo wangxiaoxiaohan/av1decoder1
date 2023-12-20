@@ -58,3 +58,6 @@ eob 512?--
 
 Quant的数据 不对，赋值的时候 是正常的
 b decode.cpp 2029 2100
+
+问题 ，pangle > 180的时候 base 会 大于 w+h,但是 前面intraEdgeUpsample 应该处理过了 的， 值是有效的
+现在无效 upsampleAbove upsampleLeft 有问题，为0，那么 base的值就不应该大于 w + h

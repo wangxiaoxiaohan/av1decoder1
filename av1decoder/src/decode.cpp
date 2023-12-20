@@ -2403,7 +2403,6 @@ int decode::predict_intra(int plane,int x,int y,int haveLeft,int haveAbove,
 	for(int i = 0 ; i < h ; i++){
 		pred[i] = new uint16_t[w];
 	}
-	printf("pred\n");
 	if(plane == 0 && b_data->use_filter_intra){
 		printf("recursiveIntraPrdiction\n");
 		recursiveIntraPrdiction(w,h,pred,b_data,av1Ctx);
@@ -2425,7 +2424,7 @@ int decode::predict_intra(int plane,int x,int y,int haveLeft,int haveAbove,
 		for(int j = 0 ; j < w ;j ++){
 			av1Ctx->currentFrame->CurrFrame[ plane ][ y + i ][ x + j ] = pred[ i ][ j ];
 			printf("%d ",pred[ i ][ j ]);
-		}	
+		}
 	}
 	printf("\n");
 	for(int i = 0 ; i < h ; i++){
@@ -2580,20 +2579,22 @@ int decode::directionalIntraPrediction(int plane,int x,int y,int haveLeft,int ha
 	}
 	
 	int dy;
-	if( dy > 90 && dy < 180)
+	if( pAngle > 90 && pAngle < 180)
 		dy = Dr_Intra_Derivative[ pAngle - 90 ];
 	else if(pAngle > 180)
-		dy =	Dr_Intra_Derivative[ 270 - pAngle ];
+		dy = Dr_Intra_Derivative[ 270 - pAngle ];
 	else{
-		//dx should be undefined;
+		//dy should be undefined;
 	}
-
+	printf("dx %d dy %d\n",dx,dy);
 	if(pAngle < 90){
+			printf("pAngle < 90 \n");
+			int idx, base, shift;
 			for(int i = 0 ; i < h; i++){
 				for(int j = 0 ; j < w ; j++){
-					int idx = ( i + 1 ) * dx;
-					int base = (idx >> ( 6 - upsampleAbove ) ) + (j << upsampleAbove);
-					int shift = ( (idx << upsampleAbove) >> 1 ) & 0x1F;
+					idx = ( i + 1 ) * dx;
+					base = (idx >> ( 6 - upsampleAbove ) ) + (j << upsampleAbove);
+					shift = ( (idx << upsampleAbove) >> 1 ) & 0x1F;
 					int maxBaseX = (w + h - 1) << upsampleAbove;
 					if(base < maxBaseX){
 							pred[ i ][ j ] = Round2( (*b_data->AboveRow)[ base ] * ( 32 - shift ) + (*b_data->AboveRow)[ base + 1 ] * shift, 5 );
@@ -2604,10 +2605,11 @@ int decode::directionalIntraPrediction(int plane,int x,int y,int haveLeft,int ha
 			}
 
 	}else if(pAngle > 90 && pAngle < 180){
-
+		int idx, base, shift;
+		printf("90 < pAngle <180 \n");
 		for (int i = 0; i < h; i++) {
 			for (int j = 0; j < w; j++) {
-				int idx, base, shift;
+				
 				
 				idx = (j << 6) - (i + 1) * dx;
 				
@@ -2615,36 +2617,41 @@ int decode::directionalIntraPrediction(int plane,int x,int y,int haveLeft,int ha
 				
 				if (base >= -(1 << upsampleAbove)) {
 					shift = ((idx << upsampleAbove) >> 1) & 0x1F;
-
+					//0 17 0 7 1081 16 28 119 119
+					printf("|@%d %d %d %d %d %d %d %d %d",i,j,upsampleAbove,dx,idx,base,shift,(*b_data->AboveRow)[base],(*b_data->AboveRow)[base + 1]);
 					pred[i][j] = Round2((*b_data->AboveRow)[base] * (32 - shift) + (*b_data->AboveRow)[base + 1] * shift, 5);
 				} else {
-					int idx = (i << 6) - (j + 1) * dy;
+					idx = (i << 6) - (j + 1) * dy;
 					base = idx >> (6 - upsampleLeft);
-					
 					shift = ((idx << upsampleLeft) >> 1) & 0x1F;
-
+					//&14 0 0 1104433174 -1104432278 -17256755 21 0 0
+					printf("|&%d %d %d %d %d %d %d %d %d",i,j,upsampleLeft,dy,idx,base,shift,(*b_data->LeftCol)[base],(*b_data->LeftCol)[base + 1]);
 					pred[i][j] = Round2((*b_data->LeftCol)[base] * (32 - shift) + (*b_data->LeftCol)[base + 1] * shift, 5);
 				}
 			}
 		}
 
 	}else if(pAngle > 180){
+		printf("pAngle > 180\n");
+		int idx, base, shift;
 		for (int i = 0; i < h; i++) {
 			for (int j = 0; j < w; j++) {
-				int idx, base, shift;
+				
 
 				idx = (j + 1) * dy;
 
 				base = (idx >> (6 - upsampleLeft)) + (i << upsampleLeft);
 
 				shift = ((idx << upsampleLeft) >> 1) & 0x1F;
-
+												    //0 19  0         211 4220 65  30      0 58640
+				printf("|@%d %d %d %d %d %d %d %d %d",i,j,upsampleLeft,dy,idx,base,shift,(*b_data->LeftCol)[base],(*b_data->LeftCol)[base + 1]);
 				pred[i][j] = Round2((*b_data->LeftCol)[base] * (32 - shift) + (*b_data->LeftCol)[base + 1] * shift, 5);
 			}
 		}
 	}
 	else if (pAngle == 90)
 	{
+		printf("pAngle == 90\n");
 		for (int j = 0; j < w; j++)
 		{
 			for (int i = 0; i < h; i++)
@@ -2655,6 +2662,7 @@ int decode::directionalIntraPrediction(int plane,int x,int y,int haveLeft,int ha
 	}
 	else if (pAngle == 180)
 	{
+		printf("pAngle == 180\n");
 		for (int j = 0; j < w; j++)
 		{
 			for (int i = 0; i < h; i++)
