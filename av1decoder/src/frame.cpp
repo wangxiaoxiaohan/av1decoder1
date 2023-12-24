@@ -2787,8 +2787,9 @@ int frame::intra_angle_info_y(SymbolContext *sbCtx,bitSt *bs,BlockData *b_data,A
 	b_data->AngleDeltaY = 0;
 	if ( b_data->MiSize >= BLOCK_8X8 ) {
 		if ( is_directional_mode( b_data->YMode ) ) {
-			printf("decodeSymbol angle_delta_y\n");
+			
 			int angle_delta_y = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Angle_Delta[b_data->YMode - V_PRED],(2 * MAX_ANGLE_DELTA + 1) + 1);// S()
+			printf("decodeSymbol angle_delta_y %d \n",angle_delta_y);
 			b_data->AngleDeltaY = angle_delta_y - MAX_ANGLE_DELTA;
 		}
 	}
@@ -2799,8 +2800,9 @@ int frame::intra_angle_info_uv(SymbolContext *sbCtx,bitSt *bs,BlockData *b_data,
 	b_data->AngleDeltaUV = 0;
 	if ( b_data->MiSize >= BLOCK_8X8 ) {
 		if ( is_directional_mode( b_data->UVMode ) ) {
-			printf("decodeSymbol angle_delta_uv\n");
+			
 			int angle_delta_uv = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Angle_Delta[b_data->UVMode - V_PRED],(2 * MAX_ANGLE_DELTA + 1) + 1); //S()
+			printf("decodeSymbol angle_delta_uv %d\n",angle_delta_uv);
 			b_data->AngleDeltaUV = angle_delta_uv - MAX_ANGLE_DELTA;
 		}
 	}

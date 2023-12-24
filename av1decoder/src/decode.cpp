@@ -1894,8 +1894,8 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 	int dcCategory = 0;
 
 	int ctx = cacluteAllZeroCtx( plane, txSz,  x4, y4, w4, h4, b_data,av1Ctx);
-	//printf("decodeSymbol all_zero\n");
 	int all_zero = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Txb_Skip[ txSzCtx ][ ctx ],3); // S()
+	printf("decodeSymbol all_zero %d\n",all_zero);
 	if (all_zero)
 	{
 		int c = 0;
@@ -2357,8 +2357,8 @@ int decode::predict_intra(int plane,int x,int y,int haveLeft,int haveAbove,
 		maxX = ( ( frameHdr->MiCols * MI_SIZE ) >> seqHdr->color_config.subsampling_x ) - 1;
 		maxY = ( ( frameHdr->MiRows * MI_SIZE ) >> seqHdr->color_config.subsampling_y ) - 1;
 	}
-
-    for (int i = 0; i < w + h - 1; i++) {
+	printf("haveLeft:%d haveAbove:%d haveAboveRight %d haveBelowLeft %d\n",haveLeft,haveAbove,haveAboveRight,haveBelowLeft);
+    for (int i = 0; i < w + h; i++) {
         if (haveAbove == 0 && haveLeft == 1) {
             // 如果haveAbove为0且haveLeft为1，设置AboveRow[i]等于左侧的像素值
             (*b_data->AboveRow)[i] = av1Ctx->currentFrame->CurrFrame[plane][y][x - 1];
@@ -2366,14 +2366,15 @@ int decode::predict_intra(int plane,int x,int y,int haveLeft,int haveAbove,
             // 如果haveAbove和haveLeft都为0，设置AboveRow[i]为(1 << (BitDepth - 1)) - 1
             (*b_data->AboveRow)[i] = (1 << (seqHdr->color_config.BitDepth - 1)) - 1;
         } else {
-            // 如果以上两个条件都不满足
+
             int aboveLimit = x + (haveAboveRight ? 2 * w : w) - 1;
             (*b_data->AboveRow)[i] = av1Ctx->currentFrame->CurrFrame[plane][y - 1][Min(aboveLimit, x+i)];
-        }
-		printf("AboveRow:%d ",(*b_data->AboveRow)[i]);
+			printf("Min(aboveLimit, x+i) %d ",Min(aboveLimit, x+i));
+		}
+		printf("AboveRow:%d i:%d ",(*b_data->AboveRow)[i],i);
     }
 	printf("\n");
-    for (int i = 0; i < w + h - 1; i++) {
+    for (int i = 0; i < w + h; i++) {
         if (haveLeft == 0 && haveAbove == 1) {
             // 如果haveLeft为0且haveAbove为1，设置LeftCol[i]等于上方的像素值
             (*b_data->LeftCol)[i] = av1Ctx->currentFrame->CurrFrame[plane][y - 1][x];
@@ -2381,11 +2382,11 @@ int decode::predict_intra(int plane,int x,int y,int haveLeft,int haveAbove,
             // 如果haveLeft和haveAbove都为0，设置LeftCol[i]为(1 << (BitDepth - 1)) + 1
             (*b_data->LeftCol)[i] = (1 << (seqHdr->color_config.BitDepth - 1)) + 1;
         } else {
-            // 如果以上两个条件都不满足
             int leftLimit = y + (haveBelowLeft ? 2 * h : h) - 1;
             (*b_data->LeftCol)[i] = av1Ctx->currentFrame->CurrFrame[plane][Min(leftLimit, y+i)][x - 1];
-        }
-		printf("LeftCol:%d ",(*b_data->LeftCol)[i]);
+			printf("Min(leftLimit, x+i) %d ",Min(leftLimit, y+i));
+		}
+		printf("LeftCol:%d i:%d ",(*b_data->LeftCol)[i],i);
     }
 	if(haveAbove == 1 && haveLeft == 1){
 		(*b_data->AboveRow)[ -1 ] = av1Ctx->currentFrame->CurrFrame[ plane ][ y-1 ][x-1 ];
@@ -2403,6 +2404,7 @@ int decode::predict_intra(int plane,int x,int y,int haveLeft,int haveAbove,
 	for(int i = 0 ; i < h ; i++){
 		pred[i] = new uint16_t[w];
 	}
+	printf("\n");
 	if(plane == 0 && b_data->use_filter_intra){
 		printf("recursiveIntraPrdiction\n");
 		recursiveIntraPrdiction(w,h,pred,b_data,av1Ctx);
@@ -2419,11 +2421,14 @@ int decode::predict_intra(int plane,int x,int y,int haveLeft,int haveAbove,
 		printf("basicIntraPrediction\n");
 		basicIntraPrediction(w,h,pred,b_data);
 	}
+	printf("\n");
 	printf("pred\n");
 	for(int i = 0 ; i < h ;i ++){
 		for(int j = 0 ; j < w ;j ++){
 			av1Ctx->currentFrame->CurrFrame[ plane ][ y + i ][ x + j ] = pred[ i ][ j ];
-			printf("%d ",pred[ i ][ j ]);
+			//   if(pred[ i ][ j ] > 255)
+			//   	printf("@@%d i:%d j:%d ",pred[ i ][ j ],i,j);
+			printf("@@%d ",pred[ i ][ j ]);
 		}
 	}
 	printf("\n");
@@ -2528,12 +2533,14 @@ int decode::directionalIntraPrediction(int plane,int x,int y,int haveLeft,int ha
 	int angleDelta = plane == 0 ? b_data->AngleDeltaY : b_data->AngleDeltaUV;
 	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
 	int pAngle = ( Mode_To_Angle[ mode ] + angleDelta * ANGLE_STEP );
+	printf("mode %d angleDelta %d pAngle %d\n",mode,angleDelta,pAngle);
 	int upsampleAbove = 0;
 	int upsampleLeft = 0;
+
 	if(seqHdr->enable_intra_edge_filter == 1){
 		int filterType ;
 		if(pAngle != 90 && pAngle != 180){
-			if(pAngle > 90 && pAngle < 180 && (w + h)){
+			if(pAngle > 90 && pAngle < 180 && (w + h) >= 24){
 				//7.11.2.7
 				(*b_data->LeftCol)[-1] = (*b_data->AboveRow)[-1] =
 					filterCornor(b_data->LeftCol,b_data->AboveRow);
@@ -2554,21 +2561,24 @@ int decode::directionalIntraPrediction(int plane,int x,int y,int haveLeft,int ha
 				intraEdgeFilter(numPx,strength,1,b_data);
 			}
 		}
-
+		printf("\n");
 		//7.11.2.10
-		int upsampleAbove = intraEdgeUpsampleSelection(w,h,filterType,pAngle - 90 );
+		upsampleAbove = intraEdgeUpsampleSelection(w,h,filterType,pAngle - 90 );
+		printf("upsampleAbove %d\n",upsampleAbove);
 		int numPx = ( w + (pAngle < 90 ? h : 0) );
 		if(upsampleAbove == 1){
 			//7.11.2.11
 			 intraEdgeUpsample(numPx,0,b_data,av1Ctx);
 		}
-		int upsampleLeft = intraEdgeUpsampleSelection(w,h,filterType,pAngle - 180 );
+		upsampleLeft = intraEdgeUpsampleSelection(w,h,filterType,pAngle - 180 );
+		printf("upsampleLeft %d\n",upsampleAbove);
 		numPx = ( h + (pAngle > 180 ? w : 0) );
 		if(upsampleLeft == 1){
 			intraEdgeUpsample(numPx,1,b_data,av1Ctx);
 		}
 	}
 
+	printf("AboveRow  \n");
 	int dx;
 	if( pAngle < 90)
 		dx = Dr_Intra_Derivative[ pAngle ];
@@ -2582,34 +2592,34 @@ int decode::directionalIntraPrediction(int plane,int x,int y,int haveLeft,int ha
 	if( pAngle > 90 && pAngle < 180)
 		dy = Dr_Intra_Derivative[ pAngle - 90 ];
 	else if(pAngle > 180)
-		dy = Dr_Intra_Derivative[ 270 - pAngle ];
+		dy =	Dr_Intra_Derivative[ 270 - pAngle ];
 	else{
 		//dy should be undefined;
 	}
 	printf("dx %d dy %d\n",dx,dy);
 	if(pAngle < 90){
 			printf("pAngle < 90 \n");
-			int idx, base, shift;
 			for(int i = 0 ; i < h; i++){
 				for(int j = 0 ; j < w ; j++){
-					idx = ( i + 1 ) * dx;
-					base = (idx >> ( 6 - upsampleAbove ) ) + (j << upsampleAbove);
-					shift = ( (idx << upsampleAbove) >> 1 ) & 0x1F;
+					int idx = ( i + 1 ) * dx;
+					int base = (idx >> ( 6 - upsampleAbove ) ) + (j << upsampleAbove);
+					int shift = ( (idx << upsampleAbove) >> 1 ) & 0x1F;
 					int maxBaseX = (w + h - 1) << upsampleAbove;
 					if(base < maxBaseX){
+						//printf("|1@%d %d %d %d %d %d %d %d %d",i,j,upsampleAbove,dx,idx,base,shift,(*b_data->AboveRow)[ base ],(*b_data->AboveRow)[base + 1]);
 							pred[ i ][ j ] = Round2( (*b_data->AboveRow)[ base ] * ( 32 - shift ) + (*b_data->AboveRow)[ base + 1 ] * shift, 5 );
 					}else{
+						//printf("|2@%d %d %d %d %d %d %d %d",i,j,upsampleAbove,dx,idx,maxBaseX,shift,(*b_data->AboveRow)[ maxBaseX ]);
 						pred[ i ][ j ] = (*b_data->AboveRow)[maxBaseX ];
 					}
 				}
 			}
 
 	}else if(pAngle > 90 && pAngle < 180){
-		int idx, base, shift;
 		printf("90 < pAngle <180 \n");
 		for (int i = 0; i < h; i++) {
 			for (int j = 0; j < w; j++) {
-				
+				int idx, base, shift;
 				
 				idx = (j << 6) - (i + 1) * dx;
 				
@@ -2633,18 +2643,17 @@ int decode::directionalIntraPrediction(int plane,int x,int y,int haveLeft,int ha
 
 	}else if(pAngle > 180){
 		printf("pAngle > 180\n");
-		int idx, base, shift;
 		for (int i = 0; i < h; i++) {
 			for (int j = 0; j < w; j++) {
-				
+				int idx, base, shift;
 
 				idx = (j + 1) * dy;
 
 				base = (idx >> (6 - upsampleLeft)) + (i << upsampleLeft);
 
 				shift = ((idx << upsampleLeft) >> 1) & 0x1F;
-												    //0 19  0         211 4220 65  30      0 58640
-				printf("|@%d %d %d %d %d %d %d %d %d",i,j,upsampleLeft,dy,idx,base,shift,(*b_data->LeftCol)[base],(*b_data->LeftCol)[base + 1]);
+				//@1 31 0 211 6752 base:106 
+				printf("|@%d %d %d %d %d base:%d ",i,j,upsampleLeft,dy,idx,base);
 				pred[i][j] = Round2((*b_data->LeftCol)[base] * (32 - shift) + (*b_data->LeftCol)[base + 1] * shift, 5);
 			}
 		}
@@ -2989,7 +2998,7 @@ int decode::intraEdgeFilterStrengthSelection(int w, int h, int filterType, int d
 //7.11.2.10
 int decode::intraEdgeUpsampleSelection(int w, int h, int filterType, int delta){
 
-	int useUpsample;
+	int useUpsample = 0;
 	int  d =  Abs( delta );
 	int  blkWh =  w + h;
 	if ( d <= 0 || d >= 40 ) {
@@ -3031,6 +3040,7 @@ int decode::intraEdgeUpsample(int numPx,int dir,BlockData *b_data,AV1DecodeConte
 }
 int decode::intraEdgeFilter(int sz, int strength, int left,BlockData *b_data){
     if (strength == 0) {
+		printf("intraEdgeFilter return imm\n");
         return ERROR_CODE; 
     }
 
@@ -3051,6 +3061,7 @@ int decode::intraEdgeFilter(int sz, int strength, int left,BlockData *b_data){
             (*b_data->LeftCol)[i - 1] = (s + 8) >> 4;
         } else {
             (*b_data->AboveRow)[i - 1] = (s + 8) >> 4;
+			printf("ef %d i:%d ",(*b_data->AboveRow)[i - 1],i - 1);
         }
     }
 
@@ -4003,7 +4014,7 @@ int decode::reconstruct(int plane, int x, int y, int txSz,BlockData *b_data,AV1D
         for (int j = 0; j < w; j++) {
             int xx = flipLR ? (w - j - 1) : j;
             int yy = flipUD ? (h - i - 1) : i;
-            //printf("%d|%d ",av1Ctx->currentFrame->CurrFrame[plane][Y + yy][X + xx] , Residual[i][j]);
+            printf("%d ", Residual[i][j]);
             av1Ctx->currentFrame->CurrFrame[plane][Y + yy][X + xx] = Clip1(av1Ctx->currentFrame->CurrFrame[plane][Y + yy][X + xx] + Residual[i][j],seqHdr->color_config.BitDepth);
         	//printf("x:%d y:%d xx:%d yy:%d ---",X,Y,xx,yy);
 			
@@ -4505,7 +4516,6 @@ void decode::twoDInverseTransformBlock(int txSz,int16_t **Residual,BlockData *b_
 		
         for (int j = 0; j < w; j++) {
             Residual[i][j] = Min(Max(-((1 << (colClampRange - 1))), Residual[i][j]), ((1 << (colClampRange - 1)) - 1));
-			//printf("%d ",Residual[i][j]);
 		}
 		
     }
@@ -4533,6 +4543,7 @@ void decode::twoDInverseTransformBlock(int txSz,int16_t **Residual,BlockData *b_
         for (int i = 0; i < h; i++) {
             Residual[i][j] = Round2(T1[i], colShift);
 			//printf("%d ",Residual[i][j]);
+
         }
 		
     }

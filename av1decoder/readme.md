@@ -59,5 +59,37 @@ eob 512?--
 Quant的数据 不对，赋值的时候 是正常的
 b decode.cpp 2029 2100
 
-问题 ，pangle > 180的时候 base 会 大于 w+h,但是 前面intraEdgeUpsample 应该处理过了 的， 值是有效的
-现在无效 upsampleAbove upsampleLeft 有问题，为0，那么 base的值就不应该大于 w + h
+//printf("|@%d %d %d %d %d %d %d %d %d",i,j,upsampleAbove,dx,idx,base,shift,(*b_data->AboveRow)[base],(*b_data->AboveRow)[base + 1]);
+//printf("|&%d %d %d %d %d %d %d %d %d",i,j,upsampleLeft,dx,idx,base,shift,(*b_data->LeftCol)[base],(*b_data->LeftCol)[base + 1]);
+
+拿不准的时候 数据类型设置为有符号
+
+
+
+看起来还是预测就没对 
+
+以下面这个块为例：
+
+
+右边界异常
+residual b_data->MiCol:176 b_data->MiRow :16 subX:0 subY:0
+predict_intra 内在给aboverow数组赋值的时候访问了未赋值的内存，值为0  拉低了所有分量的值 所以发绿
+
+
+
+		        154 122 135
+152 123 134		135 107 118
+				residual b_data->MiCol:176 b_data->MiRow :16 
+				
+				
+		        123  119 139
+				
+91 119 134(4*4) 107 106 130(8 * 8)
+**  **  **(4*4)			
+				
+				residual b_data->MiCol:56 b_data->MiRow :16
+				
+				
+				第二排第三个 partition是 发绿 和异常的起源 ，右边界除外
+
+

@@ -289,16 +289,6 @@ typedef struct frameHeader{
 	uint8_t allow_warped_motion;//是否使用扭曲运动模式
 	uint8_t reduced_tx_set;
 }frameHeader;
-//TileData 这个数据结构似乎也要取消
-typedef struct TileData{
-
-
-}TileData;
-//PartitionData 里面的东西似乎都应该移走，因为都是 以  4 * 4 块 为单位的 表示整个的数据
-/**/
-typedef struct PartitionData{
-		
-}PartitionData;
 
 typedef struct BlockData{
 	uint8_t HasChroma;
@@ -323,8 +313,8 @@ typedef struct BlockData{
 	uint8_t motion_mode;
 	uint8_t compound_type;
 	uint8_t interp_filter[2];
-	uint8_t AngleDeltaY;
-	uint8_t AngleDeltaUV;
+	int8_t AngleDeltaY;
+	int8_t AngleDeltaUV;
 
 	uint8_t CflAlphaU;
 	uint8_t CflAlphaV;
@@ -393,7 +383,7 @@ typedef struct BlockData{
 }BlockData;
 typedef struct LoopRestorationContext{
 	
-	uint16_t **LrFrame[3];
+	uint16_t **LrFrame[3]; //经过LoopRestoration 之后的像素数据
 	uint16_t ****LrWiener[3];
 	uint16_t **LrType[3];
 	uint16_t **LrSgrSet[3];
@@ -441,12 +431,12 @@ typedef struct FrameContext{
 	//sizeInfo si;
 	frameHeader frameHdr;
 	CDFArrays cdfCtx;
-	uint16_t **CurrFrame[3];
-	uint16_t **CdefFrame[3];
+	uint16_t **CurrFrame[3];//经过预测重建 之后的像素数据(指解码完成之后，解码完成之前可能是无效数据)
+	uint16_t **CdefFrame[3];//cdef 之后的数据
 	uint16_t **UpscaledCdefFrame[3];
 	uint16_t **UpscaledCurrFrame[3];
 	LoopRestorationContext *lrCtx;
-	uint16_t **OutY;
+	uint16_t **OutY; //FilmGain 之前的所有过程都完成的数据
 	uint16_t **OutU;
 	uint16_t **OutV;
 	FilmGainContext *fgCtx;
