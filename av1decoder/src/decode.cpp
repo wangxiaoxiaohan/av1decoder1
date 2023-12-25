@@ -1720,7 +1720,7 @@ int decode::transform_block(int plane,int baseX,int baseY,int txSz,int x,int y,S
 						mode,log2W, log2H, b_data,av1Ctx);
 			if (isCfl)
 			{
-				predict_chroma_from_luma(plane, startX, startY, txSz,b_data,av1Ctx);
+				//predict_chroma_from_luma(plane, startX, startY, txSz,b_data,av1Ctx);
 			}
 		}
 		if (plane == 0)
@@ -2369,9 +2369,9 @@ int decode::predict_intra(int plane,int x,int y,int haveLeft,int haveAbove,
 
             int aboveLimit = x + (haveAboveRight ? 2 * w : w) - 1;
             (*b_data->AboveRow)[i] = av1Ctx->currentFrame->CurrFrame[plane][y - 1][Min(aboveLimit, x+i)];
-			printf("Min(aboveLimit, x+i) %d ",Min(aboveLimit, x+i));
+			//printf("Min(aboveLimit, x+i) %d ",Min(aboveLimit, x+i));
 		}
-		printf("AboveRow:%d i:%d ",(*b_data->AboveRow)[i],i);
+		//printf("AboveRow:%d i:%d ",(*b_data->AboveRow)[i],i);
     }
 	printf("\n");
     for (int i = 0; i < w + h; i++) {
@@ -2384,9 +2384,9 @@ int decode::predict_intra(int plane,int x,int y,int haveLeft,int haveAbove,
         } else {
             int leftLimit = y + (haveBelowLeft ? 2 * h : h) - 1;
             (*b_data->LeftCol)[i] = av1Ctx->currentFrame->CurrFrame[plane][Min(leftLimit, y+i)][x - 1];
-			printf("Min(leftLimit, x+i) %d ",Min(leftLimit, y+i));
+			//printf("Min(leftLimit, x+i) %d ",Min(leftLimit, y+i));
 		}
-		printf("LeftCol:%d i:%d ",(*b_data->LeftCol)[i],i);
+		//printf("LeftCol:%d i:%d ",(*b_data->LeftCol)[i],i);
     }
 	if(haveAbove == 1 && haveLeft == 1){
 		(*b_data->AboveRow)[ -1 ] = av1Ctx->currentFrame->CurrFrame[ plane ][ y-1 ][x-1 ];
@@ -2428,7 +2428,7 @@ int decode::predict_intra(int plane,int x,int y,int haveLeft,int haveAbove,
 			av1Ctx->currentFrame->CurrFrame[ plane ][ y + i ][ x + j ] = pred[ i ][ j ];
 			//   if(pred[ i ][ j ] > 255)
 			//   	printf("@@%d i:%d j:%d ",pred[ i ][ j ],i,j);
-			printf("@@%d ",pred[ i ][ j ]);
+			//printf("@@%d ",pred[ i ][ j ]);
 		}
 	}
 	printf("\n");
@@ -2628,14 +2628,14 @@ int decode::directionalIntraPrediction(int plane,int x,int y,int haveLeft,int ha
 				if (base >= -(1 << upsampleAbove)) {
 					shift = ((idx << upsampleAbove) >> 1) & 0x1F;
 					//0 17 0 7 1081 16 28 119 119
-					printf("|@%d %d %d %d %d %d %d %d %d",i,j,upsampleAbove,dx,idx,base,shift,(*b_data->AboveRow)[base],(*b_data->AboveRow)[base + 1]);
+					//printf("|@%d %d %d %d %d %d %d %d %d",i,j,upsampleAbove,dx,idx,base,shift,(*b_data->AboveRow)[base],(*b_data->AboveRow)[base + 1]);
 					pred[i][j] = Round2((*b_data->AboveRow)[base] * (32 - shift) + (*b_data->AboveRow)[base + 1] * shift, 5);
 				} else {
 					idx = (i << 6) - (j + 1) * dy;
 					base = idx >> (6 - upsampleLeft);
 					shift = ((idx << upsampleLeft) >> 1) & 0x1F;
 					//&14 0 0 1104433174 -1104432278 -17256755 21 0 0
-					printf("|&%d %d %d %d %d %d %d %d %d",i,j,upsampleLeft,dy,idx,base,shift,(*b_data->LeftCol)[base],(*b_data->LeftCol)[base + 1]);
+					//printf("|&%d %d %d %d %d %d %d %d %d",i,j,upsampleLeft,dy,idx,base,shift,(*b_data->LeftCol)[base],(*b_data->LeftCol)[base + 1]);
 					pred[i][j] = Round2((*b_data->LeftCol)[base] * (32 - shift) + (*b_data->LeftCol)[base + 1] * shift, 5);
 				}
 			}
@@ -2653,7 +2653,7 @@ int decode::directionalIntraPrediction(int plane,int x,int y,int haveLeft,int ha
 
 				shift = ((idx << upsampleLeft) >> 1) & 0x1F;
 				//@1 31 0 211 6752 base:106 
-				printf("|@%d %d %d %d %d base:%d ",i,j,upsampleLeft,dy,idx,base);
+				//printf("|@%d %d %d %d %d base:%d ",i,j,upsampleLeft,dy,idx,base);
 				pred[i][j] = Round2((*b_data->LeftCol)[base] * (32 - shift) + (*b_data->LeftCol)[base + 1] * shift, 5);
 			}
 		}
@@ -2815,15 +2815,15 @@ int decode::smoothIntraPrediction(int mode, int log2W, int log2H, int w, int h, 
         }
     } else if (mode == SMOOTH_V_PRED) {
         const uint8_t *smWeights;
- 		if(log2W == 2){
+ 		if(log2H == 2){
 			smWeights = Sm_Weights_Tx_4x4;
-		}else if(log2W == 3){
+		}else if(log2H == 3){
 			smWeights = Sm_Weights_Tx_8x8;
-		}else if(log2W == 4){
+		}else if(log2H == 4){
 			smWeights = Sm_Weights_Tx_16x16;
-		}else if(log2W == 5){	
+		}else if(log2H == 5){	
 			smWeights = Sm_Weights_Tx_32x32;
-		}else if(log2W == 6){
+		}else if(log2H == 6){
 			smWeights = Sm_Weights_Tx_64x64;
 		}
         for (int i = 0; i < h; i++) {
@@ -3895,11 +3895,11 @@ int decode::predict_chroma_from_luma(int plane, int startX, int startY, int txSz
 
     for (int i = 0; i < h; i++) {
         int lumaY = (startY + i) << subY;
-        lumaY = (lumaY < b_data->MaxLumaH - (1 << subY)) ? lumaY : b_data->MaxLumaH - (1 << subY);
+        lumaY = Min(lumaY , b_data->MaxLumaH - (1 << subY));
 
         for (int j = 0; j < w; j++) {
             int lumaX = (startX + j) << subX;
-            lumaX = (lumaX < b_data->MaxLumaW - (1 << subX)) ? lumaX : b_data->MaxLumaW - (1 << subX);
+            lumaX = Min(lumaX , b_data->MaxLumaW - (1 << subX));
 
             int t = 0;
             for (int dy = 0; dy <= subY; dy += 1) {
@@ -3914,14 +3914,17 @@ int decode::predict_chroma_from_luma(int plane, int startX, int startY, int txSz
         }
     }
 
-    lumaAvg = (lumaAvg + (1 << (Tx_Width_Log2[txSz] + Tx_Height_Log2[txSz] - 1))) >> (Tx_Width_Log2[txSz] + Tx_Height_Log2[txSz]);
+    lumaAvg = Round2(lumaAvg , (1 << (Tx_Width_Log2[txSz] + Tx_Height_Log2[txSz] - 1)));
 
     for (int i = 0; i < h; i++) {
         for (int j = 0; j < w; j++) {
             int dc = av1Ctx->currentFrame->CurrFrame[plane][startY + i][startX + j];
-            int scaledLuma = (int)((alpha * (L[i][j] - lumaAvg)) * 64);
+            //int scaledLuma = (int)((alpha * (L[i][j] - lumaAvg)) * 64);
+			int scaledLuma = Round2Signed( alpha * ( L[ i ][ j ] - lumaAvg ), 6 );
+
             av1Ctx->currentFrame->CurrFrame[plane][startY + i][startX + j] = Clip1(dc + scaledLuma,seqHdr->color_config.BitDepth);
-        }
+        	printf("pcfl plane%d i %d j %d %d|",plane ,startY + i,startX + j,av1Ctx->currentFrame->CurrFrame[plane][startY + i][startX + j]);
+		}
     }
 }                                                                                                                                                                                                                                              
 
@@ -4014,7 +4017,7 @@ int decode::reconstruct(int plane, int x, int y, int txSz,BlockData *b_data,AV1D
         for (int j = 0; j < w; j++) {
             int xx = flipLR ? (w - j - 1) : j;
             int yy = flipUD ? (h - i - 1) : i;
-            printf("%d ", Residual[i][j]);
+            //printf("%d ", Residual[i][j]);
             av1Ctx->currentFrame->CurrFrame[plane][Y + yy][X + xx] = Clip1(av1Ctx->currentFrame->CurrFrame[plane][Y + yy][X + xx] + Residual[i][j],seqHdr->color_config.BitDepth);
         	//printf("x:%d y:%d xx:%d yy:%d ---",X,Y,xx,yy);
 			

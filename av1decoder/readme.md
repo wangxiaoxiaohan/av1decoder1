@@ -93,3 +93,8 @@ predict_intra 内在给aboverow数组赋值的时候访问了未赋值的内存�
 				第二排第三个 partition是 发绿 和异常的起源 ，右边界除外
 
 
+residual b_data->MiCol:36 b_data->MiRow :24
+
+  最终输出数据 亮度和 预测 残差叠加值复合 色度 变成了 255 或者 0。
+predict_chroma_from_luma 有问题？？？
+
