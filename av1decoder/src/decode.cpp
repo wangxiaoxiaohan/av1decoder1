@@ -2369,9 +2369,9 @@ int decode::predict_intra(int plane,int x,int y,int haveLeft,int haveAbove,
 
             int aboveLimit = x + (haveAboveRight ? 2 * w : w) - 1;
             (*b_data->AboveRow)[i] = av1Ctx->currentFrame->CurrFrame[plane][y - 1][Min(aboveLimit, x+i)];
-			//printf("Min(aboveLimit, x+i) %d ",Min(aboveLimit, x+i));
+			printf("Min(aboveLimit, x+i) %d ",Min(aboveLimit, x+i));
 		}
-		//printf("AboveRow:%d i:%d ",(*b_data->AboveRow)[i],i);
+		printf("AboveRow:%d i:%d ",(*b_data->AboveRow)[i],i);
     }
 	printf("\n");
     for (int i = 0; i < w + h; i++) {
@@ -2384,9 +2384,9 @@ int decode::predict_intra(int plane,int x,int y,int haveLeft,int haveAbove,
         } else {
             int leftLimit = y + (haveBelowLeft ? 2 * h : h) - 1;
             (*b_data->LeftCol)[i] = av1Ctx->currentFrame->CurrFrame[plane][Min(leftLimit, y+i)][x - 1];
-			//printf("Min(leftLimit, x+i) %d ",Min(leftLimit, y+i));
+			printf("Min(leftLimit, x+i) %d ",Min(leftLimit, y+i));
 		}
-		//printf("LeftCol:%d i:%d ",(*b_data->LeftCol)[i],i);
+		printf("LeftCol:%d i:%d ",(*b_data->LeftCol)[i],i);
     }
 	if(haveAbove == 1 && haveLeft == 1){
 		(*b_data->AboveRow)[ -1 ] = av1Ctx->currentFrame->CurrFrame[ plane ][ y-1 ][x-1 ];
@@ -2428,7 +2428,7 @@ int decode::predict_intra(int plane,int x,int y,int haveLeft,int haveAbove,
 			av1Ctx->currentFrame->CurrFrame[ plane ][ y + i ][ x + j ] = pred[ i ][ j ];
 			//   if(pred[ i ][ j ] > 255)
 			//   	printf("@@%d i:%d j:%d ",pred[ i ][ j ],i,j);
-			//printf("@@%d ",pred[ i ][ j ]);
+			printf("%d ",pred[ i ][ j ]);
 		}
 	}
 	printf("\n");
@@ -2470,14 +2470,14 @@ int decode::recursiveIntraPrdiction(int w, int h,uint16_t **pred,BlockData *b_da
 	int h2 = h >> 1;
 	int i;
 
-	for (int i2 = 0; i2 < h2 - 1; i2++)
+	for (int i2 = 0; i2 < h2; i2++)
 	{
-		for (int j4 = 0; j4 < w4 - 1; j4++)
+		for (int j4 = 0; j4 < w4; j4++)
 		{
 			//对于每个 4 * 2块，做以下操作
 
 			//这个循环为当前 4 * 2块准备一个数组，包含7个样本
-			uint8_t p[7];
+			uint16_t p[7];
 			for (i = 0; i < 7; i++)
 			{
 				if (i < 5)

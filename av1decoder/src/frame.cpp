@@ -1879,44 +1879,24 @@ int frame::decodeFrame(int sz, bitSt *bs, AV1DecodeContext *av1Ctx){
 		int subX = av1Ctx->seqHdr.color_config.subsampling_x;
 		int subY = av1Ctx->seqHdr.color_config.subsampling_y;
 		FILE *fp = fopen("test.yuv", "wb");
-		uint8_t buf[750];
-		for (int i = 0; i < 1000; i++) {
-			for (int j = 0; j < 750; j++) {
+		uint8_t buf[1920];
+		for (int i = 0; i < 1080; i++) {
+			for (int j = 0; j < 1920; j++) {
 				buf[j] = av1Ctx->currentFrame->CurrFrame[0][ i][ j];
 
 			}
-			fwrite(buf, sizeof(uint8_t),750, fp);
+			fwrite(buf, sizeof(uint8_t),1920, fp);
 		}
-		uint8_t buf1[((750 + subX) >> subX ) * 2];
-		for (int i = 0; i < (1000 + subY) >> subY ; i++) {
-			for (int j = 0; j < (750 + subX) >> subX; j++) {
+		uint8_t buf1[((1920 + subX) >> subX ) * 2];
+		for (int i = 0; i < (1080 + subY) >> subY ; i++) {
+			for (int j = 0; j < (1920 + subX) >> subX; j++) {
 				buf1[j * 2] = av1Ctx->currentFrame->CurrFrame[1][ i][ j];
 				buf1[j * 2 + 1] = av1Ctx->currentFrame->CurrFrame[2][ i][ j];
 			}
-			fwrite(buf1, sizeof(uint8_t),((750 + subX) >> subX ) * 2, fp);
+			fwrite(buf1, sizeof(uint8_t),((1920 + subX) >> subX ) * 2, fp);
 		}
 		fclose(fp);
 		printf("\n");
-		printf("oy\n");
-		for(int i = 96 ; i < 112 ; i ++){
-			for(int j = 144 ; j < 160 ; j ++){
-				printf(" %d ",av1Ctx->currentFrame->CurrFrame[0][ i][ j]);
-			}
-		}
-		printf("\n");
-		printf("ou\n");
-		for(int i = 48 ; i < 56 ; i ++){
-			for(int j = 72 ; j < 80 ; j ++){
-				printf("%d ",av1Ctx->currentFrame->CurrFrame[1][ i][ j]);
-			}
-		}
-		printf("\n");
-		printf("oy\n");
-		for(int i = 48 ; i < 56 ; i ++){
-			for(int j = 72 ; j < 80 ; j ++){
-				printf("%d ",av1Ctx->currentFrame->CurrFrame[2][ i][ j]);
-			}
-		}
 		decode_instance->decode_frame_wrapup(av1Ctx);
 		av1Ctx->SeenFrameHeader = 0;
 	}

@@ -681,7 +681,7 @@ enum em_predict_mode
 	SMOOTH_V_PRED,
 	SMOOTH_H_PRED,
 	PAETH_PRED,
-	UV_CFL_PRED
+	UV_CFL_PRED // cb , cr only  ,cfl means "chroma from luma"
 };
 enum em_mv_class
 {

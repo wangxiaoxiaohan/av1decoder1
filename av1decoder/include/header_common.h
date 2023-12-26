@@ -232,7 +232,7 @@ typedef struct frameHeader{
 		uint8_t lr_unit_shift; //亮度恢复 是否缩小一半
 		uint8_t lr_unit_extra_shift; //亮度恢复是否再缩小一半
 		uint8_t lr_uv_shift; //色度恢复是否缩小一半
-		uint8_t LoopRestorationSize[3]; //某个平面  loop restoration unit的大小，单位是sample(什么sample？ 标记！！)
+		uint16_t LoopRestorationSize[3]; //某个平面  loop restoration unit的大小，单位是sample(什么sample？ 标记！！)
 		uint8_t FrameRestorationType[3];
 	}lr_params;
 	struct  {
