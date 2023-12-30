@@ -4,7 +4,7 @@
 #include "frame.h"
 
 int main(int argc ,char **argv){
-    FILE *fp = fopen("./2s.obu","r");
+    FILE *fp = fopen("./out9.obu","r");
     uint8_t *buffer = (uint8_t *)malloc(OBU_BUF_SIZE);
     int offset = 0 ;
 

@@ -14,13 +14,32 @@ int decode::decode_frame_wrapup( AV1DecodeContext *av1Ctx){
 	frameHeader *frameHdr = &av1Ctx->frameHdr;
 	if(frameHdr->show_existing_frame == 0){
 		if( frameHdr->loop_filter_params.loop_filter_level[ 0 ] != 0 || frameHdr->loop_filter_params.loop_filter_level[ 1 ] != 0){
+			printf("loop filter\n");
 			loopFilter(av1Ctx); 
 		}
-		for (int i = 0; i < 8; i++) {
-			for (int j = 0; j < 8; j++) {
-				//printf("!!!! %d \n",av1Ctx->currentFrame->CurrFrame[0][56 + i][56 + j]);
-			}
+
+		FILE *fp = fopen("test.yuv", "wb");
+		int h = av1Ctx->frameHdr.si.FrameHeight;
+		int w = av1Ctx->frameHdr.si.FrameWidth;
+		uint8_t buf[w];
+		for (int i = 0; i < h; i++) {
+		for (int j = 0; j < w; j++) {
+			buf[j] = av1Ctx->currentFrame->CurrFrame[0][ i][ j];
 		}
+		fwrite(buf, sizeof(uint8_t),w, fp);
+		}
+		int subX = av1Ctx->seqHdr.color_config.subsampling_x;
+		int subY = av1Ctx->seqHdr.color_config.subsampling_y;
+		uint8_t buf1[((w + subX) >> subX ) * 2];
+		for (int i = 0; i < (h + subY) >> subY ; i++) {
+			for (int j = 0; j < (w + subX) >> subX; j++) {
+				buf1[j * 2] = av1Ctx->currentFrame->CurrFrame[1][ i][ j];
+				buf1[j * 2 + 1] = av1Ctx->currentFrame->CurrFrame[2][ i][ j];
+			}
+			fwrite(buf1, sizeof(uint8_t),((w + subX) >> subX ) * 2, fp);
+		}
+		fclose(fp);
+
 		cdef(av1Ctx); 
 		upscalingProcess(av1Ctx->currentFrame->CdefFrame,av1Ctx->currentFrame->UpscaledCdefFrame,av1Ctx);
 		upscalingProcess(av1Ctx->currentFrame->CurrFrame,av1Ctx->currentFrame->UpscaledCurrFrame,av1Ctx);
@@ -1601,6 +1620,7 @@ int decode::residual(SymbolContext *sbCtx,bitSt *bs,BlockData *b_data, AV1Decode
 				int planeSz = get_plane_residual_size(miSizeChunk, plane,seqHdr->color_config.subsampling_x,seqHdr->color_config.subsampling_y);
 				int num4x4W = Num_4x4_Blocks_Wide[planeSz];
 				int num4x4H = Num_4x4_Blocks_High[planeSz];
+				printf("stepX %d stepY %d num4x4W:%d num4x4H %d \n",stepX ,stepY ,num4x4W,num4x4H );
 				int subX = (plane > 0) ? seqHdr->color_config.subsampling_x : 0;
 				int subY = (plane > 0) ? seqHdr->color_config.subsampling_y : 0;
 				int baseX = (miColChunk >> subX) * MI_SIZE;
@@ -1673,7 +1693,7 @@ int decode::transform_block(int plane,int baseX,int baseY,int txSz,int x,int y,S
 {
 	frameHeader *frameHdr = &av1Ctx->frameHdr;
 	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
-	printf("transform_block baseX:%d baseY:%d x:%d y:%d\n",baseX,baseY,x,y);
+	//printf("transform_block baseX:%d baseY:%d x:%d y:%d\n",baseX,baseY,x,y);
 	int startX = baseX + 4 * x;
 	int startY = baseY + 4 * y;
 	int subX = (plane > 0) ? seqHdr->color_config.subsampling_x : 0;
@@ -1693,13 +1713,13 @@ int decode::transform_block(int plane,int baseX,int baseY,int txSz,int x,int y,S
 	}
 	if (!b_data->is_inter)
 	{
-		if (((plane == 0) && b_data->PaletteSizeY) ||
-			((plane != 0) && b_data->PaletteSizeUV))
-		{
-			predict_palette(plane, startX, startY, x, y, txSz,b_data,av1Ctx);
-		}
-		else
-		{
+		//if (((plane == 0) && b_data->PaletteSizeY) ||
+		//	((plane != 0) && b_data->PaletteSizeUV))
+		//{
+		//	predict_palette(plane, startX, startY, x, y, txSz,b_data,av1Ctx);
+		//}
+		//else
+		//{
 			int isCfl = (plane > 0 && b_data->UVMode == UV_CFL_PRED);
 			int mode;
 			if (plane == 0)
@@ -1722,7 +1742,7 @@ int decode::transform_block(int plane,int baseX,int baseY,int txSz,int x,int y,S
 			{
 				//predict_chroma_from_luma(plane, startX, startY, txSz,b_data,av1Ctx);
 			}
-		}
+		//}
 		if (plane == 0)
 		{
 			b_data->MaxLumaW = startX + stepX * 4;
@@ -2369,9 +2389,9 @@ int decode::predict_intra(int plane,int x,int y,int haveLeft,int haveAbove,
 
             int aboveLimit = x + (haveAboveRight ? 2 * w : w) - 1;
             (*b_data->AboveRow)[i] = av1Ctx->currentFrame->CurrFrame[plane][y - 1][Min(aboveLimit, x+i)];
-			printf("Min(aboveLimit, x+i) %d ",Min(aboveLimit, x+i));
+			//printf("Min(aboveLimit, x+i) %d ",Min(aboveLimit, x+i));
 		}
-		printf("AboveRow:%d i:%d ",(*b_data->AboveRow)[i],i);
+		//printf("AboveRow:%d i:%d ",(*b_data->AboveRow)[i],i);
     }
 	printf("\n");
     for (int i = 0; i < w + h; i++) {
@@ -2384,9 +2404,9 @@ int decode::predict_intra(int plane,int x,int y,int haveLeft,int haveAbove,
         } else {
             int leftLimit = y + (haveBelowLeft ? 2 * h : h) - 1;
             (*b_data->LeftCol)[i] = av1Ctx->currentFrame->CurrFrame[plane][Min(leftLimit, y+i)][x - 1];
-			printf("Min(leftLimit, x+i) %d ",Min(leftLimit, y+i));
+			//printf("Min(leftLimit, x+i) %d ",Min(leftLimit, y+i));
 		}
-		printf("LeftCol:%d i:%d ",(*b_data->LeftCol)[i],i);
+		//printf("LeftCol:%d i:%d ",(*b_data->LeftCol)[i],i);
     }
 	if(haveAbove == 1 && haveLeft == 1){
 		(*b_data->AboveRow)[ -1 ] = av1Ctx->currentFrame->CurrFrame[ plane ][ y-1 ][x-1 ];
@@ -2428,7 +2448,7 @@ int decode::predict_intra(int plane,int x,int y,int haveLeft,int haveAbove,
 			av1Ctx->currentFrame->CurrFrame[ plane ][ y + i ][ x + j ] = pred[ i ][ j ];
 			//   if(pred[ i ][ j ] > 255)
 			//   	printf("@@%d i:%d j:%d ",pred[ i ][ j ],i,j);
-			printf("%d ",pred[ i ][ j ]);
+			//printf("%d ",pred[ i ][ j ]);
 		}
 	}
 	printf("\n");
@@ -3875,12 +3895,14 @@ int decode::predict_palette(int plane, int startX, int startY, int x, int y, int
         palette = (plane == 1) ? b_data->palette_colors_u : b_data->palette_colors_v;
         map = b_data->ColorMapUV;
     }
-
+	printf("pred pal\n");
     for (int i = 0; i < h; i++) {
         for (int j = 0; j < w; j++) {
             av1Ctx->currentFrame->CurrFrame[plane][startY + i][startX + j] = palette[map[y * 4 + i][x * 4 + j]];
-        }
+			printf("%d ",palette[map[y * 4 + i][x * 4 + j]]);
+		}
     }
+	printf("\n");
 }
 //7.11.5
 int decode::predict_chroma_from_luma(int plane, int startX, int startY, int txSz,BlockData *b_data,AV1DecodeContext *av1Ctx) {
@@ -4018,7 +4040,8 @@ int decode::reconstruct(int plane, int x, int y, int txSz,BlockData *b_data,AV1D
             int xx = flipLR ? (w - j - 1) : j;
             int yy = flipUD ? (h - i - 1) : i;
             //printf("%d ", Residual[i][j]);
-            av1Ctx->currentFrame->CurrFrame[plane][Y + yy][X + xx] = Clip1(av1Ctx->currentFrame->CurrFrame[plane][Y + yy][X + xx] + Residual[i][j],seqHdr->color_config.BitDepth);
+			//注意这里写的和spec 不一样，临时解法！！
+            av1Ctx->currentFrame->CurrFrame[plane][Y + yy][X + xx] = Clip3(0,255,av1Ctx->currentFrame->CurrFrame[plane][Y + yy][X + xx] + Residual[i][j]);
         	//printf("x:%d y:%d xx:%d yy:%d ---",X,Y,xx,yy);
 			
 		}

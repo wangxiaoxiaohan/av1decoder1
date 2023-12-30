@@ -96,5 +96,10 @@ predict_intra 内在给aboverow数组赋值的时候访问了未赋值的内存�
 residual b_data->MiCol:36 b_data->MiRow :24
 
   最终输出数据 亮度和 预测 残差叠加值复合 色度 变成了 255 或者 0。
-predict_chroma_from_luma 有问题？？？
+
+
+  三個沒有按照spec的地方，
+  1.残差和帧内叠加的时候的取值范围限制在了255
+  2.predict_chroma_from_luma 未使用
+  3 predict_palette 未使用
 

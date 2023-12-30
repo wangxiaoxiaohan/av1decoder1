@@ -1876,26 +1876,29 @@ int frame::decodeFrame(int sz, bitSt *bs, AV1DecodeContext *av1Ctx){
 		if ( !frameHdr->disable_frame_end_update_cdf ) {
 			frame_end_update_cdf(av1Ctx);
 		}
-		int subX = av1Ctx->seqHdr.color_config.subsampling_x;
-		int subY = av1Ctx->seqHdr.color_config.subsampling_y;
-		FILE *fp = fopen("test.yuv", "wb");
-		uint8_t buf[1920];
-		for (int i = 0; i < 1080; i++) {
-			for (int j = 0; j < 1920; j++) {
-				buf[j] = av1Ctx->currentFrame->CurrFrame[0][ i][ j];
 
-			}
-			fwrite(buf, sizeof(uint8_t),1920, fp);
-		}
-		uint8_t buf1[((1920 + subX) >> subX ) * 2];
-		for (int i = 0; i < (1080 + subY) >> subY ; i++) {
-			for (int j = 0; j < (1920 + subX) >> subX; j++) {
-				buf1[j * 2] = av1Ctx->currentFrame->CurrFrame[1][ i][ j];
-				buf1[j * 2 + 1] = av1Ctx->currentFrame->CurrFrame[2][ i][ j];
-			}
-			fwrite(buf1, sizeof(uint8_t),((1920 + subX) >> subX ) * 2, fp);
-		}
-		fclose(fp);
+		// int subX = av1Ctx->seqHdr.color_config.subsampling_x;
+		// int subY = av1Ctx->seqHdr.color_config.subsampling_y;
+		// FILE *fp = fopen("test.yuv", "wb");
+		// int h = av1Ctx->frameHdr.si.FrameHeight;
+		// int w = av1Ctx->frameHdr.si.FrameWidth;
+		// uint8_t buf[w];
+		// for (int i = 0; i < h; i++) {
+		// 	for (int j = 0; j < w; j++) {
+		// 		buf[j] = av1Ctx->currentFrame->CurrFrame[0][ i][ j];
+		// 	}
+		// 	fwrite(buf, sizeof(uint8_t),w, fp);
+		// 	}
+		// 	uint8_t buf1[((w + subX) >> subX ) * 2];
+		// 	for (int i = 0; i < (h + subY) >> subY ; i++) {
+		// 	for (int j = 0; j < (w + subX) >> subX; j++) {
+		// 		buf1[j * 2] = av1Ctx->currentFrame->CurrFrame[1][ i][ j];
+		// 		buf1[j * 2 + 1] = av1Ctx->currentFrame->CurrFrame[2][ i][ j];
+		// 	}
+		// 	fwrite(buf1, sizeof(uint8_t),((w + subX) >> subX ) * 2, fp);
+		// }
+		// fclose(fp);
+		
 		printf("\n");
 		decode_instance->decode_frame_wrapup(av1Ctx);
 		av1Ctx->SeenFrameHeader = 0;
@@ -1906,11 +1909,7 @@ int frame::decode_tile(SymbolContext *sbCtx,bitSt *bs,AV1DecodeContext *av1Ctx){
 	frameHeader *frameHdr = &av1Ctx->frameHdr;
 	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
 	clear_above_context(av1Ctx );
-	printf("ts\n");
-    for(int i =  0 ; i < 20 ; i++){
-        printf(" %2x ",bs->dataPtr[bs->offset] + i);
-    }
-    printf("\n");
+
 	for (int i = 0; i < FRAME_LF_COUNT; i++ )
 		av1Ctx->DeltaLF[ i ] = 0;
 	for (int plane = 0; plane < seqHdr->color_config.NumPlanes; plane++ ) {
@@ -2112,7 +2111,7 @@ int frame::decode_block(SymbolContext *sbCtx,bitSt *bs,int r,int c,int subSize, 
 	b_data.MiRow = r;
 	b_data.MiCol = c;
 	b_data.MiSize = subSize;
-	printf("b_data.MiRow %d  b_data.MiCol %d  b_data.MiSize %d\n",b_data.MiRow,b_data.MiCol,b_data.MiSize);
+	//printf("b_data.MiRow %d  b_data.MiCol %d  b_data.MiSize %d\n",b_data.MiRow,b_data.MiCol,b_data.MiSize);
 	//block 宽高 4*4 为单位
 	int bw4 = Num_4x4_Blocks_Wide[subSize];
 	int bh4 = Num_4x4_Blocks_High[subSize];
@@ -2126,7 +2125,6 @@ int frame::decode_block(SymbolContext *sbCtx,bitSt *bs,int r,int c,int subSize, 
 	b_data.LeftCol = new Array16((blockWidth + blockHeight)*2);
 
 	b_data.Mask = new uint16_t*[2 * blockHeight + 2];
-	printf("Mask addr %x\n",b_data.Mask);
 	for(int i = 0 ; i < (2 * blockHeight + 2) ; i++){
 		b_data.Mask[i] = new uint16_t[2 * blockWidth + 2];
 	}
