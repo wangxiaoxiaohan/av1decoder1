@@ -71,7 +71,7 @@ b decode.cpp 2029 2100
 以下面这个块为例：
 
 
-右边界异常
+*问题8, 右边界异常
 residual b_data->MiCol:176 b_data->MiRow :16 subX:0 subY:0
 predict_intra 内在给aboverow数组赋值的时候访问了未赋值的内存，值为0  拉低了所有分量的值 所以发绿
 

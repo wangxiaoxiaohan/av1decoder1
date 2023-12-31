@@ -18,29 +18,52 @@ int decode::decode_frame_wrapup( AV1DecodeContext *av1Ctx){
 			loopFilter(av1Ctx); 
 		}
 
-		FILE *fp = fopen("test.yuv", "wb");
-		int h = av1Ctx->frameHdr.si.FrameHeight;
-		int w = av1Ctx->frameHdr.si.FrameWidth;
-		uint8_t buf[w];
-		for (int i = 0; i < h; i++) {
-		for (int j = 0; j < w; j++) {
-			buf[j] = av1Ctx->currentFrame->CurrFrame[0][ i][ j];
-		}
-		fwrite(buf, sizeof(uint8_t),w, fp);
-		}
-		int subX = av1Ctx->seqHdr.color_config.subsampling_x;
-		int subY = av1Ctx->seqHdr.color_config.subsampling_y;
-		uint8_t buf1[((w + subX) >> subX ) * 2];
-		for (int i = 0; i < (h + subY) >> subY ; i++) {
-			for (int j = 0; j < (w + subX) >> subX; j++) {
-				buf1[j * 2] = av1Ctx->currentFrame->CurrFrame[1][ i][ j];
-				buf1[j * 2 + 1] = av1Ctx->currentFrame->CurrFrame[2][ i][ j];
-			}
-			fwrite(buf1, sizeof(uint8_t),((w + subX) >> subX ) * 2, fp);
-		}
-		fclose(fp);
+		// FILE *fp = fopen("test.yuv", "wb");
+		// int h = av1Ctx->frameHdr.si.FrameHeight;
+		// int w = av1Ctx->frameHdr.si.FrameWidth;
+		// uint8_t buf[w];
+		// for (int i = 0; i < h; i++) {
+		// 	for (int j = 0; j < w; j++) {
+		// 		buf[j] = av1Ctx->currentFrame->CurrFrame[0][ i][ j];
+		// 	}
+		// 	fwrite(buf, sizeof(uint8_t),w, fp);
+		// }
+		// int subX = av1Ctx->seqHdr.color_config.subsampling_x;
+		// int subY = av1Ctx->seqHdr.color_config.subsampling_y;
+		// uint8_t buf1[((w + subX) >> subX ) * 2];
+		// for (int i = 0; i < (h + subY) >> subY ; i++) {
+		// 	for (int j = 0; j < (w + subX) >> subX; j++) {
+		// 		buf1[j * 2] = av1Ctx->currentFrame->CurrFrame[1][ i][ j];
+		// 		buf1[j * 2 + 1] = av1Ctx->currentFrame->CurrFrame[2][ i][ j];
+		// 	}
+		// 	fwrite(buf1, sizeof(uint8_t),((w + subX) >> subX ) * 2, fp);
+		// }
+		// fclose(fp);
 
 		cdef(av1Ctx); 
+
+		// FILE *fp = fopen("test.yuv", "wb");
+		// int h = av1Ctx->frameHdr.si.FrameHeight;
+		// int w = av1Ctx->frameHdr.si.FrameWidth;
+		// uint8_t buf[w];
+		// for (int i = 0; i < h; i++) {
+		// for (int j = 0; j < w; j++) {
+		// 	buf[j] = av1Ctx->currentFrame->CdefFrame[0][ i][ j];
+		// }
+		// fwrite(buf, sizeof(uint8_t),w, fp);
+		// }
+		// int subX = av1Ctx->seqHdr.color_config.subsampling_x;
+		// int subY = av1Ctx->seqHdr.color_config.subsampling_y;
+		// uint8_t buf1[((w + subX) >> subX ) * 2];
+		// for (int i = 0; i < (h + subY) >> subY ; i++) {
+		// 	for (int j = 0; j < (w + subX) >> subX; j++) {
+		// 		buf1[j * 2] = av1Ctx->currentFrame->CdefFrame[1][ i][ j];
+		// 		buf1[j * 2 + 1] = av1Ctx->currentFrame->CdefFrame[2][ i][ j];
+		// 	}
+		// 	fwrite(buf1, sizeof(uint8_t),((w + subX) >> subX ) * 2, fp);
+		// }
+		// fclose(fp);
+
 		upscalingProcess(av1Ctx->currentFrame->CdefFrame,av1Ctx->currentFrame->UpscaledCdefFrame,av1Ctx);
 		upscalingProcess(av1Ctx->currentFrame->CurrFrame,av1Ctx->currentFrame->UpscaledCurrFrame,av1Ctx);
 		loopRestoration(av1Ctx); 
@@ -2377,6 +2400,8 @@ int decode::predict_intra(int plane,int x,int y,int haveLeft,int haveAbove,
 		maxX = ( ( frameHdr->MiCols * MI_SIZE ) >> seqHdr->color_config.subsampling_x ) - 1;
 		maxY = ( ( frameHdr->MiRows * MI_SIZE ) >> seqHdr->color_config.subsampling_y ) - 1;
 	}
+	// int wLimit = frameHdr->si.FrameWidth % MI_SIZE == 0 ? maxX : maxX + MI_SIZE;
+	// int hLimit = frameHdr->si.FrameHeight % MI_SIZE == 0 ? maxY : maxY + MI_SIZE;
 	printf("haveLeft:%d haveAbove:%d haveAboveRight %d haveBelowLeft %d\n",haveLeft,haveAbove,haveAboveRight,haveBelowLeft);
     for (int i = 0; i < w + h; i++) {
         if (haveAbove == 0 && haveLeft == 1) {
@@ -2387,8 +2412,11 @@ int decode::predict_intra(int plane,int x,int y,int haveLeft,int haveAbove,
             (*b_data->AboveRow)[i] = (1 << (seqHdr->color_config.BitDepth - 1)) - 1;
         } else {
 
-            int aboveLimit = x + (haveAboveRight ? 2 * w : w) - 1;
-            (*b_data->AboveRow)[i] = av1Ctx->currentFrame->CurrFrame[plane][y - 1][Min(aboveLimit, x+i)];
+            int aboveLimit = x + (haveAboveRight ? 2 * w : w) - 1 ;
+			//bug, readme.MD 问题8
+			int lim = Min(aboveLimit, x+i) > maxX ? maxX : Min(aboveLimit, x+i);
+			//int lim = Min(aboveLimit, x+i) ;
+            (*b_data->AboveRow)[i] = av1Ctx->currentFrame->CurrFrame[plane][y - 1][lim];
 			//printf("Min(aboveLimit, x+i) %d ",Min(aboveLimit, x+i));
 		}
 		//printf("AboveRow:%d i:%d ",(*b_data->AboveRow)[i],i);
@@ -2403,7 +2431,10 @@ int decode::predict_intra(int plane,int x,int y,int haveLeft,int haveAbove,
             (*b_data->LeftCol)[i] = (1 << (seqHdr->color_config.BitDepth - 1)) + 1;
         } else {
             int leftLimit = y + (haveBelowLeft ? 2 * h : h) - 1;
-            (*b_data->LeftCol)[i] = av1Ctx->currentFrame->CurrFrame[plane][Min(leftLimit, y+i)][x - 1];
+			//bug, readme.MD 问题8
+			int lim = Min(leftLimit, y+i) > maxY ? maxY : Min(leftLimit, y+i);
+			//int lim = Min(leftLimit, y+i);
+            (*b_data->LeftCol)[i] = av1Ctx->currentFrame->CurrFrame[plane][lim][x - 1];
 			//printf("Min(leftLimit, x+i) %d ",Min(leftLimit, y+i));
 		}
 		//printf("LeftCol:%d i:%d ",(*b_data->LeftCol)[i],i);
@@ -4652,7 +4683,7 @@ void decode::edgeLoopFilter(int plane, int pass, int row, int col,AV1DecodeConte
 
     // Derive isBlockEdge
     isBlockEdge = 0;
-    if ((pass == 0 && xP % Block_Width[planeSize] == 0) || (pass == 1 && yP % Block_Height[planeSize] == 0)) {
+    if ((pass == 0 && xP % (Block_Width[planeSize]) == 0) || (pass == 1 && yP % (Block_Height[planeSize]) == 0)) {
         isBlockEdge = 1;
     }
 
@@ -4680,25 +4711,12 @@ void decode::edgeLoopFilter(int plane, int pass, int row, int col,AV1DecodeConte
 		adaptiveFilterStrength(prevRow,prevCol,plane,pass,&lvl,&limit,&blimit,&thresh,av1Ctx);
 	}
 
-	//  if(plane == 0 && row == 14 && col == 14){
-	//  	for (int i = 0; i < 4; i++) {
-	//  		for (int j = 0; j < 4; j++) {
-	//  			//printf("@ %d \n",av1Ctx->currentFrame->CurrFrame[0][row * 4 + i][col * 4 + j]);
-	//  		}
-	//  	}
-	//  }
 	for(int i = 0 ; i < MI_SIZE ; i++){
 		if(applyFilter == 1 && lvl > 0){
 			sampleFiltering(xP + dy * i,yP + dx * i,plane, limit, blimit, thresh, dx, dy,filterSize,av1Ctx);
 		}
 	}
-	//  if(plane == 0&& row == 14 && col == 14){
-	//  for (int i = 0; i < 4; i++) {
-	//  	for (int j = 0; j < 4; j++) {
-	//  		//printf("@@@ %d \n",av1Ctx->currentFrame->CurrFrame[0][row * 4 + i][col * 4 + j]);
-	//  	}
-	//  }
-	// }
+
 
 }
 //7.14.3
@@ -4819,7 +4837,7 @@ void decode::sampleFiltering(int x,int  y,int  plane, int limit,int  blimit,int 
 		// 不需要滤波
 	} else if (filterSize == 4 || flatMask == 0) {
 		// 使用狭窄滤波过程
-		narrowFilter(x, y, plane, dx, dy, &hevMask,av1Ctx);
+		narrowFilter(x, y, plane, dx, dy, hevMask,av1Ctx);
 	} else if (filterSize == 8 || flatMask2 == 0) {
 		// 使用宽滤波过程，log2Size为3
 		wideFilter(x, y, plane, dx, dy, 3,av1Ctx);
@@ -4916,7 +4934,7 @@ void decode::filterMaskProcess(int x,int y,int plane,int limit,int blimit,int th
 }
 //This process modifies up to two samples on each side of the 
 //specified boundary depending on the value of hevMask 
-void decode::narrowFilter(int x,int y,int plane,int dx ,int dy,int *hevMask,AV1DecodeContext *av1Ctx){
+void decode::narrowFilter(int x,int y,int plane,int dx ,int dy,int hevMask,AV1DecodeContext *av1Ctx){
 	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
 	int q0 = av1Ctx->currentFrame->CurrFrame[ plane ][ y ][ x ];
 	int q1 = av1Ctx->currentFrame->CurrFrame[ plane ][ y + dy ][ x + dx ];
@@ -4926,7 +4944,7 @@ void decode::narrowFilter(int x,int y,int plane,int dx ,int dy,int *hevMask,AV1D
 	int ps0 = p0 - (0x80 << (seqHdr->color_config.BitDepth - 8));
 	int qs0 = q0 - (0x80 << (seqHdr->color_config.BitDepth - 8));
 	int qs1 = q1 - (0x80 << (seqHdr->color_config.BitDepth - 8));
-	int filter = *hevMask ? filter4_clamp( ps1 - qs1,seqHdr->color_config.BitDepth ) : 0;
+	int filter = hevMask ? filter4_clamp( ps1 - qs1,seqHdr->color_config.BitDepth ) : 0;
 	filter = filter4_clamp( filter + 3 * (qs0 - ps0) ,seqHdr->color_config.BitDepth);
 	int filter1 = filter4_clamp( filter + 4  ,seqHdr->color_config.BitDepth) >> 3;
 	int filter2 = filter4_clamp( filter + 3  ,seqHdr->color_config.BitDepth) >> 3;
@@ -4934,7 +4952,7 @@ void decode::narrowFilter(int x,int y,int plane,int dx ,int dy,int *hevMask,AV1D
 	int op0 = filter4_clamp( ps0 + filter2  ,seqHdr->color_config.BitDepth) + (0x80 << (seqHdr->color_config. BitDepth - 8));
 	av1Ctx->currentFrame->CurrFrame[ plane ][ y ][ x ] = oq0;
 	av1Ctx->currentFrame->CurrFrame[ plane ][ y - dy ][ x - dx ] = op0;
-	if ( !*hevMask ) {
+	if ( !hevMask ) {
 		filter = Round2( filter1, 1 );
 		int oq1 = filter4_clamp( qs1 - filter,seqHdr->color_config.BitDepth ) + (0x80 << (seqHdr->color_config.BitDepth - 8));
 		int op1 = filter4_clamp( ps1 + filter,seqHdr->color_config.BitDepth ) + (0x80 << (seqHdr->color_config.BitDepth - 8));
@@ -4977,7 +4995,7 @@ void decode::wideFilter(int x,int y,int plane,int dx ,int dy,int log2Size,AV1Dec
 
 	// 应用滤波结果到当前帧
 	for (int i = -n; i < n; i++) {
-		av1Ctx->currentFrame->CurrFrame[plane][y + i * dy][x + i * dx] = F[i];
+		av1Ctx->currentFrame->CurrFrame[plane][y + i * dy][x + i * dx] = F[i + n];
 	}
 }
 //7.15

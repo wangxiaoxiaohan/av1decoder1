@@ -165,7 +165,7 @@ public:
 						int  filterSize ,AV1DecodeContext *av1Ctx);
 	void filterMaskProcess(int x,int y,int plane,int limit,int blimit,int thresh,int dx,int dy,int filterSize,
 						int *hevMask,int *filterMask,int *flatMask ,int *flatMask2,AV1DecodeContext *av1Ctx);
-	void narrowFilter(int x,int y,int plane,int dx ,int dy,int *hevMask,AV1DecodeContext *av1Ctx);
+	void narrowFilter(int x,int y,int plane,int dx ,int dy,int hevMask,AV1DecodeContext *av1Ctx);
 	void wideFilter(int x,int y,int plane,int dx ,int dy,int log2Size,AV1DecodeContext *av1Ctx);
 
 

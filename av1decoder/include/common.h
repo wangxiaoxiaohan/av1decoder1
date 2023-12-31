@@ -644,20 +644,20 @@ enum em_compound_type
 	COMPOUND_INTRA,
 	COMPOUND_DISTANCE
 };
-enum em_ymode
+enum em_inter_predict_ymode
 {
 	NEARESTMV = 14,
-	NEARMV,
-	GLOBALMV,
-	NEWMV,
-	NEAREST_NEARESTMV,
-	NEAR_NEARMV,
-	NEAREST_NEWMV,
-	NEW_NEARESTMV,
-	NEAR_NEWMV,
-	NEW_NEARMV,
-	GLOBAL_GLOBALMV,
-	NEW_NEWMV
+	NEARMV = 15,
+	GLOBALMV =16,
+	NEWMV = 17,
+	NEAREST_NEARESTMV = 18,
+	NEAR_NEARMV = 19,
+	NEAREST_NEWMV = 20,
+	NEW_NEARESTMV = 21,
+	NEAR_NEWMV = 22,
+	NEW_NEARMV = 23,
+	GLOBAL_GLOBALMV = 24,
+	NEW_NEWMV = 25
 };
 enum em_mv_joint
 {
@@ -666,7 +666,7 @@ enum em_mv_joint
 	MV_JOINT_HZVNZ,
 	MV_JOINT_HNZVNZ
 };
-enum em_predict_mode
+enum em_intra_predict_mode
 {
 	DC_PRED = 0,
 	V_PRED,
