@@ -2042,7 +2042,7 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 				ctx =  get_coeff_base_ctx(txSz, plane, x4, y4, scan[c], c, 1,b_data,av1Ctx) - SIG_COEF_CONTEXTS + SIG_COEF_CONTEXTS_EOB;
 				
 				int coeff_base_eob = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Coeff_Base_Eob[ txSzCtx ][ ptype ][ ctx ],4);// S()
-				//printf("decodeSymbol coeff_base_eob %d ctx %d\n",coeff_base_eob,ctx);
+				printf("decodeSymbol coeff_base_eob %d ctx %d\n",coeff_base_eob,ctx);
 				level = coeff_base_eob + 1;
 			}
 			//ac + dc
@@ -2051,7 +2051,7 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 				ctx = get_coeff_base_ctx(txSz, plane, x4, y4, scan[c], c, 0,b_data,av1Ctx);
 				
 				int coeff_base =  sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Coeff_Base[ txSzCtx ][ ptype ][ ctx ],5); // S()
-				//printf("decodeSymbol coeff_base %d  txSzCtx %d ptype %d ,ctx %d\n",coeff_base,txSzCtx,ptype,ctx);
+				printf("decodeSymbol coeff_base %d  txSzCtx %d ptype %d ,ctx %d\n",coeff_base,txSzCtx,ptype,ctx);
 				level = coeff_base;
 			}
 			////printf("level %d\n",level);
@@ -2059,12 +2059,12 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 			{
 				//-------- compute coeff_br symbol ctx
 				int ctx = calculateCoeffBrCtx(txSz,plane,x4,y4,pos,b_data,av1Ctx);
-				//printf("coeff_br ctx %d\n",ctx);
+				printf("coeff_br ctx %d\n",ctx);
 				//------
 				for (int idx = 0; idx < COEFF_BASE_RANGE / (BR_CDF_SIZE - 1); idx++)
 				{
 					int coeff_br = sb->decodeSymbol(sbCtx, bs, av1Ctx->tileSavedCdf.Coeff_Br[Min(txSzCtx, TX_32X32)][ptype][ctx], BR_CDF_SIZE + 1); // S()
-					//printf("decodeSymbol coeff_br %d  Min(txSzCtx, TX_32X32) %d ptype %d  c %d pos %d idx %d\n",coeff_br,Min(txSzCtx, TX_32X32),ptype,c,pos,idx);
+					printf("decodeSymbol coeff_br %d  Min(txSzCtx, TX_32X32) %d ptype %d  c %d pos %d idx %d\n",coeff_br,Min(txSzCtx, TX_32X32),ptype,c,pos,idx);
 					level += coeff_br;
 					if (coeff_br < (BR_CDF_SIZE - 1))
 						break;
@@ -4073,7 +4073,8 @@ int decode::reconstruct(int plane, int x, int y, int txSz,BlockData *b_data,AV1D
             //printf("%d ", Residual[i][j]);
 			//注意这里写的和spec 不一样，临时解法！！
             av1Ctx->currentFrame->CurrFrame[plane][Y + yy][X + xx] = Clip3(0,255,av1Ctx->currentFrame->CurrFrame[plane][Y + yy][X + xx] + Residual[i][j]);
-        	//printf("x:%d y:%d xx:%d yy:%d ---",X,Y,xx,yy);
+        	//av1Ctx->currentFrame->CurrFrame[plane][Y + yy][X + xx] = Clip1( av1Ctx->currentFrame->CurrFrame[ plane ][ y + yy ][ x + xx ] +Residual[ i ][ j ],seqHdr->color_config.BitDepth);
+			//printf("x:%d y:%d xx:%d yy:%d ---",X,Y,xx,yy);
 			
 		}
     }

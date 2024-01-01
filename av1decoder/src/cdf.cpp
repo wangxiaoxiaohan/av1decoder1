@@ -90,7 +90,7 @@ int Symbol::decodeSymbol(SymbolContext *sbCtx,bitSt *bs,uint16_t *cdfArray,int N
         if(symbol >= N){
             printf("symbol out of range\n");
         }
-        //printf("curr %d sbCtx->SymbolValue %d symbol %d  \n",cur,sbCtx->SymbolValue,symbol);
+        printf("curr %d sbCtx->SymbolValue %d symbol %d  \n",cur,sbCtx->SymbolValue,symbol);
     } while ( sbCtx->SymbolValue < cur );
     //更新算术编码的范围 和 输入符号，这只是部分过程，在renormalized过程还要继续更新，
     //  比如sbCtx->SymbolRange = prev - cur; 这个操作，你会发现SymbolRange会变得很小，在renormalized过程
