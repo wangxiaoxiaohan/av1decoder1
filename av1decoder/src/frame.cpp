@@ -296,6 +296,7 @@ int frame::parseUncompressedHeader(int sz, bitSt *bs, AV1DecodeContext *av1Ctx, 
 
 	if (out->primary_ref_frame == PRIMARY_REF_NONE)
 	{
+		printf("init_non_coeff_cdfs\n");
 		decode_instance->init_non_coeff_cdfs( &av1Ctx->tileSavedCdf);
 		if(! av1Ctx->PrevSegmentIds){
 			av1Ctx->PrevSegmentIds = new uint8_t*[out->MiRows];
@@ -332,6 +333,7 @@ int frame::parseUncompressedHeader(int sz, bitSt *bs, AV1DecodeContext *av1Ctx, 
 
 	if (out->primary_ref_frame == PRIMARY_REF_NONE)
 	{
+		printf("init_coeff_cdfs\n");
 		 decode_instance->init_coeff_cdfs(av1Ctx,&av1Ctx->tileSavedCdf);
 	}
 	else
@@ -1801,23 +1803,28 @@ void frame::exit_symbol(SymbolContext *sbCtx,bitSt *bs,int TileNum,AV1DecodeCont
     int trailingBitPosition = get_position(bs) - Min(15, sbCtx->SymbolMaxBits + 15);
     readBits(bs,Max(0, sbCtx->SymbolMaxBits));
     int paddingEndPosition = get_position(bs);
+
+	//It is a requirement of bitstream conformance that the bit at position trailingBitPosition is equal to 1.
     //if(trailingBitPosition != 1)
-    //    return;
-    
+    //    return;   
+
     //待做 1
     //It is a requirement of bitstream conformance that the bit at position x is equal to 0 for values of x strictly between
     //trailingBitPosition and paddingEndPosition.
-    
-    //待做 2 保存 在解码过程中 更新过的cdf ，frame_end_update_cdf() 里面会用
+
+    //保存 在解码过程中 更新过的cdf ，frame_end_update_cdf() 里面会用
     frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
     if(frameHdr->disable_frame_end_update_cdf == 0 &&
-        TileNum == frameHdr->tile_info.context_update_tile_id){
-        copyCdf(&av1Ctx->tileSavedCdf,&av1Ctx->currentFrame->cdfCtx,av1Ctx); //?
+        TileNum == frameHdr->tile_info.context_update_tile_id)
+	{
+		printf("copyCdf tileSavedCdf currentFrame->cdfCtx\n");
+        //copyCdf(&av1Ctx->tileSavedCdf,&av1Ctx->currentFrame->cdfCtx,av1Ctx); //?
     }
     
 
 }
 void frame::frame_end_update_cdf(AV1DecodeContext *av1Ctx){
+	printf("copyCdf currentFrame->cdfCtx tileSavedCdf\n");
     copyCdf(&av1Ctx->currentFrame->cdfCtx,&av1Ctx->tileSavedCdf,av1Ctx);
 }
 int frame::decodeFrame(int sz, bitSt *bs, AV1DecodeContext *av1Ctx){
