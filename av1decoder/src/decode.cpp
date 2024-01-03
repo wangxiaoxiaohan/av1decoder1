@@ -18,27 +18,27 @@ int decode::decode_frame_wrapup( AV1DecodeContext *av1Ctx){
 			loopFilter(av1Ctx); 
 		}
 
-		// FILE *fp = fopen("test.yuv", "wb");
-		// int h = av1Ctx->frameHdr.si.FrameHeight;
-		// int w = av1Ctx->frameHdr.si.FrameWidth;
-		// uint8_t buf[w];
-		// for (int i = 0; i < h; i++) {
-		// 	for (int j = 0; j < w; j++) {
-		// 		buf[j] = av1Ctx->currentFrame->CurrFrame[0][ i][ j];
-		// 	}
-		// 	fwrite(buf, sizeof(uint8_t),w, fp);
-		// }
-		// int subX = av1Ctx->seqHdr.color_config.subsampling_x;
-		// int subY = av1Ctx->seqHdr.color_config.subsampling_y;
-		// uint8_t buf1[((w + subX) >> subX ) * 2];
-		// for (int i = 0; i < (h + subY) >> subY ; i++) {
-		// 	for (int j = 0; j < (w + subX) >> subX; j++) {
-		// 		buf1[j * 2] = av1Ctx->currentFrame->CurrFrame[1][ i][ j];
-		// 		buf1[j * 2 + 1] = av1Ctx->currentFrame->CurrFrame[2][ i][ j];
-		// 	}
-		// 	fwrite(buf1, sizeof(uint8_t),((w + subX) >> subX ) * 2, fp);
-		// }
-		// fclose(fp);
+		FILE *fp = fopen("test.yuv", "wb");
+		int h = av1Ctx->frameHdr.si.FrameHeight;
+		int w = av1Ctx->frameHdr.si.FrameWidth;
+		uint8_t buf[w];
+		for (int i = 0; i < h; i++) {
+			for (int j = 0; j < w; j++) {
+				buf[j] = av1Ctx->currentFrame->CurrFrame[0][ i][ j];
+			}
+			fwrite(buf, sizeof(uint8_t),w, fp);
+		}
+		int subX = av1Ctx->seqHdr.color_config.subsampling_x;
+		int subY = av1Ctx->seqHdr.color_config.subsampling_y;
+		uint8_t buf1[((w + subX) >> subX ) * 2];
+		for (int i = 0; i < (h + subY) >> subY ; i++) {
+			for (int j = 0; j < (w + subX) >> subX; j++) {
+				buf1[j * 2] = av1Ctx->currentFrame->CurrFrame[1][ i][ j];
+				buf1[j * 2 + 1] = av1Ctx->currentFrame->CurrFrame[2][ i][ j];
+			}
+			fwrite(buf1, sizeof(uint8_t),((w + subX) >> subX ) * 2, fp);
+		}
+		fclose(fp);
 
 		cdef(av1Ctx); 
 
@@ -4713,7 +4713,8 @@ void decode::edgeLoopFilter(int plane, int pass, int row, int col,AV1DecodeConte
 	}
 
 	for(int i = 0 ; i < MI_SIZE ; i++){
-		if(applyFilter == 1 && lvl > 0){
+		if(applyFilter == 1 && lvl > 0 && /*wh add start*/xP >= 7 && yP >= 7/*wh add end*/){
+			//printf("pass %d xP%d  yP %d dx%d  dy%d \n",pass ,xP ,yP, dx ,dy);
 			sampleFiltering(xP + dy * i,yP + dx * i,plane, limit, blimit, thresh, dx, dy,filterSize,av1Ctx);
 		}
 	}
