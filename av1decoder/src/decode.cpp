@@ -18,27 +18,27 @@ int decode::decode_frame_wrapup( AV1DecodeContext *av1Ctx){
 			loopFilter(av1Ctx); 
 		}
 
-		FILE *fp = fopen("test.yuv", "wb");
-		int h = av1Ctx->frameHdr.si.FrameHeight;
-		int w = av1Ctx->frameHdr.si.FrameWidth;
-		uint8_t buf[w];
-		for (int i = 0; i < h; i++) {
-			for (int j = 0; j < w; j++) {
-				buf[j] = av1Ctx->currentFrame->CurrFrame[0][ i][ j];
-			}
-			fwrite(buf, sizeof(uint8_t),w, fp);
-		}
-		int subX = av1Ctx->seqHdr.color_config.subsampling_x;
-		int subY = av1Ctx->seqHdr.color_config.subsampling_y;
-		uint8_t buf1[((w + subX) >> subX ) * 2];
-		for (int i = 0; i < (h + subY) >> subY ; i++) {
-			for (int j = 0; j < (w + subX) >> subX; j++) {
-				buf1[j * 2] = av1Ctx->currentFrame->CurrFrame[1][ i][ j];
-				buf1[j * 2 + 1] = av1Ctx->currentFrame->CurrFrame[2][ i][ j];
-			}
-			fwrite(buf1, sizeof(uint8_t),((w + subX) >> subX ) * 2, fp);
-		}
-		fclose(fp);
+		// FILE *fp = fopen("test.yuv", "wb");
+		// int h = av1Ctx->frameHdr.si.FrameHeight;
+		// int w = av1Ctx->frameHdr.si.FrameWidth;
+		// uint8_t buf[w];
+		// for (int i = 0; i < h; i++) {
+		// 	for (int j = 0; j < w; j++) {
+		// 		buf[j] = av1Ctx->currentFrame->CurrFrame[0][ i][ j];
+		// 	}
+		// 	fwrite(buf, sizeof(uint8_t),w, fp);
+		// }
+		// int subX = av1Ctx->seqHdr.color_config.subsampling_x;
+		// int subY = av1Ctx->seqHdr.color_config.subsampling_y;
+		// uint8_t buf1[((w + subX) >> subX ) * 2];
+		// for (int i = 0; i < (h + subY) >> subY ; i++) {
+		// 	for (int j = 0; j < (w + subX) >> subX; j++) {
+		// 		buf1[j * 2] = av1Ctx->currentFrame->CurrFrame[1][ i][ j];
+		// 		buf1[j * 2 + 1] = av1Ctx->currentFrame->CurrFrame[2][ i][ j];
+		// 	}
+		// 	fwrite(buf1, sizeof(uint8_t),((w + subX) >> subX ) * 2, fp);
+		// }
+		// fclose(fp);
 
 		cdef(av1Ctx); 
 
@@ -1736,13 +1736,13 @@ int decode::transform_block(int plane,int baseX,int baseY,int txSz,int x,int y,S
 	}
 	if (!b_data->is_inter)
 	{
-		//if (((plane == 0) && b_data->PaletteSizeY) ||
-		//	((plane != 0) && b_data->PaletteSizeUV))
-		//{
-		//	predict_palette(plane, startX, startY, x, y, txSz,b_data,av1Ctx);
-		//}
-		//else
-		//{
+		// if (((plane == 0) && b_data->PaletteSizeY) ||
+		// 	((plane != 0) && b_data->PaletteSizeUV))
+		// {
+		// 	predict_palette(plane, startX, startY, x, y, txSz,b_data,av1Ctx);
+		// }
+		// else
+		// {
 			int isCfl = (plane > 0 && b_data->UVMode == UV_CFL_PRED);
 			int mode;
 			if (plane == 0)
@@ -2479,7 +2479,7 @@ int decode::predict_intra(int plane,int x,int y,int haveLeft,int haveAbove,
 			av1Ctx->currentFrame->CurrFrame[ plane ][ y + i ][ x + j ] = pred[ i ][ j ];
 			//   if(pred[ i ][ j ] > 255)
 			//   	printf("@@%d i:%d j:%d ",pred[ i ][ j ],i,j);
-			//printf("%d ",pred[ i ][ j ]);
+			printf("%d ",pred[ i ][ j ]);
 		}
 	}
 	printf("\n");
@@ -4578,7 +4578,7 @@ void decode::twoDInverseTransformBlock(int txSz,int16_t **Residual,BlockData *b_
 		
     }
 	//printf("\n");
-	//printf("Residual 33\n");
+	printf("Residual 33\n");
 	int16_t T1[h];
     for (int j = 0; j < w; j++) {
         
@@ -4600,7 +4600,7 @@ void decode::twoDInverseTransformBlock(int txSz,int16_t **Residual,BlockData *b_
 		
         for (int i = 0; i < h; i++) {
             Residual[i][j] = Round2(T1[i], colShift);
-			//printf("%d ",Residual[i][j]);
+			printf("%d ",Residual[i][j]);
 
         }
 		
@@ -4988,17 +4988,23 @@ void decode::wideFilter(int x,int y,int plane,int dx ,int dy,int log2Size,AV1Dec
 		for (int j = -n; j <= n; j++) {
 			int p = Clip3(-(n + 1), n, i + j);
 			int tap = (Abs(j) <= n2) ? 2 : 1;
+			//int tap = 1;
 			t += av1Ctx->currentFrame->CurrFrame[plane][y + p * dy][x + p * dx] * tap;
+			//printf("v %d tap %d\n",av1Ctx->currentFrame->CurrFrame[plane][y + p * dy][x + p * dx] * tap,tap);
 		}
-		
-		// 将滤波结果保存到数组 F
-		F[i + n] = Round2(t, log2Size);
+		//printf("t %d \n",t);
+		//这一通操作 势必会把 值放大？
+		F[i + n] = Round2(t, log2Size); 
+		//F[i + n] = t/(2* n + 1); 
 	}
 
 	// 应用滤波结果到当前帧
 	for (int i = -n; i < n; i++) {
+		//printf("x %d y %d i %d dx %d dy %d , %d %d |",x,y,i,dx,dy,y + i * dy,x + i * dx);
+		//printf("plane:%d, %d %d %d|",plane,y + i * dy,x + i * dx,F[i + n]);
 		av1Ctx->currentFrame->CurrFrame[plane][y + i * dy][x + i * dx] = F[i + n];
 	}
+	//printf("\n");
 }
 //7.15
 void decode::cdef(AV1DecodeContext *av1Ctx){
@@ -5191,7 +5197,7 @@ void decode::cdefFilter(int plane, int r, int c, int priStr, int secStr, int dam
                 }
             }
 
-            av1Ctx->currentFrame->CurrFrame[plane][y0 + i][x0 + j] = Clip3(min, max, x + ((8 + sum - (sum < 0)) >> 4));
+            av1Ctx->currentFrame->CdefFrame[plane][y0 + i][x0 + j] = Clip3(min, max, x + ((8 + sum - (sum < 0)) >> 4));
         }
     }
 }

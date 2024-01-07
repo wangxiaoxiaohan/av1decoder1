@@ -103,3 +103,5 @@ residual b_data->MiCol:36 b_data->MiRow :24
   2.predict_chroma_from_luma 未使用
   3 predict_palette 未使用
 
+按照 spec的 写法，loopfilter 几乎一定会把原来的像素值给放大？ 这不是有问题吗？
+下一步思路 ，现在 重建出来的帧似乎有问题，帧后面马赛克过多。先把这个问题查了
