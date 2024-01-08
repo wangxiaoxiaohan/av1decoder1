@@ -2479,7 +2479,7 @@ int decode::predict_intra(int plane,int x,int y,int haveLeft,int haveAbove,
 			av1Ctx->currentFrame->CurrFrame[ plane ][ y + i ][ x + j ] = pred[ i ][ j ];
 			//   if(pred[ i ][ j ] > 255)
 			//   	printf("@@%d i:%d j:%d ",pred[ i ][ j ],i,j);
-			printf("%d ",pred[ i ][ j ]);
+			//printf("%d ",pred[ i ][ j ]);
 		}
 	}
 	printf("\n");
@@ -4070,7 +4070,6 @@ int decode::reconstruct(int plane, int x, int y, int txSz,BlockData *b_data,AV1D
         for (int j = 0; j < w; j++) {
             int xx = flipLR ? (w - j - 1) : j;
             int yy = flipUD ? (h - i - 1) : i;
-            //printf("%d ", Residual[i][j]);
 			//注意这里写的和spec 不一样，临时解法！！
             av1Ctx->currentFrame->CurrFrame[plane][Y + yy][X + xx] = Clip3(0,255,av1Ctx->currentFrame->CurrFrame[plane][Y + yy][X + xx] + Residual[i][j]);
         	//av1Ctx->currentFrame->CurrFrame[plane][Y + yy][X + xx] = Clip1( av1Ctx->currentFrame->CurrFrame[ plane ][ y + yy ][ x + xx ] +Residual[ i ][ j ],seqHdr->color_config.BitDepth);

@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        "intops.h": "c",
+        "string.h": "c",
+        "frame.h": "c",
+        "decode.h": "c"
+    }
+}

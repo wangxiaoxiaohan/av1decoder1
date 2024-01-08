@@ -1,0 +1,1 @@
+[{"cmd": ["/mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/tests/checkasm", "--bench"], "env": {}, "name": "checkasm", "workdir": null, "timeout": 3600, "suite": ["dav1d:checkasm"], "is_parallel": true, "priority": 0, "protocol": "exitcode"}]

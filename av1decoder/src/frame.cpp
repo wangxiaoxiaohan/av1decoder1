@@ -1908,7 +1908,7 @@ int frame::decodeFrame(int sz, bitSt *bs, AV1DecodeContext *av1Ctx){
 			fwrite(buf1, sizeof(uint8_t),((w + subX) >> subX ) * 2, fp);
 		}
 		fclose(fp);
-printf("\n");
+		printf("\n");
 		decode_instance->decode_frame_wrapup(av1Ctx);
 		av1Ctx->SeenFrameHeader = 0;
 	}
