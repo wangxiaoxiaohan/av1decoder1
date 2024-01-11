@@ -9214,9 +9214,11 @@ void inline H(int a, int b, int flip, int r, int16_t T[])
 {
 	if (flip)
 	{
-		int temp = a;
-		a = b;
-		b = temp;
+		// int temp = a;
+		// a = b;
+		// b = temp;
+		H(b,a,0,r,T);
+		return;
 	}
 	int x = T[a];
 	int y = T[b];

@@ -2120,7 +2120,7 @@ int frame::decode_block(SymbolContext *sbCtx,bitSt *bs,int r,int c,int subSize, 
 	b_data.MiRow = r;
 	b_data.MiCol = c;
 	b_data.MiSize = subSize;
-	//printf("b_data.MiRow %d  b_data.MiCol %d  b_data.MiSize %d\n",b_data.MiRow,b_data.MiCol,b_data.MiSize);
+	printf("b_data.MiRow %d  b_data.MiCol %d  b_data.MiSize %d\n",b_data.MiRow,b_data.MiCol,b_data.MiSize);
 	//block 宽高 4*4 为单位
 	int bw4 = Num_4x4_Blocks_Wide[subSize];
 	int bh4 = Num_4x4_Blocks_High[subSize];

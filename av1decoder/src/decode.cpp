@@ -15,7 +15,7 @@ int decode::decode_frame_wrapup( AV1DecodeContext *av1Ctx){
 	if(frameHdr->show_existing_frame == 0){
 		if( frameHdr->loop_filter_params.loop_filter_level[ 0 ] != 0 || frameHdr->loop_filter_params.loop_filter_level[ 1 ] != 0){
 			printf("loop filter\n");
-			loopFilter(av1Ctx); 
+			//loopFilter(av1Ctx); 
 		}
 
 		// FILE *fp = fopen("test.yuv", "wb");
@@ -67,6 +67,29 @@ int decode::decode_frame_wrapup( AV1DecodeContext *av1Ctx){
 		upscalingProcess(av1Ctx->currentFrame->CdefFrame,av1Ctx->currentFrame->UpscaledCdefFrame,av1Ctx);
 		upscalingProcess(av1Ctx->currentFrame->CurrFrame,av1Ctx->currentFrame->UpscaledCurrFrame,av1Ctx);
 		loopRestoration(av1Ctx); 
+
+		// FILE *fp = fopen("test.yuv", "wb");
+		// int h = av1Ctx->frameHdr.si.FrameHeight;
+		// int w = av1Ctx->frameHdr.si.FrameWidth;
+		// uint8_t buf[w];
+		// for (int i = 0; i < h; i++) {
+		// for (int j = 0; j < w; j++) {
+		// 	buf[j] = av1Ctx->currentFrame->CdefFrame[0][ i][ j];
+		// }
+		// fwrite(buf, sizeof(uint8_t),w, fp);
+		// }
+		// int subX = av1Ctx->seqHdr.color_config.subsampling_x;
+		// int subY = av1Ctx->seqHdr.color_config.subsampling_y;
+		// uint8_t buf1[((w + subX) >> subX ) * 2];
+		// for (int i = 0; i < (h + subY) >> subY ; i++) {
+		// 	for (int j = 0; j < (w + subX) >> subX; j++) {
+		// 		buf1[j * 2] = av1Ctx->currentFrame->lrCtx->LrFrame[1][ i][ j];
+		// 		buf1[j * 2 + 1] = av1Ctx->currentFrame->lrCtx->LrFrame[2][ i][ j];
+		// 	}
+		// 	fwrite(buf1, sizeof(uint8_t),((w + subX) >> subX ) * 2, fp);
+		// }
+		// fclose(fp);
+
 		motionFieldMotionVectorStorage(av1Ctx);
 		if(frameHdr->segmentation_params.segmentation_enabled == 1 && frameHdr->segmentation_params.segmentation_update_map ==0){
 			for(int row = 0 ; row < frameHdr->MiRows ; row ++ ){
@@ -1626,6 +1649,7 @@ int decode::residual(SymbolContext *sbCtx,bitSt *bs,BlockData *b_data, AV1Decode
 	int sbMask = seqHdr->use_128x128_superblock ? 31 : 15;
 	int widthChunks = Max(1, Block_Width[b_data->MiSize] >> 6);
 	int	heightChunks = Max(1, Block_Height[b_data->MiSize] >> 6);
+	//这里一个chunk的宽度是 64 ，如果没有 开启 superblcok，则 widthChunks heightChunks为1
 	int	miSizeChunk = (widthChunks > 1 || heightChunks > 1) ? BLOCK_64X64 : b_data->MiSize;
 	for (int chunkY = 0; chunkY < heightChunks; chunkY++)
 	{
@@ -2479,7 +2503,7 @@ int decode::predict_intra(int plane,int x,int y,int haveLeft,int haveAbove,
 			av1Ctx->currentFrame->CurrFrame[ plane ][ y + i ][ x + j ] = pred[ i ][ j ];
 			//   if(pred[ i ][ j ] > 255)
 			//   	printf("@@%d i:%d j:%d ",pred[ i ][ j ],i,j);
-			//printf("%d ",pred[ i ][ j ]);
+			printf("%d ",pred[ i ][ j ]);
 		}
 	}
 	printf("\n");
@@ -4329,7 +4353,7 @@ void decode::inverseADST4(int16_t* T, int r) {
 //7.13.2.7
 void decode::inverseADST8(int16_t* T, int r) {
 
-    int n = 3;
+
 	inverseADSTInputArrayPermutation(T,3);
 
     for (int i = 0; i < 4; i++) {
@@ -4354,9 +4378,8 @@ void decode::inverseADST8(int16_t* T, int r) {
         B(a, b, angle, 1, r,T);
     }
 
-
-    for (int j = 0; j < 2; j++) {
-        for (int i = 0; i < 2; i++) {
+	for (int i = 0; i < 2; i++) {
+		for (int j = 0; j < 2; j++) {
             int a = 4 * j + i;
             int b = 2 + 4 * j + i;
             H(a, b, 0, r,T);
@@ -4375,8 +4398,7 @@ void decode::inverseADST8(int16_t* T, int r) {
 //7.13.2.8
 void decode::inverseADST16(int16_t* T, int r) {
     // Step 1: Invoke the ADST input array permutation process with n = 4
-    int n = 4;
-    int copyT[16];
+
 	inverseADSTInputArrayPermutation(T,4);
 
     for (int i = 0; i < 8; i++) {
@@ -4405,17 +4427,17 @@ void decode::inverseADST16(int16_t* T, int r) {
         B(c, d, angle2, 1, r,T);
     }
 
-    for (int j = 0; j < 2; j++) {
-        for (int i = 0; i < 4; i++) {
-            int a = 8 * j + i;
-            int b = 4 + 8 * j + i;
-            H(a, b, 0, r,T);
-        }
-    }
+	for (int i = 0; i < 4; i++) {
+		for (int j = 0; j < 2; j++) {
+             int a = 8 * j + i;
+             int b = 4 + 8 * j + i;
+             H(a, b, 0, r,T);
+		}
+	}
 
-
-    for (int j = 0; j < 2; j++) {
-        for (int i = 0; i < 2; i++) {
+    
+	for (int i = 0; i < 2; i++) {
+		for (int j = 0; j < 2; j++) {
             int a = 4 + 8 * j + 3 * i;
             int b = 5 + 8 * j + i;
             int angle = 48 - 32 * i;
@@ -4423,13 +4445,14 @@ void decode::inverseADST16(int16_t* T, int r) {
         }
     }
 
-    for (int j = 0; j < 4; j++) {
-        for (int i = 0; i < 2; i++) {
-            int a = 4 * j + i;
-            int b = 2 + 4 * j + i;
-            H(a, b, 0, r,T);
-        }
-    }
+    
+	for (int i = 0; i < 2; i++) {
+		for (int j = 0; j < 4; j++) {
+			int a = 4 * j + i;
+			int b = 2 + 4 * j + i;
+			H(a, b, 0, r,T);
+		}
+	}
 
 
     for (int i = 0; i < 4; i++) {
@@ -4473,7 +4496,9 @@ void decode::inverseWalshHadamardTransform(int16_t* T, int shift) {
 }
 //7.13.2.11
 void decode::inverseIdentityTransform4(int16_t* T){
+	printf("@@ T[ i ] * 5793 \n");
 	for(int i = 0 ; i < 4 ; i ++){
+		printf("%d ",T[ i ] * 5793);
 		T[ i ] = Round2( T[ i ] * 5793, 12 );
 	}
 }
@@ -4487,7 +4512,9 @@ void decode::inverseIdentityTransform8(int16_t* T){
 
 //7.13.2.13
 void decode::inverseIdentityTransform16(int16_t* T){
+	printf("@@ T[ i ] * 11586\n");
 	for(int i = 0 ; i < 16 ; i ++){
+		printf("%d ",T[ i ] * 11586);
 		T[ i ] = Round2( T[ i ] * 11586, 12 );
 	}
 }

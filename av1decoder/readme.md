@@ -105,3 +105,13 @@ residual b_data->MiCol:36 b_data->MiRow :24
 
 按照 spec的 写法，loopfilter 几乎一定会把原来的像素值给放大？ 这不是有问题吗？
 下一步思路 ，现在 重建出来的帧似乎有问题，帧后面马赛克过多。先把这个问题查了
+然后查 环路滤波算法
+然后查 cdef等 
+然后查 帧间的问题
+
+inverseIdentityTransform4
+inverseIdentityTransform16
+inverseADST4 等等 排查算法中所有乘以一个几千的常数的地方
+
+重建出来的图像，每个partition中 都有一个十字条纹，肯定是有问题的
+64 *64 块 才会出现 十字伪影，检查这一点

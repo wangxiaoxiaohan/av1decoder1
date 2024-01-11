@@ -100,8 +100,8 @@ uint64_t inline readns(bitSt *bs,int n){
 	int extra_bit = readOneBit(bs);
 	return (v << 1) - m + extra_bit;
 }
-uint64_t inline readsu(bitSt *bs,int n) { 
-	uint64_t value = readBits(bs,n);
+int64_t inline readsu(bitSt *bs,int n) { 
+	int64_t value = readBits(bs,n);
 	int signMask = 1 << (n - 1);
 	if ( value & signMask )
 		value = value - 2 * signMask;
