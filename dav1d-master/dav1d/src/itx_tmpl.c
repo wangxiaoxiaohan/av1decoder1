@@ -83,16 +83,16 @@ inv_txfm_add_c(pixel *dst, const ptrdiff_t stride, coef *const coeff,
         if (is_rect2){
             for (int x = 0; x < sw; x++){
                
-                c[x] = (coeff[y + x * sh] * 181 + 128) >> 8;
-                // printf("%d ",coeff[y + x * sh]);//这是经过反量化之后 尚未反变换的数据
+                c[x] = (coeff[y + x * sh] * 181 + 128) >> 8; //这里的 (181 + 128) >> 8;就是spec中的 2896 >> 12
+                 printf("%d ",coeff[y + x * sh]);//这是经过反量化之后 尚未反变换的数据
                 //而dst 则是预测出来的数据
             }
         }else{
             for (int x = 0; x < sw; x++){
                 
                 c[x] = coeff[y + x * sh];
-              //  printf("%d ",c[x]);
-              // printf("%d ",coeff[y + x * sh]);//这是经过反量化之后 尚未反变换的数据
+                //printf("%d ",c[x]);
+               printf("%d ",coeff[y + x * sh]);//这是经过反量化之后 尚未反变换的数据
             }
         }
         first_1d_fn(c, 1, row_clip_min, row_clip_max);

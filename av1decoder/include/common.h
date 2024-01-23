@@ -1422,6 +1422,7 @@ const static uint16_t Ac_Qlookup[3][256] = {
 //Note: The cos128 function implements the expression 4096 * cos( angle * pi / 128 ) rounded to the nearest
 //integer. The sin128 function implements the expression 4096 * sin( angle * pi / 128 ) rounded to the nearest
 //integer
+//4096 * cos( angle * pi / 128 ) 
 const static uint16_t Cos128_Lookup[65] = {
 	4096, 4095, 4091, 4085, 4076, 4065, 4052, 4036,
 	4017, 3996, 3973, 3948, 3920, 3889, 3857, 3822,
@@ -9151,6 +9152,9 @@ int inline ac_q(int b, int BitDepth)
 {
 	return Ac_Qlookup[(BitDepth - 8) >> 1][Clip3(0, 255, b)];
 }
+// Note: The cos128 function implements the expression 4096 * cos( angle * pi / 128 ) rounded to the nearest
+// integer. The sin128 function implements the expression 4096 * sin( angle * pi / 128 ) rounded to the nearest
+// integer.
 int inline cos128(int angle)
 {
 	int angle2 = angle & 255;
@@ -9183,22 +9187,34 @@ int inline brev(int numBits, int x)
 // butterfly rotation
 void inline B(int a, int b, int angle, int flip, int r, int16_t T[])
 {
+
+
 	// When the angle is equal to 32 + 64 * k for integer k the butterfly rotation can be equivalently performed with two fewer
 	// multiplications (because the magnitude of cos128( 32 + 64 * k ) is always equal to that of sin128( 32 + 64 * k )) by the
 	// following process:
 	// 1. The variable v is set equal to (angle & 64) ? T[ a ] + T[ b ] : T[ a ] - T[ b ].
-	// Note: The cos128 function implements the expression 4096 * cos( angle * pi / 128 ) rounded to the nearest
-	// integer. The sin128 function implements the expression 4096 * sin( angle * pi / 128 ) rounded to the nearest
-	// integer.
 	// 2. The variable w is set equal to (angle & 64) ? -T[ a ] + T[ b ] : T[ a ] + T[ b ].
 	// 3. The variable x is set equal to v * cos128( angle ).
 	// 4. The variable y is set equal to w * cos128( angle ).
 	// 5. T[ a ] is set equal to Round2( x, 12 ).
 	// 6. T[ b ] is set equal to Round2( y, 12 )
-	int x = T[a] * cos128(angle) - T[b] * sin128(angle);
-	int y = T[a] * sin128(angle) + T[b] * cos128(angle);
-	T[a] = Round2(x, 12);
-	T[b] = Round2(y, 12);
+
+	// if((angle - 32 ) % 64 == 0){
+	// 	int v = (angle & 64) ? T[ a ] + T[ b ] : T[ a ] - T[ b ];
+	// 	int w = (angle & 64) ? -T[ a ] + T[ b ] : T[ a ] + T[ b ];
+	// 	int x = v * cos128( angle );
+	// 	int y = w * cos128( angle );
+	// 	T[ a ] = Round2( x, 12 );
+	// 	T[ b ] = Round2( y, 12 );
+
+	// }else{
+		int x = T[a] * cos128(angle) - T[b] * sin128(angle);
+		int y = T[a] * sin128(angle) + T[b] * cos128(angle);
+		T[a] = Round2(x, 12);
+		T[b] = Round2(y, 12);
+	//}
+
+
 
 	if (flip)
 	{
@@ -9214,9 +9230,6 @@ void inline H(int a, int b, int flip, int r, int16_t T[])
 {
 	if (flip)
 	{
-		// int temp = a;
-		// a = b;
-		// b = temp;
 		H(b,a,0,r,T);
 		return;
 	}

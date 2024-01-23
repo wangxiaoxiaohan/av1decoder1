@@ -370,8 +370,10 @@ typedef struct BlockData{
 	int CandList[4][4];//第一维size 不大确定
 
 	//量化
+	//量化参数，一个块量化参数值小于 1024 个，通过 Default_Scan系列的数组映射出相应的 pos ,
+	//pos 也小于 1024 分布 于整个块内
 	int16_t Quant[1024]; //先直接拉满
-	int16_t Dequant[64][64];//先直接拉满
+	int16_t Dequant[32][32];//先直接拉满
 
 	//reconstruct 重建图像
 	int PlaneTxType;

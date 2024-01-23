@@ -1953,8 +1953,8 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 	int segEob = (txSz == TX_16X64 || txSz == TX_64X16) ? 512 : Min(1024, Tx_Width[txSz] * Tx_Height[txSz]);
 	for (int c = 0; c < segEob; c++)
 		b_data->Quant[c] = 0;
-	for (int i = 0; i < 64; i++)
-		for (int j = 0; j < 64; j++)
+	for (int i = 0; i < 32; i++)
+		for (int j = 0; j < 32; j++)
 			b_data->Dequant[i][j] = 0;
 	int eob = 0;
 	int culLevel = 0;
@@ -2053,7 +2053,7 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 				}
 			}
 		}
-		//printf("eob %d\n",eob);
+		printf("eob %d\n",eob);
 		//eob + ac + dc， 最后一个下标0是 dc
 		printf("coeffs\n");
 		for (int c = eob - 1; c >= 0; c--)
@@ -2441,9 +2441,9 @@ int decode::predict_intra(int plane,int x,int y,int haveLeft,int haveAbove,
 			int lim = Min(aboveLimit, x+i) > maxX ? maxX : Min(aboveLimit, x+i);
 			//int lim = Min(aboveLimit, x+i) ;
             (*b_data->AboveRow)[i] = av1Ctx->currentFrame->CurrFrame[plane][y - 1][lim];
-			//printf("Min(aboveLimit, x+i) %d ",Min(aboveLimit, x+i));
+			printf("Min(aboveLimit, x+i) %d ",Min(aboveLimit, x+i));
 		}
-		//printf("AboveRow:%d i:%d ",(*b_data->AboveRow)[i],i);
+		printf("AboveRow:%d i:%d ",(*b_data->AboveRow)[i],i);
     }
 	printf("\n");
     for (int i = 0; i < w + h; i++) {
@@ -2459,9 +2459,9 @@ int decode::predict_intra(int plane,int x,int y,int haveLeft,int haveAbove,
 			int lim = Min(leftLimit, y+i) > maxY ? maxY : Min(leftLimit, y+i);
 			//int lim = Min(leftLimit, y+i);
             (*b_data->LeftCol)[i] = av1Ctx->currentFrame->CurrFrame[plane][lim][x - 1];
-			//printf("Min(leftLimit, x+i) %d ",Min(leftLimit, y+i));
+			printf("Min(leftLimit, x+i) %d ",Min(leftLimit, y+i));
 		}
-		//printf("LeftCol:%d i:%d ",(*b_data->LeftCol)[i],i);
+		printf("LeftCol:%d i:%d ",(*b_data->LeftCol)[i],i);
     }
 	if(haveAbove == 1 && haveLeft == 1){
 		(*b_data->AboveRow)[ -1 ] = av1Ctx->currentFrame->CurrFrame[ plane ][ y-1 ][x-1 ];
@@ -4125,9 +4125,8 @@ int decode::inverseDCTArrayPermutation(int16_t T[],int n)
         T[i] = copyT[brev(n, i)];
     }
 }
-//7.13.2.3 一维反 DCT 变换
+//7.13.2.3 一维反 DCT 变换 一次 一行 或者 一列
 int decode::inverseDCT(int16_t T[], int n, int r) {
-    // 步骤1：执行逆 DCT 排列
     inverseDCTArrayPermutation(T, n);
 
 	if(n == 6){
@@ -4268,6 +4267,7 @@ int decode::inverseDCT(int16_t T[], int n, int r) {
 			H( 32 + i, 47 - i, 0, r  ,T);
 			H( 48 + i, 63 - i, 1, r ,T );
 		}
+
 	}
 	if(n == 5){
 		for(int i = 0 ; i < 16 ; i++){
@@ -4317,8 +4317,14 @@ void decode::inverseADSTOutputArrayPermutation(int16_t* T, int n) {
     }
 }
 //7.13.2.6
-void decode::inverseADST4(int16_t* T, int r) {
-
+void decode::inverseADST4(int16_t* T, int r) 
+{
+// It is a requirement of bitstream conformance that all values stored in the s and x arrays by this process are representable
+// by a signed integer using r + 12 bits of precision.
+// It is a requirement of bitstream conformance that values stored in the variable a7 by this process are representable by a
+// signed integer using r + 1 bits of precision.
+// It is a requirement of bitstream conformance that values stored in the variable b7 by this process are representable by a
+// signed integer using r bits of precision
     int s[7];
     int x[4];
 
@@ -4337,6 +4343,7 @@ void decode::inverseADST4(int16_t* T, int r) {
     s[1] = s[1] - s[4];
     s[3] = s[2];
     s[2] = SINPI_3_9 * b7;
+	
     s[0] = s[0] + s[5];
     s[1] = s[1] - s[6];
 
@@ -4489,11 +4496,15 @@ void decode::inverseWalshHadamardTransform(int16_t* T, int shift) {
     c = e - c;
     a -= b;
 
+	d += c;
+
     T[0] = a;
     T[1] = b;
     T[2] = c;
     T[3] = d;
 }
+
+
 //7.13.2.11
 void decode::inverseIdentityTransform4(int16_t* T){
 	printf("@@ T[ i ] * 5793 \n");
@@ -4551,7 +4562,7 @@ void decode::twoDInverseTransformBlock(int txSz,int16_t **Residual,BlockData *b_
     int colClampRange = Max(seqHdr->color_config.BitDepth + 6, 16);
 
 	int16_t T[w];
-	//printf("Residual 11\n");
+	printf("twoDInverseTransformBlock w %d h %d \n",w,h);
     for (int i = 0; i < h; i++) {
         for (int j = 0; j < w; j++) {
             if (i < 32 && j < 32) {
@@ -4570,21 +4581,26 @@ void decode::twoDInverseTransformBlock(int txSz,int16_t **Residual,BlockData *b_
         if (b_data->Lossless) {
             inverseWalshHadamardTransform(T, 2);
         } else if (b_data->PlaneTxType == DCT_DCT || b_data->PlaneTxType == ADST_DCT || b_data->PlaneTxType == FLIPADST_DCT || b_data->PlaneTxType == H_DCT) {
-			//printf("T 11 aa\n");
-			for (int j = 0; j < w; j++) {
-				//printf("%d ",T[j]);
-			}
-			//printf("T 11 bb\n");   
+			printf("row inverseDCT\n");
+			 printf("T 11 aa\n");
+			 for (int j = 0; j < w; j++) {
+			 	printf("%d ",T[j]);
+			 }
+			 printf("\n"); 
+			printf("T 11 bb\n");   
 			inverseDCT(T, log2W, rowClampRange);
 			for (int j = 0; j < w; j++) {
-				//printf("%d ",T[j]);
+				printf("%d ",T[j]);
 			}
-			//printf("T 11 cc\n"); 
+			printf("\n"); 
+			printf("T 11 cc\n"); 
         } else if (b_data->PlaneTxType == DCT_ADST || b_data->PlaneTxType == ADST_ADST || b_data->PlaneTxType == DCT_FLIPADST ||
                    b_data->PlaneTxType == FLIPADST_FLIPADST || b_data->PlaneTxType == ADST_FLIPADST || b_data->PlaneTxType == FLIPADST_ADST ||
                    b_data->PlaneTxType == H_ADST || b_data->PlaneTxType == H_FLIPADST) {
-            inverseADST(T, log2W, rowClampRange);
+            printf("row inverseADST\n");
+			inverseADST(T, log2W, rowClampRange);
         } else {
+			printf("row inverseIdentityTransform\n");
             inverseIdentityTransform(T, log2W);
         }
 		//printf("Residual 11 dd\n"); 
@@ -4613,14 +4629,29 @@ void decode::twoDInverseTransformBlock(int txSz,int16_t **Residual,BlockData *b_
         }
 
         if (b_data->Lossless) {
+			printf("col inverseWalshHadamardTransform\n");
             inverseWalshHadamardTransform(T1, 0);
         } else if (b_data->PlaneTxType == DCT_DCT || b_data->PlaneTxType == DCT_ADST || b_data->PlaneTxType == DCT_FLIPADST || b_data->PlaneTxType == V_DCT) {
-            inverseDCT(T1, log2H, colClampRange);
+            printf("col inverseDCT\n");
+			 printf("T1 11 aa\n");
+			 for (int j = 0; j < h; j++) {
+			 	printf("%d ",T1[j]);
+			 }
+			printf("\n"); 
+			printf("T1 11 bb\n");   
+			inverseDCT(T1, log2H, colClampRange);
+			 for (int j = 0; j < h; j++) {
+			 	printf("%d ",T1[j]);
+			 }
+			 printf("\n"); 
+			 printf("T1 11 cc\n"); 
         } else if (b_data->PlaneTxType == ADST_DCT || b_data->PlaneTxType == ADST_ADST || b_data->PlaneTxType == FLIPADST_DCT ||
                    b_data->PlaneTxType == FLIPADST_FLIPADST || b_data->PlaneTxType == ADST_FLIPADST || b_data->PlaneTxType == FLIPADST_ADST ||
                    b_data->PlaneTxType == V_ADST || b_data->PlaneTxType == V_FLIPADST) {
-            inverseADST(T1, log2H, colClampRange);
+            printf("colinverseADST\n");
+			inverseADST(T1, log2H, colClampRange);
         } else {
+			printf("col inverseIdentityTransform\n");
             inverseIdentityTransform(T1, log2H);
         }
 		

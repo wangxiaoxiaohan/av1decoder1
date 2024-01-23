@@ -1350,7 +1350,7 @@ void bytefn(dav1d_recon_b_intra)(Dav1dTaskContext *const t, const enum BlockSize
                                               [txtp](dst,
                                                      f->cur.stride[0],
                                                      cf, eob HIGHBD_CALL_SUFFIX);
-                            if (DEBUG_BLOCK_INFO && DEBUG_B_PIXELS)
+                            //if (DEBUG_BLOCK_INFO && DEBUG_B_PIXELS)
                                 hex_dump(dst, f->cur.stride[0],
                                          t_dim->w * 4, t_dim->h * 4, "recon");
                         }

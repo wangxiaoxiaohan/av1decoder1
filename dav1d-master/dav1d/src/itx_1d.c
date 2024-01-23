@@ -62,6 +62,16 @@
  * wrap around.
  */
 
+// const static uint16_t Cos128_Lookup[65] = {
+// 	4096,    4095(64), 4091(32), 4085(64), 4076(16), 4065(64), 4052(32), 4036(64),
+// 	4017(8), 3996(64), 3973(32), 3948(64), 3920(16), 3889(64), 3857(32), 3822(64),
+// 	3784(4), 3745(64), 3703(32), 3659(64), 3612(16), 3564(64), 3513(32), 3461(64),
+// 	3406(8), 3349(64), 3290(32), 3229(64), 3166(16), 3102(64), 3035(32), 2967(64),
+// 	2896,    2824(64), 2751(32), 2675(64), 2598(16), 2520(64), 2440(32), 2359(64),
+// 	2276(8), 2191(64), 2106(32), 2019(64), 1931(16), 1842(64), 1751(32), 1660(64),
+// 	1567(4), 1474(64), 1380(32), 1285(64), 1189(16), 1092(64), 995(32),  897(64),
+// 	799(8),  700(64),  601(32),  501(64),  401(16),  301(64),  201(32),  101(64), 0};
+
 static NOINLINE void
 inv_dct4_1d_internal_c(int32_t *const c, const ptrdiff_t stride,
                        const int min, const int max, const int tx64)
@@ -69,12 +79,19 @@ inv_dct4_1d_internal_c(int32_t *const c, const ptrdiff_t stride,
     assert(stride > 0);
     const int in0 = c[0 * stride], in1 = c[1 * stride];
 
+// 3784 : Cos128_Lookup 倒数第 16个
+// 1567 : Cos128_Lookup 倒数第 48个 
+//inv_dctxx_1d_internal_c系列函数 里面的各种 常数都是Cos128_Lookup 里面的值
     int t0, t1, t2, t3;
     if (tx64) {
+        //为什么 tx64 要特殊处理？？ 
         t0 = t1 = (in0 * 181 + 128) >> 8;
         t2 = (in1 * 1567 + 2048) >> 12;
         t3 = (in1 * 3784 + 2048) >> 12;
     } else {
+        //标准的蝶形变换算法
+        //看这篇博客
+        //https://blog.csdn.net/leixiaohua1020/article/details/45143075?ops_request_misc=%257B%2522request%255Fid%2522%253A%2522170573231016800180649016%2522%252C%2522scm%2522%253A%252220140713.130102334.pc%255Fblog.%2522%257D&request_id=170573231016800180649016&biz_id=0&utm_medium=distribute.pc_search_result.none-task-blog-2~blog~first_rank_ecpm_v1~rank_v31_ecpm-3-45143075-null-null.nonecase&utm_term=%E8%9D%B6%E5%BD%A2&spm=1018.2226.3001.4450
         const int in2 = c[2 * stride], in3 = c[3 * stride];
 
         t0 = ((in0 + in2) * 181 + 128) >> 8;
