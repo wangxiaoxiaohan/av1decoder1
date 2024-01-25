@@ -2441,9 +2441,9 @@ int decode::predict_intra(int plane,int x,int y,int haveLeft,int haveAbove,
 			int lim = Min(aboveLimit, x+i) > maxX ? maxX : Min(aboveLimit, x+i);
 			//int lim = Min(aboveLimit, x+i) ;
             (*b_data->AboveRow)[i] = av1Ctx->currentFrame->CurrFrame[plane][y - 1][lim];
-			printf("Min(aboveLimit, x+i) %d ",Min(aboveLimit, x+i));
+			//printf("Min(aboveLimit, x+i) %d ",Min(aboveLimit, x+i));
 		}
-		printf("AboveRow:%d i:%d ",(*b_data->AboveRow)[i],i);
+		//printf("AboveRow:%d i:%d ",(*b_data->AboveRow)[i],i);
     }
 	printf("\n");
     for (int i = 0; i < w + h; i++) {
@@ -2459,9 +2459,9 @@ int decode::predict_intra(int plane,int x,int y,int haveLeft,int haveAbove,
 			int lim = Min(leftLimit, y+i) > maxY ? maxY : Min(leftLimit, y+i);
 			//int lim = Min(leftLimit, y+i);
             (*b_data->LeftCol)[i] = av1Ctx->currentFrame->CurrFrame[plane][lim][x - 1];
-			printf("Min(leftLimit, x+i) %d ",Min(leftLimit, y+i));
+			//printf("Min(leftLimit, x+i) %d ",Min(leftLimit, y+i));
 		}
-		printf("LeftCol:%d i:%d ",(*b_data->LeftCol)[i],i);
+		//printf("LeftCol:%d i:%d ",(*b_data->LeftCol)[i],i);
     }
 	if(haveAbove == 1 && haveLeft == 1){
 		(*b_data->AboveRow)[ -1 ] = av1Ctx->currentFrame->CurrFrame[ plane ][ y-1 ][x-1 ];
@@ -2503,7 +2503,7 @@ int decode::predict_intra(int plane,int x,int y,int haveLeft,int haveAbove,
 			av1Ctx->currentFrame->CurrFrame[ plane ][ y + i ][ x + j ] = pred[ i ][ j ];
 			//   if(pred[ i ][ j ] > 255)
 			//   	printf("@@%d i:%d j:%d ",pred[ i ][ j ],i,j);
-			printf("%d ",pred[ i ][ j ]);
+			//printf("%d ",pred[ i ][ j ]);
 		}
 	}
 	printf("\n");
@@ -4129,106 +4129,25 @@ int decode::inverseDCTArrayPermutation(int16_t T[],int n)
 int decode::inverseDCT(int16_t T[], int n, int r) {
     inverseDCTArrayPermutation(T, n);
 
-	if(n == 6){
-		for(int i = 0 ; i < 16 ; i++){
-			B( 32 + i, 63 - i, 63 - 4 * brev( 4, i ), 0, r ,T);
-		}
-	}
-	if(n >= 5){
-		for(int i = 0 ; i < 8 ; i++){
-			 B( 16 + i, 31 - i, 6 + ( brev( 3, 7 - i ) << 3 ), 0, r ,T);
-		}
-	}
-	if(n == 6){
-		for(int i = 0 ; i < 16 ; i++){
-			H( 32 + i * 2, 33 + i * 2, i & 1, r ,T );
-		}
-	}
-	if(n >= 4){
-		for(int i = 0 ; i < 4 ; i++){
-			 B( 8 + i, 15 - i, 12 + ( brev( 2, 3 - i ) << 4 ), 0, r ,T);
-		}
-	}
-	if(n >= 5){
-		for(int i = 0 ; i < 8 ; i++){
-			 H( 16 + 2 * i, 17 + 2 * i, i & 1, r  ,T) ;
-		}
-	}
-	if(n == 6){
-		for(int i = 0 ; i < 4 ; i++){
-			for(int j = 0 ; j < 2 ; j++)
-				B( 62 - i * 4 - j, 33 + i * 4 + j, 60 - 16 * brev( 2, i ) + 64 * j, 1, r  ,T);
-		}
-	}
-	if(n >= 3){
-		for(int i = 0 ; i < 2 ; i++){
-			 B( 4 + i, 7 - i, 56 - 32 * i, 0, r ,T );
-		}
-	}
-	if(n >= 4){
-		for(int i = 0 ; i < 4; i++){
-			H( 8 + 2 * i, 9 + 2 * i, i & 1, r  ,T);
-		}
-	}
-	if(n >= 5){
-		for(int i = 0 ;i < 2 ; i++ )
-			for(int j = 0 ; j < 2 ;j ++)
-				B( 30 - 4 * i - j, 17 + 4 * i + j, 24 + (j << 6) + ( ( 1 - i ) << 5 ), 1, r ,T );
-	}
-	if(n == 6){
-		for(int i = 0 ; i < 8 ; i++){
-			for(int j = 0 ; j < 2 ; j++)
-				H( 32 + i * 4 + j, 35 + i * 4 - j, i & 1, r ,T );
-		}
-	}
 	for(int i = 0 ; i < 2 ; i ++)
 		B( 2 * i, 2 * i + 1, 32 + 16 * i, 1 - i, r ,T );
 
-	if(n >= 3){
-		for(int i = 0 ; i < 2; i++){
-			H( 4 + 2 * i, 5 + 2 * i, i, r  ,T);
-		}
-	}
-	if(n >= 4){
-		for(int i = 0 ; i < 2; i++){
-			B( 14 - i, 9 + i, 48 + 64 * i, 1, r ,T );
-		}
-	}
-	if(n >= 5){
-		for(int i = 0 ; i < 4 ; i++){
-			for(int j = 0 ; j < 2 ; j++)
-				H( 16 + 4 * i + j, 19 + 4 * i - j, i & 1, r ,T );
-		}
-	}
-	if(n == 6){
-		for(int i = 0 ; i < 2 ; i++){
-			for(int j = 0 ; j < 4 ; j++)
-				B( 61 - i * 8 - j, 34 + i * 8 + j, 56 - i * 32 + ( j >> 1 ) * 64, 1, r ,T );
-		}
-	}
 	for(int i = 0 ; i < 2 ; i ++)
 		H( i, 3 - i, 0, r  ,T);
 	
 
 	if(n >= 3){
-		B( 6, 5, 32, 1, r  ,T);
+		for(int i = 0 ; i < 2 ; i++){
+			 B( 4 + i, 7 - i, 56 - 32 * i, 0, r ,T );
+		}
 	}
-	if(n >= 4){
+	if(n >= 3){
 		for(int i = 0 ; i < 2; i++){
-			for(int j = 0 ; j < 2 ; j++)
-				H( 8 + 4 * i + j, 11 + 4 * i - j, i, r  ,T);
+			H( 4 + 2 * i, 5 + 2 * i, i, r  ,T);
 		}
 	}
-	if(n >= 5){
-		for(int i = 0 ; i < 4 ; i++){
-			B( 29 - i, 18 + i, 48 + ( i >> 1 ) * 64, 1, r  ,T);
-		}
-	}
-	if(n == 6){
-		for(int i = 0 ; i < 4 ; i++){
-			for(int j = 0 ; j < 4 ; j++)
-				H( 32 + 8 * i + j, 39 + 8 * i - j, i & 1, r  ,T) ;
-		}
+	if(n >= 3){
+		B( 6, 5, 32, 1, r  ,T);
 	}
 
 	if(n >= 3){
@@ -4237,19 +4156,29 @@ int decode::inverseDCT(int16_t T[], int n, int r) {
 		}
 	}
 	if(n >= 4){
+		for(int i = 0 ; i < 4 ; i++){
+			 B( 8 + i, 15 - i, 12 + ( brev( 2, 3 - i ) << 4 ), 0, r ,T);
+		}
+	}
+	if(n >= 4){
+		for(int i = 0 ; i < 4; i++){
+			H( 8 + 2 * i, 9 + 2 * i, i & 1, r  ,T);
+		}
+	}
+	if(n >= 4){
+		for(int i = 0 ; i < 2; i++){
+			B( 14 - i, 9 + i, 48 + 64 * i, 1, r ,T );
+		}
+	}
+	if(n >= 4){
+		for(int i = 0 ; i < 2; i++){
+			for(int j = 0 ; j < 2 ; j++)
+				H( 8 + 4 * i + j, 11 + 4 * i - j, i, r  ,T);
+		}
+	}
+	if(n >= 4){
 		for(int i = 0 ; i < 2; i++){
 			B( 13 - i, 10 + i, 32, 1, r ,T ) ;
-		}
-	}
-	if(n >= 5){
-		for(int i = 0 ; i < 2 ; i++){
-			for(int j = 0 ; j < 4 ; j++)
-				H( 16 + i * 8 + j, 23 + i * 8 - j, i, r ,T );
-		}
-	}
-	if(n == 6){
-		for(int i = 0 ; i < 8 ; i++){
-			B( 59 - i, 36 + i, i < 4 ? 48 : 112, 1, r ,T );
 		}
 	}
 	if(n >= 4){
@@ -4258,8 +4187,84 @@ int decode::inverseDCT(int16_t T[], int n, int r) {
 		}
 	}
 	if(n >= 5){
+		for(int i = 0 ; i < 8 ; i++){
+			 B( 16 + i, 31 - i, 6 + ( brev( 3, 7 - i ) << 3 ), 0, r ,T);
+		}
+	}
+	if(n >= 5){
+		for(int i = 0 ; i < 8 ; i++){
+			 H( 16 + 2 * i, 17 + 2 * i, i & 1, r  ,T) ;
+		}
+	}
+	if(n >= 5){
+		for(int i = 0 ;i < 2 ; i++ )
+			for(int j = 0 ; j < 2 ;j ++)
+				B( 30 - 4 * i - j, 17 + 4 * i + j, 24 + (j << 6) + ( ( 1 - i ) << 5 ), 1, r ,T );
+	}
+	if(n >= 5){
+		for(int i = 0 ; i < 4 ; i++){
+			for(int j = 0 ; j < 2 ; j++)
+				H( 16 + 4 * i + j, 19 + 4 * i - j, i & 1, r ,T );
+		}
+	}
+	if(n >= 5){
+		for(int i = 0 ; i < 4 ; i++){
+			B( 29 - i, 18 + i, 48 + ( i >> 1 ) * 64, 1, r  ,T);
+		}
+	}
+	if(n >= 5){
+		for(int i = 0 ; i < 2 ; i++){
+			for(int j = 0 ; j < 4 ; j++)
+				H( 16 + i * 8 + j, 23 + i * 8 - j, i, r ,T );
+		}
+	}
+	if(n >= 5){
 		for(int i = 0 ; i < 5; i++){
 			B( 27 - i, 20 + i, 32, 1, r ,T );
+		}
+	}
+	if(n == 5){
+		for(int i = 0 ; i < 16 ; i++){
+			H( i, 31 - i, 0, r ,T );
+		}
+	}
+	if(n == 6){
+		for(int i = 0 ; i < 16 ; i++){
+			B( 32 + i, 63 - i, 63 - 4 * brev( 4, i ), 0, r ,T);
+		}
+	}
+	if(n == 6){
+		for(int i = 0 ; i < 16 ; i++){
+			H( 32 + i * 2, 33 + i * 2, i & 1, r ,T );
+		}
+	}
+	if(n == 6){
+		for(int i = 0 ; i < 4 ; i++){
+			for(int j = 0 ; j < 2 ; j++)
+				B( 62 - i * 4 - j, 33 + i * 4 + j, 60 - 16 * brev( 2, i ) + 64 * j, 1, r  ,T);
+		}
+	}
+	if(n == 6){
+		for(int i = 0 ; i < 8 ; i++){
+			for(int j = 0 ; j < 2 ; j++)
+				H( 32 + i * 4 + j, 35 + i * 4 - j, i & 1, r ,T );
+		}
+	}
+	if(n == 6){
+		for(int i = 0 ; i < 2 ; i++){
+			for(int j = 0 ; j < 4 ; j++)
+				B( 61 - i * 8 - j, 34 + i * 8 + j, 56 - i * 32 + ( j >> 1 ) * 64, 1, r ,T );
+		}
+	}
+	if(n == 6){
+		for(int i = 0 ; i < 4 ; i++){
+			for(int j = 0 ; j < 4 ; j++)
+				H( 32 + 8 * i + j, 39 + 8 * i - j, i & 1, r  ,T) ;
+		}
+	}
+	if(n == 6){
+		for(int i = 0 ; i < 8 ; i++){
+			B( 59 - i, 36 + i, i < 4 ? 48 : 112, 1, r ,T );
 		}
 	}
 	if(n == 6){
@@ -4268,11 +4273,6 @@ int decode::inverseDCT(int16_t T[], int n, int r) {
 			H( 48 + i, 63 - i, 1, r ,T );
 		}
 
-	}
-	if(n == 5){
-		for(int i = 0 ; i < 16 ; i++){
-			H( i, 31 - i, 0, r ,T );
-		}
 	}
 	if(n == 6){
 		for(int i = 0 ; i < 8 ; i++){
@@ -4563,6 +4563,7 @@ void decode::twoDInverseTransformBlock(int txSz,int16_t **Residual,BlockData *b_
 
 	int16_t T[w];
 	printf("twoDInverseTransformBlock w %d h %d \n",w,h);
+	printf("rowShift %d colShift %d\n",rowShift,colShift);
     for (int i = 0; i < h; i++) {
         for (int j = 0; j < w; j++) {
             if (i < 32 && j < 32) {
@@ -4582,18 +4583,18 @@ void decode::twoDInverseTransformBlock(int txSz,int16_t **Residual,BlockData *b_
             inverseWalshHadamardTransform(T, 2);
         } else if (b_data->PlaneTxType == DCT_DCT || b_data->PlaneTxType == ADST_DCT || b_data->PlaneTxType == FLIPADST_DCT || b_data->PlaneTxType == H_DCT) {
 			printf("row inverseDCT\n");
-			 printf("T 11 aa\n");
-			 for (int j = 0; j < w; j++) {
-			 	printf("%d ",T[j]);
-			 }
-			 printf("\n"); 
-			printf("T 11 bb\n");   
+			//  printf("T 11 aa\n");
+			//  for (int j = 0; j < w; j++) {
+			//  	printf("%d ",T[j]);
+			//  }
+			//  printf("\n"); 
+			// printf("T 11 bb\n");   
 			inverseDCT(T, log2W, rowClampRange);
-			for (int j = 0; j < w; j++) {
-				printf("%d ",T[j]);
-			}
-			printf("\n"); 
-			printf("T 11 cc\n"); 
+			// for (int j = 0; j < w; j++) {
+			// 	printf("%d ",T[j]);
+			// }
+			// printf("\n"); 
+			// printf("T 11 cc\n"); 
         } else if (b_data->PlaneTxType == DCT_ADST || b_data->PlaneTxType == ADST_ADST || b_data->PlaneTxType == DCT_FLIPADST ||
                    b_data->PlaneTxType == FLIPADST_FLIPADST || b_data->PlaneTxType == ADST_FLIPADST || b_data->PlaneTxType == FLIPADST_ADST ||
                    b_data->PlaneTxType == H_ADST || b_data->PlaneTxType == H_FLIPADST) {
@@ -4603,10 +4604,9 @@ void decode::twoDInverseTransformBlock(int txSz,int16_t **Residual,BlockData *b_
 			printf("row inverseIdentityTransform\n");
             inverseIdentityTransform(T, log2W);
         }
-		//printf("Residual 11 dd\n"); 
+		printf("Residual 11 dd\n"); 
         for (int j = 0; j < w; j++) {
             Residual[i][j] = Round2(T[j], rowShift);
-			//printf("%d ",Residual[i][j]);
         }
 		
     }
@@ -4633,17 +4633,17 @@ void decode::twoDInverseTransformBlock(int txSz,int16_t **Residual,BlockData *b_
             inverseWalshHadamardTransform(T1, 0);
         } else if (b_data->PlaneTxType == DCT_DCT || b_data->PlaneTxType == DCT_ADST || b_data->PlaneTxType == DCT_FLIPADST || b_data->PlaneTxType == V_DCT) {
             printf("col inverseDCT\n");
-			 printf("T1 11 aa\n");
-			 for (int j = 0; j < h; j++) {
-			 	printf("%d ",T1[j]);
-			 }
-			printf("\n"); 
-			printf("T1 11 bb\n");   
+			//  printf("T1 11 aa\n");
+			//  for (int j = 0; j < h; j++) {
+			//  	printf("%d ",T1[j]);
+			//  }
+			// printf("\n"); 
+			// printf("T1 11 bb\n");   
 			inverseDCT(T1, log2H, colClampRange);
-			 for (int j = 0; j < h; j++) {
-			 	printf("%d ",T1[j]);
-			 }
-			 printf("\n"); 
+			//  for (int j = 0; j < h; j++) {
+			//  	printf("%d ",T1[j]);
+			//  }
+			//  printf("\n"); 
 			 printf("T1 11 cc\n"); 
         } else if (b_data->PlaneTxType == ADST_DCT || b_data->PlaneTxType == ADST_ADST || b_data->PlaneTxType == FLIPADST_DCT ||
                    b_data->PlaneTxType == FLIPADST_FLIPADST || b_data->PlaneTxType == ADST_FLIPADST || b_data->PlaneTxType == FLIPADST_ADST ||
@@ -4657,7 +4657,7 @@ void decode::twoDInverseTransformBlock(int txSz,int16_t **Residual,BlockData *b_
 		
         for (int i = 0; i < h; i++) {
             Residual[i][j] = Round2(T1[i], colShift);
-			printf("%d ",Residual[i][j]);
+			//printf("%d ",Residual[i][j]);
 
         }
 		
