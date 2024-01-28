@@ -4070,10 +4070,10 @@ int decode::reconstruct(int plane, int x, int y, int txSz,BlockData *b_data,AV1D
 			}else{
 				q2 = q;
 			}        
-            int dq = b_data->Quant[i * tw + j] * q2;
+            int dq = b_data->Quant[i * tw + j] * q2; //直接乘以qp值 得出 反量化值
             int sign = (dq < 0) ? -1 : 1;
             int dq2 = sign * (Abs(dq) & 0xFFFFFF) / dqDenom;
-            //printf("idx %d ,%d @ %d  @ %d ",i * tw + j,q2,b_data->Quant[i * tw + j],dq2);
+			printf(" @ %d  @ %d |",dq,dq2);
 			b_data->Dequant[ i ][ j ] = Clip3( - ( 1 << ( 7 + seqHdr->color_config.BitDepth ) ), ( 1 << ( 7 + seqHdr->color_config.BitDepth ) ) - 1, dq2 );
 			//printf("%d ",b_data->Dequant[ i ][ j ]);
         }

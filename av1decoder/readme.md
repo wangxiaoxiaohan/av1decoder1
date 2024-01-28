@@ -115,3 +115,4 @@ inverseADST4 等等 排查算法中所有乘以一个几千的常数的地方
 
 重建出来的图像，每个partition中 都有一个十字条纹，肯定是有问题的
 64 *64 块 才会出现 十字伪影，检查这一点 是否因为 Dequant 32 * 32 尺寸问题？
+dav1d的 inv_dct4_1d_internal_c  和spec对不上

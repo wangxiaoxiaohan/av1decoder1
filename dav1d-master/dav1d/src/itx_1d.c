@@ -79,12 +79,10 @@ inv_dct4_1d_internal_c(int32_t *const c, const ptrdiff_t stride,
     assert(stride > 0);
     const int in0 = c[0 * stride], in1 = c[1 * stride];
 
-// 3784 : Cos128_Lookup 倒数第 16个
-// 1567 : Cos128_Lookup 倒数第 48个 
 //inv_dctxx_1d_internal_c系列函数 里面的各种 常数都是Cos128_Lookup 里面的值
     int t0, t1, t2, t3;
     if (tx64) {
-        //为什么 tx64 要特殊处理？？ 
+        //为什么 tx64 要特殊处理？？ 规则是什么？
         t0 = t1 = (in0 * 181 + 128) >> 8;
         t2 = (in1 * 1567 + 2048) >> 12;
         t3 = (in1 * 3784 + 2048) >> 12;
@@ -93,10 +91,14 @@ inv_dct4_1d_internal_c(int32_t *const c, const ptrdiff_t stride,
         //看这篇博客
         //https://blog.csdn.net/leixiaohua1020/article/details/45143075?ops_request_misc=%257B%2522request%255Fid%2522%253A%2522170573231016800180649016%2522%252C%2522scm%2522%253A%252220140713.130102334.pc%255Fblog.%2522%257D&request_id=170573231016800180649016&biz_id=0&utm_medium=distribute.pc_search_result.none-task-blog-2~blog~first_rank_ecpm_v1~rank_v31_ecpm-3-45143075-null-null.nonecase&utm_term=%E8%9D%B6%E5%BD%A2&spm=1018.2226.3001.4450
         const int in2 = c[2 * stride], in3 = c[3 * stride];
-
+        //这里之所以是  in0 + in2/in0 - in2 而不是 in0 + in1 /in0 + in1  是考虑了 spec中 
+        //的7.13.2.2  ，在 反变换之前需要对数组内某些值进行交换，考虑这个，那么下面的t0,t1,t2,t3使用的输入就是没有问题的
         t0 = ((in0 + in2) * 181 + 128) >> 8;
         t1 = ((in0 - in2) * 181 + 128) >> 8;
+      //t2 =  (in1 *  1567         - in3 *  3784         + 2048) >> 12
+      //t3 =  (in1 *  3784         + in3 *  1567         + 2048) >> 12
         t2 = ((in1 *  1567         - in3 * (3784 - 4096) + 2048) >> 12) - in3;
+      
         t3 = ((in1 * (3784 - 4096) + in3 *  1567         + 2048) >> 12) + in1;
     }
 
@@ -123,10 +125,10 @@ inv_dct8_1d_internal_c(int32_t *const c, const ptrdiff_t stride,
 
     int t4a, t5a, t6a, t7a;
     if (tx64) {
-        t4a = (in1 *   799 + 2048) >> 12;
-        t5a = (in3 * -2276 + 2048) >> 12;
-        t6a = (in3 *  3406 + 2048) >> 12;
-        t7a = (in1 *  4017 + 2048) >> 12;
+        t4a = (in1 *   799 + 2048) >> 12;//cos
+        t5a = (in3 * -2276 + 2048) >> 12;//sin
+        t6a = (in3 *  3406 + 2048) >> 12;//cos
+        t7a = (in1 *  4017 + 2048) >> 12;//sin
     } else {
         const int in5 = c[5 * stride], in7 = c[7 * stride];
 
@@ -177,14 +179,14 @@ inv_dct16_1d_internal_c(int32_t *const c, const ptrdiff_t stride,
 
     int t8a, t9a, t10a, t11a, t12a, t13a, t14a, t15a;
     if (tx64) {
-        t8a  = (in1 *   401 + 2048) >> 12;
-        t9a  = (in7 * -2598 + 2048) >> 12;
-        t10a = (in5 *  1931 + 2048) >> 12;
-        t11a = (in3 * -1189 + 2048) >> 12;
-        t12a = (in3 *  3920 + 2048) >> 12;
-        t13a = (in5 *  3612 + 2048) >> 12;
-        t14a = (in7 *  3166 + 2048) >> 12;
-        t15a = (in1 *  4076 + 2048) >> 12;
+        t8a  = (in1 *   401 + 2048) >> 12; //cos
+        t9a  = (in7 * -2598 + 2048) >> 12; //sin
+        t10a = (in5 *  1931 + 2048) >> 12; //cos
+        t11a = (in3 * -1189 + 2048) >> 12; //sin
+        t12a = (in3 *  3920 + 2048) >> 12; //cos
+        t13a = (in5 *  3612 + 2048) >> 12; //sin
+        t14a = (in7 *  3166 + 2048) >> 12; //cos
+        t15a = (in1 *  4076 + 2048) >> 12; //sin
     } else {
         const int in9  = c[ 9 * stride], in11 = c[11 * stride];
         const int in13 = c[13 * stride], in15 = c[15 * stride];
