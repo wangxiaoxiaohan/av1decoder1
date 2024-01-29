@@ -4073,7 +4073,7 @@ int decode::reconstruct(int plane, int x, int y, int txSz,BlockData *b_data,AV1D
             int dq = b_data->Quant[i * tw + j] * q2; //直接乘以qp值 得出 反量化值
             int sign = (dq < 0) ? -1 : 1;
             int dq2 = sign * (Abs(dq) & 0xFFFFFF) / dqDenom;
-			printf(" @ %d  @ %d |",dq,dq2);
+			//printf(" @ %d  @ %d |",dq,dq2);
 			b_data->Dequant[ i ][ j ] = Clip3( - ( 1 << ( 7 + seqHdr->color_config.BitDepth ) ), ( 1 << ( 7 + seqHdr->color_config.BitDepth ) ) - 1, dq2 );
 			//printf("%d ",b_data->Dequant[ i ][ j ]);
         }
@@ -4101,8 +4101,7 @@ int decode::reconstruct(int plane, int x, int y, int txSz,BlockData *b_data,AV1D
 			
 		}
     }
-	printf("\n");
-	printf("x:%d y:%d  ---",X,Y);
+
 	printf("\n");
 	for(int i = 0 ; i < h ; i ++){
 		delete []  Residual[i];
@@ -4140,17 +4139,13 @@ int decode::inverseDCT(int16_t T[], int n, int r) {
 		for(int i = 0 ; i < 2 ; i++){
 			 B( 4 + i, 7 - i, 56 - 32 * i, 0, r ,T );
 		}
-	}
-	if(n >= 3){
+
 		for(int i = 0 ; i < 2; i++){
 			H( 4 + 2 * i, 5 + 2 * i, i, r  ,T);
 		}
-	}
-	if(n >= 3){
-		B( 6, 5, 32, 1, r  ,T);
-	}
 
-	if(n >= 3){
+		B( 6, 5, 32, 1, r  ,T);
+
 		for(int i = 0 ; i < 4; i++){
 			H( i, 7 - i, 0, r ,T ) ;
 		}
@@ -4159,29 +4154,25 @@ int decode::inverseDCT(int16_t T[], int n, int r) {
 		for(int i = 0 ; i < 4 ; i++){
 			 B( 8 + i, 15 - i, 12 + ( brev( 2, 3 - i ) << 4 ), 0, r ,T);
 		}
-	}
-	if(n >= 4){
+	
+
 		for(int i = 0 ; i < 4; i++){
 			H( 8 + 2 * i, 9 + 2 * i, i & 1, r  ,T);
 		}
-	}
-	if(n >= 4){
+
 		for(int i = 0 ; i < 2; i++){
 			B( 14 - i, 9 + i, 48 + 64 * i, 1, r ,T );
 		}
-	}
-	if(n >= 4){
+
 		for(int i = 0 ; i < 2; i++){
 			for(int j = 0 ; j < 2 ; j++)
 				H( 8 + 4 * i + j, 11 + 4 * i - j, i, r  ,T);
 		}
-	}
-	if(n >= 4){
+
 		for(int i = 0 ; i < 2; i++){
 			B( 13 - i, 10 + i, 32, 1, r ,T ) ;
 		}
-	}
-	if(n >= 4){
+
 		for(int i = 0 ; i < 8; i++){
 			H( i, 15 - i, 0, r  ,T);
 		}
@@ -4190,40 +4181,33 @@ int decode::inverseDCT(int16_t T[], int n, int r) {
 		for(int i = 0 ; i < 8 ; i++){
 			 B( 16 + i, 31 - i, 6 + ( brev( 3, 7 - i ) << 3 ), 0, r ,T);
 		}
-	}
-	if(n >= 5){
+
 		for(int i = 0 ; i < 8 ; i++){
 			 H( 16 + 2 * i, 17 + 2 * i, i & 1, r  ,T) ;
 		}
-	}
-	if(n >= 5){
+
 		for(int i = 0 ;i < 2 ; i++ )
 			for(int j = 0 ; j < 2 ;j ++)
 				B( 30 - 4 * i - j, 17 + 4 * i + j, 24 + (j << 6) + ( ( 1 - i ) << 5 ), 1, r ,T );
-	}
-	if(n >= 5){
+
 		for(int i = 0 ; i < 4 ; i++){
 			for(int j = 0 ; j < 2 ; j++)
 				H( 16 + 4 * i + j, 19 + 4 * i - j, i & 1, r ,T );
 		}
-	}
-	if(n >= 5){
+
 		for(int i = 0 ; i < 4 ; i++){
 			B( 29 - i, 18 + i, 48 + ( i >> 1 ) * 64, 1, r  ,T);
 		}
-	}
-	if(n >= 5){
+
 		for(int i = 0 ; i < 2 ; i++){
 			for(int j = 0 ; j < 4 ; j++)
 				H( 16 + i * 8 + j, 23 + i * 8 - j, i, r ,T );
 		}
-	}
-	if(n >= 5){
+
 		for(int i = 0 ; i < 5; i++){
 			B( 27 - i, 20 + i, 32, 1, r ,T );
 		}
-	}
-	if(n == 5){
+
 		for(int i = 0 ; i < 16 ; i++){
 			H( i, 31 - i, 0, r ,T );
 		}
@@ -4232,54 +4216,45 @@ int decode::inverseDCT(int16_t T[], int n, int r) {
 		for(int i = 0 ; i < 16 ; i++){
 			B( 32 + i, 63 - i, 63 - 4 * brev( 4, i ), 0, r ,T);
 		}
-	}
-	if(n == 6){
+
 		for(int i = 0 ; i < 16 ; i++){
 			H( 32 + i * 2, 33 + i * 2, i & 1, r ,T );
 		}
-	}
-	if(n == 6){
+
 		for(int i = 0 ; i < 4 ; i++){
 			for(int j = 0 ; j < 2 ; j++)
 				B( 62 - i * 4 - j, 33 + i * 4 + j, 60 - 16 * brev( 2, i ) + 64 * j, 1, r  ,T);
 		}
-	}
-	if(n == 6){
+
 		for(int i = 0 ; i < 8 ; i++){
 			for(int j = 0 ; j < 2 ; j++)
 				H( 32 + i * 4 + j, 35 + i * 4 - j, i & 1, r ,T );
 		}
-	}
-	if(n == 6){
+
 		for(int i = 0 ; i < 2 ; i++){
 			for(int j = 0 ; j < 4 ; j++)
 				B( 61 - i * 8 - j, 34 + i * 8 + j, 56 - i * 32 + ( j >> 1 ) * 64, 1, r ,T );
 		}
-	}
-	if(n == 6){
+
 		for(int i = 0 ; i < 4 ; i++){
 			for(int j = 0 ; j < 4 ; j++)
 				H( 32 + 8 * i + j, 39 + 8 * i - j, i & 1, r  ,T) ;
 		}
-	}
-	if(n == 6){
+
 		for(int i = 0 ; i < 8 ; i++){
 			B( 59 - i, 36 + i, i < 4 ? 48 : 112, 1, r ,T );
 		}
-	}
-	if(n == 6){
+
 		for(int i = 0 ; i < 8 ; i++){
 			H( 32 + i, 47 - i, 0, r  ,T);
 			H( 48 + i, 63 - i, 1, r ,T );
 		}
 
-	}
-	if(n == 6){
+
 		for(int i = 0 ; i < 8 ; i++){
 			B( 55 - i, 40 + i, 32, 1, r ,T ) ;
 		}
-	}
-	if(n == 6){
+
 		for(int i = 0 ; i < 32 ; i++){
 			H( i, 63 - i, 0, r ,T);
 		}
