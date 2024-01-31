@@ -3163,6 +3163,7 @@ int decode::predict_inter(int plane, int x, int y,int w ,int h ,int candRow,int 
 
 genArray:
 	int refFrame = av1Ctx->RefFrames[ candRow ][ candCol ][ refList ];
+	printf("candRow %d  candCol %d  refList%d  refFrame%d\n",candRow,candCol,refList,refFrame);
 	int globalValid;
     if((b_data->YMode == GLOBALMV || b_data->YMode == GLOBAL_GLOBALMV) && frameHdr->global_motion_params.GmType[ refFrame ] > TRANSLATION){
 		int a,b,g,d;//these values will bediscard;
@@ -3189,7 +3190,7 @@ genArray:
 	memcpy(mv,av1Ctx->Mvs[ candRow ][ candCol ][ refList ],2* sizeof(int));
 	int refIdx ;
 	if(b_data->use_intrabc == 0){
-		refIdx == frameHdr->ref_frame_idx[ refFrame - LAST_FRAME ];
+		refIdx = frameHdr->ref_frame_idx[ refFrame - LAST_FRAME ];
 	}else{
 		refIdx = -1;
 		//These values ensure that the motion vector scaling has no effect
@@ -3580,6 +3581,7 @@ int decode::block_inter_prediction(int plane, int refIdx, int x, int y, int xSte
             int s = 0;
             int p = x + xStep * c;
             for (int t = 0; t < 8; t++) {
+				//printf("x %d y %d\n",Clip3(0, lastY, (y >> 10) + r - 3),Clip3(0, lastX, (p >> 10) + t - 3));
                 s += Subpel_Filters[interpFilter][(p >> 6) & SUBPEL_MASK][t] *
                      ref[plane][Clip3(0, lastY, (y >> 10) + r - 3)][Clip3(0, lastX, (p >> 10) + t - 3)];
             }

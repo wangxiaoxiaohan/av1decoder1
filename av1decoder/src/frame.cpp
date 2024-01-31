@@ -2174,6 +2174,7 @@ int frame::decode_block(SymbolContext *sbCtx,bitSt *bs,int r,int c,int subSize, 
 				av1Ctx->UVModes[r + y][c + x] = b_data.UVMode ;
 			for (int refList = 0; refList < 2; refList++){
 				//printf("bh4 %d bw4 %d  r %d c %d r + y %d, c + x %d mirows %d, micols %d\n",bh4, bw4 , r ,c,r + y,c + x,frameHdr->MiRows,frameHdr->MiCols);
+				printf("b_data.RefFrame[refList] %d\n",b_data.RefFrame[refList]);
 				av1Ctx->RefFrames[r + y][c + x][refList] = b_data.RefFrame[refList] ;
 			}
 				
@@ -2517,8 +2518,9 @@ int frame::read_segment_id(SymbolContext *sbCtx,bitSt *bs,BlockData *b_data,AV1D
 			ctx = 1;
 		else
 			ctx = 0;
-			printf("decodeSymbol segment_id\n");
+		printf("decodeSymbol segment_id\n");
 		b_data->segment_id = sb->decodeSymbol(sbCtx,bs,av1Ctx->tileSavedCdf.Segment_Id[ctx],MAX_SEGMENTS + 1);//S() 
+		printf("sb segment_id:%d\n",b_data->segment_id);
 		b_data->segment_id  = neg_deinterleave( b_data->segment_id, pred,
 						frameHdr->segmentation_params.LastActiveSegId + 1);
 		printf("sb segment_id:%d\n",b_data->segment_id);
