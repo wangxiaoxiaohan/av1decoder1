@@ -302,9 +302,9 @@ typedef struct BlockData{
 	uint8_t AvailUChroma;
 	uint8_t AvailLChroma;
 
-	uint8_t segment_id;
+	int8_t segment_id;
 	uint8_t Lossless;
-	uint8_t RefFrame[2];
+	int8_t RefFrame[2];
 	uint8_t use_intrabc;
 	uint8_t is_inter;
 
