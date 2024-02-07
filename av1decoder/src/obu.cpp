@@ -333,6 +333,7 @@ int obu::parseObuInfo(FILE* fp,int fileOffset,uint8_t *buf,int sz,AV1DecodeConte
 				ctx->SeenFrameHeader = 1;
 				frame::Instance().parseUncompressedHeader(sz, &bs,ctx, &ctx->seqHdr, &obu_header,&ctx->frameHdr);
 				//先假设分辨率不会变,就分配一次
+				memcpy(&ctx->currentFrame->frameHdr,&ctx->frameHdr,sizeof(frameHeader));
 				if(ctx->decAlloced == 0){
 					frame::Instance().allocDecodeContext(ctx);
 					ctx->decAlloced = 1;

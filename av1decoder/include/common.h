@@ -837,6 +837,7 @@ const static uint16_t Div_Mult[32] = {
 	0, 16384, 8192, 5461, 4096, 3276, 2730, 2340, 2048, 1820, 1638,
 	1489, 1365, 1260, 1170, 1092, 1024, 963, 910, 862, 819, 780,
 	744, 712, 682, 655, 630, 606, 585, 564, 546, 528};
+//Note: The negative numbers in the array Palette_Color_Context indicate values that will never be accessed
 const static int8_t Palette_Color_Context[PALETTE_MAX_COLOR_CONTEXT_HASH + 1] =
 	{-1, -1, 0, -1, -1, 4, 3, 2, 1};
 const static uint8_t Partition_Subsize[10][BLOCK_SIZES] = {
@@ -9045,7 +9046,7 @@ int inline ref_count_ctx(int counts0, int counts1)
 	else
 		return 2;
 }
-int inline count_refs(int frameType, uint8_t AvailU, uint8_t AvailL, uint8_t *AboveRefFrame, uint8_t *LeftRefFrame)
+int inline count_refs(int frameType, uint8_t AvailU, uint8_t AvailL, int8_t *AboveRefFrame, int8_t *LeftRefFrame)
 {
 	int c = 0;
 	if (AvailU)

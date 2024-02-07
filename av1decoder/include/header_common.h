@@ -316,8 +316,8 @@ typedef struct BlockData{
 	int8_t AngleDeltaY;
 	int8_t AngleDeltaUV;
 
-	uint8_t CflAlphaU;
-	uint8_t CflAlphaV;
+	int8_t CflAlphaU;
+	int8_t CflAlphaV;
 
 // palette mode info
 	uint8_t PaletteSizeY;
@@ -330,8 +330,8 @@ typedef struct BlockData{
 	uint8_t use_filter_intra;
 	uint8_t filter_intra_mode;
 
-	uint8_t LeftRefFrame[2];
-	uint8_t AboveRefFrame[2];
+	int8_t LeftRefFrame[2];
+	int8_t AboveRefFrame[2];
 
 	uint8_t comp_group_idx;
 	uint8_t compound_idx;
