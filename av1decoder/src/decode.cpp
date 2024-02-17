@@ -3187,7 +3187,7 @@ genArray:
 	int mv[2];
 	//	mv = p_data->Mvs[ candRow ][ candCol ][ refList ];
 	memcpy(mv,av1Ctx->Mvs[ candRow ][ candCol ][ refList ],2* sizeof(int));
-	printf("mv[0] mv[1]\n",mv[0],mv[1]);
+	printf("mv[0] %d mv[1] %d\n",mv[0],mv[1]);
 	int refIdx ;
 	if(b_data->use_intrabc == 0){
 		refIdx = frameHdr->ref_frame_idx[ refFrame - LAST_FRAME ];
@@ -3199,7 +3199,8 @@ genArray:
 		(*av1Ctx->RefUpscaledWidth)[ -1 ] = frameHdr->si.UpscaledWidth;
 	}
 	int startX,startY,stepX,stepY;
-	motionVectorScaling( plane,refIdx, x, y, mv, &startX,&startY,&stepX,&startY,av1Ctx);
+	//用运动矢量算出当前块的参考块在帧内的起始位置
+	motionVectorScaling( plane,refIdx, x, y, mv, &startX,&startY,&stepX,&stepY,av1Ctx);
 
 //These values are needed to avoid intrabc prediction being cropped to the frame boundaries
 	if(b_data->use_intrabc == 1){
@@ -3227,6 +3228,7 @@ genArray:
 
 	}
 	if(useWarp == 0){
+		printf("startX %d startY %d stepX %d stepY %d\n",startX,startY,stepX, stepY);
 		block_inter_prediction(plane, refIdx,startX, startY, stepX, stepY, w, h, candRow, candCol,preds[refList],b_data,av1Ctx);
 	}
 
@@ -3421,11 +3423,11 @@ int decode::motionVectorScaling(int plane, int refIdx, int x, int y, int mv[2],
 	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
 	int xScale, yScale;
     int subX, subY;
-    int halfSample = 1 << (SUBPEL_BITS - 1);
+    int halfSample = 1 << (SUBPEL_BITS - 1);//representing half the size of a sample in units of 1/16 th of a sample
     int origX, origY;
     int baseX, baseY;
     int off;
-
+	printf("halfSample  %d\n",halfSample);
     if (plane == 0) {
         subX = 0;
         subY = 0;
@@ -3436,20 +3438,25 @@ int decode::motionVectorScaling(int plane, int refIdx, int x, int y, int mv[2],
 
     origX = (x << SUBPEL_BITS) + ((2 * mv[1]) >> subX) + halfSample;
     origY = (y << SUBPEL_BITS) + ((2 * mv[0]) >> subY) + halfSample;
+	printf("origX  %d origY %d \n",origX,origY);
 
+	printf("refIdx  %d (*av1Ctx->RefUpscaledWidth)[refIdx] %d (*av1Ctx->RefFrameHeight)[refIdx] %d\n",
+		refIdx,(*av1Ctx->RefUpscaledWidth)[refIdx],(*av1Ctx->RefFrameHeight)[refIdx]);
     xScale = (( (*av1Ctx->RefUpscaledWidth)[refIdx] << REF_SCALE_SHIFT) + (frameHdr->si.FrameWidth / 2)) /frameHdr->si.FrameWidth;
     yScale = (((*av1Ctx->RefFrameHeight)[refIdx] << REF_SCALE_SHIFT) + (frameHdr->si.FrameHeight / 2)) / frameHdr->si.FrameHeight;
 
+	printf("xScale  %d yScale %d\n",xScale,yScale);
     baseX = (origX * xScale - (halfSample << REF_SCALE_SHIFT));
     baseY = (origY * yScale - (halfSample << REF_SCALE_SHIFT));
-
+	printf("baseX  %d baseY %d\n",baseX,baseY);
     off = (1 << (SCALE_SUBPEL_BITS - SUBPEL_BITS)) / 2;
 
     *startX = (Round2Signed(baseX, REF_SCALE_SHIFT + SUBPEL_BITS - SCALE_SUBPEL_BITS) + off);
     *startY = (Round2Signed(baseY, REF_SCALE_SHIFT + SUBPEL_BITS - SCALE_SUBPEL_BITS) + off);
-
+	printf("startX  %d startY %d \n",*startX ,*startY);
     *stepX = Round2Signed(xScale, REF_SCALE_SHIFT - SCALE_SUBPEL_BITS);
     *stepY = Round2Signed(yScale, REF_SCALE_SHIFT - SCALE_SUBPEL_BITS);
+	printf("stepX  %d stepY %d \n",*stepX,*stepY);
 }
 ////7.11.3.5
 int decode::blockWarp(int useWarp,int plane,int refList,int x,int y,
@@ -3541,14 +3548,18 @@ int decode::blockWarp(int useWarp,int plane,int refList,int x,int y,
 //temporary array, and then this array is vertically filtered to obtain the final prediction. The fractional parts of the motion
 //vectors determine the filtering process. If the fractional part is zero, then the filtering is equivalent to a straight sample
 //copy
+//variables x and y giving the block location with in units of 1/1024 th of a sample,
+//variables xStep and yStep giving the step size in units of 1/1024 th of a sample,
+//不会把 四分之一 像素精度的插值后的数据记下来，而是一边插值一边计算最后的 预测值
+//需要仔细研究这里的 具体操作
 int decode::block_inter_prediction(int plane, int refIdx, int x, int y, int xStep, int yStep, 
 						int w, int h, int candRow, int candCol,uint16_t **pred,
 						BlockData *b_data,AV1DecodeContext *av1Ctx) {
 	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;		
 	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
-    uint16_t ***ref;
+    uint16_t ***ref; 
     if (refIdx == -1) {
-        ref = av1Ctx->currentFrame->CurrFrame;
+        ref = av1Ctx->currentFrame->CurrFrame;//intra frame copy 
     } else if (refIdx >= 0) {
         ref = av1Ctx->FrameStore[refIdx];
     }
@@ -3568,6 +3579,7 @@ int decode::block_inter_prediction(int plane, int refIdx, int x, int y, int xSte
     int lastY = (((*av1Ctx->RefFrameHeight)[refIdx] + subY) >> subY) - 1;
 
     // Calculate intermediateHeight
+	//这个值与h差别不大
     int intermediateHeight = (((h - 1) * yStep + (1 << SCALE_SUBPEL_BITS) - 1) >> SCALE_SUBPEL_BITS) + 8;
 
     // Sub-sample interpolation - Horizontal filter
