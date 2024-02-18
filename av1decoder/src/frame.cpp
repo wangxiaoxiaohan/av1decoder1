@@ -2727,7 +2727,7 @@ int frame::assign_mv(int isCompound,SymbolContext *sbCtx,bitSt *bs,BlockData *b_
 			}
 			//???????????
 			printf("decodeSymbol mv_joint\n");
-			int mv_joint = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Mv_Joint[MvCtx],DELTA_LF_SMALL + 2);//S()
+			int mv_joint = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Mv_Joint[MvCtx],MV_JOINTS + 1);//S()
 			if ( mv_joint == MV_JOINT_HZVNZ || mv_joint == MV_JOINT_HNZVNZ )
 				diffMv[ 0 ] = read_mv_component(MvCtx, 0,sbCtx,bs,b_data,av1Ctx );
 			if ( mv_joint == MV_JOINT_HNZVZ || mv_joint == MV_JOINT_HNZVNZ )
@@ -2787,7 +2787,7 @@ printf("decodeSymbol mv_class\n");
 			mv_fr = 3 ;
 		else {
 			printf("decodeSymbol mv_fr\n");
-			mv_fr = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Mv_Fr[MvCtx][comp],3); //S()
+			mv_fr = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Mv_Fr[MvCtx][comp],MV_JOINTS + 1); //S()
 		}if (frameHdr->allow_high_precision_mv) {
 			printf("decodeSymbol mv_hp\n");
 			mv_hp = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Mv_Hp[MvCtx][comp],3); //S() 
