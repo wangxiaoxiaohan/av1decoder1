@@ -4588,10 +4588,10 @@ void decode::twoDInverseTransformBlock(int txSz,int16_t **Residual,BlockData *b_
         } else if (b_data->PlaneTxType == DCT_ADST || b_data->PlaneTxType == ADST_ADST || b_data->PlaneTxType == DCT_FLIPADST ||
                    b_data->PlaneTxType == FLIPADST_FLIPADST || b_data->PlaneTxType == ADST_FLIPADST || b_data->PlaneTxType == FLIPADST_ADST ||
                    b_data->PlaneTxType == H_ADST || b_data->PlaneTxType == H_FLIPADST) {
-            printf("row inverseADST\n");
+            //printf("row inverseADST\n");
 			inverseADST(T, log2W, rowClampRange);
         } else {
-			printf("row inverseIdentityTransform\n");
+			//printf("row inverseIdentityTransform\n");
             inverseIdentityTransform(T, log2W);
         }
 		//printf("Residual 11 dd\n"); 

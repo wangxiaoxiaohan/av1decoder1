@@ -313,7 +313,7 @@ int frame::parseUncompressedHeader(int sz, bitSt *bs, AV1DecodeContext *av1Ctx, 
 	if (out->primary_ref_frame == PRIMARY_REF_NONE)
 	{
 		printf("init_non_coeff_cdfs\n");
-		decode_instance->init_non_coeff_cdfs( &av1Ctx->currentFrame->cdfCtx);
+		//decode_instance->init_non_coeff_cdfs( &av1Ctx->currentFrame->cdfCtx);
 		if(! av1Ctx->PrevSegmentIds){
 			av1Ctx->PrevSegmentIds = new uint8_t*[out->MiRows];
 			for(int i  = 0 ; i < out->MiRows ; i++){
@@ -326,9 +326,10 @@ int frame::parseUncompressedHeader(int sz, bitSt *bs, AV1DecodeContext *av1Ctx, 
 	else
 	{
 		//从主参考帧里面拷贝cdf
-		 decode_instance->load_cdfs( av1Ctx,out->ref_frame_idx[ out->primary_ref_frame ] );
+		 //decode_instance->load_cdfs( av1Ctx,out->ref_frame_idx[ out->primary_ref_frame ] );
 		 decode_instance->load_previous(av1Ctx);
 	}
+	decode_instance->init_non_coeff_cdfs( &av1Ctx->currentFrame->cdfCtx);
 	if (out->use_ref_frame_mvs == 1)
 	{
 		 decode_instance->motion_field_estimation(av1Ctx);
@@ -351,12 +352,13 @@ int frame::parseUncompressedHeader(int sz, bitSt *bs, AV1DecodeContext *av1Ctx, 
 	if (out->primary_ref_frame == PRIMARY_REF_NONE)
 	{
 		printf("init_coeff_cdfs\n");
-		decode_instance->init_coeff_cdfs(av1Ctx,&av1Ctx->currentFrame->cdfCtx);
+		//decode_instance->init_coeff_cdfs(av1Ctx,&av1Ctx->currentFrame->cdfCtx);
 	}
 	else
 	{
 		 decode_instance->load_previous_segment_ids(av1Ctx);
 	}
+	decode_instance->init_coeff_cdfs(av1Ctx,&av1Ctx->currentFrame->cdfCtx);
 	out->CodedLossless = 1;
 	int segmentId;
 	for (segmentId = 0; segmentId < MAX_SEGMENTS; segmentId++)
@@ -1887,6 +1889,20 @@ int frame::decodeFrame(int sz, bitSt *bs, AV1DecodeContext *av1Ctx){
 		SymbolContext symCtx;
 		printf("sz %d \n",sz);
 		sb->initSymbol(&symCtx,bs,sz);
+
+
+		printf("Wedge_Index cdf\n");
+		for(int i = 0 ; i < PLANE_TYPES; i ++){
+			for(int j = 0 ; j < 2 ; j++){
+				for(int k = 0 ; k < 7 ; k++){
+					printf("%d ",32768 - av1Ctx->currentFrame->cdfCtx.Eob_Pt_32[i][j][k]);
+				}
+				printf("\n");
+			}
+			printf("\n");
+		}
+		printf("Wedge_Index cdf\n");
+
 		symCtx.isUpdate = !frameHdr->disable_cdf_update;
 		decode_tile(&symCtx,bs,av1Ctx);
 		exit_symbol(&symCtx,bs,TileNum,av1Ctx);
