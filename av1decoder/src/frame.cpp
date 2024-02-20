@@ -2281,11 +2281,11 @@ int frame::decode_block(SymbolContext *sbCtx,bitSt *bs,int r,int c,int subSize, 
 		}
 		delete [] b_data.ColorMapUV;
 	}
-	printf("AboveRow addr %x \n ",b_data.AboveRow);
+
 	delete b_data.AboveRow;
-	printf("LeftCol addr %x\n",	b_data.LeftCol);
+
 	delete b_data.LeftCol;
-	printf("block\n");
+
 
 
 }
@@ -2322,9 +2322,9 @@ int frame::intra_frame_mode_info(SymbolContext *sbCtx,bitSt *bs,BlockData *b_dat
 			ctx += av1Ctx->Skips[ b_data->MiRow - 1 ][ b_data->MiCol ];
 		if ( b_data->AvailL )
 			ctx += av1Ctx->Skips[ b_data->MiRow ][ b_data->MiCol - 1 ];
-		printf("decodeSymbol skip\n");
+		
 		b_data->skip =  sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Skip[ctx],3);//S()
-		printf("sb skip:%d\n",b_data->skip);
+		printf("decodeSymbol intra skip %d\n",b_data->skip);
 	}
 
 
@@ -2461,8 +2461,8 @@ int frame::inter_frame_mode_info(SymbolContext *sbCtx, bitSt *bs, BlockData *b_d
 				ctx += av1Ctx->Skips[ b_data->MiRow - 1 ][ b_data->MiCol ];
 			if ( b_data->AvailL )
 				ctx += av1Ctx->Skips[ b_data->MiRow ][ b_data->MiCol - 1 ];
-			printf("decodeSymbol skip\n");
 			b_data->skip =  sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Skip[ctx],3);
+			printf("decodeSymbol inter skip %d\n",b_data->skip);
 		}
 
 	}
@@ -2489,8 +2489,9 @@ int frame::inter_frame_mode_info(SymbolContext *sbCtx, bitSt *bs, BlockData *b_d
 			ctx = 2 * (b_data->AvailU ? b_data->AboveIntra : b_data->LeftIntra);
 		else
 			ctx = 0;
-		printf("decodeSymbol is_inter\n");
+		
 		b_data->is_inter = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Is_Inter[ctx],3);//S()
+		printf("decodeSymbol is_inter %d\n",b_data->is_inter);
 	}
 
 	if (b_data->is_inter)
@@ -2741,9 +2742,9 @@ int frame::assign_mv(int isCompound,SymbolContext *sbCtx,bitSt *bs,BlockData *b_
 			} else {
 				MvCtx = 0;
 			}
-			//???????????
-			printf("decodeSymbol mv_joint\n");
+			
 			int mv_joint = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Mv_Joint[MvCtx],MV_JOINTS + 1);//S()
+			printf("decodeSymbol mv_joint %d \n",mv_joint);
 			if ( mv_joint == MV_JOINT_HZVNZ || mv_joint == MV_JOINT_HNZVNZ )
 				diffMv[ 0 ] = read_mv_component(MvCtx, 0,sbCtx,bs,b_data,av1Ctx );
 			if ( mv_joint == MV_JOINT_HNZVZ || mv_joint == MV_JOINT_HNZVNZ )
@@ -2763,26 +2764,30 @@ int frame::read_mv_component(int MvCtx,int comp,SymbolContext *sbCtx,bitSt *bs,B
 {
 	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
-printf("decodeSymbol mv_sign\n");
+	
 	int mv_sign = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Mv_Sign[MvCtx][comp],3);//S()
-printf("decodeSymbol mv_class\n");
+	printf("decodeSymbol mv_sign %d\n",mv_sign);
 	int mv_class = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Mv_Class[MvCtx][comp],MV_CLASSES + 1);//S() 
+	printf("decodeSymbol mv_class %d\n",mv_class);
 	int mag;
 	
 	if (mv_class == MV_CLASS_0)
 	{
 		int mv_class0_bit,mv_class0_fr,mv_class0_hp;
-		printf("decodeSymbol mv_class0_bit\n");
+		
 		mv_class0_bit = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Mv_Class0_Bit[MvCtx][comp],3);//S() 
+		printf("decodeSymbol mv_class0_bit %d\n",mv_class0_bit);
 		if (frameHdr->force_integer_mv)
 			mv_class0_fr = 3 ;
 		else{
-			printf("decodeSymbol mv_class0_fr\n");
-			mv_class0_fr =  sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Mv_Class0_Fr[MvCtx][comp][mv_class0_bit],5);//S()
+			
+			mv_class0_fr =  sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Mv_Class0_Fr[MvCtx][comp][mv_class0_bit],MV_JOINTS + 1);//S()
+			printf("decodeSymbol mv_class0_fr %d\n",mv_class0_fr);
 		}
 		if (frameHdr->allow_high_precision_mv){
-			printf("decodeSymbol mv_class0_hp\n");
+			
 			mv_class0_hp = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Mv_Class0_Hp[MvCtx][comp],3);//S() 
+			printf("decodeSymbol mv_class0_hp %d\n",mv_class0_hp);
 		}else{
 			mv_class0_hp = 1; 
 		}
@@ -2793,8 +2798,9 @@ printf("decodeSymbol mv_class\n");
 		int mv_bit,mv_fr,mv_hp,mv_sign;
 		int d = 0 ;
 		for (int i = 0; i < mv_class; i++){
-			printf("decodeSymbol mv_bit\n");
+			
 			mv_bit = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Mv_Bit[MvCtx][comp][i],3);
+			printf("decodeSymbol mv_bit %d\n",mv_bit);
 			d |= mv_bit << i;
 		}
 			
@@ -2802,11 +2808,13 @@ printf("decodeSymbol mv_class\n");
 		if (frameHdr->force_integer_mv) 
 			mv_fr = 3 ;
 		else {
-			printf("decodeSymbol mv_fr\n");
+			
 			mv_fr = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Mv_Fr[MvCtx][comp],MV_JOINTS + 1); //S()
+			printf("decodeSymbol mv_fr %d\n",mv_fr);
 		}if (frameHdr->allow_high_precision_mv) {
-			printf("decodeSymbol mv_hp\n");
+			
 			mv_hp = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Mv_Hp[MvCtx][comp],3); //S() 
+			printf("decodeSymbol mv_hp %d\n",mv_hp);
 		}else 
 			mv_hp = 1 ;
 		mag += ((d << 3) | (mv_fr << 1) | mv_hp) + 1;
@@ -3237,8 +3245,10 @@ int frame::inter_block_mode_info(SymbolContext *sbCtx, bitSt *bs, BlockData *b_d
 			if (av1Ctx->currentFrame->mvpCtx->NumMvFound > idx + 1)
 			{
 				//drl_mode; // S()
-				printf("decodeSymbol drl_mode 1\n");
-				if (sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Drl_Mode[av1Ctx->currentFrame->mvpCtx->DrlCtxStack[idx]],3 ) == 0)
+				
+				int drl_mode = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Drl_Mode[av1Ctx->currentFrame->mvpCtx->DrlCtxStack[idx]],3 ) ;
+				printf("decodeSymbol 1 drl_mode %d \n",drl_mode);
+				if (drl_mode == 0)
 				{
 					av1Ctx->currentFrame->mvpCtx->RefMvIdx = idx;
 					break;
@@ -3255,8 +3265,9 @@ int frame::inter_block_mode_info(SymbolContext *sbCtx, bitSt *bs, BlockData *b_d
 			if (av1Ctx->currentFrame->mvpCtx->NumMvFound > idx + 1)
 			{
 				//drl_mode; // S()
-				printf("decodeSymbol drl_mode 2\n");
-				if (sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Drl_Mode[av1Ctx->currentFrame->mvpCtx->DrlCtxStack[idx]],3 ) == 0)
+				int drl_mode = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Drl_Mode[av1Ctx->currentFrame->mvpCtx->DrlCtxStack[idx]],3 );
+				printf("decodeSymbol 2 drl_mode %d\n",drl_mode);
+				if (drl_mode == 0)
 				{
 					av1Ctx->currentFrame->mvpCtx->RefMvIdx = idx;
 					break;
@@ -3371,8 +3382,9 @@ int frame::read_interintra_mode(int isCompound,SymbolContext *sbCtx,bitSt *bs,Bl
 		b_data->MiSize >= BLOCK_8X8 && b_data->MiSize <= BLOCK_32X32)
 	{
 		int ctx = Size_Group[ b_data->MiSize ] - 1;
-		printf("decodeSymbol interintra\n");
+		
 		b_data->interintra = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Inter_Intra[ctx],3); // S()
+		printf("decodeSymbol interintra %d \n",b_data->interintra);
 		if (b_data->interintra)
 		{
 			printf("decodeSymbol interintra_mode\n");
@@ -3441,8 +3453,9 @@ int frame::read_motion_mode(int isCompound,SymbolContext *sbCtx,bitSt *bs,BlockD
 	}
 	else
 	{
-		printf("decodeSymbol motion_mode\n");
+		
 		b_data->motion_mode = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Motion_Mode[b_data->MiSize],MOTION_MODES + 1); //S()
+		printf("decodeSymbol motion_mode %d\n",b_data->motion_mode );
 	}
 }
 int frame::read_compound_type(int isCompound,SymbolContext *sbCtx,bitSt *bs,BlockData *b_data,AV1DecodeContext *av1Ctx)
@@ -3783,16 +3796,19 @@ int frame::read_ref_frames(SymbolContext *sbCtx, bitSt *bs, BlockData *b_data, A
 			bwdCount += count_refs( ALTREF2_FRAME ,b_data->AvailU,b_data->AvailL,b_data->AboveRefFrame,b_data->LeftRefFrame);
 			bwdCount += count_refs( ALTREF_FRAME ,b_data->AvailU,b_data->AvailL,b_data->AboveRefFrame,b_data->LeftRefFrame);
 			ctx = ref_count_ctx( fwdCount, bwdCount );
-			printf("decodeSymbol single_ref_p1\n");
+			
 			int single_ref_p1 = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Single_Ref[ctx][0],3); // S()
+			printf("decodeSymbol single_ref_p1 %d\n",single_ref_p1);
 			if (single_ref_p1)
 			{
-				printf("decodeSymbol single_ref_p2\n");
+				
 				int single_ref_p2 = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Single_Ref[ctx][1],3); // S()
+				printf("decodeSymbol single_ref_p2 %d\n",single_ref_p2);
 				if (single_ref_p2 == 0)
 				{
-					printf("decodeSymbol single_ref_p6\n");
+					
 					int single_ref_p6 = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Single_Ref[ctx][5],3); // S()
+					printf("decodeSymbol single_ref_p6 %d\n",single_ref_p6);
 					b_data->RefFrame[0] = single_ref_p6 ? ALTREF2_FRAME : BWDREF_FRAME;
 				}
 				else
@@ -3802,18 +3818,21 @@ int frame::read_ref_frames(SymbolContext *sbCtx, bitSt *bs, BlockData *b_data, A
 			}
 			else
 			{
-				printf("decodeSymbol single_ref_p3\n");
+				
 				int single_ref_p3 = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Single_Ref[ctx][2],3); // S()
+				printf("decodeSymbol single_ref_p3 %d\n",single_ref_p3);
 				if (single_ref_p3)
 				{
-					printf("decodeSymbol single_ref_p5\n");
+					
 					int single_ref_p5 = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Single_Ref[ctx][4],3); // S()
+					printf("decodeSymbol single_ref_p5 %d\n",single_ref_p5);
 					b_data->RefFrame[0] = single_ref_p5 ? GOLDEN_FRAME : LAST3_FRAME;
 				}
 				else
 				{
-					printf("decodeSymbol single_ref_p4\n");
+					
 					int single_ref_p4 = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Single_Ref[ctx][3],3); // S()
+					printf("decodeSymbol single_ref_p4 %d\n",single_ref_p4);
 					b_data->RefFrame[0] = single_ref_p4 ? LAST2_FRAME : LAST_FRAME;
 				}
 			}

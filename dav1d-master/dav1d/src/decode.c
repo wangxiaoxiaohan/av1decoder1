@@ -82,17 +82,22 @@ static int read_mv_component_diff(Dav1dTaskContext *const t,
     const Dav1dFrameContext *const f = t->f;
     const int have_hp = f->frame_hdr->hp;
     const int sign = dav1d_msac_decode_bool_adapt(&ts->msac, mv_comp->sign);
+    printf("symbol sign %d\n",sign);
     const int cl = dav1d_msac_decode_symbol_adapt16(&ts->msac,
                                                     mv_comp->classes, 10);
+    printf("symbol cl %d\n",cl);
     int up, fp, hp;
 
     if (!cl) {
         up = dav1d_msac_decode_bool_adapt(&ts->msac, mv_comp->class0);
+        printf("symbol  1 up %d\n",up);
         if (have_fp) {
             fp = dav1d_msac_decode_symbol_adapt4(&ts->msac,
                                                  mv_comp->class0_fp[up], 3);
+            printf("symbol  1fp %d\n",fp);
             hp = have_hp ? dav1d_msac_decode_bool_adapt(&ts->msac,
                                                         mv_comp->class0_hp) : 1;
+            printf("symbol  1hp %d\n",hp);
         } else {
             fp = 3;
             hp = 1;
@@ -102,11 +107,14 @@ static int read_mv_component_diff(Dav1dTaskContext *const t,
         for (int n = 0; n < cl; n++)
             up |= dav1d_msac_decode_bool_adapt(&ts->msac,
                                                mv_comp->classN[n]) << n;
+            printf("symbol 2 up %d\n",up);
         if (have_fp) {
             fp = dav1d_msac_decode_symbol_adapt4(&ts->msac,
                                                  mv_comp->classN_fp, 3);
+            printf("symbol 2 fp%d\n",fp);
             hp = have_hp ? dav1d_msac_decode_bool_adapt(&ts->msac,
                                                         mv_comp->classN_hp) : 1;
+            printf("symbol 2 hp%d\n",hp);
         } else {
             fp = 3;
             hp = 1;
@@ -121,8 +129,10 @@ static int read_mv_component_diff(Dav1dTaskContext *const t,
 static void read_mv_residual(Dav1dTaskContext *const t, mv *const ref_mv,
                              CdfMvContext *const mv_cdf, const int have_fp)
 {
-    switch (dav1d_msac_decode_symbol_adapt4(&t->ts->msac, t->ts->cdf.mv.joint,
-                                            N_MV_JOINTS - 1))
+    int joint = dav1d_msac_decode_symbol_adapt4(&t->ts->msac, t->ts->cdf.mv.joint,
+                                            N_MV_JOINTS - 1);
+        printf("symbol joint %d\n",joint);
+    switch (joint)
     {
     case MV_JOINT_HV:
         ref_mv->y += read_mv_component_diff(t, &mv_cdf->comp[0], have_fp);
@@ -2589,7 +2599,7 @@ static void read_restoration_info(Dav1dTaskContext *const t,
                 ts->cdf.m.restore_wiener : ts->cdf.m.restore_sgrproj);
         lr->type = type ? frame_type : DAV1D_RESTORATION_NONE;
     }
-    //printf("!!!!!!!!! lr->type %d\n",lr->type);
+    printf("!!!!!!!!! lr->type %d\n",lr->type);
     if (lr->type == DAV1D_RESTORATION_WIENER) {
         lr->filter_v[0] = p ? 0 :
             dav1d_msac_decode_subexp(&ts->msac,
@@ -3243,6 +3253,19 @@ int dav1d_decode_frame_main(Dav1dFrameContext *const f) {
         printf("fm %2x ",f->tile[0].data.data[i]);
     }
     printf("\n");
+
+    // printf("Wedge_Index cdf\n");
+    // for(int i = 0 ; i < 2; i ++){
+    //     for(int j = 0 ; j < 2 ; j++){
+    //         for(int k = 0 ; k < 8 ; k++){
+    //          printf("%d ", f->ts->cdf.coef.eob_bin_32[i][j][k]);
+    //         }
+    //         printf("\n");
+    //     }
+    //     printf("\n");
+    // }
+    // printf("Wedge_Index cdf\n");
+
     assert(f->c->n_tc == 1);
 
     Dav1dTaskContext *const t = &c->tc[f - c->fc];

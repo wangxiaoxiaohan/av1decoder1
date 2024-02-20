@@ -2075,7 +2075,7 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 				ctx = get_coeff_base_ctx(txSz, plane, x4, y4, scan[c], c, 0,b_data,av1Ctx);
 				
 				int coeff_base =  sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Coeff_Base[ txSzCtx ][ ptype ][ ctx ],5); // S()
-				//printf("decodeSymbol coeff_base %d  txSzCtx %d ptype %d ,ctx %d\n",coeff_base,txSzCtx,ptype,ctx);
+				printf("decodeSymbol coeff_base %d  txSzCtx %d ptype %d ,ctx %d\n",coeff_base,txSzCtx,ptype,ctx);
 				level = coeff_base;
 			}
 			////printf("level %d\n",level);
@@ -4069,7 +4069,7 @@ int decode::reconstruct(int plane, int x, int y, int txSz,BlockData *b_data,AV1D
     int th = Min(32, h);
     int flipUD = (b_data->PlaneTxType == FLIPADST_DCT || b_data->PlaneTxType == FLIPADST_ADST || b_data->PlaneTxType == V_FLIPADST || b_data->PlaneTxType == FLIPADST_FLIPADST) ? 1 : 0;
     int flipLR = (b_data->PlaneTxType == DCT_FLIPADST || b_data->PlaneTxType == ADST_FLIPADST || b_data->PlaneTxType == H_FLIPADST || b_data->PlaneTxType == FLIPADST_FLIPADST) ? 1 : 0;
-    printf("residual 11\n");
+    //printf("residual 11\n");
 
     for (int i = 0; i < th; i++) {
         for (int j = 0; j < tw; j++) {
@@ -4099,9 +4099,9 @@ int decode::reconstruct(int plane, int x, int y, int txSz,BlockData *b_data,AV1D
 	for(int i = 0 ; i < h ; i ++){
 		Residual[i] = new int16_t[w];
 	}
-	printf("residual 22\n");
+	//printf("residual 22\n");
 	twoDInverseTransformBlock(txSz,Residual,b_data,av1Ctx);
-	printf("residual 33 \n");
+	//printf("residual 33 \n");
 
 	int X = x;
 	int Y = y;
@@ -4552,8 +4552,6 @@ void decode::twoDInverseTransformBlock(int txSz,int16_t **Residual,BlockData *b_
     int colClampRange = Max(seqHdr->color_config.BitDepth + 6, 16);
 
 	int16_t T[w];
-	printf("twoDInverseTransformBlock w %d h %d \n",w,h);
-	printf("rowShift %d colShift %d\n",rowShift,colShift);
     for (int i = 0; i < h; i++) {
         for (int j = 0; j < w; j++) {
             if (i < 32 && j < 32) {
@@ -4638,10 +4636,10 @@ void decode::twoDInverseTransformBlock(int txSz,int16_t **Residual,BlockData *b_
         } else if (b_data->PlaneTxType == ADST_DCT || b_data->PlaneTxType == ADST_ADST || b_data->PlaneTxType == FLIPADST_DCT ||
                    b_data->PlaneTxType == FLIPADST_FLIPADST || b_data->PlaneTxType == ADST_FLIPADST || b_data->PlaneTxType == FLIPADST_ADST ||
                    b_data->PlaneTxType == V_ADST || b_data->PlaneTxType == V_FLIPADST) {
-            printf("colinverseADST\n");
+            //printf("colinverseADST\n");
 			inverseADST(T1, log2H, colClampRange);
         } else {
-			printf("col inverseIdentityTransform\n");
+			//printf("col inverseIdentityTransform\n");
             inverseIdentityTransform(T1, log2H);
         }
 		
