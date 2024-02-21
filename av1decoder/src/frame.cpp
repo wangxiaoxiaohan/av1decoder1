@@ -1255,6 +1255,7 @@ void frame::allocDecodeContext(AV1DecodeContext *av1Ctx){
 		for(int j = 0 ; j < WBuffMiSize ; j++){
 			av1Ctx->RefFrames[i][j] = new int[2];
 			av1Ctx->InterpFilters[i][j] = new uint8_t[2];
+			memset(av1Ctx->RefFrames[i][j],0xff,2 * sizeof(int));
 		}
 	}
 
@@ -3245,7 +3246,7 @@ int frame::inter_block_mode_info(SymbolContext *sbCtx, bitSt *bs, BlockData *b_d
 			if (av1Ctx->currentFrame->mvpCtx->NumMvFound > idx + 1)
 			{
 				//drl_mode; // S()
-				
+				// dav1d 没进这里！！
 				int drl_mode = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Drl_Mode[av1Ctx->currentFrame->mvpCtx->DrlCtxStack[idx]],3 ) ;
 				printf("decodeSymbol 1 drl_mode %d \n",drl_mode);
 				if (drl_mode == 0)

@@ -685,7 +685,7 @@ int decode::find_mv_stack(int isCompound,SymbolContext *sbCtx, bitSt *bs,
 	int numNearest = av1Ctx->currentFrame->mvpCtx->NumMvFound;
 	int numNew = av1Ctx->currentFrame->mvpCtx->NewMvCount;
 	if(numNearest > 0){
-		for(int idx = 0 ;idx < numNearest - 1;idx ++ ){
+		for(int idx = 0 ;idx < numNearest;idx ++ ){
 				av1Ctx->currentFrame->mvpCtx->WeightStack[ idx ] += REF_CAT_LEVEL;
 		}
 	}
@@ -835,7 +835,7 @@ int decode::scan_col(int deltaCol,int isCompound,
 			BlockData *b_data,AV1DecodeContext *av1Ctx){
 	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	int deltaRow = 0;
-	if(Abs(deltaRow) > 1){	
+	if(Abs(deltaCol) > 1){	
 		deltaRow = 1 - (b_data->MiRow & 1);
 		deltaCol += b_data->MiCol & 1;
 	}
@@ -914,21 +914,34 @@ int decode::search_stack(int mvRow,int mvCol,int candList,int weight,
 	}
 	av1Ctx->currentFrame->mvpCtx->FoundMatch = 1;
 
+	//写法1
+	// for (int idx = 0; idx < av1Ctx->currentFrame->mvpCtx->NumMvFound; idx++) {
+	// 	if (candMv[0] == av1Ctx->currentFrame->mvpCtx->RefStackMv[idx][0][0] && candMv[1] == av1Ctx->currentFrame->mvpCtx->RefStackMv[idx][0][1]) {
+	// 		av1Ctx->currentFrame->mvpCtx->WeightStack[idx] += weight;
+	// 	}else{
+	// 		if( av1Ctx->currentFrame->mvpCtx->NumMvFound < MAX_REF_MV_STACK_SIZE){
+	// 			//av1Ctx->RefStackMv[ av1Ctx->NumMvFound][0] = candMv;
+	// 			memcpy(av1Ctx->currentFrame->mvpCtx->RefStackMv[ av1Ctx->currentFrame->mvpCtx->NumMvFound][0],candMv,2 * sizeof(int));
+	// 			av1Ctx->currentFrame->mvpCtx->WeightStack[ av1Ctx->currentFrame->mvpCtx->NumMvFound] = weight;
+	// 			av1Ctx->currentFrame->mvpCtx->NumMvFound++;
+	// 		}
 
+	// 	}
+	// }
+	//写法2
 	for (int idx = 0; idx < av1Ctx->currentFrame->mvpCtx->NumMvFound; idx++) {
 		if (candMv[0] == av1Ctx->currentFrame->mvpCtx->RefStackMv[idx][0][0] && candMv[1] == av1Ctx->currentFrame->mvpCtx->RefStackMv[idx][0][1]) {
 			av1Ctx->currentFrame->mvpCtx->WeightStack[idx] += weight;
-		}else{
-			if( av1Ctx->currentFrame->mvpCtx->NumMvFound < MAX_REF_MV_STACK_SIZE){
-				//av1Ctx->RefStackMv[ av1Ctx->NumMvFound][0] = candMv;
-				memcpy(av1Ctx->currentFrame->mvpCtx->RefStackMv[ av1Ctx->currentFrame->mvpCtx->NumMvFound][0],candMv,2 * sizeof(int));
-				av1Ctx->currentFrame->mvpCtx->WeightStack[ av1Ctx->currentFrame->mvpCtx->NumMvFound] = weight;
-				av1Ctx->currentFrame->mvpCtx->NumMvFound++;
-			}
-
 		}
 	}
+	if( av1Ctx->currentFrame->mvpCtx->NumMvFound < MAX_REF_MV_STACK_SIZE){
+		//av1Ctx->RefStackMv[ av1Ctx->NumMvFound][0] = candMv;
+		memcpy(av1Ctx->currentFrame->mvpCtx->RefStackMv[ av1Ctx->currentFrame->mvpCtx->NumMvFound][0],candMv,2 * sizeof(int));
+		av1Ctx->currentFrame->mvpCtx->WeightStack[ av1Ctx->currentFrame->mvpCtx->NumMvFound] = weight;
+		av1Ctx->currentFrame->mvpCtx->NumMvFound++;
+	}
 
+		
 }
 //This process searches the stack for an exact match with a candidate pair of motion vectors. If present, the weight of the
 //candidate pair of motion vectors is added to the weight of its counterpart in the stack, otherwise the process adds the
@@ -953,23 +966,41 @@ int decode::compound_search_stack(int  mvRow ,int  mvCol,int weight,
 		lower_precision(candMvs[i],av1Ctx);
 	}
 	av1Ctx->currentFrame->mvpCtx->FoundMatch = 1;
+	//写法1
+	// for(int idx =0 ;idx < av1Ctx->currentFrame->mvpCtx->NumMvFound ;idx ++){
+	// 	if(candMvs[ 0 ][0] == av1Ctx->currentFrame->mvpCtx->RefStackMv[ idx ][ 0 ][0] && candMvs[ 0 ][1] == av1Ctx->currentFrame->mvpCtx->RefStackMv[ idx ][ 0 ][1]
+	// 		&&  candMvs[ 1 ][0] == av1Ctx->currentFrame->mvpCtx->RefStackMv[ idx ][ 1 ][0] && candMvs[ 1 ][1] == av1Ctx->currentFrame->mvpCtx->RefStackMv[ idx ][ 1 ][1]){
+	// 			av1Ctx->currentFrame->mvpCtx->WeightStack[ idx ] += weight;
+
+	// 	}else{
+	// 		if(av1Ctx->currentFrame->mvpCtx->NumMvFound < MAX_REF_MV_STACK_SIZE){
+	// 			for(int i = 0 ; i < 2 ; i++)
+	// 				//av1Ctx->RefStackMv[ av1Ctx->NumMvFound ][ i ] = candMvs[ i ] ;
+	// 				memcpy(av1Ctx->currentFrame->mvpCtx->RefStackMv[ av1Ctx->currentFrame->mvpCtx->NumMvFound ][ i ] ,candMvs[ i ],2 * sizeof(int));
+	// 			av1Ctx->currentFrame->mvpCtx->WeightStack[ av1Ctx->currentFrame->mvpCtx->NumMvFound ] = weight;
+	// 			av1Ctx->currentFrame->mvpCtx->NumMvFound += 1;
+
+	// 		}
+
+	// 	}
+	// }
+	//写法2
 	for(int idx =0 ;idx < av1Ctx->currentFrame->mvpCtx->NumMvFound ;idx ++){
 		if(candMvs[ 0 ][0] == av1Ctx->currentFrame->mvpCtx->RefStackMv[ idx ][ 0 ][0] && candMvs[ 0 ][1] == av1Ctx->currentFrame->mvpCtx->RefStackMv[ idx ][ 0 ][1]
 			&&  candMvs[ 1 ][0] == av1Ctx->currentFrame->mvpCtx->RefStackMv[ idx ][ 1 ][0] && candMvs[ 1 ][1] == av1Ctx->currentFrame->mvpCtx->RefStackMv[ idx ][ 1 ][1]){
 				av1Ctx->currentFrame->mvpCtx->WeightStack[ idx ] += weight;
 
-		}else{
-			if(av1Ctx->currentFrame->mvpCtx->NumMvFound < MAX_REF_MV_STACK_SIZE){
-				for(int i = 0 ; i < 2 ; i++)
-					//av1Ctx->RefStackMv[ av1Ctx->NumMvFound ][ i ] = candMvs[ i ] ;
-					memcpy(av1Ctx->currentFrame->mvpCtx->RefStackMv[ av1Ctx->currentFrame->mvpCtx->NumMvFound ][ i ] ,candMvs[ i ],2 * sizeof(int));
-				av1Ctx->currentFrame->mvpCtx->WeightStack[ av1Ctx->currentFrame->mvpCtx->NumMvFound ] = weight;
-				av1Ctx->currentFrame->mvpCtx->NumMvFound += 1;
-
-			}
-
 		}
 	}
+	if(av1Ctx->currentFrame->mvpCtx->NumMvFound < MAX_REF_MV_STACK_SIZE){
+		for(int i = 0 ; i < 2 ; i++)
+			//av1Ctx->RefStackMv[ av1Ctx->NumMvFound ][ i ] = candMvs[ i ] ;
+			memcpy(av1Ctx->currentFrame->mvpCtx->RefStackMv[ av1Ctx->currentFrame->mvpCtx->NumMvFound ][ i ] ,candMvs[ i ],2 * sizeof(int));
+		av1Ctx->currentFrame->mvpCtx->WeightStack[ av1Ctx->currentFrame->mvpCtx->NumMvFound ] = weight;
+		av1Ctx->currentFrame->mvpCtx->NumMvFound += 1;
+
+	}
+
 	if(candMode == NEWMV ||
 			candMode == NEW_NEWMV ||
 			candMode == NEAR_NEWMV ||
