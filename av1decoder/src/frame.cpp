@@ -3247,6 +3247,7 @@ int frame::inter_block_mode_info(SymbolContext *sbCtx, bitSt *bs, BlockData *b_d
 			{
 				//drl_mode; // S()
 				// dav1d 没进这里！！
+				printf("av1Ctx->currentFrame->mvpCtx->NumMvFound %d \n",av1Ctx->currentFrame->mvpCtx->NumMvFound);
 				int drl_mode = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Drl_Mode[av1Ctx->currentFrame->mvpCtx->DrlCtxStack[idx]],3 ) ;
 				printf("decodeSymbol 1 drl_mode %d \n",drl_mode);
 				if (drl_mode == 0)

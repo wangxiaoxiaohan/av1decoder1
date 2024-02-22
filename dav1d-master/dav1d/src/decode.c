@@ -1768,6 +1768,7 @@ static int decode_b(Dav1dTaskContext *const t,
                 has_subpel_filter = 1;
                 b->inter_mode = NEWMV;
                 b->drl_idx = NEAREST_DRL;
+                printf("n_mvs %d\n",n_mvs);
                 if (n_mvs > 1) { // NEARER, NEAR or NEARISH
                     const int drl_ctx_v1 = get_drl_context(mvstack, 0);
                     b->drl_idx += dav1d_msac_decode_bool_adapt(&ts->msac,

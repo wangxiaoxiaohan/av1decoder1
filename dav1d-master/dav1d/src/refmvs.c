@@ -56,6 +56,7 @@ static void add_spatial_candidate(refmvs_candidate *const mvstack, int *const cn
                 *have_newmv_match |= b->mf >> 1;
 
                 const int last = *cnt;
+                printf("search_stack 1 weight %d\n",weight);
                 for (int m = 0; m < last; m++)
                     if (mvstack[m].mv.mv[0].n == cand_mv.n) {
                         mvstack[m].weight += weight;
@@ -80,6 +81,7 @@ static void add_spatial_candidate(refmvs_candidate *const mvstack, int *const cn
         *have_newmv_match |= b->mf >> 1;
 
         const int last = *cnt;
+        printf("search_stack 2 weight %d\n",weight);
         for (int n = 0; n < last; n++)
             if (mvstack[n].mv.n == cand_mv.n) {
                 mvstack[n].weight += weight;
@@ -113,6 +115,7 @@ static int scan_row(refmvs_candidate *const mvstack, int *const cnt,
         // FIXME why can this not be cand_bw4?
         const int weight = bw4 == 1 ? 2 :
                            imax(2, imin(2 * max_rows, first_cand_b_dim[1]));
+        printf("scan_row 1 weight %d len %d\n",weight,len );
         add_spatial_candidate(mvstack, cnt, len * weight, cand_b, ref, gmv,
                               have_newmv_match, have_refmv_match);
         return weight >> 1;
@@ -122,6 +125,7 @@ static int scan_row(refmvs_candidate *const mvstack, int *const cnt,
         // FIXME if we overhang above, we could fill a bitmask so we don't have
         // to repeat the add_spatial_candidate() for the next row, but just increase
         // the weight here
+        printf("scan_row 2 weight %d\n",len * 2);
         add_spatial_candidate(mvstack, cnt, len * 2, cand_b, ref, gmv,
                               have_newmv_match, have_refmv_match);
         x += len;
@@ -152,6 +156,7 @@ static int scan_col(refmvs_candidate *const mvstack, int *const cnt,
         // FIXME why can this not be cand_bh4?
         const int weight = bh4 == 1 ? 2 :
                            imax(2, imin(2 * max_cols, first_cand_b_dim[0]));
+        printf("scan_col 1 weight %d len %d\n",weight,len);
         add_spatial_candidate(mvstack, cnt, len * weight, cand_b, ref, gmv,
                             have_newmv_match, have_refmv_match);
         return weight >> 1;
@@ -161,6 +166,7 @@ static int scan_col(refmvs_candidate *const mvstack, int *const cnt,
         // FIXME if we overhang above, we could fill a bitmask so we don't have
         // to repeat the add_spatial_candidate() for the next row, but just increase
         // the weight here
+        printf("scan_col 2 weight %d\n",len * 2);
         add_spatial_candidate(mvstack, cnt, len * 2, cand_b, ref, gmv,
                               have_newmv_match, have_refmv_match);
         y += len;
