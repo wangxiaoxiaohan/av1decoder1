@@ -774,11 +774,11 @@ enum em_inverse_transform
 enum em_tx_set
 {
 	TX_SET_DCTONLY = 0,
-	TX_SET_INTRA_1,
-	TX_SET_INTRA_2,
-	TX_SET_INTER_1,
-	TX_SET_INTER_2,
-	TX_SET_INTER_3,
+	TX_SET_INTRA_1 = 1,
+	TX_SET_INTRA_2 = 2,
+	TX_SET_INTER_1 = 1,
+	TX_SET_INTER_2 = 2,
+	TX_SET_INTER_3 = 3,
 };
 
 const static uint8_t Remap_Lr_Type[4] = {

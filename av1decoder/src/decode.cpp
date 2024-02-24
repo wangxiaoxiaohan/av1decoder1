@@ -2029,8 +2029,13 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 		const uint16_t  *scan = get_scan(txSz,b_data->PlaneTxType);
 		int eobMultisize = Min(Tx_Width_Log2[txSz], 5) + Min(Tx_Height_Log2[txSz], 5) - 4;
 		int eobPt;
-		int txType = compute_tx_type( plane, txSz, x4, y4,b_data,av1Ctx);
-		int ctx = ( get_tx_class( txType ) == TX_CLASS_2D ) ? 0 : 1;
+		//printf("plane %d\n",plane);
+		//int txType = compute_tx_type( plane, txSz, x4, y4,b_data,av1Ctx);
+		//printf("txtp %d\n",b_data->PlaneTxType);
+		int is_1d = get_tx_class( b_data->PlaneTxType ) ;
+		//printf("is_1d %d\n",is_1d);
+		int ctx = ( is_1d == TX_CLASS_2D ) ? 0 : 1;
+		//printf("ctx %d\n",ctx);
 		if (eobMultisize == 0)
 		{
 			int eob_pt_16 = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Eob_Pt_16[ ptype ][ ctx ],6); // S()
@@ -2097,6 +2102,7 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 				}
 			}
 		}
+		// (eob means end-of-block)
 		printf("eob %d\n",eob);
 		//eob + ac + dc， 最后一个下标0是 dc
 		printf("coeffs\n");
@@ -2379,6 +2385,7 @@ int decode::compute_tx_type(int plane, int txSz,int blockX,int blockY,BlockData 
 	int txSet = get_tx_set(txSz,b_data->is_inter,frameHdr->reduced_tx_set);
 	if (plane == 0)
 	{
+		//printf("compute_tx_type plane = 0\n");
 		return av1Ctx->TxTypes[blockY][blockX];
 	}
 	int txType;
@@ -2387,13 +2394,19 @@ int decode::compute_tx_type(int plane, int txSz,int blockX,int blockY,BlockData 
 		int x4 = Max(b_data->MiCol, blockX << seqHdr->color_config.subsampling_x);
 		int y4 = Max(b_data->MiRow, blockY << seqHdr->color_config.subsampling_y);
 		txType = av1Ctx->TxTypes[y4][x4];
-		if (!is_tx_type_in_set(txSet, txType,b_data->is_inter))
+		//printf("txType from TxTypes %d\n",txType);
+		if (!is_tx_type_in_set(txSet, txType,b_data->is_inter)){
+			//printf("is_inter !is_tx_type_in_set \n");
 			return DCT_DCT;
+		}
+			
 		return txType;
 	}
 	txType = Mode_To_Txfm[b_data->UVMode];
-	if (!is_tx_type_in_set(txSet, txType,b_data->is_inter)) 
+	if (!is_tx_type_in_set(txSet, txType,b_data->is_inter)) {
+		//printf(" !is_tx_type_in_set \n");
 		return DCT_DCT;
+	}
 	return txType;
 }
 int decode::get_coeff_base_ctx(int txSz, int plane, int blockX, int blockY, int pos, int c, int isEob,
