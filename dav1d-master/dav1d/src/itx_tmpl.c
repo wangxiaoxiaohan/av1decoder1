@@ -84,7 +84,7 @@ inv_txfm_add_c(pixel *dst, const ptrdiff_t stride, coef *const coeff,
             for (int x = 0; x < sw; x++){
                
                 c[x] = (coeff[y + x * sh] * 181 + 128) >> 8; //这里的 (181 + 128) >> 8;就是spec中的 2896 >> 12
-                 printf("%d ",coeff[y + x * sh]);//这是经过反量化之后 尚未反变换的数据
+                 //printf("%d ",coeff[y + x * sh]);//这是经过反量化之后 尚未反变换的数据
                 //而dst 则是预测出来的数据
             }
         }else{
@@ -96,9 +96,6 @@ inv_txfm_add_c(pixel *dst, const ptrdiff_t stride, coef *const coeff,
             }
         }
         first_1d_fn(c, 1, row_clip_min, row_clip_max);
-        for (int x = 0; x < sw; x++){
-            //printf("%d ",c[x]);
-        } 
     }
     printf("\n");
     printf("first_1d_fn done\n");
@@ -112,14 +109,16 @@ inv_txfm_add_c(pixel *dst, const ptrdiff_t stride, coef *const coeff,
         second_1d_fn(&tmp[x], w, col_clip_min, col_clip_max);
 
     c = tmp;
-    printf("\n");
+    printf("residual\n");
     for (int y = 0; y < h; y++, dst += PXSTRIDE(stride)){
         for (int x = 0; x < w; x++){
-            dst[x] = iclip_pixel(dst[x] + ((*c++ + 8) >> 4));
             printf("%d ",(*c + 8 ) >> 4);
+            dst[x] = iclip_pixel(dst[x] + ((*c++ + 8) >> 4));
+            
         }
+        printf("\n");
     }
-
+    printf("\n");
 }
 
 #define inv_txfm_fn(type1, type2, w, h, shift, has_dconly) \

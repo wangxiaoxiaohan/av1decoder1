@@ -356,8 +356,10 @@ static int decode_coefs(Dav1dTaskContext *const t,
         *txtp = DCT_DCT;
     } else if (chroma) {
         // inferred from either the luma txtp (inter) or a LUT (intra)
+        printf("chroma txtp 1 %d\n",*txtp);
         *txtp = intra ? dav1d_txtp_from_uvmode[b->uv_mode] :
                         get_uv_inter_txtp(t_dim, *txtp);
+        printf("chroma txtp %d\n",*txtp);
     } else if (!f->frame_hdr->segmentation.qidx[b->seg_id]) {
         // In libaom, lossless is checked by a literal qidx == 0, but not all
         // such blocks are actually lossless. The remainder gets an implicit
@@ -399,12 +401,14 @@ static int decode_coefs(Dav1dTaskContext *const t,
                        tx, t_dim->min, idx, *txtp, ts->msac.rng);
         }
     }
-
+    printf("plane %d\n",plane);
     // find end-of-block (eob)
     int eob_bin;
     const int tx2dszctx = imin(t_dim->lw, TX_32X32) + imin(t_dim->lh, TX_32X32);
+    printf("txtp %d\n",*txtp);
     const enum TxClass tx_class = dav1d_tx_type_class[*txtp];
     const int is_1d = tx_class != TX_CLASS_2D;
+    printf("is_1d %d\n",is_1d);
     switch (tx2dszctx) {
 #define case_sz(sz, bin, ns, is_1d) \
     case sz: { \
@@ -421,9 +425,12 @@ static int decode_coefs(Dav1dTaskContext *const t,
     case_sz(6, 1024, 16,        );
 #undef case_sz
     }
-    if (dbg)
-        printf("Post-eob_bin_%d[%d][%d][%d]: r=%d\n",
+    if (dbg){
+             printf("Post-eob_bin_%d[%d][%d][%d]: r=%d\n",
                16 << tx2dszctx, chroma, is_1d, eob_bin, ts->msac.rng);
+
+    }
+
     int eob;
     if (eob_bin > 1) {
         uint16_t *const eob_hi_bit_cdf =

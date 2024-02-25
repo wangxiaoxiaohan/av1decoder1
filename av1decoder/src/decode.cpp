@@ -825,7 +825,7 @@ int decode::scan_row(int deltaRow,int isCompound,
 		if (useStep16)
 			len = Max(4, len);
 		int weight = len * 2;
-		printf("scan_row weight %d\n",weight);
+		//printf("scan_row weight %d\n",weight);
 		add_ref_mv_candidate(mvRow, mvCol, isCompound, weight,b_data,av1Ctx);
 		i += len;
 	}
@@ -855,7 +855,7 @@ int decode::scan_col(int deltaCol,int isCompound,
 		if ( useStep16 )
 			len = Max(4, len);
 		int weight = len * 2;
-		printf("scan_row weight %d\n",weight);
+		//printf("scan_row weight %d\n",weight);
 		add_ref_mv_candidate( mvRow, mvCol, isCompound, weight,b_data,av1Ctx);
 		i += len;
 	}
@@ -929,12 +929,12 @@ int decode::search_stack(int mvRow,int mvCol,int candList,int weight,
 	// 	}
 	// }
 	//写法2
-	printf("search_stack weight %d\n",weight);
+	//printf("search_stack weight %d\n",weight);
 
 	for (int idx = 0; idx < av1Ctx->currentFrame->mvpCtx->NumMvFound; idx++) {
 		if (candMv[0] == av1Ctx->currentFrame->mvpCtx->RefStackMv[idx][0][0] && candMv[1] == av1Ctx->currentFrame->mvpCtx->RefStackMv[idx][0][1]) {
 			av1Ctx->currentFrame->mvpCtx->WeightStack[idx] += weight;
-			printf("search_stack loop \n");
+			//printf("search_stack loop \n");
 			return 0; //？
 		}
 	}
@@ -942,7 +942,7 @@ int decode::search_stack(int mvRow,int mvCol,int candList,int weight,
 		//av1Ctx->RefStackMv[ av1Ctx->NumMvFound][0] = candMv;
 		memcpy(av1Ctx->currentFrame->mvpCtx->RefStackMv[ av1Ctx->currentFrame->mvpCtx->NumMvFound][0],candMv,2 * sizeof(int));
 		av1Ctx->currentFrame->mvpCtx->WeightStack[ av1Ctx->currentFrame->mvpCtx->NumMvFound] = weight;
-		printf("search_stack add NumMvFound\n");
+		//printf("search_stack add NumMvFound\n");
 		av1Ctx->currentFrame->mvpCtx->NumMvFound++;
 	}
 
@@ -990,12 +990,12 @@ int decode::compound_search_stack(int  mvRow ,int  mvCol,int weight,
 	// 	}
 	// }
 	//写法2 
-	printf("compound_search_stack weight %d\n",weight);
+	//printf("compound_search_stack weight %d\n",weight);
 	for(int idx =0 ;idx < av1Ctx->currentFrame->mvpCtx->NumMvFound ;idx ++){
 		if(candMvs[ 0 ][0] == av1Ctx->currentFrame->mvpCtx->RefStackMv[ idx ][ 0 ][0] && candMvs[ 0 ][1] == av1Ctx->currentFrame->mvpCtx->RefStackMv[ idx ][ 0 ][1]
 			&&  candMvs[ 1 ][0] == av1Ctx->currentFrame->mvpCtx->RefStackMv[ idx ][ 1 ][0] && candMvs[ 1 ][1] == av1Ctx->currentFrame->mvpCtx->RefStackMv[ idx ][ 1 ][1]){
 				av1Ctx->currentFrame->mvpCtx->WeightStack[ idx ] += weight;
-				printf("compound_search_stack loop \n");
+				//printf("compound_search_stack loop \n");
 				return 0; //为什么要 return spec 实在是看不明白
 		}
 	}
@@ -1004,7 +1004,7 @@ int decode::compound_search_stack(int  mvRow ,int  mvCol,int weight,
 			//av1Ctx->RefStackMv[ av1Ctx->NumMvFound ][ i ] = candMvs[ i ] ;
 			memcpy(av1Ctx->currentFrame->mvpCtx->RefStackMv[ av1Ctx->currentFrame->mvpCtx->NumMvFound ][ i ] ,candMvs[ i ],2 * sizeof(int));
 		av1Ctx->currentFrame->mvpCtx->WeightStack[ av1Ctx->currentFrame->mvpCtx->NumMvFound ] = weight;
-		printf("compound_search_stack add NumMvFound\n");
+		//printf("compound_search_stack add NumMvFound\n");
 		av1Ctx->currentFrame->mvpCtx->NumMvFound += 1;
 
 	}
@@ -1711,7 +1711,7 @@ int decode::residual(SymbolContext *sbCtx,bitSt *bs,BlockData *b_data, AV1Decode
 				int planeSz = get_plane_residual_size(miSizeChunk, plane,seqHdr->color_config.subsampling_x,seqHdr->color_config.subsampling_y);
 				int num4x4W = Num_4x4_Blocks_Wide[planeSz];
 				int num4x4H = Num_4x4_Blocks_High[planeSz];
-				printf("stepX %d stepY %d num4x4W:%d num4x4H %d \n",stepX ,stepY ,num4x4W,num4x4H );
+				//printf("stepX %d stepY %d num4x4W:%d num4x4H %d \n",stepX ,stepY ,num4x4W,num4x4H );
 				int subX = (plane > 0) ? seqHdr->color_config.subsampling_x : 0;
 				int subY = (plane > 0) ? seqHdr->color_config.subsampling_y : 0;
 				int baseX = (miColChunk >> subX) * MI_SIZE;
@@ -2125,7 +2125,7 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 				ctx = get_coeff_base_ctx(txSz, plane, x4, y4, scan[c], c, 0,b_data,av1Ctx);
 				
 				int coeff_base =  sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Coeff_Base[ txSzCtx ][ ptype ][ ctx ],5); // S()
-				printf("decodeSymbol coeff_base %d  txSzCtx %d ptype %d ,ctx %d\n",coeff_base,txSzCtx,ptype,ctx);
+				//printf("decodeSymbol coeff_base %d  txSzCtx %d ptype %d ,ctx %d\n",coeff_base,txSzCtx,ptype,ctx);
 				level = coeff_base;
 			}
 			////printf("level %d\n",level);
@@ -2553,8 +2553,7 @@ int decode::predict_intra(int plane,int x,int y,int haveLeft,int haveAbove,
 		printf("basicIntraPrediction\n");
 		basicIntraPrediction(w,h,pred,b_data);
 	}
-	printf("\n");
-	printf("pred\n");
+	printf("predict_intra result\n");
 	for(int i = 0 ; i < h ;i ++){
 		for(int j = 0 ; j < w ;j ++){
 			av1Ctx->currentFrame->CurrFrame[ plane ][ y + i ][ x + j ] = pred[ i ][ j ];
@@ -2563,7 +2562,6 @@ int decode::predict_intra(int plane,int x,int y,int haveLeft,int haveAbove,
 			//printf("%d ",pred[ i ][ j ]);
 		}
 	}
-	printf("\n");
 	for(int i = 0 ; i < h ; i++){
 		delete [] pred[i];
 	}
@@ -2696,14 +2694,14 @@ int decode::directionalIntraPrediction(int plane,int x,int y,int haveLeft,int ha
 		printf("\n");
 		//7.11.2.10
 		upsampleAbove = intraEdgeUpsampleSelection(w,h,filterType,pAngle - 90 );
-		printf("upsampleAbove %d\n",upsampleAbove);
+		//printf("upsampleAbove %d\n",upsampleAbove);
 		int numPx = ( w + (pAngle < 90 ? h : 0) );
 		if(upsampleAbove == 1){
 			//7.11.2.11
 			 intraEdgeUpsample(numPx,0,b_data,av1Ctx);
 		}
 		upsampleLeft = intraEdgeUpsampleSelection(w,h,filterType,pAngle - 180 );
-		printf("upsampleLeft %d\n",upsampleAbove);
+		//printf("upsampleLeft %d\n",upsampleAbove);
 		numPx = ( h + (pAngle > 180 ? w : 0) );
 		if(upsampleLeft == 1){
 			intraEdgeUpsample(numPx,1,b_data,av1Ctx);
@@ -3219,7 +3217,7 @@ int decode::predict_inter(int plane, int x, int y,int w ,int h ,int candRow,int 
 
 genArray:
 	int refFrame = av1Ctx->RefFrames[ candRow ][ candCol ][ refList ];
-	printf("candRow %d  candCol %d  refList%d  refFrame%d\n",candRow,candCol,refList,refFrame);
+	//printf("candRow %d  candCol %d  refList%d  refFrame%d\n",candRow,candCol,refList,refFrame);
 	int globalValid;
     if((b_data->YMode == GLOBALMV || b_data->YMode == GLOBAL_GLOBALMV) && frameHdr->global_motion_params.GmType[ refFrame ] > TRANSLATION){
 		int a,b,g,d;//these values will bediscard;
@@ -3244,7 +3242,7 @@ genArray:
 	int mv[2];
 	//	mv = p_data->Mvs[ candRow ][ candCol ][ refList ];
 	memcpy(mv,av1Ctx->Mvs[ candRow ][ candCol ][ refList ],2* sizeof(int));
-	printf("mv[0] %d mv[1] %d\n",mv[0],mv[1]);
+	//printf("mv[0] %d mv[1] %d\n",mv[0],mv[1]);
 	int refIdx ;
 	if(b_data->use_intrabc == 0){
 		refIdx = frameHdr->ref_frame_idx[ refFrame - LAST_FRAME ];
@@ -3285,7 +3283,7 @@ genArray:
 
 	}
 	if(useWarp == 0){
-		printf("startX %d startY %d stepX %d stepY %d\n",startX,startY,stepX, stepY);
+		//printf("startX %d startY %d stepX %d stepY %d\n",startX,startY,stepX, stepY);
 		block_inter_prediction(plane, refIdx,startX, startY, stepX, stepY, w, h, candRow, candCol,preds[refList],b_data,av1Ctx);
 	}
 
@@ -3484,7 +3482,7 @@ int decode::motionVectorScaling(int plane, int refIdx, int x, int y, int mv[2],
     int origX, origY;
     int baseX, baseY;
     int off;
-	printf("halfSample  %d\n",halfSample);
+	//printf("halfSample  %d\n",halfSample);
     if (plane == 0) {
         subX = 0;
         subY = 0;
@@ -3495,25 +3493,25 @@ int decode::motionVectorScaling(int plane, int refIdx, int x, int y, int mv[2],
 
     origX = (x << SUBPEL_BITS) + ((2 * mv[1]) >> subX) + halfSample;
     origY = (y << SUBPEL_BITS) + ((2 * mv[0]) >> subY) + halfSample;
-	printf("origX  %d origY %d \n",origX,origY);
+	//printf("origX  %d origY %d \n",origX,origY);
 
-	printf("refIdx  %d (*av1Ctx->RefUpscaledWidth)[refIdx] %d (*av1Ctx->RefFrameHeight)[refIdx] %d\n",
-		refIdx,(*av1Ctx->RefUpscaledWidth)[refIdx],(*av1Ctx->RefFrameHeight)[refIdx]);
+	//printf("refIdx  %d (*av1Ctx->RefUpscaledWidth)[refIdx] %d (*av1Ctx->RefFrameHeight)[refIdx] %d\n",
+	//	refIdx,(*av1Ctx->RefUpscaledWidth)[refIdx],(*av1Ctx->RefFrameHeight)[refIdx]);
     xScale = (( (*av1Ctx->RefUpscaledWidth)[refIdx] << REF_SCALE_SHIFT) + (frameHdr->si.FrameWidth / 2)) /frameHdr->si.FrameWidth;
     yScale = (((*av1Ctx->RefFrameHeight)[refIdx] << REF_SCALE_SHIFT) + (frameHdr->si.FrameHeight / 2)) / frameHdr->si.FrameHeight;
 
-	printf("xScale  %d yScale %d\n",xScale,yScale);
+	//printf("xScale  %d yScale %d\n",xScale,yScale);
     baseX = (origX * xScale - (halfSample << REF_SCALE_SHIFT));
     baseY = (origY * yScale - (halfSample << REF_SCALE_SHIFT));
-	printf("baseX  %d baseY %d\n",baseX,baseY);
+	//printf("baseX  %d baseY %d\n",baseX,baseY);
     off = (1 << (SCALE_SUBPEL_BITS - SUBPEL_BITS)) / 2;
 
     *startX = (Round2Signed(baseX, REF_SCALE_SHIFT + SUBPEL_BITS - SCALE_SUBPEL_BITS) + off);
     *startY = (Round2Signed(baseY, REF_SCALE_SHIFT + SUBPEL_BITS - SCALE_SUBPEL_BITS) + off);
-	printf("startX  %d startY %d \n",*startX ,*startY);
+	//printf("startX  %d startY %d \n",*startX ,*startY);
     *stepX = Round2Signed(xScale, REF_SCALE_SHIFT - SCALE_SUBPEL_BITS);
     *stepY = Round2Signed(yScale, REF_SCALE_SHIFT - SCALE_SUBPEL_BITS);
-	printf("stepX  %d stepY %d \n",*stepX,*stepY);
+	//printf("stepX  %d stepY %d \n",*stepX,*stepY);
 }
 ////7.11.3.5
 int decode::blockWarp(int useWarp,int plane,int refList,int x,int y,
@@ -4072,7 +4070,7 @@ int decode::predict_chroma_from_luma(int plane, int startX, int startY, int txSz
 			int scaledLuma = Round2Signed( alpha * ( L[ i ][ j ] - lumaAvg ), 6 );
 
             av1Ctx->currentFrame->CurrFrame[plane][startY + i][startX + j] = Clip1(dc + scaledLuma,seqHdr->color_config.BitDepth);
-        	printf("pcfl plane%d i %d j %d %d|",plane ,startY + i,startX + j,av1Ctx->currentFrame->CurrFrame[plane][startY + i][startX + j]);
+        	//printf("pcfl plane%d i %d j %d %d|",plane ,startY + i,startX + j,av1Ctx->currentFrame->CurrFrame[plane][startY + i][startX + j]);
 		}
     }
 }                                                                                                                                                                                                                                              
@@ -4158,7 +4156,7 @@ int decode::reconstruct(int plane, int x, int y, int txSz,BlockData *b_data,AV1D
 	}
 	//printf("residual 22\n");
 	twoDInverseTransformBlock(txSz,Residual,b_data,av1Ctx);
-	//printf("residual 33 \n");
+	printf("residual 33 \n");
 
 	int X = x;
 	int Y = y;
@@ -4169,9 +4167,10 @@ int decode::reconstruct(int plane, int x, int y, int txSz,BlockData *b_data,AV1D
 			//注意这里写的和spec 不一样，临时解法！！
             av1Ctx->currentFrame->CurrFrame[plane][Y + yy][X + xx] = Clip3(0,255,av1Ctx->currentFrame->CurrFrame[plane][Y + yy][X + xx] + Residual[i][j]);
         	//av1Ctx->currentFrame->CurrFrame[plane][Y + yy][X + xx] = Clip1( av1Ctx->currentFrame->CurrFrame[ plane ][ y + yy ][ x + xx ] +Residual[ i ][ j ],seqHdr->color_config.BitDepth);
-			//printf("x:%d y:%d xx:%d yy:%d ---",X,Y,xx,yy);
+			printf("%d ",Residual[i][j]);
 			
 		}
+		printf("\n");
     }
 
 	printf("\n");
@@ -4699,11 +4698,10 @@ void decode::twoDInverseTransformBlock(int txSz,int16_t **Residual,BlockData *b_
 			//printf("col inverseIdentityTransform\n");
             inverseIdentityTransform(T1, log2H);
         }
-		
+		//printf("\n");
         for (int i = 0; i < h; i++) {
             Residual[i][j] = Round2(T1[i], colShift);
 			//printf("%d ",Residual[i][j]);
-
         }
 		
     }
