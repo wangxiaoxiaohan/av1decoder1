@@ -213,6 +213,7 @@ public:
 private :
 	Symbol *sb;
 	segmentation *seg_instance;
+	int scount = 0;
 };
 
 #endif

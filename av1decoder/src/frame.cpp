@@ -1913,33 +1913,33 @@ int frame::decodeFrame(int sz, bitSt *bs, AV1DecodeContext *av1Ctx){
 			frame_end_update_cdf(av1Ctx);
 		}
 
-		int subX = av1Ctx->seqHdr.color_config.subsampling_x;
-		int subY = av1Ctx->seqHdr.color_config.subsampling_y;
-		char namebuf[16];
-		sprintf(namebuf,"test%d.yuv",scount);
-		scount ++;
-		FILE *fp = fopen(namebuf, "wb");
-		int h = av1Ctx->currentFrame->frameHdr.si.FrameHeight;
-		int w = av1Ctx->currentFrame->frameHdr.si.FrameWidth;
-		uint8_t buf[w];
-		for (int i = 0; i < h; i++) {
-			for (int j = 0; j < w; j++) {
-				buf[j] = av1Ctx->currentFrame->CurrFrame[0][ i][ j];
-			}
-			fwrite(buf, sizeof(uint8_t),w, fp);
-			}
-			uint8_t buf1[((w + subX) >> subX ) * 2];
-			for (int i = 0; i < (h + subY) >> subY ; i++) {
-			for (int j = 0; j < (w + subX) >> subX; j++) {
-				buf1[j * 2] = av1Ctx->currentFrame->CurrFrame[1][ i][ j];
-				buf1[j * 2 + 1] = av1Ctx->currentFrame->CurrFrame[2][ i][ j];
-			}
-			fwrite(buf1, sizeof(uint8_t),((w + subX) >> subX ) * 2, fp);
-		}
-		fclose(fp);
-		printf("\n");
-		decode_instance->decode_frame_wrapup(av1Ctx);
+		// int subX = av1Ctx->seqHdr.color_config.subsampling_x;
+		// int subY = av1Ctx->seqHdr.color_config.subsampling_y;
+		//char namebuf[16];
+		// sprintf(namebuf,"test%d.yuv",scount);
+		// scount ++;
+		// FILE *fp = fopen(namebuf, "wb");
+		// int h = av1Ctx->currentFrame->frameHdr.si.FrameHeight;
+		// int w = av1Ctx->currentFrame->frameHdr.si.FrameWidth;
+		// uint8_t buf[w];
+		// for (int i = 0; i < h; i++) {
+		// 	for (int j = 0; j < w; j++) {
+		// 		buf[j] = av1Ctx->currentFrame->CurrFrame[0][ i][ j];
+		// 	}
+		// 	fwrite(buf, sizeof(uint8_t),w, fp);
+		// 	}
+		// 	uint8_t buf1[((w + subX) >> subX ) * 2];
+		// 	for (int i = 0; i < (h + subY) >> subY ; i++) {
+		// 	for (int j = 0; j < (w + subX) >> subX; j++) {
+		// 		buf1[j * 2] = av1Ctx->currentFrame->CurrFrame[1][ i][ j];
+		// 		buf1[j * 2 + 1] = av1Ctx->currentFrame->CurrFrame[2][ i][ j];
+		// 	}
+		// 	fwrite(buf1, sizeof(uint8_t),((w + subX) >> subX ) * 2, fp);
+		// }
+		// fclose(fp);
+		// printf("\n");
 		av1Ctx->SeenFrameHeader = 0;
+		decode_instance->decode_frame_wrapup(av1Ctx);
 	}
 
 }
