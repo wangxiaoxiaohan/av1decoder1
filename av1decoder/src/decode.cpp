@@ -18,35 +18,40 @@ int decode::decode_frame_wrapup( AV1DecodeContext *av1Ctx){
 			loopFilter(av1Ctx); 
 		}
 
-		int subX = av1Ctx->seqHdr.color_config.subsampling_x;
-		int subY = av1Ctx->seqHdr.color_config.subsampling_y;
-		char namebuf[16];
-		sprintf(namebuf,"test%d.yuv",scount);
-		scount ++;
-		FILE *fp = fopen(namebuf, "wb");
-		int h = av1Ctx->currentFrame->frameHdr.si.FrameHeight;
-		int w = av1Ctx->currentFrame->frameHdr.si.FrameWidth;
-		uint8_t buf[w];
-		for (int i = 0; i < h; i++) {
-			for (int j = 0; j < w; j++) {
-				buf[j] = av1Ctx->currentFrame->CurrFrame[0][ i][ j];
-			}
-			fwrite(buf, sizeof(uint8_t),w, fp);
-			}
-			uint8_t buf1[((w + subX) >> subX ) * 2];
-			for (int i = 0; i < (h + subY) >> subY ; i++) {
-			for (int j = 0; j < (w + subX) >> subX; j++) {
-				buf1[j * 2] = av1Ctx->currentFrame->CurrFrame[1][ i][ j];
-				buf1[j * 2 + 1] = av1Ctx->currentFrame->CurrFrame[2][ i][ j];
-			}
-			fwrite(buf1, sizeof(uint8_t),((w + subX) >> subX ) * 2, fp);
-		}
-		fclose(fp);
-		printf("\n");
+		// int subX = av1Ctx->seqHdr.color_config.subsampling_x;
+		// int subY = av1Ctx->seqHdr.color_config.subsampling_y;
+		// char namebuf[16];
+		// sprintf(namebuf,"test%d.yuv",scount);
+		// scount ++;
+		// FILE *fp = fopen(namebuf, "wb");
+		// int h = av1Ctx->currentFrame->frameHdr.si.FrameHeight;
+		// int w = av1Ctx->currentFrame->frameHdr.si.FrameWidth;
+		// uint8_t buf[w];
+		// for (int i = 0; i < h; i++) {
+		// 	for (int j = 0; j < w; j++) {
+		// 		buf[j] = av1Ctx->currentFrame->CurrFrame[0][ i][ j];
+		// 	}
+		// 	fwrite(buf, sizeof(uint8_t),w, fp);
+		// 	}
+		// 	uint8_t buf1[((w + subX) >> subX ) * 2];
+		// 	for (int i = 0; i < (h + subY) >> subY ; i++) {
+		// 	for (int j = 0; j < (w + subX) >> subX; j++) {
+		// 		buf1[j * 2] = av1Ctx->currentFrame->CurrFrame[1][ i][ j];
+		// 		buf1[j * 2 + 1] = av1Ctx->currentFrame->CurrFrame[2][ i][ j];
+		// 	}
+		// 	fwrite(buf1, sizeof(uint8_t),((w + subX) >> subX ) * 2, fp);
+		// }
+		// fclose(fp);
+
 
 		cdef(av1Ctx); 
 
-		// FILE *fp = fopen("test.yuv", "wb");
+		// int subX = av1Ctx->seqHdr.color_config.subsampling_x;
+		// int subY = av1Ctx->seqHdr.color_config.subsampling_y;
+		// char namebuf[16];
+		// sprintf(namebuf,"test%d.yuv",scount);
+		// scount ++;
+		// FILE *fp = fopen(namebuf, "wb");
 		// int h = av1Ctx->currentFrame->frameHdr.si.FrameHeight;
 		// int w = av1Ctx->currentFrame->frameHdr.si.FrameWidth;
 		// uint8_t buf[w];
@@ -56,8 +61,7 @@ int decode::decode_frame_wrapup( AV1DecodeContext *av1Ctx){
 		// }
 		// fwrite(buf, sizeof(uint8_t),w, fp);
 		// }
-		// int subX = av1Ctx->seqHdr.color_config.subsampling_x;
-		// int subY = av1Ctx->seqHdr.color_config.subsampling_y;
+
 		// uint8_t buf1[((w + subX) >> subX ) * 2];
 		// for (int i = 0; i < (h + subY) >> subY ; i++) {
 		// 	for (int j = 0; j < (w + subX) >> subX; j++) {
@@ -69,30 +73,85 @@ int decode::decode_frame_wrapup( AV1DecodeContext *av1Ctx){
 		// fclose(fp);
 
 		upscalingProcess(av1Ctx->currentFrame->CdefFrame,av1Ctx->currentFrame->UpscaledCdefFrame,av1Ctx);
-		upscalingProcess(av1Ctx->currentFrame->CurrFrame,av1Ctx->currentFrame->UpscaledCurrFrame,av1Ctx);
-		loopRestoration(av1Ctx); 
 
-		// FILE *fp = fopen("test.yuv", "wb");
+		// int subX = av1Ctx->seqHdr.color_config.subsampling_x;
+		// int subY = av1Ctx->seqHdr.color_config.subsampling_y;
+		// char namebuf[16];
+		// sprintf(namebuf,"test%d.yuv",scount);
+		// scount ++;
+		// FILE *fp = fopen(namebuf, "wb");
 		// int h = av1Ctx->currentFrame->frameHdr.si.FrameHeight;
 		// int w = av1Ctx->currentFrame->frameHdr.si.FrameWidth;
 		// uint8_t buf[w];
 		// for (int i = 0; i < h; i++) {
 		// for (int j = 0; j < w; j++) {
-		// 	buf[j] = av1Ctx->currentFrame->CdefFrame[0][ i][ j];
+		// 	buf[j] = av1Ctx->currentFrame->UpscaledCdefFrame[0][ i][ j];
 		// }
 		// fwrite(buf, sizeof(uint8_t),w, fp);
 		// }
-		// int subX = av1Ctx->seqHdr.color_config.subsampling_x;
-		// int subY = av1Ctx->seqHdr.color_config.subsampling_y;
 		// uint8_t buf1[((w + subX) >> subX ) * 2];
 		// for (int i = 0; i < (h + subY) >> subY ; i++) {
 		// 	for (int j = 0; j < (w + subX) >> subX; j++) {
-		// 		buf1[j * 2] = av1Ctx->currentFrame->lrCtx->LrFrame[1][ i][ j];
-		// 		buf1[j * 2 + 1] = av1Ctx->currentFrame->lrCtx->LrFrame[2][ i][ j];
+		// 		buf1[j * 2] = av1Ctx->currentFrame->UpscaledCdefFrame[1][ i][ j];
+		// 		buf1[j * 2 + 1] = av1Ctx->currentFrame->UpscaledCdefFrame[2][ i][ j];
 		// 	}
 		// 	fwrite(buf1, sizeof(uint8_t),((w + subX) >> subX ) * 2, fp);
 		// }
-		// fclose(fp);
+		// fclose(fp);	
+
+		upscalingProcess(av1Ctx->currentFrame->CurrFrame,av1Ctx->currentFrame->UpscaledCurrFrame,av1Ctx);
+
+		// int subX = av1Ctx->seqHdr.color_config.subsampling_x;
+		// int subY = av1Ctx->seqHdr.color_config.subsampling_y;
+		// char namebuf[16];
+		// sprintf(namebuf,"test%d.yuv",scount);
+		// scount ++;
+		// FILE *fp = fopen(namebuf, "wb");
+		// int h = av1Ctx->currentFrame->frameHdr.si.FrameHeight;
+		// int w = av1Ctx->currentFrame->frameHdr.si.FrameWidth;
+		// uint8_t buf[w];
+		// for (int i = 0; i < h; i++) {
+		// for (int j = 0; j < w; j++) {
+		// 	buf[j] = av1Ctx->currentFrame->UpscaledCurrFrame[0][ i][ j];
+		// }
+		// fwrite(buf, sizeof(uint8_t),w, fp);
+		// }
+		// uint8_t buf1[((w + subX) >> subX ) * 2];
+		// for (int i = 0; i < (h + subY) >> subY ; i++) {
+		// 	for (int j = 0; j < (w + subX) >> subX; j++) {
+		// 		buf1[j * 2] = av1Ctx->currentFrame->UpscaledCurrFrame[1][ i][ j];
+		// 		buf1[j * 2 + 1] = av1Ctx->currentFrame->UpscaledCurrFrame[2][ i][ j];
+		// 	}
+		// 	fwrite(buf1, sizeof(uint8_t),((w + subX) >> subX ) * 2, fp);
+		// }
+		//fclose(fp);
+
+		loopRestoration(av1Ctx); 
+
+		int subX = av1Ctx->seqHdr.color_config.subsampling_x;
+		int subY = av1Ctx->seqHdr.color_config.subsampling_y;
+		char namebuf[16];
+		sprintf(namebuf,"test%d.yuv",scount);
+		scount ++;
+		FILE *fp = fopen(namebuf, "wb");
+		int h = av1Ctx->currentFrame->frameHdr.si.FrameHeight;
+		int w = av1Ctx->currentFrame->frameHdr.si.FrameWidth;
+		uint8_t buf[w];
+		for (int i = 0; i < h; i++) {
+		for (int j = 0; j < w; j++) {
+			buf[j] = av1Ctx->currentFrame->CdefFrame[0][ i][ j];
+		}
+		fwrite(buf, sizeof(uint8_t),w, fp);
+		}
+		uint8_t buf1[((w + subX) >> subX ) * 2];
+		for (int i = 0; i < (h + subY) >> subY ; i++) {
+			for (int j = 0; j < (w + subX) >> subX; j++) {
+				buf1[j * 2] = av1Ctx->currentFrame->lrCtx->LrFrame[1][ i][ j];
+				buf1[j * 2 + 1] = av1Ctx->currentFrame->lrCtx->LrFrame[2][ i][ j];
+			}
+			fwrite(buf1, sizeof(uint8_t),((w + subX) >> subX ) * 2, fp);
+		}
+		fclose(fp);
 
 		motionFieldMotionVectorStorage(av1Ctx);
 		if(frameHdr->segmentation_params.segmentation_enabled == 1 && frameHdr->segmentation_params.segmentation_update_map ==0){
@@ -5075,7 +5134,7 @@ void decode::wideFilter(int x,int y,int plane,int dx ,int dy,int log2Size,AV1Dec
 	if(log2Size == 4){
 		n = 6;
 	}else if(plane == 0){
-		n = 4;
+		n = 3;
 	}else {
 		n = 2;
 	}
@@ -5341,6 +5400,7 @@ void decode::upscalingProcess(uint16_t ***inputFrame,uint16_t ***outputFrame,AV1
         int downscaledPlaneW = Round2(frameHdr->si.FrameWidth, subX);
         int upscaledPlaneW = Round2(frameHdr->si.UpscaledWidth, subX);
         int planeH = Round2(frameHdr->si.FrameHeight, subY);
+		printf("FrameWidth  %d FrameHeight %d UpscaledWidth %d\n",frameHdr->si.FrameWidth,frameHdr->si.FrameHeight,frameHdr->si.UpscaledWidth);
         int stepX = ((downscaledPlaneW << SUPERRES_SCALE_BITS) + (upscaledPlaneW / 2)) / upscaledPlaneW;
         int err = (upscaledPlaneW * stepX) - (downscaledPlaneW << SUPERRES_SCALE_BITS);
         int initialSubpelX = (-((upscaledPlaneW - downscaledPlaneW) << (SUPERRES_SCALE_BITS - 1)) + upscaledPlaneW / 2) / upscaledPlaneW + (1 << (SUPERRES_EXTRA_BITS - 1)) - err / 2;
@@ -5357,13 +5417,15 @@ void decode::upscalingProcess(uint16_t ***inputFrame,uint16_t ***outputFrame,AV1
                 int sum = 0;
 
                 for (int k = 0; k < SUPERRES_FILTER_TAPS; k++) {
-                    int sampleX = Clip1(srcXPx + k - SUPERRES_FILTER_OFFSET,seqHdr->color_config.BitDepth);
-                    int px = inputFrame[plane][y][sampleX];
+                    //int sampleX = Clip1(srcXPx + k - SUPERRES_FILTER_OFFSET,seqHdr->color_config.BitDepth);
+                    int sampleX = Clip3(minX, maxX, srcXPx + (k - SUPERRES_FILTER_OFFSET));
+					int px = inputFrame[plane][y][sampleX];
                     sum += px * Upscale_Filter[srcXSubpel][k];
                 }
 
-                outputFrame[plane][y][x] = Clip1(sum >> 8,seqHdr->color_config.BitDepth);
-            }
+                //outputFrame[plane][y][x] = Clip1(sum >> 8,seqHdr->color_config.BitDepth);
+				outputFrame[plane][y][x] = Clip1(Round2(sum,FILTER_BITS),seqHdr->color_config.BitDepth);
+			}
         }
     }
 }
@@ -5420,8 +5482,8 @@ void decode::loopRestoreBlock(int plane,int row ,int col,AV1DecodeContext *av1Ct
 		subY = seqHdr->color_config.subsampling_y;
 	}
 
-	int StripeStartY = (-8 + stripeNum * 64) >> subY;
-	int StripeEndY = StripeStartY + (64 >> subY) - 1;
+	av1Ctx->currentFrame->lrCtx->StripeStartY = (-8 + stripeNum * 64) >> subY;
+	av1Ctx->currentFrame->lrCtx->StripeEndY = av1Ctx->currentFrame->lrCtx->StripeStartY + (64 >> subY) - 1;
 
 
 	int unitSize = frameHdr->lr_params.LoopRestorationSize[plane];
@@ -5432,14 +5494,14 @@ void decode::loopRestoreBlock(int plane,int row ,int col,AV1DecodeContext *av1Ct
 	int unitRow = Min(unitRows - 1, ((row * MI_SIZE + 8) >> subY) / unitSize);
 	int unitCol = Min(unitCols - 1, (col * MI_SIZE >> subX) / unitSize);
 
-	int PlaneEndX = Round2(frameHdr->si.UpscaledWidth, subX) - 1;
-	int PlaneEndY = Round2(frameHdr->si.FrameHeight, subY) - 1;
+	av1Ctx->currentFrame->lrCtx->PlaneEndX = Round2(frameHdr->si.UpscaledWidth, subX) - 1;
+	av1Ctx->currentFrame->lrCtx->PlaneEndY = Round2(frameHdr->si.FrameHeight, subY) - 1;
 
 
 	int x = col * MI_SIZE >> subX;
 	int y = row * MI_SIZE >> subY;
-	int w = Min(MI_SIZE >> subX, PlaneEndX - x + 1);
-	int h = Min(MI_SIZE >> subY, PlaneEndY - y + 1);
+	int w = Min(MI_SIZE >> subX, av1Ctx->currentFrame->lrCtx->PlaneEndX - x + 1);
+	int h = Min(MI_SIZE >> subY, av1Ctx->currentFrame->lrCtx->PlaneEndY - y + 1);
 
 	int rType = av1Ctx->currentFrame->lrCtx->LrType[plane][unitRow][unitCol];
 
