@@ -5548,13 +5548,13 @@ void decode::selfGuidedFilter(int plane,int unitRow,int unitCol, int x,int y,int
 			int u = av1Ctx->currentFrame->UpscaledCdefFrame[plane][y + i][x + j] << SGRPROJ_RST_BITS;
 			int v = w1 * u;
 			
-			if (r0 != 0) {
+			if (r0) {
 				v += w0 * flt0[i][j];
 			} else {
 				v += w0 * u;
 			}
 			
-			if (r1 != 0) {
+			if (r1) {
 				v += w2 * flt1[i][j];
 			} else {
 				v += w2 * u;
@@ -5624,7 +5624,7 @@ void decode::boxFilter(int plane,int x,int y,int w,int h,int set ,int pass,int *
 
 	for (int i = 0; i < h; i++) {
 		int shift = 5;
-		if (pass == 0 && (i & 1) != 0) {
+		if (pass == 0 && (i & 1)) {
 			shift = 4;
 		}
 		for (int j = 0; j < w; j++) {

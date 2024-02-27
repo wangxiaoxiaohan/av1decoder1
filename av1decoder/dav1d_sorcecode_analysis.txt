@@ -29,4 +29,6 @@ itx_tmpl.c的 这个宏定义：
     msac.h 文件中注释相关汇编函数定义即可
 
 
-   find_mv_stack ==> dav1d_refmvs_find
+find_mv_stack ==> dav1d_refmvs_find
+
+looprestoration_tmpl.c  looprestoration C语言版本
