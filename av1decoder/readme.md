@@ -129,3 +129,8 @@ sin	        4017	2276	2896
 
 
   目前问题就是 nummvfound 的问题 也刚好就是spec写法意义不明那两个地方
+
+ 目前问题： 1.out7.obu 帧间第二帧开始出现问题 所以帧间的过程还有问题
+           2. out15.obu 2s.obu 的loopRestoration 出现问题 
+               2s.obu loopRestoration 之后的图像可以作为 查找 loopRestoration 问题的方向 很有规律
+           3.目前所有视频的环路滤波都有问题  

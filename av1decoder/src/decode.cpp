@@ -1892,10 +1892,10 @@ int decode::transform_block(int plane,int baseX,int baseY,int txSz,int x,int y,S
 						(*av1Ctx->BlockDecoded)[plane][(subBlockMiRow >> subY) - 1][(subBlockMiCol >> subX) + stepX],
 						(*av1Ctx->BlockDecoded)[plane][(subBlockMiRow >> subY) + stepY][(subBlockMiCol >> subX) - 1],
 						mode,log2W, log2H, b_data,av1Ctx);
-			// if (isCfl)
-			// {
-			// 	predict_chroma_from_luma(plane, startX, startY, txSz,b_data,av1Ctx);
-			// }
+			if (isCfl)
+			{
+				predict_chroma_from_luma(plane, startX, startY, txSz,b_data,av1Ctx);
+			}
 		}
 		if (plane == 0)
 		{
@@ -4124,7 +4124,7 @@ int decode::predict_chroma_from_luma(int plane, int startX, int startY, int txSz
         }
     }
 
-    lumaAvg = Round2(lumaAvg , (1 << (Tx_Width_Log2[txSz] + Tx_Height_Log2[txSz] - 1)));
+    lumaAvg = Round2(lumaAvg , Tx_Width_Log2[txSz] + Tx_Height_Log2[txSz]);
 
     for (int i = 0; i < h; i++) {
         for (int j = 0; j < w; j++) {
