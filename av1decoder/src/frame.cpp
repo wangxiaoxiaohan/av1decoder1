@@ -326,7 +326,7 @@ int frame::parseUncompressedHeader(int sz, bitSt *bs, AV1DecodeContext *av1Ctx, 
 	else
 	{
 		//从主参考帧里面拷贝cdf
-		 //decode_instance->load_cdfs( av1Ctx,out->ref_frame_idx[ out->primary_ref_frame ] );
+		// decode_instance->load_cdfs( av1Ctx,out->ref_frame_idx[ out->primary_ref_frame ] );
 		 decode_instance->load_previous(av1Ctx);
 	}
 	decode_instance->init_non_coeff_cdfs( &av1Ctx->currentFrame->cdfCtx);
@@ -1964,6 +1964,7 @@ int frame::decode_tile(SymbolContext *sbCtx,bitSt *bs,AV1DecodeContext *av1Ctx){
 	for (int  r = av1Ctx->MiRowStart; r < av1Ctx->MiRowEnd; r += sbSize4 ) {
 		clear_left_context(av1Ctx );
 		for (int  c = av1Ctx->MiColStart; c < av1Ctx->MiColEnd; c += sbSize4 ) {
+			printf("decode_partition\n");
 			av1Ctx->ReadDeltas = frameHdr->delta_q_params.delta_q_present;
 			clear_cdef( r, c ,av1Ctx);
 			clear_block_decoded_flags( r, c, sbSize4 ,av1Ctx);
@@ -4325,6 +4326,7 @@ int frame::read_lr(SymbolContext *sbCtx, bitSt *bs,int r,int c, int bSize,
 	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
 	if (frameHdr->allow_intrabc)
 	{
+		printf("dit not read read_lr\n");
 		return ERROR_CODE;
 	}
 	int w = Num_4x4_Blocks_Wide[bSize];
@@ -4333,6 +4335,7 @@ int frame::read_lr(SymbolContext *sbCtx, bitSt *bs,int r,int c, int bSize,
 	{
 		if (frameHdr->lr_params.FrameRestorationType[plane] != RESTORE_NONE)
 		{
+			printf("read_lr --------- in \n");
 			int subX = (plane == 0) ? 0 : seqHdr->color_config.subsampling_x;
 			int subY = (plane == 0) ? 0 : seqHdr->color_config.subsampling_y;
 			int unitSize = frameHdr->lr_params.LoopRestorationSize[plane];
@@ -4340,6 +4343,7 @@ int frame::read_lr(SymbolContext *sbCtx, bitSt *bs,int r,int c, int bSize,
 			int unitCols = count_units_in_frame(unitSize, Round2(frameHdr->si.UpscaledWidth, subX));
 			int unitRowStart = (r * (MI_SIZE >> subY) + unitSize - 1) / unitSize;
 			int unitRowEnd = Min(unitRows, ((r + h) * (MI_SIZE >> subY) + unitSize - 1) / unitSize);
+
 			int numerator,denominator;
 			if (frameHdr->si.use_superres)
 			{
@@ -4355,6 +4359,8 @@ int frame::read_lr(SymbolContext *sbCtx, bitSt *bs,int r,int c, int bSize,
 			int unitColEnd = Min(unitCols, ((c + w) * numerator +
 										denominator - 1) /
 										   denominator);
+			printf("unitSize %d unitRows %d unitCols %d unitRowStart %d unitRowEnd %d unitColStart %d unitColEnd %d",
+					unitSize,unitRows,unitCols,unitRowStart,unitRowEnd,unitColStart,unitColEnd);
 			for (int unitRow = unitRowStart; unitRow < unitRowEnd; unitRow++)
 			{
 				for (int unitCol = unitColStart; unitCol < unitColEnd; unitCol++)

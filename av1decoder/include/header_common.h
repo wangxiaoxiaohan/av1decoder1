@@ -512,7 +512,7 @@ typedef struct AV1DecodeContext{
 	uint8_t **CompoundIdxs;
 	uint8_t ***InterpFilters;
 	int ****Mvs; // [row][col][ref][x/y] 
-	uint8_t **MiSizes;
+	uint8_t **MiSizes; //以 4 * 4 块为单位，某个block的所有 4 * 4 块的值都一样
 	uint8_t **SegmentIds;
 	uint8_t **IsInters;
 	uint8_t **SkipModes;

@@ -18,59 +18,58 @@ int decode::decode_frame_wrapup( AV1DecodeContext *av1Ctx){
 			loopFilter(av1Ctx); 
 		}
 
-		// int subX = av1Ctx->seqHdr.color_config.subsampling_x;
-		// int subY = av1Ctx->seqHdr.color_config.subsampling_y;
-		// char namebuf[16];
-		// sprintf(namebuf,"test%d.yuv",scount);
-		// scount ++;
-		// FILE *fp = fopen(namebuf, "wb");
-		// int h = av1Ctx->currentFrame->frameHdr.si.FrameHeight;
-		// int w = av1Ctx->currentFrame->frameHdr.si.FrameWidth;
-		// uint8_t buf[w];
-		// for (int i = 0; i < h; i++) {
-		// 	for (int j = 0; j < w; j++) {
-		// 		buf[j] = av1Ctx->currentFrame->CurrFrame[0][ i][ j];
-		// 	}
-		// 	fwrite(buf, sizeof(uint8_t),w, fp);
-		// 	}
-		// 	uint8_t buf1[((w + subX) >> subX ) * 2];
-		// 	for (int i = 0; i < (h + subY) >> subY ; i++) {
-		// 	for (int j = 0; j < (w + subX) >> subX; j++) {
-		// 		buf1[j * 2] = av1Ctx->currentFrame->CurrFrame[1][ i][ j];
-		// 		buf1[j * 2 + 1] = av1Ctx->currentFrame->CurrFrame[2][ i][ j];
-		// 	}
-		// 	fwrite(buf1, sizeof(uint8_t),((w + subX) >> subX ) * 2, fp);
-		// }
-		// fclose(fp);
+		int subX = av1Ctx->seqHdr.color_config.subsampling_x;
+		int subY = av1Ctx->seqHdr.color_config.subsampling_y;
+		char namebuf[16];
+		sprintf(namebuf,"test%d.yuv",scount);
+		scount ++;
+		FILE *fp = fopen(namebuf, "wb");
+		int h = av1Ctx->currentFrame->frameHdr.si.FrameHeight;
+		int w = av1Ctx->currentFrame->frameHdr.si.FrameWidth;
+		uint8_t buf[w];
+		for (int i = 0; i < h; i++) {
+			for (int j = 0; j < w; j++) {
+				buf[j] = av1Ctx->currentFrame->CurrFrame[0][ i][ j];
+			}
+			fwrite(buf, sizeof(uint8_t),w, fp);
+			}
+			uint8_t buf1[((w + subX) >> subX ) * 2];
+			for (int i = 0; i < (h + subY) >> subY ; i++) {
+			for (int j = 0; j < (w + subX) >> subX; j++) {
+				buf1[j * 2] = av1Ctx->currentFrame->CurrFrame[1][ i][ j];
+				buf1[j * 2 + 1] = av1Ctx->currentFrame->CurrFrame[2][ i][ j];
+			}
+			fwrite(buf1, sizeof(uint8_t),((w + subX) >> subX ) * 2, fp);
+		}
+		fclose(fp);
 
 
 		cdef(av1Ctx); 
 
-		// int subX = av1Ctx->seqHdr.color_config.subsampling_x;
-		// int subY = av1Ctx->seqHdr.color_config.subsampling_y;
-		// char namebuf[16];
-		// sprintf(namebuf,"test%d.yuv",scount);
-		// scount ++;
-		// FILE *fp = fopen(namebuf, "wb");
-		// int h = av1Ctx->currentFrame->frameHdr.si.FrameHeight;
-		// int w = av1Ctx->currentFrame->frameHdr.si.FrameWidth;
-		// uint8_t buf[w];
-		// for (int i = 0; i < h; i++) {
-		// for (int j = 0; j < w; j++) {
-		// 	buf[j] = av1Ctx->currentFrame->CdefFrame[0][ i][ j];
-		// }
-		// fwrite(buf, sizeof(uint8_t),w, fp);
-		// }
-
-		// uint8_t buf1[((w + subX) >> subX ) * 2];
-		// for (int i = 0; i < (h + subY) >> subY ; i++) {
-		// 	for (int j = 0; j < (w + subX) >> subX; j++) {
-		// 		buf1[j * 2] = av1Ctx->currentFrame->CdefFrame[1][ i][ j];
-		// 		buf1[j * 2 + 1] = av1Ctx->currentFrame->CdefFrame[2][ i][ j];
-		// 	}
-		// 	fwrite(buf1, sizeof(uint8_t),((w + subX) >> subX ) * 2, fp);
-		// }
-		// fclose(fp);
+		//  int subX = av1Ctx->seqHdr.color_config.subsampling_x;
+		//  int subY = av1Ctx->seqHdr.color_config.subsampling_y;
+		//  char namebuf[16];
+		//  sprintf(namebuf,"test%d.yuv",scount);
+		//  scount ++;
+		//  FILE *fp = fopen(namebuf, "wb");
+		//  int h = av1Ctx->currentFrame->frameHdr.si.FrameHeight;
+		//  int w = av1Ctx->currentFrame->frameHdr.si.FrameWidth;
+		//  uint8_t buf[w];
+		//  for (int i = 0; i < h; i++) {
+		//  for (int j = 0; j < w; j++) {
+		//  	buf[j] = av1Ctx->currentFrame->CdefFrame[0][ i][ j];
+		//  }
+		//  fwrite(buf, sizeof(uint8_t),w, fp);
+		//  }
+		//  uint8_t buf1[((w + subX) >> subX ) * 2];
+		//  for (int i = 0; i < (h + subY) >> subY ; i++) {
+		//  	for (int j = 0; j < (w + subX) >> subX; j++) {
+		//  		buf1[j * 2] = av1Ctx->currentFrame->CdefFrame[1][ i][ j];
+		//  		buf1[j * 2 + 1] = av1Ctx->currentFrame->CdefFrame[2][ i][ j];
+		//  	}
+		//  	fwrite(buf1, sizeof(uint8_t),((w + subX) >> subX ) * 2, fp);
+		//  }
+		//  fclose(fp);
 
 		upscalingProcess(av1Ctx->currentFrame->CdefFrame,av1Ctx->currentFrame->UpscaledCdefFrame,av1Ctx);
 
@@ -128,30 +127,30 @@ int decode::decode_frame_wrapup( AV1DecodeContext *av1Ctx){
 
 		loopRestoration(av1Ctx); 
 
-		int subX = av1Ctx->seqHdr.color_config.subsampling_x;
-		int subY = av1Ctx->seqHdr.color_config.subsampling_y;
-		char namebuf[16];
-		sprintf(namebuf,"test%d.yuv",scount);
-		scount ++;
-		FILE *fp = fopen(namebuf, "wb");
-		int h = av1Ctx->currentFrame->frameHdr.si.FrameHeight;
-		int w = av1Ctx->currentFrame->frameHdr.si.FrameWidth;
-		uint8_t buf[w];
-		for (int i = 0; i < h; i++) {
-		for (int j = 0; j < w; j++) {
-			buf[j] = av1Ctx->currentFrame->CdefFrame[0][ i][ j];
-		}
-		fwrite(buf, sizeof(uint8_t),w, fp);
-		}
-		uint8_t buf1[((w + subX) >> subX ) * 2];
-		for (int i = 0; i < (h + subY) >> subY ; i++) {
-			for (int j = 0; j < (w + subX) >> subX; j++) {
-				buf1[j * 2] = av1Ctx->currentFrame->lrCtx->LrFrame[1][ i][ j];
-				buf1[j * 2 + 1] = av1Ctx->currentFrame->lrCtx->LrFrame[2][ i][ j];
-			}
-			fwrite(buf1, sizeof(uint8_t),((w + subX) >> subX ) * 2, fp);
-		}
-		fclose(fp);
+		// int subX = av1Ctx->seqHdr.color_config.subsampling_x;
+		// int subY = av1Ctx->seqHdr.color_config.subsampling_y;
+		// char namebuf[16];
+		// sprintf(namebuf,"test%d.yuv",scount);
+		// scount ++;
+		// FILE *fp = fopen(namebuf, "wb");
+		// int h = av1Ctx->currentFrame->frameHdr.si.FrameHeight;
+		// int w = av1Ctx->currentFrame->frameHdr.si.FrameWidth;
+		// uint8_t buf[w];
+		// for (int i = 0; i < h; i++) {
+		// for (int j = 0; j < w; j++) {
+		// 	buf[j] = av1Ctx->currentFrame->CdefFrame[0][ i][ j];
+		// }
+		// fwrite(buf, sizeof(uint8_t),w, fp);
+		// }
+		// uint8_t buf1[((w + subX) >> subX ) * 2];
+		// for (int i = 0; i < (h + subY) >> subY ; i++) {
+		// 	for (int j = 0; j < (w + subX) >> subX; j++) {
+		// 		buf1[j * 2] = av1Ctx->currentFrame->lrCtx->LrFrame[1][ i][ j];
+		// 		buf1[j * 2 + 1] = av1Ctx->currentFrame->lrCtx->LrFrame[2][ i][ j];
+		// 	}
+		// 	fwrite(buf1, sizeof(uint8_t),((w + subX) >> subX ) * 2, fp);
+		// }
+		// fclose(fp);
 
 		motionFieldMotionVectorStorage(av1Ctx);
 		if(frameHdr->segmentation_params.segmentation_enabled == 1 && frameHdr->segmentation_params.segmentation_update_map ==0){
@@ -2624,6 +2623,7 @@ int decode::predict_intra(int plane,int x,int y,int haveLeft,int haveAbove,
 			//   	printf("@@%d i:%d j:%d ",pred[ i ][ j ],i,j);
 			//printf("%d ",pred[ i ][ j ]);
 		}
+		printf("\n");
 	}
 	for(int i = 0 ; i < h ; i++){
 		delete [] pred[i];
@@ -4187,7 +4187,7 @@ int decode::reconstruct(int plane, int x, int y, int txSz,BlockData *b_data,AV1D
     int th = Min(32, h);
     int flipUD = (b_data->PlaneTxType == FLIPADST_DCT || b_data->PlaneTxType == FLIPADST_ADST || b_data->PlaneTxType == V_FLIPADST || b_data->PlaneTxType == FLIPADST_FLIPADST) ? 1 : 0;
     int flipLR = (b_data->PlaneTxType == DCT_FLIPADST || b_data->PlaneTxType == ADST_FLIPADST || b_data->PlaneTxType == H_FLIPADST || b_data->PlaneTxType == FLIPADST_FLIPADST) ? 1 : 0;
-    //printf("residual 11\n");
+    printf("inverse source\n");
 
     for (int i = 0; i < th; i++) {
         for (int j = 0; j < tw; j++) {
@@ -4210,6 +4210,7 @@ int decode::reconstruct(int plane, int x, int y, int txSz,BlockData *b_data,AV1D
 			b_data->Dequant[ i ][ j ] = Clip3( - ( 1 << ( 7 + seqHdr->color_config.BitDepth ) ), ( 1 << ( 7 + seqHdr->color_config.BitDepth ) ) - 1, dq2 );
 			//printf("%d ",b_data->Dequant[ i ][ j ]);
         }
+		//printf("\n");
     }
 	//反变换
     //uint16_t Residual[h][w];
@@ -4228,15 +4229,15 @@ int decode::reconstruct(int plane, int x, int y, int txSz,BlockData *b_data,AV1D
             int xx = flipLR ? (w - j - 1) : j;
             int yy = flipUD ? (h - i - 1) : i;
 			//注意这里写的和spec 不一样，临时解法！！
-            av1Ctx->currentFrame->CurrFrame[plane][Y + yy][X + xx] = Clip3(0,255,av1Ctx->currentFrame->CurrFrame[plane][Y + yy][X + xx] + Residual[i][j]);
-        	//av1Ctx->currentFrame->CurrFrame[plane][Y + yy][X + xx] = Clip1( av1Ctx->currentFrame->CurrFrame[ plane ][ y + yy ][ x + xx ] +Residual[ i ][ j ],seqHdr->color_config.BitDepth);
-			printf("%d ",Residual[i][j]);
+            //av1Ctx->currentFrame->CurrFrame[plane][Y + yy][X + xx] = Clip3(0,255,av1Ctx->currentFrame->CurrFrame[plane][Y + yy][X + xx] + Residual[i][j]);
+        	av1Ctx->currentFrame->CurrFrame[plane][Y + yy][X + xx] = Clip1( av1Ctx->currentFrame->CurrFrame[ plane ][ y + yy ][ x + xx ] +Residual[ i ][ j ],seqHdr->color_config.BitDepth);
+			//printf("%d ",Residual[i][j]);
 			
 		}
-		printf("\n");
+		//printf("\n");
     }
 
-	printf("\n");
+	//printf("\n");
 	for(int i = 0 ; i < h ; i ++){
 		delete []  Residual[i];
 	}
@@ -4262,137 +4263,265 @@ int decode::inverseDCTArrayPermutation(int16_t T[],int n)
 int decode::inverseDCT(int16_t T[], int n, int r) {
     inverseDCTArrayPermutation(T, n);
 
-	for(int i = 0 ; i < 2 ; i ++)
-		B( 2 * i, 2 * i + 1, 32 + 16 * i, 1 - i, r ,T );
+	 if(n >= 2){
+	 	for(int i = 0 ; i < 2 ; i ++)
+	 		B( 2 * i, 2 * i + 1, 32 + 16 * i, 1 - i, r ,T );
+	 	for(int i = 0 ; i < 2 ; i ++)
+	 		H( i, 3 - i, 0, r  ,T);
+	 }
+	 if(n >= 3){
+	 	for(int i = 0 ; i < 2 ; i++){
+	 		 B( 4 + i, 7 - i, 56 - 32 * i, 0, r ,T );
+	 	}
+	 	for(int i = 0 ; i < 2; i++){
+	 		H( 4 + 2 * i, 5 + 2 * i, i, r  ,T);
+	 	}
+	 	B( 6, 5, 32, 1, r  ,T);
+	 	for(int i = 0 ; i < 4; i++){
+	 		H( i, 7 - i, 0, r ,T ) ;
+	 	}
+	 }
+	 if(n >= 4){
+	 	for(int i = 0 ; i < 4 ; i++){
+	 		 B( 8 + i, 15 - i, 12 + ( brev( 2, 3 - i ) << 4 ), 0, r ,T);
+	 	}
+	 	for(int i = 0 ; i < 4; i++){
+	 		H( 8 + 2 * i, 9 + 2 * i, i & 1, r  ,T);
+	 	}
+	 	for(int i = 0 ; i < 2; i++){
+	 		B( 14 - i, 9 + i, 48 + 64 * i, 1, r ,T );
+	 	}
+	 	for(int i = 0 ; i < 2; i++){
+	 		for(int j = 0 ; j < 2 ; j++)
+	 			H( 8 + 4 * i + j, 11 + 4 * i - j, i, r  ,T);
+	 	}
+	 	for(int i = 0 ; i < 2; i++){
+	 		B( 13 - i, 10 + i, 32, 1, r ,T ) ;
+	 	}
+	 	for(int i = 0 ; i < 8; i++){
+	 		H( i, 15 - i, 0, r  ,T);
+	 	}
+	 }
+	 if(n >= 5){
+	 	for(int i = 0 ; i < 8 ; i++){
+	 		 B( 16 + i, 31 - i, 6 + ( brev( 3, 7 - i ) << 3 ), 0, r ,T);
+	 	}
+	 	for(int i = 0 ; i < 8 ; i++){
+	 		 H( 16 + 2 * i, 17 + 2 * i, i & 1, r  ,T) ;
+	 	}
+	 	for(int i = 0 ;i < 2 ; i++ )
+	 		for(int j = 0 ; j < 2 ;j ++)
+	 			B( 30 - 4 * i - j, 17 + 4 * i + j, 24 + (j << 6) + ( ( 1 - i ) << 5 ), 1, r ,T );
+	 	for(int i = 0 ; i < 4 ; i++){
+	 		for(int j = 0 ; j < 2 ; j++)
+	 			H( 16 + 4 * i + j, 19 + 4 * i - j, i & 1, r ,T );
+	 	}
+	 	for(int i = 0 ; i < 4 ; i++){
+	 		B( 29 - i, 18 + i, 48 + ( i >> 1 ) * 64, 1, r  ,T);
+	 	}
+	 	for(int i = 0 ; i < 2 ; i++){
+	 		for(int j = 0 ; j < 4 ; j++)
+	 			H( 16 + i * 8 + j, 23 + i * 8 - j, i, r ,T );
+	 	}
+	 	for(int i = 0 ; i < 5; i++){
+	 		B( 27 - i, 20 + i, 32, 1, r ,T );
+	 	}
+	 	for(int i = 0 ; i < 16 ; i++){
+	 		H( i, 31 - i, 0, r ,T );
+	 	}
+	 }
+	 if(n == 6){
+	 	for(int i = 0 ; i < 16 ; i++){
+	 		B( 32 + i, 63 - i, 63 - 4 * brev( 4, i ), 0, r ,T);
+	 	}
+	 	for(int i = 0 ; i < 16 ; i++){
+	 		H( 32 + i * 2, 33 + i * 2, i & 1, r ,T );
+	 	}
+	 	for(int i = 0 ; i < 4 ; i++){
+	 		for(int j = 0 ; j < 2 ; j++)
+	 			B( 62 - i * 4 - j, 33 + i * 4 + j, 60 - 16 * brev( 2, i ) + 64 * j, 1, r  ,T);
+	 	}
+	 	for(int i = 0 ; i < 8 ; i++){
+	 		for(int j = 0 ; j < 2 ; j++)
+	 			H( 32 + i * 4 + j, 35 + i * 4 - j, i & 1, r ,T );
+	 	}
+	 	for(int i = 0 ; i < 2 ; i++){
+	 		for(int j = 0 ; j < 4 ; j++)
+	 			B( 61 - i * 8 - j, 34 + i * 8 + j, 56 - i * 32 + ( j >> 1 ) * 64, 1, r ,T );
+	 	}
+	 	for(int i = 0 ; i < 4 ; i++){
+	 		for(int j = 0 ; j < 4 ; j++)
+	 			H( 32 + 8 * i + j, 39 + 8 * i - j, i & 1, r  ,T) ;
+	 	}
+	 	for(int i = 0 ; i < 8 ; i++){
+	 		B( 59 - i, 36 + i, i < 4 ? 48 : 112, 1, r ,T );
+	 	}
+	 	for(int i = 0 ; i < 8 ; i++){
+	 		H( 32 + i, 47 - i, 0, r  ,T);
+	 		H( 48 + i, 63 - i, 1, r ,T );
+	 	}
+	 	for(int i = 0 ; i < 8 ; i++){
+	 		B( 55 - i, 40 + i, 32, 1, r ,T ) ;
+	 	}
+	 	for(int i = 0 ; i < 32 ; i++){
+	 		H( i, 63 - i, 0, r ,T);
+	 	}
+	 }
+	// if(n >= 6){
+	// 	for(int i = 0 ; i < 16 ; i++){
+	// 		B( 32 + i, 63 - i, 63 - 4 * brev( 4, i ), 0, r ,T);
+	// 	}
+	// }
+	// if(n >= 5){
+	// 	for(int i = 0 ; i < 8 ; i++){
+	// 		B( 16 + i, 31 - i, 6 + ( brev( 3, 7 - i ) << 3 ), 0, r ,T);
+	// 	}
+	// }
+	// if(n >= 6){
+	// 	for(int i = 0 ; i < 16 ; i++){
+	// 		H( 32 + i * 2, 33 + i * 2, i & 1, r ,T );
+	// 	}
+	// }
+	// if(n >= 4){
+	// 	for(int i = 0 ; i < 4 ; i++){
+	// 		B( 8 + i, 15 - i, 12 + ( brev( 2, 3 - i ) << 4 ), 0, r ,T);
+	// 	}
+	// }
+	// if(n >= 5){
+	// 	for(int i = 0 ; i < 8 ; i++){
+	// 		H( 16 + 2 * i, 17 + 2 * i, i & 1, r  ,T) ;
+	// 	}
+	// }
+	// if(n >= 6){
+	// 	for(int i = 0 ; i < 4 ; i++){
+	// 		for(int j = 0 ; j < 2 ; j++)
+	// 			B( 62 - i * 4 - j, 33 + i * 4 + j, 60 - 16 * brev( 2, i ) + 64 * j, 1, r  ,T);
+	// 	}
+	// }
+	// if(n >= 3){
+	// 	for(int i = 0 ; i < 2 ; i++){
+	// 		B( 4 + i, 7 - i, 56 - 32 * i, 0, r ,T );
+	// 	}
+	// }
+	// if(n >= 4){
+	// 	for(int i = 0 ; i < 4; i++){
+	// 		H( 8 + 2 * i, 9 + 2 * i, i & 1, r  ,T);
+	// 	}
+	// }
+	// if(n >= 5){
+	// 	for(int i = 0 ; i < 8 ; i++){
+	// 		for(int j = 0 ; j < 2 ; j++)
+	// 			H( 32 + i * 4 + j, 35 + i * 4 - j, i & 1, r ,T );
+	// 	}
+	// }
+	// if(n >= 6){
+	// 	for(int i = 0 ;i < 2 ; i++ )
+	// 		for(int j = 0 ; j < 2 ;j ++)
+	// 			B( 30 - 4 * i - j, 17 + 4 * i + j, 24 + (j << 6) + ( ( 1 - i ) << 5 ), 1, r ,T );
+	// }		
+	// if(n >= 2){
+	// 	for(int i = 0 ; i < 2 ; i ++)
+	// 		B( 2 * i, 2 * i + 1, 32 + 16 * i, 1 - i, r ,T );
+	// }
+	// if(n >= 3){
+	// 	for(int i = 0 ; i < 2; i++){
+	// 		H( 4 + 2 * i, 5 + 2 * i, i, r  ,T);
+	// 	}
+	// }
+	// if(n >= 4){
+	// 	for(int i = 0 ; i < 2; i++){
+	// 		B( 14 - i, 9 + i, 48 + 64 * i, 1, r ,T );
+	// 	}
+	// }
+	// if(n >= 5){
+	// 	for(int i = 0 ; i < 4 ; i++){
+	// 		for(int j = 0 ; j < 2 ; j++)
+	// 			H( 16 + 4 * i + j, 19 + 4 * i - j, i & 1, r ,T );
+	// 	}
+	// }
+	// if(n >= 6){
+	// 	for(int i = 0 ; i < 2 ; i++){
+	// 		for(int j = 0 ; j < 4 ; j++)
+	// 			B( 61 - i * 8 - j, 34 + i * 8 + j, 56 - i * 32 + ( j >> 1 ) * 64, 1, r ,T );
+	// 	}
+	// }
+	// if(n >= 2){	
+	// 	for(int i = 0 ; i < 2 ; i ++)
+	// 		H( i, 3 - i, 0, r  ,T);
+	// }
+	// if(n >= 3){
+	// 	B( 6, 5, 32, 1, r  ,T);
+	// }
+	// if(n >= 4){
+	// 	for(int i = 0 ; i < 2; i++){
+	// 		for(int j = 0 ; j < 2 ; j++)
+	// 			H( 8 + 4 * i + j, 11 + 4 * i - j, i, r  ,T);
+	// 	}
+	// }
+	// if(n >= 5){
+	// 	for(int i = 0 ; i < 4 ; i++){
+	// 		B( 29 - i, 18 + i, 48 + ( i >> 1 ) * 64, 1, r  ,T);
+	// 	}
+	// }
+	// if(n >= 6){	
+	// 	for(int i = 0 ; i < 4 ; i++){
+	// 		for(int j = 0 ; j < 4 ; j++)
+	// 			H( 32 + 8 * i + j, 39 + 8 * i - j, i & 1, r  ,T) ;
+	// 	}
+	// }
+	// if(n >= 3){
+	// 	for(int i = 0 ; i < 4; i++){
+	// 		H( i, 7 - i, 0, r ,T ) ;
+	// 	}
+	// }
+	// if(n >= 4){
+	// 	for(int i = 0 ; i < 2; i++){
+	// 		B( 13 - i, 10 + i, 32, 1, r ,T ) ;
+	// 	}
+	// }
 
-	for(int i = 0 ; i < 2 ; i ++)
-		H( i, 3 - i, 0, r  ,T);
-	
-
-	if(n >= 3){
-		for(int i = 0 ; i < 2 ; i++){
-			 B( 4 + i, 7 - i, 56 - 32 * i, 0, r ,T );
-		}
-
-		for(int i = 0 ; i < 2; i++){
-			H( 4 + 2 * i, 5 + 2 * i, i, r  ,T);
-		}
-
-		B( 6, 5, 32, 1, r  ,T);
-
-		for(int i = 0 ; i < 4; i++){
-			H( i, 7 - i, 0, r ,T ) ;
-		}
-	}
-	if(n >= 4){
-		for(int i = 0 ; i < 4 ; i++){
-			 B( 8 + i, 15 - i, 12 + ( brev( 2, 3 - i ) << 4 ), 0, r ,T);
-		}
-	
-
-		for(int i = 0 ; i < 4; i++){
-			H( 8 + 2 * i, 9 + 2 * i, i & 1, r  ,T);
-		}
-
-		for(int i = 0 ; i < 2; i++){
-			B( 14 - i, 9 + i, 48 + 64 * i, 1, r ,T );
-		}
-
-		for(int i = 0 ; i < 2; i++){
-			for(int j = 0 ; j < 2 ; j++)
-				H( 8 + 4 * i + j, 11 + 4 * i - j, i, r  ,T);
-		}
-
-		for(int i = 0 ; i < 2; i++){
-			B( 13 - i, 10 + i, 32, 1, r ,T ) ;
-		}
-
-		for(int i = 0 ; i < 8; i++){
-			H( i, 15 - i, 0, r  ,T);
-		}
-	}
-	if(n >= 5){
-		for(int i = 0 ; i < 8 ; i++){
-			 B( 16 + i, 31 - i, 6 + ( brev( 3, 7 - i ) << 3 ), 0, r ,T);
-		}
-
-		for(int i = 0 ; i < 8 ; i++){
-			 H( 16 + 2 * i, 17 + 2 * i, i & 1, r  ,T) ;
-		}
-
-		for(int i = 0 ;i < 2 ; i++ )
-			for(int j = 0 ; j < 2 ;j ++)
-				B( 30 - 4 * i - j, 17 + 4 * i + j, 24 + (j << 6) + ( ( 1 - i ) << 5 ), 1, r ,T );
-
-		for(int i = 0 ; i < 4 ; i++){
-			for(int j = 0 ; j < 2 ; j++)
-				H( 16 + 4 * i + j, 19 + 4 * i - j, i & 1, r ,T );
-		}
-
-		for(int i = 0 ; i < 4 ; i++){
-			B( 29 - i, 18 + i, 48 + ( i >> 1 ) * 64, 1, r  ,T);
-		}
-
-		for(int i = 0 ; i < 2 ; i++){
-			for(int j = 0 ; j < 4 ; j++)
-				H( 16 + i * 8 + j, 23 + i * 8 - j, i, r ,T );
-		}
-
-		for(int i = 0 ; i < 5; i++){
-			B( 27 - i, 20 + i, 32, 1, r ,T );
-		}
-
-		for(int i = 0 ; i < 16 ; i++){
-			H( i, 31 - i, 0, r ,T );
-		}
-	}
-	if(n == 6){
-		for(int i = 0 ; i < 16 ; i++){
-			B( 32 + i, 63 - i, 63 - 4 * brev( 4, i ), 0, r ,T);
-		}
-
-		for(int i = 0 ; i < 16 ; i++){
-			H( 32 + i * 2, 33 + i * 2, i & 1, r ,T );
-		}
-
-		for(int i = 0 ; i < 4 ; i++){
-			for(int j = 0 ; j < 2 ; j++)
-				B( 62 - i * 4 - j, 33 + i * 4 + j, 60 - 16 * brev( 2, i ) + 64 * j, 1, r  ,T);
-		}
-
-		for(int i = 0 ; i < 8 ; i++){
-			for(int j = 0 ; j < 2 ; j++)
-				H( 32 + i * 4 + j, 35 + i * 4 - j, i & 1, r ,T );
-		}
-
-		for(int i = 0 ; i < 2 ; i++){
-			for(int j = 0 ; j < 4 ; j++)
-				B( 61 - i * 8 - j, 34 + i * 8 + j, 56 - i * 32 + ( j >> 1 ) * 64, 1, r ,T );
-		}
-
-		for(int i = 0 ; i < 4 ; i++){
-			for(int j = 0 ; j < 4 ; j++)
-				H( 32 + 8 * i + j, 39 + 8 * i - j, i & 1, r  ,T) ;
-		}
-
-		for(int i = 0 ; i < 8 ; i++){
-			B( 59 - i, 36 + i, i < 4 ? 48 : 112, 1, r ,T );
-		}
-
-		for(int i = 0 ; i < 8 ; i++){
-			H( 32 + i, 47 - i, 0, r  ,T);
-			H( 48 + i, 63 - i, 1, r ,T );
-		}
-
-
-		for(int i = 0 ; i < 8 ; i++){
-			B( 55 - i, 40 + i, 32, 1, r ,T ) ;
-		}
-
-		for(int i = 0 ; i < 32 ; i++){
-			H( i, 63 - i, 0, r ,T);
-		}
-	}
+	// if(n >= 5){
+	// 	for(int i = 0 ; i < 2 ; i++){
+	// 		for(int j = 0 ; j < 4 ; j++)
+	// 			H( 16 + i * 8 + j, 23 + i * 8 - j, i, r ,T );
+	// 	}
+	// }
+	// if(n >= 6){
+	// 	for(int i = 0 ; i < 8 ; i++){
+	// 		B( 59 - i, 36 + i, i < 4 ? 48 : 112, 1, r ,T );
+	// 	}
+	// }	
+	// if(n >= 4){
+	// 	for(int i = 0 ; i < 8; i++){
+	// 		H( i, 15 - i, 0, r  ,T);
+	// 	}
+	// }
+	// if(n >= 5){
+	// 	for(int i = 0 ; i < 5; i++){
+	// 		B( 27 - i, 20 + i, 32, 1, r ,T );
+	// 	}
+	// }
+	// if(n >= 6){
+	// 	for(int i = 0 ; i < 8 ; i++){
+	// 		H( 32 + i, 47 - i, 0, r  ,T);
+	// 		H( 48 + i, 63 - i, 1, r ,T );
+	// 	}
+	// }
+	// if(n >= 5){	
+	// 	for(int i = 0 ; i < 16 ; i++){
+	// 		H( i, 31 - i, 0, r ,T );
+	// 	}
+	// }
+	// if(n >= 6){	
+	// 	for(int i = 0 ; i < 8 ; i++){
+	// 		B( 55 - i, 40 + i, 32, 1, r ,T ) ;
+	// 	}
+	// }
+	// if(n >= 6){
+	// 	for(int i = 0 ; i < 32 ; i++){
+	// 		H( i, 63 - i, 0, r ,T);
+	// 	}
+	// }
 }
 //7.13.2.4
 void decode::inverseADSTInputArrayPermutation(int16_t* T, int n) {
@@ -4840,6 +4969,7 @@ void decode::edgeLoopFilter(int plane, int pass, int row, int col,AV1DecodeConte
     // Set MiSize, txSz, planeSize, skip, isIntra, and prevTxSz
     int MiSize = av1Ctx->MiSizes[row][col];
     int txSz = av1Ctx->LoopfilterTxSizes[plane][row >> subY][col >> subX];
+	//通过 MiSize 计算出当前block的 大小类型，因为 一个块中 所有 4 *4 k块的 MiSize 都是一样的
     int planeSize = get_plane_residual_size(MiSize, plane,seqHdr->color_config.subsampling_x,seqHdr->color_config.subsampling_y);
     int skip = av1Ctx->Skips[row][col];
     int isIntra = av1Ctx->RefFrames[row][col][0] <= INTRA_FRAME;
@@ -4847,6 +4977,7 @@ void decode::edgeLoopFilter(int plane, int pass, int row, int col,AV1DecodeConte
 
     // Derive isBlockEdge
     isBlockEdge = 0;
+	//计算是否在 block 边沿
     if ((pass == 0 && xP % (Block_Width[planeSize]) == 0) || (pass == 1 && yP % (Block_Height[planeSize]) == 0)) {
         isBlockEdge = 1;
     }
@@ -4876,7 +5007,7 @@ void decode::edgeLoopFilter(int plane, int pass, int row, int col,AV1DecodeConte
 	}
 
 	for(int i = 0 ; i < MI_SIZE ; i++){
-		if(applyFilter == 1 && lvl > 0 && /*wh add start*/xP >= 7 && yP >= 7/*wh add end*/){
+		if(applyFilter == 1 && lvl > 0 && /*wh add start*/xP >= 7 && yP >= 7/*wh add end*/ ){
 			//printf("pass %d xP%d  yP %d dx%d  dy%d \n",pass ,xP ,yP, dx ,dy);
 			sampleFiltering(xP + dy * i,yP + dx * i,plane, limit, blimit, thresh, dx, dy,filterSize,av1Ctx);
 		}
@@ -4979,8 +5110,8 @@ int decode::adaptiveFilterStrengthSelection(int segment, int ref, int modeType, 
         if (ref == INTRA_FRAME) {
             lvlSeg += (frameHdr->loop_filter_params.loop_filter_ref_deltas[INTRA_FRAME] << nShift);
         } else {
-            lvlSeg += (frameHdr->loop_filter_params.loop_filter_ref_deltas[ref] << nShift) +
-			(frameHdr->loop_filter_params.loop_filter_mode_deltas[modeType] << nShift);
+            lvlSeg += ((frameHdr->loop_filter_params.loop_filter_ref_deltas[ref] << nShift) +
+			(frameHdr->loop_filter_params.loop_filter_mode_deltas[modeType] << nShift));
         }
         
         lvlSeg = Clip3(0, MAX_LOOP_FILTER, lvlSeg);
@@ -6216,7 +6347,7 @@ void decode::referenceFrameUpdate( AV1DecodeContext *av1Ctx){
 	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
 	for (int i = 0; i < NUM_REF_FRAMES; i++) {
-		if ((frameHdr->refresh_frame_flags >> i) & 1) {
+		if ( ((frameHdr->refresh_frame_flags >> i) & 1 ) == 1) {
 			av1Ctx->RefValid[i] = 1;
 			av1Ctx->RefFrameId[i] = frameHdr->current_frame_id;
 			(*av1Ctx->RefUpscaledWidth)[i] = frameHdr->si.UpscaledWidth;

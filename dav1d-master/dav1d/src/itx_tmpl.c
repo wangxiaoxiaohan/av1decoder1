@@ -79,6 +79,7 @@ inv_txfm_add_c(pixel *dst, const ptrdiff_t stride, coef *const coeff,
 
 
     int32_t tmp[64 * 64], *c = tmp;
+    printf("inverse source\n");
     for (int y = 0; y < sh; y++, c += w) {
         if (is_rect2){
             for (int x = 0; x < sw; x++){
@@ -95,6 +96,7 @@ inv_txfm_add_c(pixel *dst, const ptrdiff_t stride, coef *const coeff,
                printf("%d ",coeff[y + x * sh]);//这是经过反量化之后 尚未反变换的数据
             }
         }
+        printf("\n");
         first_1d_fn(c, 1, row_clip_min, row_clip_max);
     }
     printf("\n");
@@ -112,11 +114,11 @@ inv_txfm_add_c(pixel *dst, const ptrdiff_t stride, coef *const coeff,
     printf("residual\n");
     for (int y = 0; y < h; y++, dst += PXSTRIDE(stride)){
         for (int x = 0; x < w; x++){
-            printf("%d ",(*c + 8 ) >> 4);
+            //printf("%d ",(*c + 8 ) >> 4);
             dst[x] = iclip_pixel(dst[x] + ((*c++ + 8) >> 4));
             
         }
-        printf("\n");
+        //printf("\n");
     }
     printf("\n");
 }

@@ -3255,17 +3255,17 @@ int dav1d_decode_frame_main(Dav1dFrameContext *const f) {
     }
     printf("\n");
 
-    // printf("Wedge_Index cdf\n");
-    // for(int i = 0 ; i < 2; i ++){
-    //     for(int j = 0 ; j < 2 ; j++){
-    //         for(int k = 0 ; k < 8 ; k++){
-    //          printf("%d ", f->ts->cdf.coef.eob_bin_32[i][j][k]);
-    //         }
-    //         printf("\n");
-    //     }
-    //     printf("\n");
-    // }
-    // printf("Wedge_Index cdf\n");
+    printf("Wedge_Index cdf\n");
+    for(int i = 0 ; i < 2; i ++){
+        for(int j = 0 ; j < 2 ; j++){
+            for(int k = 0 ; k < 8 ; k++){
+             printf("%d ", f->ts->cdf.coef.eob_bin_32[i][j][k]);
+            }
+            printf("\n");
+        }
+        printf("\n");
+    }
+    printf("Wedge_Index cdf\n");
 
     assert(f->c->n_tc == 1);
 

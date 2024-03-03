@@ -17,7 +17,7 @@ decode_sb 就是 decode_partition
     接下来就是两次一维反变换
     
   }
-idx1d.c 一维反变换 C语言实现
+itx_1d.c 一维反变换 C语言实现
 first_1d_fn second_1d_fn 指向 dav1d_inv_系列函数，见
 itx_tmpl.c的 这个宏定义：
 #define inv_txfm_fn(type1, type2, w, h, shift, has_dconly) \
