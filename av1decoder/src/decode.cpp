@@ -4231,10 +4231,10 @@ int decode::reconstruct(int plane, int x, int y, int txSz,BlockData *b_data,AV1D
 			//注意这里写的和spec 不一样，临时解法！！
             //av1Ctx->currentFrame->CurrFrame[plane][Y + yy][X + xx] = Clip3(0,255,av1Ctx->currentFrame->CurrFrame[plane][Y + yy][X + xx] + Residual[i][j]);
         	av1Ctx->currentFrame->CurrFrame[plane][Y + yy][X + xx] = Clip1( av1Ctx->currentFrame->CurrFrame[ plane ][ y + yy ][ x + xx ] +Residual[ i ][ j ],seqHdr->color_config.BitDepth);
-			//printf("%d ",Residual[i][j]);
+			printf("%d ",Residual[i][j]);
 			
 		}
-		//printf("\n");
+		printf("\n");
     }
 
 	//printf("\n");
@@ -4323,7 +4323,7 @@ int decode::inverseDCT(int16_t T[], int n, int r) {
 	 		for(int j = 0 ; j < 4 ; j++)
 	 			H( 16 + i * 8 + j, 23 + i * 8 - j, i, r ,T );
 	 	}
-	 	for(int i = 0 ; i < 5; i++){
+	 	for(int i = 0 ; i < 4; i++){
 	 		B( 27 - i, 20 + i, 32, 1, r ,T );
 	 	}
 	 	for(int i = 0 ; i < 16 ; i++){
