@@ -386,14 +386,14 @@ typedef struct BlockData{
 typedef struct LoopRestorationContext{
 	
 	uint16_t **LrFrame[3]; //经过LoopRestoration 之后的像素数据
-	uint16_t ****LrWiener[3];
-	uint16_t **LrType[3];
-	uint16_t **LrSgrSet[3];
-	uint16_t ***LrSgrXqd[3];	
+	int16_t ****LrWiener[3];
+	int16_t **LrType[3];
+	int16_t **LrSgrSet[3];
+	int16_t ***LrSgrXqd[3];	
 	int PlaneEndX;   // 当前平面的水平边界
 	int PlaneEndY;   // 当前平面的垂直边界
-	int StripeStartY; // 当前条带的起始y坐标
-	int StripeEndY;   // 当前条带的结束y坐标
+	int StripeStartY; // 当前partition的起始y坐标
+	int StripeEndY;   // 当前partition的结束y坐标
 }LoopRestorationContext;
 typedef struct FilmGainContext{
 	int LumaGrain[73][82];
@@ -488,8 +488,8 @@ typedef struct AV1DecodeContext{
 	uint16_t MiRowEnd; //当前tile在frame中 行的结束位置 以 4*4 为单位
 	uint16_t MiColStart;//当前tile在frame中 列的起始位置 以 4*4 为单位
 	uint16_t MiColEnd;//当前tile在frame中 列的结束位置 以 4*4 为单位
-	uint8_t RefSgrXqd[3][2];
-	uint8_t RefLrWiener[3][2][3];
+	int16_t RefSgrXqd[3][2];
+	int16_t RefLrWiener[3][2][3];
 	uint8_t ReadDeltas;
 	uint8_t CurrentQIndex;
 	tArray8 *BlockDecoded; //标记已经解码的 4 * 4 块  

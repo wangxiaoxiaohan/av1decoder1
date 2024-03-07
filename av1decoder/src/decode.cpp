@@ -18,30 +18,30 @@ int decode::decode_frame_wrapup( AV1DecodeContext *av1Ctx){
 			loopFilter(av1Ctx); 
 		}
 
-		int subX = av1Ctx->seqHdr.color_config.subsampling_x;
-		int subY = av1Ctx->seqHdr.color_config.subsampling_y;
-		char namebuf[16];
-		sprintf(namebuf,"test%d.yuv",scount);
-		scount ++;
-		FILE *fp = fopen(namebuf, "wb");
-		int h = av1Ctx->currentFrame->frameHdr.si.FrameHeight;
-		int w = av1Ctx->currentFrame->frameHdr.si.FrameWidth;
-		uint8_t buf[w];
-		for (int i = 0; i < h; i++) {
-			for (int j = 0; j < w; j++) {
-				buf[j] = av1Ctx->currentFrame->CurrFrame[0][ i][ j];
-			}
-			fwrite(buf, sizeof(uint8_t),w, fp);
-			}
-			uint8_t buf1[((w + subX) >> subX ) * 2];
-			for (int i = 0; i < (h + subY) >> subY ; i++) {
-			for (int j = 0; j < (w + subX) >> subX; j++) {
-				buf1[j * 2] = av1Ctx->currentFrame->CurrFrame[1][ i][ j];
-				buf1[j * 2 + 1] = av1Ctx->currentFrame->CurrFrame[2][ i][ j];
-			}
-			fwrite(buf1, sizeof(uint8_t),((w + subX) >> subX ) * 2, fp);
-		}
-		fclose(fp);
+		// int subX = av1Ctx->seqHdr.color_config.subsampling_x;
+		// int subY = av1Ctx->seqHdr.color_config.subsampling_y;
+		// char namebuf[16];
+		// sprintf(namebuf,"test%d.yuv",scount);
+		// scount ++;
+		// FILE *fp = fopen(namebuf, "wb");
+		// int h = av1Ctx->currentFrame->frameHdr.si.FrameHeight;
+		// int w = av1Ctx->currentFrame->frameHdr.si.FrameWidth;
+		// uint8_t buf[w];
+		// for (int i = 0; i < h; i++) {
+		// 	for (int j = 0; j < w; j++) {
+		// 		buf[j] = av1Ctx->currentFrame->CurrFrame[0][ i][ j];
+		// 	}
+		// 	fwrite(buf, sizeof(uint8_t),w, fp);
+		// 	}
+		// 	uint8_t buf1[((w + subX) >> subX ) * 2];
+		// 	for (int i = 0; i < (h + subY) >> subY ; i++) {
+		// 	for (int j = 0; j < (w + subX) >> subX; j++) {
+		// 		buf1[j * 2] = av1Ctx->currentFrame->CurrFrame[1][ i][ j];
+		// 		buf1[j * 2 + 1] = av1Ctx->currentFrame->CurrFrame[2][ i][ j];
+		// 	}
+		// 	fwrite(buf1, sizeof(uint8_t),((w + subX) >> subX ) * 2, fp);
+		// }
+		// fclose(fp);
 
 
 		cdef(av1Ctx); 
@@ -127,30 +127,30 @@ int decode::decode_frame_wrapup( AV1DecodeContext *av1Ctx){
 
 		loopRestoration(av1Ctx); 
 
-		// int subX = av1Ctx->seqHdr.color_config.subsampling_x;
-		// int subY = av1Ctx->seqHdr.color_config.subsampling_y;
-		// char namebuf[16];
-		// sprintf(namebuf,"test%d.yuv",scount);
-		// scount ++;
-		// FILE *fp = fopen(namebuf, "wb");
-		// int h = av1Ctx->currentFrame->frameHdr.si.FrameHeight;
-		// int w = av1Ctx->currentFrame->frameHdr.si.FrameWidth;
-		// uint8_t buf[w];
-		// for (int i = 0; i < h; i++) {
-		// for (int j = 0; j < w; j++) {
-		// 	buf[j] = av1Ctx->currentFrame->CdefFrame[0][ i][ j];
-		// }
-		// fwrite(buf, sizeof(uint8_t),w, fp);
-		// }
-		// uint8_t buf1[((w + subX) >> subX ) * 2];
-		// for (int i = 0; i < (h + subY) >> subY ; i++) {
-		// 	for (int j = 0; j < (w + subX) >> subX; j++) {
-		// 		buf1[j * 2] = av1Ctx->currentFrame->lrCtx->LrFrame[1][ i][ j];
-		// 		buf1[j * 2 + 1] = av1Ctx->currentFrame->lrCtx->LrFrame[2][ i][ j];
-		// 	}
-		// 	fwrite(buf1, sizeof(uint8_t),((w + subX) >> subX ) * 2, fp);
-		// }
-		// fclose(fp);
+		int subX = av1Ctx->seqHdr.color_config.subsampling_x;
+		int subY = av1Ctx->seqHdr.color_config.subsampling_y;
+		char namebuf[16];
+		sprintf(namebuf,"test%d.yuv",scount);
+		scount ++;
+		FILE *fp = fopen(namebuf, "wb");
+		int h = av1Ctx->currentFrame->frameHdr.si.FrameHeight;
+		int w = av1Ctx->currentFrame->frameHdr.si.FrameWidth;
+		uint8_t buf[w];
+		for (int i = 0; i < h; i++) {
+		for (int j = 0; j < w; j++) {
+			buf[j] = av1Ctx->currentFrame->CdefFrame[0][ i][ j];
+		}
+		fwrite(buf, sizeof(uint8_t),w, fp);
+		}
+		uint8_t buf1[((w + subX) >> subX ) * 2];
+		for (int i = 0; i < (h + subY) >> subY ; i++) {
+			for (int j = 0; j < (w + subX) >> subX; j++) {
+				buf1[j * 2] = av1Ctx->currentFrame->lrCtx->LrFrame[1][ i][ j];
+				buf1[j * 2 + 1] = av1Ctx->currentFrame->lrCtx->LrFrame[2][ i][ j];
+			}
+			fwrite(buf1, sizeof(uint8_t),((w + subX) >> subX ) * 2, fp);
+		}
+		fclose(fp);
 
 		motionFieldMotionVectorStorage(av1Ctx);
 		if(frameHdr->segmentation_params.segmentation_enabled == 1 && frameHdr->segmentation_params.segmentation_update_map ==0){
@@ -2623,7 +2623,7 @@ int decode::predict_intra(int plane,int x,int y,int haveLeft,int haveAbove,
 			//   	printf("@@%d i:%d j:%d ",pred[ i ][ j ],i,j);
 			//printf("%d ",pred[ i ][ j ]);
 		}
-		printf("\n");
+		//printf("\n");
 	}
 	for(int i = 0 ; i < h ; i++){
 		delete [] pred[i];
@@ -4231,10 +4231,10 @@ int decode::reconstruct(int plane, int x, int y, int txSz,BlockData *b_data,AV1D
 			//注意这里写的和spec 不一样，临时解法！！
             //av1Ctx->currentFrame->CurrFrame[plane][Y + yy][X + xx] = Clip3(0,255,av1Ctx->currentFrame->CurrFrame[plane][Y + yy][X + xx] + Residual[i][j]);
         	av1Ctx->currentFrame->CurrFrame[plane][Y + yy][X + xx] = Clip1( av1Ctx->currentFrame->CurrFrame[ plane ][ y + yy ][ x + xx ] +Residual[ i ][ j ],seqHdr->color_config.BitDepth);
-			printf("%d ",Residual[i][j]);
+			//printf("%d ",Residual[i][j]);
 			
 		}
-		printf("\n");
+		//printf("\n");
     }
 
 	//printf("\n");
@@ -4745,9 +4745,9 @@ void decode::inverseWalshHadamardTransform(int16_t* T, int shift) {
 
 //7.13.2.11
 void decode::inverseIdentityTransform4(int16_t* T){
-	printf("@@ T[ i ] * 5793 \n");
+	//printf("@@ T[ i ] * 5793 \n");
 	for(int i = 0 ; i < 4 ; i ++){
-		printf("%d ",T[ i ] * 5793);
+		//printf("%d ",T[ i ] * 5793);
 		T[ i ] = Round2( T[ i ] * 5793, 12 );
 	}
 }
@@ -4761,9 +4761,9 @@ void decode::inverseIdentityTransform8(int16_t* T){
 
 //7.13.2.13
 void decode::inverseIdentityTransform16(int16_t* T){
-	printf("@@ T[ i ] * 11586\n");
+	//printf("@@ T[ i ] * 11586\n");
 	for(int i = 0 ; i < 16 ; i ++){
-		printf("%d ",T[ i ] * 11586);
+		//printf("%d ",T[ i ] * 11586);
 		T[ i ] = Round2( T[ i ] * 11586, 12 );
 	}
 }
@@ -5633,7 +5633,9 @@ void decode::loopRestoreBlock(int plane,int row ,int col,AV1DecodeContext *av1Ct
 	int y = row * MI_SIZE >> subY;
 	int w = Min(MI_SIZE >> subX, av1Ctx->currentFrame->lrCtx->PlaneEndX - x + 1);
 	int h = Min(MI_SIZE >> subY, av1Ctx->currentFrame->lrCtx->PlaneEndY - y + 1);
-
+	//printf("pendx %d pendy %d x %d y %d w %d h %d\n",av1Ctx->currentFrame->lrCtx->PlaneEndX,
+	//av1Ctx->currentFrame->lrCtx->PlaneEndY,x,y,w,h);
+	
 	int rType = av1Ctx->currentFrame->lrCtx->LrType[plane][unitRow][unitCol];
 
 	// 根据rType选择滤波器
@@ -5674,6 +5676,7 @@ void decode::selfGuidedFilter(int plane,int unitRow,int unitCol, int x,int y,int
 	int r1 = Sgr_Params[set][2];
 
 	// 应用恢复过程
+	//printf("selfGuidedFilter\n");
 	for (int i = 0; i < h; i++) {
 		for (int j = 0; j < w; j++) {
 			int u = av1Ctx->currentFrame->UpscaledCdefFrame[plane][y + i][x + j] << SGRPROJ_RST_BITS;
@@ -5692,15 +5695,17 @@ void decode::selfGuidedFilter(int plane,int unitRow,int unitCol, int x,int y,int
 			}
 			
 			int s = Round2(v, SGRPROJ_RST_BITS + SGRPROJ_PRJ_BITS);
+			//printf("%d ",s);
 			av1Ctx->currentFrame->lrCtx->LrFrame[plane][y + i][x + j] = Clip1(s,seqHdr->color_config.BitDepth);
 		}
+		//printf("\n");
 	}
 	for(int i = 0 ; i < h ; i ++){
 		delete [] flt0[i];
 		delete [] flt1[i];
 	}
-	delete flt0;
-	delete flt1;
+	delete[] flt0;
+	delete[] flt1;
 }
 //7.17.3
 void decode::boxFilter(int plane,int x,int y,int w,int h,int set ,int pass,int **F,
@@ -5802,7 +5807,7 @@ void decode::wienerFilter(int plane ,int unitRow,int unitCol,int x,int y,int w,i
 			intermediate[r][c] = Clip3(-offset, limit - offset, v);
 		}
 	}
-
+	//printf("wienerFilter\n");
 	for (int r = 0; r < h; r++) {
 		for (int c = 0; c < w; c++) {
 			int s = 0;
@@ -5810,12 +5815,14 @@ void decode::wienerFilter(int plane ,int unitRow,int unitCol,int x,int y,int w,i
 				s += vfilter[t] * intermediate[r + t][c];
 			}
 			int v = Round2(s, av1Ctx->InterRound1);
+			//printf("%d ",v);
 			av1Ctx->currentFrame->lrCtx->LrFrame[plane][y + r][x + c] = Clip1(v,seqHdr->color_config.BitDepth);
 		}
+		//printf("\n");
 	}
 }
 //7.17.5
-void decode::wienerCoefficient(uint16_t coeff[3],int filter[7]){
+void decode::wienerCoefficient(int16_t coeff[3],int filter[7]){
 	filter[ 3 ] = 128;
 	for (int i = 0; i < 3; i++ ) {
 		int c = coeff[ i ];

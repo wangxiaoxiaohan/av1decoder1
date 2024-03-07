@@ -1500,36 +1500,36 @@ void frame::allocFrameContext(frameHeader *frameHdr ,int WBuffMiSize,int HBuffMi
 	}
 
 	for(int i = 0 ; i < 3 ; i ++){
-		fc->lrCtx->LrWiener[i]  = new uint16_t ***[HBuffMiSize];
+		fc->lrCtx->LrWiener[i]  = new int16_t ***[HBuffMiSize];
 		for(int j = 0 ; j < HBuffMiSize; j++){
-			fc->lrCtx->LrWiener[i][j] = new uint16_t **[WBuffMiSize];
+			fc->lrCtx->LrWiener[i][j] = new int16_t **[WBuffMiSize];
 			for(int k = 0 ; k < WBuffMiSize ; k++){
-				fc->lrCtx->LrWiener[i][j][k] = new uint16_t *[2];
+				fc->lrCtx->LrWiener[i][j][k] = new int16_t *[2];
 				for(int m = 0 ; m < 2 ; m++){
-					fc->lrCtx->LrWiener[i][j][k][m] = new uint16_t[3];
+					fc->lrCtx->LrWiener[i][j][k][m] = new int16_t[3];
 				}
 			}
 		}
 	}
 
 	for(int i = 0 ; i < 3 ; i ++){
-		fc->lrCtx->LrType[i]  = new uint16_t *[HBuffMiSize];
+		fc->lrCtx->LrType[i]  = new int16_t *[HBuffMiSize];
 		for(int j = 0 ; j < HBuffMiSize; j++){
-			fc->lrCtx->LrType[i][j] = new uint16_t[WBuffMiSize];
+			fc->lrCtx->LrType[i][j] = new int16_t[WBuffMiSize];
 		}
 	}
 	for(int i = 0 ; i < 3 ; i ++){
-		fc->lrCtx->LrSgrSet[i]  = new uint16_t *[HBuffMiSize];
+		fc->lrCtx->LrSgrSet[i]  = new int16_t *[HBuffMiSize];
 		for(int j = 0 ; j < HBuffMiSize; j++){
-			fc->lrCtx->LrSgrSet[i][j] = new uint16_t[WBuffMiSize];
+			fc->lrCtx->LrSgrSet[i][j] = new int16_t[WBuffMiSize];
 		}
 	}
 	for(int i = 0 ; i < 3 ; i ++){
-		fc->lrCtx->LrSgrXqd[i]  = new uint16_t **[HBuffMiSize];
+		fc->lrCtx->LrSgrXqd[i]  = new int16_t **[HBuffMiSize];
 		for(int j = 0 ; j < HBuffMiSize; j++){
-			fc->lrCtx->LrSgrXqd[i][j] = new uint16_t*[WBuffMiSize];
+			fc->lrCtx->LrSgrXqd[i][j] = new int16_t*[WBuffMiSize];
 			for(int k = 0 ; k < WBuffMiSize; k++){
-				fc->lrCtx->LrSgrXqd[i][j][k] = new uint16_t[2];
+				fc->lrCtx->LrSgrXqd[i][j][k] = new int16_t[2];
 			}
 		}
 	}

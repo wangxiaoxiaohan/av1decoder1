@@ -186,7 +186,7 @@ public:
 	void loopRestoreBlock(int plane,int row ,int col,AV1DecodeContext *av1Ctx);
 	void wienerFilter(int plane ,int unitRow,int unitCol,int x,int y,int w,int h,
 								 AV1DecodeContext *av1Ctx);
-	void wienerCoefficient(uint16_t coeff[3],int filter[7]);
+	void wienerCoefficient(int16_t coeff[3],int filter[7]);
 	int getSourceSample(int plane ,int x,int y, AV1DecodeContext *av1Ctx);
 	void selfGuidedFilter(int plane,int unitRow,int unitCol, int x,int y,int w,int h,
 								AV1DecodeContext *av1Ctx);
