@@ -433,7 +433,9 @@ typedef struct FrameContext{
 	//sizeInfo si;
 	frameHeader frameHdr;
 	CDFArrays cdfCtx;
-	//CDFArrays *tileCdfs;
+	CDFArrays tileSavedCdf;
+	CDFArrays currentTileCdf;
+	//int currentTileNum;
 	uint16_t **CurrFrame[3];//经过预测重建 之后的像素数据(指解码完成之后，解码完成之前可能是无效数据)
 	uint16_t **CdefFrame[3];//cdef 之后的数据
 	uint16_t **UpscaledCdefFrame[3];
@@ -456,7 +458,7 @@ typedef struct AV1DecodeContext{
 	int decAlloced;
 
     //CDFArrays cdfCtxs[NUM_REF_FRAMES];
-	CDFArrays tileSavedCdf;
+	//CDFArrays tileSavedCdf;
 
 	uint8_t	RefValid[NUM_REF_FRAMES];
 	uint8_t RefFrameId[NUM_REF_FRAMES];

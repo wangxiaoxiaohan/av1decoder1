@@ -2,20 +2,6 @@
 #include "header_common.h"
 #include "bitstream.h"
 #include <string.h>
-
-void Symbol::initSymbol(SymbolContext *sbCtx,bitSt *bs,int sz){
-
-    sbCtx->numBits = Min( sz * 8, 15);
-    sbCtx->buf = readBits(bs,sbCtx->numBits); //????
-    
-    //printf("sbCtx->buf %d\n",sbCtx->buf);
-    sbCtx->paddedBuf  = ( sbCtx->buf << (15 - sbCtx->numBits) );
-    //printf("sbCtx->paddedBuf %d\n",sbCtx->paddedBuf);
-    sbCtx->SymbolValue =   ((1 << 15) - 1) ^ sbCtx->paddedBuf;
-    //printf("sbCtx->SymbolValue %d\n",sbCtx->SymbolValue);
-    sbCtx->SymbolRange = 1 << 15;
-    sbCtx->SymbolMaxBits = 8 * sz - 15;
-}
 /*
 void Symbol::exit_symbol(SymbolContext *sbCtx,bitSt *bs,int TileNum,AV1DecodeContext *av1Ctx){
     if(sbCtx->SymbolMaxBits < -14 )

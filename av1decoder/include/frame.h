@@ -16,6 +16,7 @@ public:
 
 	void releaseDecodeContext(AV1DecodeContext *av1Ctx);
 	void releaseFrameContext(frameHeader *frameHdr,int WBuffMiSize,int HBuffMiSize,FrameContext *fCtx);
+	void init_symbol(SymbolContext *sbCtx,bitSt *bs,int sz,AV1DecodeContext *av1Ctx);
 	void exit_symbol(SymbolContext *sbCtx,bitSt *bs,int TileNum,AV1DecodeContext *av1Ctx);
     void frame_end_update_cdf(AV1DecodeContext *av1Ctx);
 

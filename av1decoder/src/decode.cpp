@@ -2070,7 +2070,7 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 	int dcCategory = 0;
 
 	int ctx = cacluteAllZeroCtx( plane, txSz,  x4, y4, w4, h4, b_data,av1Ctx);
-	int all_zero = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Txb_Skip[ txSzCtx ][ ctx ],3); // S()
+	int all_zero = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->currentTileCdf.Txb_Skip[ txSzCtx ][ ctx ],3); // S()
 	printf("decodeSymbol all_zero %d\n",all_zero);
 	if (all_zero)
 	{
@@ -2103,45 +2103,45 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 		//printf("ctx %d\n",ctx);
 		if (eobMultisize == 0)
 		{
-			int eob_pt_16 = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Eob_Pt_16[ ptype ][ ctx ],6); // S()
+			int eob_pt_16 = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->currentTileCdf.Eob_Pt_16[ ptype ][ ctx ],6); // S()
 			//printf("decodeSymbol eob_pt_16 %d \n",eob_pt_16);
 			eobPt = eob_pt_16 + 1;
 		}
 		else if (eobMultisize == 1)
 		{
-			int eob_pt_32  = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Eob_Pt_32[ ptype ][ ctx ],7); // S()
+			int eob_pt_32  = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->currentTileCdf.Eob_Pt_32[ ptype ][ ctx ],7); // S()
 			//printf("decodeSymbol eob_pt_32 %d \n",eob_pt_32);
 			eobPt = eob_pt_32 + 1;
 		}
 		else if (eobMultisize == 2)
 		{
-			int eob_pt_64  = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Eob_Pt_64[ ptype ][ ctx ],8); // S()
+			int eob_pt_64  = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->currentTileCdf.Eob_Pt_64[ ptype ][ ctx ],8); // S()
 			//printf("decodeSymbol eob_pt_64 %d \n",eob_pt_64);
 			eobPt = eob_pt_64 + 1;
 		}
 		else if (eobMultisize == 3)
 		{
-			int eob_pt_128 = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Eob_Pt_128[ ptype ][ ctx ],9); // S()
+			int eob_pt_128 = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->currentTileCdf.Eob_Pt_128[ ptype ][ ctx ],9); // S()
 			//printf("decodeSymbol eob_pt_128 %d \n",eob_pt_128);
 			eobPt = eob_pt_128 + 1;
 		}
 		else if (eobMultisize == 4)
 		{
-			int eob_pt_256 = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Eob_Pt_256[ ptype ][ ctx ],10); // S()
+			int eob_pt_256 = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->currentTileCdf.Eob_Pt_256[ ptype ][ ctx ],10); // S()
 			//printf("decodeSymbol eob_pt_256 %d \n",eob_pt_256);
 			eobPt = eob_pt_256 + 1;
 		}
 		else if (eobMultisize == 5)
 		{
 			
-			int eob_pt_512 = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Eob_Pt_512[ ptype ],11); // S()
+			int eob_pt_512 = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->currentTileCdf.Eob_Pt_512[ ptype ],11); // S()
 			//printf("decodeSymbol eob_pt_512 %d \n",eob_pt_512);
 			eobPt = eob_pt_512 + 1;
 		}
 		else
 		{
 			
-			int eob_pt_1024 = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Eob_Pt_1024[ ptype ],12); // S()
+			int eob_pt_1024 = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->currentTileCdf.Eob_Pt_1024[ ptype ],12); // S()
 			//printf("decodeSymbol eob_pt_1024 %d\n",eob_pt_1024);
 			eobPt = eob_pt_1024 + 1;
 		}
@@ -2149,7 +2149,7 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 		int eobShift = Max(-1, eobPt - 3);
 		if (eobShift >= 0)
 		{
-			int eob_extra = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Eob_Extra[ txSzCtx ][ ptype ][ eobPt - 3 ],3); // S()
+			int eob_extra = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->currentTileCdf.Eob_Extra[ txSzCtx ][ ptype ][ eobPt - 3 ],3); // S()
 			//printf("decodeSymbol eob_extra %d eobPt - 3: %d\n",eob_extra,eobPt - 3);
 			if (eob_extra)
 			{
@@ -2180,7 +2180,7 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 			{
 				ctx =  get_coeff_base_ctx(txSz, plane, x4, y4, scan[c], c, 1,b_data,av1Ctx) - SIG_COEF_CONTEXTS + SIG_COEF_CONTEXTS_EOB;
 				
-				int coeff_base_eob = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Coeff_Base_Eob[ txSzCtx ][ ptype ][ ctx ],4);// S()
+				int coeff_base_eob = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->currentTileCdf.Coeff_Base_Eob[ txSzCtx ][ ptype ][ ctx ],4);// S()
 				//printf("decodeSymbol coeff_base_eob %d ctx %d\n",coeff_base_eob,ctx);
 				level = coeff_base_eob + 1;
 			}
@@ -2189,7 +2189,7 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 			{
 				ctx = get_coeff_base_ctx(txSz, plane, x4, y4, scan[c], c, 0,b_data,av1Ctx);
 				
-				int coeff_base =  sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->cdfCtx.Coeff_Base[ txSzCtx ][ ptype ][ ctx ],5); // S()
+				int coeff_base =  sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->currentTileCdf.Coeff_Base[ txSzCtx ][ ptype ][ ctx ],5); // S()
 				//printf("decodeSymbol coeff_base %d  txSzCtx %d ptype %d ,ctx %d\n",coeff_base,txSzCtx,ptype,ctx);
 				level = coeff_base;
 			}
@@ -2202,7 +2202,7 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 				//------
 				for (int idx = 0; idx < COEFF_BASE_RANGE / (BR_CDF_SIZE - 1); idx++)
 				{
-					int coeff_br = sb->decodeSymbol(sbCtx, bs, av1Ctx->currentFrame->cdfCtx.Coeff_Br[Min(txSzCtx, TX_32X32)][ptype][ctx], BR_CDF_SIZE + 1); // S()
+					int coeff_br = sb->decodeSymbol(sbCtx, bs, av1Ctx->currentFrame->currentTileCdf.Coeff_Br[Min(txSzCtx, TX_32X32)][ptype][ctx], BR_CDF_SIZE + 1); // S()
 					//printf("decodeSymbol coeff_br %d  Min(txSzCtx, TX_32X32) %d ptype %d  c %d pos %d idx %d\n",coeff_br,Min(txSzCtx, TX_32X32),ptype,c,pos,idx);
 					level += coeff_br;
 					if (coeff_br < (BR_CDF_SIZE - 1))
@@ -2226,7 +2226,7 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 				int dcSignCtx = calculateDcSignCtx( plane,  x4, y4, w4, h4, av1Ctx);
 				//---------
 				//printf("decodeSymbol dc_sign\n");
-					sign = sb->decodeSymbol(sbCtx, bs, av1Ctx->currentFrame->cdfCtx.Dc_Sign[ptype][dcSignCtx], 3); // S()
+					sign = sb->decodeSymbol(sbCtx, bs, av1Ctx->currentFrame->currentTileCdf.Dc_Sign[ptype][dcSignCtx], 3); // S()
 					//sign = dc_sign;
 				}
 				else
@@ -2387,13 +2387,13 @@ int decode::transform_type(int x4,int  y4,int txSz,SymbolContext *sbCtx,bitSt *b
 		if (b_data->is_inter)
 		{
 			if(set == TX_SET_INTER_1){
-				cdf = av1Ctx->currentFrame->cdfCtx.Inter_Tx_Type_Set1[ Tx_Size_Sqr[ txSz ] ];
+				cdf = av1Ctx->currentFrame->currentTileCdf.Inter_Tx_Type_Set1[ Tx_Size_Sqr[ txSz ] ];
 				size = 17;
 			}else if(set == TX_SET_INTER_2){
-				cdf = av1Ctx->currentFrame->cdfCtx.Inter_Tx_Type_Set2;
+				cdf = av1Ctx->currentFrame->currentTileCdf.Inter_Tx_Type_Set2;
 				size = 13;
 			}else if(set == TX_SET_INTER_3){
-				cdf = av1Ctx->currentFrame->cdfCtx.Inter_Tx_Type_Set3[ Tx_Size_Sqr[ txSz ] ];
+				cdf = av1Ctx->currentFrame->currentTileCdf.Inter_Tx_Type_Set3[ Tx_Size_Sqr[ txSz ] ];
 				size = 3;
 			}
 			//printf("decodeSymbol inter_tx_type\n");
@@ -2414,10 +2414,10 @@ int decode::transform_type(int x4,int  y4,int txSz,SymbolContext *sbCtx,bitSt *b
 				intraDir = b_data->YMode;
 			}
 			if(set == TX_SET_INTRA_1){
-				cdf = av1Ctx->currentFrame->cdfCtx.Intra_Tx_Type_Set1[ Tx_Size_Sqr[ txSz ] ][ intraDir ];
+				cdf = av1Ctx->currentFrame->currentTileCdf.Intra_Tx_Type_Set1[ Tx_Size_Sqr[ txSz ] ][ intraDir ];
 				size = 8;
 			}else if(set == TX_SET_INTRA_2){
-				cdf = av1Ctx->currentFrame->cdfCtx.Intra_Tx_Type_Set2[ Tx_Size_Sqr[ txSz ] ][ intraDir ];
+				cdf = av1Ctx->currentFrame->currentTileCdf.Intra_Tx_Type_Set2[ Tx_Size_Sqr[ txSz ] ][ intraDir ];
 				size = 6;
 			}
 			//printf("decodeSymbol intra_tx_type\n");

@@ -2297,7 +2297,6 @@ class Symbol{
 public:
   Symbol(){}
 	~Symbol(){}
-  void initSymbol(SymbolContext *sbCtx,bitSt *bs,int sz);
   //void exit_symbol(SymbolContext *sbCtx,bitSt *bs,int TileNum,AV1DecodeContext *av1Ctx);
   //void frame_end_update_cdf(AV1DecodeContext *av1Ctx);
   int read_literal(SymbolContext *sbCtx,bitSt *bs,int n);
