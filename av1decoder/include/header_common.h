@@ -433,6 +433,7 @@ typedef struct FrameContext{
 	//sizeInfo si;
 	frameHeader frameHdr;
 	CDFArrays cdfCtx;
+	//CDFArrays *tileCdfs;
 	uint16_t **CurrFrame[3];//经过预测重建 之后的像素数据(指解码完成之后，解码完成之前可能是无效数据)
 	uint16_t **CdefFrame[3];//cdef 之后的数据
 	uint16_t **UpscaledCdefFrame[3];
@@ -500,7 +501,7 @@ typedef struct AV1DecodeContext{
 	int *LeftDcContext[3];
 	int *AboveSegPredContext;
 	int *LeftSegPredContext;
-	uint8_t DeltaLF[4];	
+	int8_t DeltaLF[4];	
 
  // partition	 可以理解为 H264 中的 宏块，为固定大小（超级块的情况下为 128 * 128）?
  //否则 为 64 * 64 ,在这个区域内 再划分 block，block的大小则有很多种情况，与 hevc的ctu - cu关系类似了
@@ -520,7 +521,7 @@ typedef struct AV1DecodeContext{
 	uint8_t **TxSizes;
 	uint8_t **PaletteSizes[2];
 	uint8_t ***PaletteColors[2];
-	uint8_t ***DeltaLFs;
+	int8_t ***DeltaLFs;
 	uint8_t **InterTxSizes;
 
 

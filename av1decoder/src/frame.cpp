@@ -125,7 +125,7 @@ int frame::parseUncompressedHeader(int sz, bitSt *bs, AV1DecodeContext *av1Ctx, 
 
 	out->OrderHint = readBits(bs, seqHdr->OrderHintBits);
 
-	if (out->FrameIsIntra)
+	if (out->FrameIsIntra || out->error_resilient_mode)
 	{
 		out->primary_ref_frame = PRIMARY_REF_NONE;
 	}
@@ -154,16 +154,17 @@ int frame::parseUncompressedHeader(int sz, bitSt *bs, AV1DecodeContext *av1Ctx, 
 			}
 		}
 	}
+	int allframes = (1 << NUM_REF_FRAMES) - 1;
 	if (out->frame_type == SWITCH_FRAME ||
 		(out->frame_type == KEY_FRAME && out->show_frame))
 	{
-		out->refresh_frame_flags = (1 << NUM_REF_FRAMES) - 1;
+		out->refresh_frame_flags = allframes;
 	}
 	else
 	{
 		out->refresh_frame_flags = readBits(bs, 8);
 	}
-	if (!out->FrameIsIntra || out->refresh_frame_flags != (1 << NUM_REF_FRAMES) - 1)
+	if (!out->FrameIsIntra || out->refresh_frame_flags != allframes)
 	{
 		if (out->error_resilient_mode && seqHdr->enable_order_hint)
 		{
@@ -313,7 +314,7 @@ int frame::parseUncompressedHeader(int sz, bitSt *bs, AV1DecodeContext *av1Ctx, 
 	if (out->primary_ref_frame == PRIMARY_REF_NONE)
 	{
 		printf("init_non_coeff_cdfs\n");
-		//decode_instance->init_non_coeff_cdfs( &av1Ctx->currentFrame->cdfCtx);
+		decode_instance->init_non_coeff_cdfs( &av1Ctx->currentFrame->cdfCtx);
 		if(! av1Ctx->PrevSegmentIds){
 			av1Ctx->PrevSegmentIds = new uint8_t*[out->MiRows];
 			for(int i  = 0 ; i < out->MiRows ; i++){
@@ -326,10 +327,10 @@ int frame::parseUncompressedHeader(int sz, bitSt *bs, AV1DecodeContext *av1Ctx, 
 	else
 	{
 		//从主参考帧里面拷贝cdf
-		// decode_instance->load_cdfs( av1Ctx,out->ref_frame_idx[ out->primary_ref_frame ] );
+		 decode_instance->load_cdfs( av1Ctx,out->ref_frame_idx[ out->primary_ref_frame ] );
 		 decode_instance->load_previous(av1Ctx);
 	}
-	decode_instance->init_non_coeff_cdfs( &av1Ctx->currentFrame->cdfCtx);
+	//decode_instance->init_non_coeff_cdfs( &av1Ctx->currentFrame->cdfCtx);
 	if (out->use_ref_frame_mvs == 1)
 	{
 		 decode_instance->motion_field_estimation(av1Ctx);
@@ -352,13 +353,13 @@ int frame::parseUncompressedHeader(int sz, bitSt *bs, AV1DecodeContext *av1Ctx, 
 	if (out->primary_ref_frame == PRIMARY_REF_NONE)
 	{
 		printf("init_coeff_cdfs\n");
-		//decode_instance->init_coeff_cdfs(av1Ctx,&av1Ctx->currentFrame->cdfCtx);
+		decode_instance->init_coeff_cdfs(av1Ctx,&av1Ctx->currentFrame->cdfCtx);
 	}
 	else
 	{
 		 decode_instance->load_previous_segment_ids(av1Ctx);
 	}
-	decode_instance->init_coeff_cdfs(av1Ctx,&av1Ctx->currentFrame->cdfCtx);
+	//decode_instance->init_coeff_cdfs(av1Ctx,&av1Ctx->currentFrame->cdfCtx);
 	out->CodedLossless = 1;
 	int segmentId;
 	for (segmentId = 0; segmentId < MAX_SEGMENTS; segmentId++)
@@ -1260,11 +1261,11 @@ void frame::allocDecodeContext(AV1DecodeContext *av1Ctx){
 	}
 
 
-	av1Ctx->DeltaLFs = new uint8_t**[HBuffMiSize];
+	av1Ctx->DeltaLFs = new int8_t**[HBuffMiSize];
 	for(int i = 0 ; i < HBuffMiSize ; i++){
-		av1Ctx->DeltaLFs[i] = new uint8_t*[WBuffMiSize];
+		av1Ctx->DeltaLFs[i] = new int8_t*[WBuffMiSize];
 		for(int j = 0 ; j < WBuffMiSize ; j++){
-			av1Ctx->DeltaLFs[i][j] = new uint8_t[FRAME_LF_COUNT];
+			av1Ctx->DeltaLFs[i][j] = new int8_t[FRAME_LF_COUNT];
 		}
 	}
 	
@@ -1838,10 +1839,11 @@ void frame::exit_symbol(SymbolContext *sbCtx,bitSt *bs,int TileNum,AV1DecodeCont
     }
 
 }
+//帧末保存 cdf 一帧的最后一个 tile 解码完之后调用
 void frame::frame_end_update_cdf(AV1DecodeContext *av1Ctx){
 	printf("copyCdf currentFrame->cdfCtx tileSavedCdf\n");
     copyCdf(&av1Ctx->currentFrame->cdfCtx,&av1Ctx->tileSavedCdf,av1Ctx);
-}
+}                                                                         
 int frame::decodeFrame(int sz, bitSt *bs, AV1DecodeContext *av1Ctx){
 
 	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
@@ -1895,8 +1897,8 @@ int frame::decodeFrame(int sz, bitSt *bs, AV1DecodeContext *av1Ctx){
 		printf("Wedge_Index cdf\n");
 		for(int i = 0 ; i < PLANE_TYPES; i ++){
 			for(int j = 0 ; j < 2 ; j++){
-				for(int k = 0 ; k < 7 ; k++){
-					printf("%d ",32768 - av1Ctx->currentFrame->cdfCtx.Eob_Pt_32[i][j][k]);
+				for(int k = 0 ; k < 8 ; k++){
+					printf("%d ",32768 - av1Ctx->currentFrame->cdfCtx.Eob_Pt_64[i][j][k]);
 				}
 				printf("\n");
 			}

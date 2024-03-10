@@ -349,10 +349,12 @@ int decode::init_coeff_cdfs(AV1DecodeContext *av1Ctx,CDFArrays *cdf){
 }
 //从参考帧上下文拷贝cdf到当前framecontext
 int decode::load_cdfs(AV1DecodeContext *av1Ctx,int ctx){
+	printf("load_cdfs ctx %d\n",ctx);
 	memcpy(&av1Ctx->currentFrame->cdfCtx,&av1Ctx->ref_frames[ctx]->cdfCtx,sizeof(CDFArrays));
 }
 //保存cdf到参考帧上下文
 int decode::save_cdfs(AV1DecodeContext *av1Ctx,int ctx){
+	printf("save_cdfs ctx %d\n",ctx);
 	memcpy(&av1Ctx->ref_frames[ctx]->cdfCtx,&av1Ctx->currentFrame->cdfCtx,sizeof(CDFArrays));
 }
 
@@ -371,9 +373,10 @@ int decode::load_grain_params(AV1DecodeContext *av1Ctx,int i){
 int decode::load_previous(AV1DecodeContext *av1Ctx){
 	frameHeader *frameHdr = &av1Ctx->frameHdr;
 	int prevFrame = frameHdr->ref_frame_idx[ frameHdr->primary_ref_frame ];
+	memcpy(frameHdr->global_motion_params.PrevGmParams,av1Ctx->SavedGmParams[ prevFrame ],sizeof(frameHdr->global_motion_params.PrevGmParams));
 	load_loop_filter_params(av1Ctx,prevFrame);
 	//frameHdr->global_motion_params.PrevGmParams = av1Ctx->SavedGmParams[ prevFrame ];
-	memcpy(frameHdr->global_motion_params.PrevGmParams,av1Ctx->SavedGmParams[ prevFrame ],sizeof(frameHdr->global_motion_params.PrevGmParams));
+	
 	load_segmentation_params(av1Ctx,prevFrame);
 
 }
