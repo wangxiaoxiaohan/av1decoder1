@@ -12,6 +12,7 @@ frame::~frame(){
 int frame::parseUncompressedHeader(int sz, bitSt *bs, AV1DecodeContext *av1Ctx, sequenceHeader *seqHdr, obuHeader *obuheader, frameHeader *out)
 {
 	int idLen = seqHdr->additional_frame_id_length + seqHdr->delta_frame_id_length;
+	int allframes = (1 << NUM_REF_FRAMES) - 1;
 	if (seqHdr->reduced_still_picture_header)
 	{
 		out->show_existing_frame = 0;
@@ -26,13 +27,21 @@ int frame::parseUncompressedHeader(int sz, bitSt *bs, AV1DecodeContext *av1Ctx, 
 		if (out->show_existing_frame == 1)
 		{
 			out->frame_to_show_map_idx = readBits(bs, 3);
-			if (seqHdr->decoder_model_info_present_flag && !seqHdr->timing_info.equal_picture_interval)
-			{
-				out->frame_presentation_time = readBits(bs, seqHdr->decoder_model_info.frame_presentation_time_length);
+			if ( seqHdr->decoder_model_info_present_flag && !seqHdr->timing_info.equal_picture_interval ) {
+			 out->frame_presentation_time = readBits(bs, seqHdr->decoder_model_info.frame_presentation_time_length);
 			}
+
+
 			if (seqHdr->frame_id_numbers_present_flag)
 			{
 				out->display_frame_id = readBits(bs, idLen);
+			}
+			out->frame_type = av1Ctx->RefFrameType[ out->frame_to_show_map_idx ];
+			if ( out->frame_type == KEY_FRAME ) {
+				out->refresh_frame_flags = allframes;
+			}
+			if ( seqHdr->film_grain_params_present ) {
+				decode_instance->load_grain_params(av1Ctx, out->frame_to_show_map_idx );
 			}
 			return 0;
 		}
@@ -125,6 +134,7 @@ int frame::parseUncompressedHeader(int sz, bitSt *bs, AV1DecodeContext *av1Ctx, 
 
 	out->OrderHint = readBits(bs, seqHdr->OrderHintBits);
 
+	printf("error_resilient_mode %d\n", out->error_resilient_mode);
 	if (out->FrameIsIntra || out->error_resilient_mode)
 	{
 		out->primary_ref_frame = PRIMARY_REF_NONE;
@@ -154,7 +164,7 @@ int frame::parseUncompressedHeader(int sz, bitSt *bs, AV1DecodeContext *av1Ctx, 
 			}
 		}
 	}
-	int allframes = (1 << NUM_REF_FRAMES) - 1;
+
 	if (out->frame_type == SWITCH_FRAME ||
 		(out->frame_type == KEY_FRAME && out->show_frame))
 	{
@@ -164,6 +174,7 @@ int frame::parseUncompressedHeader(int sz, bitSt *bs, AV1DecodeContext *av1Ctx, 
 	{
 		out->refresh_frame_flags = readBits(bs, 8);
 	}
+	printf("refresh_frame_flags %d\n",out->refresh_frame_flags);
 	if (!out->FrameIsIntra || out->refresh_frame_flags != allframes)
 	{
 		if (out->error_resilient_mode && seqHdr->enable_order_hint)
@@ -1711,7 +1722,7 @@ void frame::exit_symbol(SymbolContext *sbCtx,bitSt *bs,int TileNum,AV1DecodeCont
     if(frameHdr->disable_frame_end_update_cdf == 0 &&
         TileNum == frameHdr->tile_info.context_update_tile_id)
 	{
-		printf("copyCdf tileSavedCdf currentFrame->cdfCtx\n");
+		printf("copyCdf tileSavedCdf currentTileCdf\n");
         //copyCdf(&av1Ctx->tileSavedCdf,&av1Ctx->currentFrame->cdfCtx,av1Ctx); //?
 		memcpy(&av1Ctx->currentFrame->tileSavedCdf,&av1Ctx->currentFrame->currentTileCdf,sizeof(CDFArrays));
     }
@@ -1776,7 +1787,7 @@ int frame::decodeFrame(int sz, bitSt *bs, AV1DecodeContext *av1Ctx){
 		printf("Wedge_Index cdf\n");
 		for(int i = 0 ; i < PLANE_TYPES; i ++){
 			for(int j = 0 ; j < 2 ; j++){
-				for(int k = 0 ; k < 8 ; k++){
+				for(int k = 0 ; k < 10 ; k++){
 					printf("%d ",32768 - av1Ctx->currentFrame->cdfCtx.Eob_Pt_64[i][j][k]);
 				}
 				printf("\n");
@@ -1795,31 +1806,6 @@ int frame::decodeFrame(int sz, bitSt *bs, AV1DecodeContext *av1Ctx){
 			frame_end_update_cdf(av1Ctx);
 		}
 
-		// int subX = av1Ctx->seqHdr.color_config.subsampling_x;
-		// int subY = av1Ctx->seqHdr.color_config.subsampling_y;
-		//char namebuf[16];
-		// sprintf(namebuf,"test%d.yuv",scount);
-		// scount ++;
-		// FILE *fp = fopen(namebuf, "wb");
-		// int h = av1Ctx->currentFrame->frameHdr.si.FrameHeight;
-		// int w = av1Ctx->currentFrame->frameHdr.si.FrameWidth;
-		// uint8_t buf[w];
-		// for (int i = 0; i < h; i++) {
-		// 	for (int j = 0; j < w; j++) {
-		// 		buf[j] = av1Ctx->currentFrame->CurrFrame[0][ i][ j];
-		// 	}
-		// 	fwrite(buf, sizeof(uint8_t),w, fp);
-		// 	}
-		// 	uint8_t buf1[((w + subX) >> subX ) * 2];
-		// 	for (int i = 0; i < (h + subY) >> subY ; i++) {
-		// 	for (int j = 0; j < (w + subX) >> subX; j++) {
-		// 		buf1[j * 2] = av1Ctx->currentFrame->CurrFrame[1][ i][ j];
-		// 		buf1[j * 2 + 1] = av1Ctx->currentFrame->CurrFrame[2][ i][ j];
-		// 	}
-		// 	fwrite(buf1, sizeof(uint8_t),((w + subX) >> subX ) * 2, fp);
-		// }
-		// fclose(fp);
-		// printf("\n");
 		av1Ctx->SeenFrameHeader = 0;
 		decode_instance->decode_frame_wrapup(av1Ctx);
 	}

@@ -472,17 +472,19 @@ int decode::set_frame_refs(AV1DecodeContext *av1Ctx){
 	if(!(lastOrderHint < curFrameHint)){
 		//如果不满足，该做什么？？ spec只是说需要确认。。。
 		//直接退出当前流程？？
+		return 0;
 	}
 
 	int goldOrderHint = shiftedOrderHints[ frameHdr->gold_frame_idx ];
 	if(!(goldOrderHint < curFrameHint) ){
 		//如果不满足，该做什么？？
+		return 0;
 	}
 // ALTREF_FRAME reference is set to be a backward reference to the frame with highest output order 
 //ALTREF_FRAME参考帧被设置为输出顺序最高的帧的后向参考帧
 	//find_latest_backward()
 	int ref = -1;
-	int latestOrderHint = INT_MIN;
+	int latestOrderHint = 0;
 	for (int  i = 0; i < NUM_REF_FRAMES; i++ ) {
 		int hint = shiftedOrderHints[ i ];
 		if ( !usedFrame[ i ] &&
@@ -500,7 +502,7 @@ int decode::set_frame_refs(AV1DecodeContext *av1Ctx){
 //BWDREF_FRAME reference is set to be a backward reference to the closest frame
 //BWDREF_FRAME参考帧被设置为最近帧的后向参考帧
 	ref = -1;
-	int earliestOrderHint = INT_MIN;
+	int earliestOrderHint = 0;
 	for (int i = 0; i < NUM_REF_FRAMES; i++ ) {
 		int hint = shiftedOrderHints[ i ];
 		if ( !usedFrame[ i ] &&
@@ -517,7 +519,7 @@ int decode::set_frame_refs(AV1DecodeContext *av1Ctx){
 //ALTREF2_FRAME reference is set to the next closest backward reference
 //ALTREF2_FRAME参考帧被设置为次近的后向参考帧。
 	ref = -1;
-	earliestOrderHint = INT_MIN;
+	earliestOrderHint = 0;
 	for (int i = 0; i < NUM_REF_FRAMES; i++ ) {
 		int hint = shiftedOrderHints[ i ];
 		if ( !usedFrame[ i ] &&
@@ -538,7 +540,7 @@ int decode::set_frame_refs(AV1DecodeContext *av1Ctx){
 		int refFrame = Ref_Frame_List[ i ];
 		if ( frameHdr->ref_frame_idx[ refFrame - LAST_FRAME ] < 0 ) {
 			ref = -1;
-			latestOrderHint = INT_MIN;
+			latestOrderHint = 0;
 			for (int  i = 0; i < NUM_REF_FRAMES; i++ ) {
 				int hint = shiftedOrderHints[ i ];
 				if ( !usedFrame[ i ] &&
@@ -559,7 +561,7 @@ int decode::set_frame_refs(AV1DecodeContext *av1Ctx){
 //Finally, any remaining references are set to the reference frame with smallest output order
 //最后，剩余的参考帧被设置为输出顺序最小的参考帧
 	ref = -1;
-	earliestOrderHint = INT_MIN;
+	earliestOrderHint = 0;
 	for (int i = 0; i < NUM_REF_FRAMES; i++ ) {
 		int hint = shiftedOrderHints[ i ];
 		if ( ref < 0 || hint < earliestOrderHint ) {
@@ -2171,6 +2173,7 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 		printf("eob %d\n",eob);
 		//eob + ac + dc， 最后一个下标0是 dc
 		printf("coeffs\n");
+		//系数幅值
 		for (int c = eob - 1; c >= 0; c--)
 		{
 			int pos = scan[c];
@@ -2213,6 +2216,7 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 			//printf(" qu1 %d |",b_data->Quant[pos]);
 		}
 		printf("coeffs 2\n");
+		//系数符号
 		for (int c = 0; c < eob; c++)
 		{
 			int pos = scan[c];
@@ -2241,6 +2245,7 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 			{
 				sign = 0;
 			}
+			//这一坨是为什么？
 			if (b_data->Quant[pos] > (NUM_BASE_LEVELS + COEFF_BASE_RANGE))
 			{
 				int length = 0;
