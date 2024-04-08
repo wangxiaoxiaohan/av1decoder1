@@ -101,7 +101,7 @@ int Symbol::decodeSymbol(SymbolContext *sbCtx,bitSt *bs,uint16_t *cdfArray,int N
     sbCtx->SymbolValue = paddedData ^ ( ( ( sbCtx->SymbolValue + 1 ) << bits ) - 1 );
 
     sbCtx->SymbolMaxBits -= bits;
-    //printf("SymbolValue %d SymbolRange %d\n",sbCtx->SymbolValue,sbCtx->SymbolRange);
+    printf("SymbolValue %d SymbolRange %d\n",sbCtx->SymbolValue,sbCtx->SymbolRange);
 //update
     if(sbCtx->isUpdate){
         int rate = 3 + ( cdfArray[ N ] > 15 ) + ( cdfArray[ N ] > 31 ) + Min( FloorLog2( N ), 2 );

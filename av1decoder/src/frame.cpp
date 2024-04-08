@@ -827,24 +827,37 @@ int frame::readSkipModeParams(bitSt *bs, frameHeader *frameHdr,AV1DecodeContext 
 		int forwardIdx = -1;
 		int backwardIdx = -1;
 		int refHint;
-		int forwardHint;
-		int backwardHint;
+		int forwardHint = -1;
+		int backwardHint = -1;
 		int secondForwardIdx;
-		int secondForwardHint;
+		int secondForwardHint = 0;
+		printf("order_hint %d\n",seqHeader->enable_order_hint);
+		printf("OrderHintBits %d\n",seqHeader->OrderHintBits);
+		printf("OrderHint %d\n",frameHdr->OrderHint);
 		for (int  i = 0; i < REFS_PER_FRAME; i++ ) {
 			refHint = av1Ctx->RefOrderHint[ frameHdr->ref_frame_idx[ i ] ];
-			if ( get_relative_dist( seqHeader->enable_order_hint,seqHeader->OrderHintBits ,refHint, frameHdr->OrderHint ) < 0 ) {
+			printf("frameHdr->ref_frame_idx[ i ] %d refHint %d frameHdr->OrderHint  %d\n",frameHdr->ref_frame_idx[ i ],refHint,frameHdr->OrderHint );
+			int pocdiff = get_relative_dist( seqHeader->enable_order_hint,seqHeader->OrderHintBits ,refHint, frameHdr->OrderHint );
+			printf("pocdiff %d\n",pocdiff);
+			if ( pocdiff < 0 ) {
 				if ( forwardIdx < 0 ||get_relative_dist(seqHeader->enable_order_hint,seqHeader->OrderHintBits ,  refHint, forwardHint) > 0 ) {
 					forwardIdx = i;
 					forwardHint = refHint;
 				}
-			} else if ( get_relative_dist(seqHeader->enable_order_hint,seqHeader->OrderHintBits ,  refHint, frameHdr->OrderHint) > 0 ) {
+			} else if ( pocdiff > 0 ) {
 				if ( backwardIdx < 0 || get_relative_dist(seqHeader->enable_order_hint,seqHeader->OrderHintBits ,  refHint, backwardHint) < 0 ) {
 					backwardIdx = i;
 					backwardHint = refHint;
 				}
+			}else{
+				printf("not any case\n");
 			}
 		}
+
+		printf("forwardIdx %d\n",forwardIdx);
+		printf("forwardHint %d\n",forwardHint);
+		printf("backwardIdx %d\n",backwardIdx);
+		printf("backwardHint %d\n",backwardHint);
 		if ( forwardIdx < 0 ) {
 			frameHdr->skipModeAllowed = 0;
 		} else if ( backwardIdx >= 0 ) {
@@ -871,12 +884,13 @@ int frame::readSkipModeParams(bitSt *bs, frameHeader *frameHdr,AV1DecodeContext 
 			}
 		}
 	}
+	printf("skipModeAllowed 111 %d\n",frameHdr->skipModeAllowed);
 	if ( frameHdr->skipModeAllowed ) {
 		frameHdr->skip_mode_present =  readOneBit(bs); 
 	} else {
 		frameHdr->skip_mode_present = 0;
 	}
-
+	printf("skip_mode_enabled 111 %d\n",frameHdr->skip_mode_present);
 
 }
 int frame::readGlobalMotionParams(bitSt *bs, frameHeader *frameHdr)
@@ -1795,7 +1809,14 @@ int frame::decodeFrame(int sz, bitSt *bs, AV1DecodeContext *av1Ctx){
 			printf("\n");
 		}
 		printf("Wedge_Index cdf\n");
-
+    printf("skipmode cdf\n");
+    for(int i = 0 ; i < 3; i ++){
+        for(int j = 0 ; j < 2 ; j++){
+             printf("%d ",32768 - av1Ctx->currentFrame->cdfCtx.Skip[i][j]);
+        }
+        printf("\n");
+    }
+    printf("skipmode cdf\n");
 		symCtx.isUpdate = !frameHdr->disable_cdf_update;
 		//av1Ctx->currentFrame->currentTileNum = TileNum;
 		decode_tile(&symCtx,bs,av1Ctx);
@@ -2299,13 +2320,15 @@ int frame::inter_frame_mode_info(SymbolContext *sbCtx, bitSt *bs, BlockData *b_d
 	b_data->AboveSingle = b_data->AboveRefFrame[1] <= INTRA_FRAME;
 	b_data->skip = 0;
 	inter_segment_id(1,sbCtx,bs,b_data,av1Ctx);
+	printf("b->seg_id %d\n",b_data->segment_id );
+	printf("skip_mode_enabled 222 %d\n",frameHdr->skip_mode_present);
 	//read_skip_mode();
 	if ( seg_instance->seg_feature_active( b_data->segment_id,SEG_LVL_SKIP,frameHdr ) ||
 		seg_instance->seg_feature_active( b_data->segment_id,SEG_LVL_REF_FRAME ,frameHdr) ||
 		seg_instance->seg_feature_active( b_data->segment_id,SEG_LVL_GLOBALMV ,frameHdr) ||
 		!frameHdr->skip_mode_present ||
-		Block_Width[ b_data->MiSize ] < 8 ||
-		Block_Height[ b_data->MiSize ] < 8 )
+		(Block_Width[ b_data->MiSize ]) < 8 ||
+		(Block_Height[ b_data->MiSize ]) < 8 )
 	{
 		b_data->skip_mode = 0;
 	} else {
@@ -2314,7 +2337,7 @@ int frame::inter_frame_mode_info(SymbolContext *sbCtx, bitSt *bs, BlockData *b_d
 			ctx += av1Ctx->SkipModes[ b_data->MiRow - 1 ][ b_data->MiCol ];
 		if ( b_data->AvailL )
 			ctx += av1Ctx->SkipModes[ b_data->MiRow ][ b_data->MiCol - 1 ];
-			printf("decodeSymbol skip_mode\n");
+		printf("decodeSymbol skip_mode\n");
 		b_data->skip_mode = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->currentTileCdf.Skip_Mode[ctx],3);// S()
 	}
 
@@ -3086,15 +3109,19 @@ int frame::inter_block_mode_info(SymbolContext *sbCtx, bitSt *bs, BlockData *b_d
 	{
 		//new_mv; //S()
 		printf("decodeSymbol new_mv\n");
-		if (sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->currentTileCdf.New_Mv[av1Ctx->currentFrame->mvpCtx->NewMvContext],3) == 0)
+		int new_mv = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->currentTileCdf.New_Mv[av1Ctx->currentFrame->mvpCtx->NewMvContext],3);
+		printf("new_mv %d\n",new_mv);
+		if (new_mv == 0)
 		{
 			b_data->YMode = NEWMV;
 		}
 		else
 		{
 			//zero_mv; //S()
-			printf("decodeSymbol zero_mv\n");
-			if (sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->currentTileCdf.Zero_Mv[av1Ctx->currentFrame->mvpCtx->ZeroMvContext],3 ) == 0)
+			printf("decodeSymbol zero_mv ctx %d\n",av1Ctx->currentFrame->mvpCtx->ZeroMvContext);
+			int zero_mv = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->currentTileCdf.Zero_Mv[av1Ctx->currentFrame->mvpCtx->ZeroMvContext],3 );
+			printf("zero_mv %d\n",zero_mv);
+			if (zero_mv == 0)
 			{
 				b_data->YMode = GLOBALMV;
 			}
@@ -3670,15 +3697,24 @@ int frame::read_ref_frames(SymbolContext *sbCtx, bitSt *bs, BlockData *b_data, A
 			
 			int single_ref_p1 = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->currentTileCdf.Single_Ref[ctx][0],3); // S()
 			printf("decodeSymbol single_ref_p1 %d\n",single_ref_p1);
+			printf("ctx %d\n",ctx);
 			if (single_ref_p1)
 			{
 				
-				int single_ref_p2 = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->currentTileCdf.Single_Ref[ctx][1],3); // S()
+				int brfarf2Count = count_refs( BWDREF_FRAME ,b_data->AvailU,b_data->AvailL,b_data->AboveRefFrame,b_data->LeftRefFrame) 
+									+ count_refs( ALTREF2_FRAME,b_data->AvailU,b_data->AvailL,b_data->AboveRefFrame,b_data->LeftRefFrame );
+				int arfCount = count_refs( ALTREF_FRAME,b_data->AvailU,b_data->AvailL,b_data->AboveRefFrame,b_data->LeftRefFrame );
+				int ctx2 = ref_count_ctx( brfarf2Count, arfCount );
+
+				int single_ref_p2 = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->currentTileCdf.Single_Ref[ctx2][1],3); // S()
 				printf("decodeSymbol single_ref_p2 %d\n",single_ref_p2);
 				if (single_ref_p2 == 0)
 				{
-					
-					int single_ref_p6 = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->currentTileCdf.Single_Ref[ctx][5],3); // S()
+					int brfCount = count_refs( BWDREF_FRAME ,b_data->AvailU,b_data->AvailL,b_data->AboveRefFrame,b_data->LeftRefFrame);
+					int arf2Count = count_refs( ALTREF2_FRAME ,b_data->AvailU,b_data->AvailL,b_data->AboveRefFrame,b_data->LeftRefFrame);
+					int ctx6 = ref_count_ctx( brfCount, arf2Count );
+
+					int single_ref_p6 = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->currentTileCdf.Single_Ref[ctx6][5],3); // S()
 					printf("decodeSymbol single_ref_p6 %d\n",single_ref_p6);
 					b_data->RefFrame[0] = single_ref_p6 ? ALTREF2_FRAME : BWDREF_FRAME;
 				}
@@ -3689,20 +3725,30 @@ int frame::read_ref_frames(SymbolContext *sbCtx, bitSt *bs, BlockData *b_data, A
 			}
 			else
 			{
-				
-				int single_ref_p3 = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->currentTileCdf.Single_Ref[ctx][2],3); // S()
+				int last12Count = count_refs( LAST_FRAME,b_data->AvailU,b_data->AvailL,b_data->AboveRefFrame,b_data->LeftRefFrame ) +
+								 count_refs( LAST2_FRAME ,b_data->AvailU,b_data->AvailL,b_data->AboveRefFrame,b_data->LeftRefFrame);
+				int last3GoldCount = count_refs( LAST3_FRAME ,b_data->AvailU,b_data->AvailL,b_data->AboveRefFrame,b_data->LeftRefFrame) + 
+									count_refs( GOLDEN_FRAME ,b_data->AvailU,b_data->AvailL,b_data->AboveRefFrame,b_data->LeftRefFrame);
+				int ctx3 = ref_count_ctx( last12Count, last3GoldCount );
+								
+				int single_ref_p3 = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->currentTileCdf.Single_Ref[ctx3][2],3); // S()
 				printf("decodeSymbol single_ref_p3 %d\n",single_ref_p3);
 				if (single_ref_p3)
 				{
-					
-					int single_ref_p5 = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->currentTileCdf.Single_Ref[ctx][4],3); // S()
+					int last3Count = count_refs( LAST3_FRAME,b_data->AvailU,b_data->AvailL,b_data->AboveRefFrame,b_data->LeftRefFrame );
+					int goldCount = count_refs( GOLDEN_FRAME,b_data->AvailU,b_data->AvailL,b_data->AboveRefFrame,b_data->LeftRefFrame );
+					int ctx5 = ref_count_ctx( last3Count, goldCount );
+					int single_ref_p5 = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->currentTileCdf.Single_Ref[ctx5][4],3); // S()
 					printf("decodeSymbol single_ref_p5 %d\n",single_ref_p5);
 					b_data->RefFrame[0] = single_ref_p5 ? GOLDEN_FRAME : LAST3_FRAME;
 				}
 				else
 				{
-					
-					int single_ref_p4 = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->currentTileCdf.Single_Ref[ctx][3],3); // S()
+					int lastCount = count_refs( LAST_FRAME,b_data->AvailU,b_data->AvailL,b_data->AboveRefFrame,b_data->LeftRefFrame );
+					int last2Count = count_refs( LAST2_FRAME ,b_data->AvailU,b_data->AvailL,b_data->AboveRefFrame,b_data->LeftRefFrame);
+					int ctx4 = ref_count_ctx( lastCount, last2Count );
+
+					int single_ref_p4 = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->currentTileCdf.Single_Ref[ctx4][3],3); // S()
 					printf("decodeSymbol single_ref_p4 %d\n",single_ref_p4);
 					b_data->RefFrame[0] = single_ref_p4 ? LAST2_FRAME : LAST_FRAME;
 				}

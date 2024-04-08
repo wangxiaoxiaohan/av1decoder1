@@ -600,14 +600,14 @@ int decode::motion_field_estimation(AV1DecodeContext *av1Ctx){
 
 	if (useLast == 1) {
 		// Invoke projection process for LAST_FRAME with dstSign = -1 (discard output)
-		motion_filed_project(av1Ctx,LAST_FRAME, -1);
+		motion_field_projection(av1Ctx,LAST_FRAME, -1);
 	}
 
 	int refStamp = MFMV_STACK_SIZE - 2; // Limit on how many reference frames need to be projected
 	int useBwd = (get_relative_dist(seqHdr->enable_order_hint,seqHdr->OrderHintBits,frameHdr->OrderHints[BWDREF_FRAME], frameHdr->OrderHint) > 0) ? 1 : 0; // Whether to use BWDREF_FRAME
 
 	if (useBwd == 1) {
-		int projOutput = motion_filed_project(av1Ctx,BWDREF_FRAME, 1); // Invoke projection for BWDREF_FRAME with dstSign = 1
+		int projOutput = motion_field_projection(av1Ctx,BWDREF_FRAME, 1); // Invoke projection for BWDREF_FRAME with dstSign = 1
 		if (projOutput == 1) {
 			refStamp--;
 		}
@@ -616,7 +616,7 @@ int decode::motion_field_estimation(AV1DecodeContext *av1Ctx){
 	int useAlt2 = (get_relative_dist(seqHdr->enable_order_hint,seqHdr->OrderHintBits,frameHdr->OrderHints[ALTREF2_FRAME], frameHdr->OrderHint) > 0) ? 1 : 0; // Whether to use ALTREF2_FRAME
 
 	if (useAlt2 == 1) {
-		int projOutput = motion_filed_project(av1Ctx,ALTREF2_FRAME, 1); // Invoke projection for ALTREF2_FRAME with dstSign = 1
+		int projOutput = motion_field_projection(av1Ctx,ALTREF2_FRAME, 1); // Invoke projection for ALTREF2_FRAME with dstSign = 1
 		if (projOutput == 1) {
 			refStamp--;
 		}
@@ -625,7 +625,7 @@ int decode::motion_field_estimation(AV1DecodeContext *av1Ctx){
 	int useAlt = (get_relative_dist(seqHdr->enable_order_hint,seqHdr->OrderHintBits,frameHdr->OrderHints[ALTREF_FRAME], frameHdr->OrderHint) > 0) ? 1 : 0; // Whether to use ALTREF_FRAME
 
 	if (useAlt == 1 && refStamp >= 0) {
-		int projOutput = motion_filed_project(av1Ctx,ALTREF_FRAME, 1); // Invoke projection for ALTREF_FRAME with dstSign = 1
+		int projOutput = motion_field_projection(av1Ctx,ALTREF_FRAME, 1); // Invoke projection for ALTREF_FRAME with dstSign = 1
 		if (projOutput == 1) {
 			refStamp--;
 		}
@@ -633,25 +633,26 @@ int decode::motion_field_estimation(AV1DecodeContext *av1Ctx){
 
 	if (refStamp >= 0) {
 		// Invoke projection process for LAST2_FRAME with dstSign = -1 (discard output)
-		motion_filed_project(av1Ctx,LAST2_FRAME, -1);
+		motion_field_projection(av1Ctx,LAST2_FRAME, -1);
 	}
 
 }
 //The process projects the motion vectors from a whole reference frame and stores the results in MotionFieldMvs.
 //The process outputs a single boolean value representing whether the source frame was valid for this operation. If the
 //output is zero, no modification is made to MotionFieldMvs
-int decode::motion_filed_project(AV1DecodeContext *av1Ctx,int src,int dstSign){
+int decode::motion_field_projection(AV1DecodeContext *av1Ctx,int src,int dstSign){
 	frameHeader *frameHdr = &av1Ctx->frameHdr;
 	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
 	int srcIdx = frameHdr->ref_frame_idx[src - LAST_FRAME];
 	int w8 = frameHdr->MiCols >> 1;
 	int h8 = frameHdr->MiRows >> 1;
 
-	if (av1Ctx->RefMiRows[srcIdx] != frameHdr->MiRows || 
-		av1Ctx->RefMiCols[srcIdx] != frameHdr->MiCols || 
-		av1Ctx->RefFrameType[srcIdx] == INTRA_ONLY_FRAME || 
+	if ( av1Ctx->RefFrameType[srcIdx] == INTRA_ONLY_FRAME || 
 		av1Ctx->RefFrameType[srcIdx] == KEY_FRAME) {
 		// Exit the process with output set to 0
+		return 0;
+	}
+	if(av1Ctx->RefMiRows[srcIdx] != frameHdr->MiRows || av1Ctx->RefMiCols[srcIdx] != frameHdr->MiCols ){
 		return 0;
 	}
 	for (int y8 = 0; y8 < h8; y8++) {
@@ -675,9 +676,10 @@ int decode::motion_filed_project(AV1DecodeContext *av1Ctx,int src,int dstSign){
 
 					int projMv[2];
 					get_mv_projection(mv, refToCur * dstSign, refOffset,projMv);
+					
 					int PosY8,PosX8;
 					posValid = get_block_position(av1Ctx,&PosX8,&PosY8,x8, y8, dstSign, projMv);
-					
+					printf("posValid %d mv[0] %d mv[1]  %d projMv[0] %d projMv[1] %d,PosX8 %d,PosY8 %d\n",posValid,mv[0],mv[1],projMv[0],projMv[1],PosX8,PosY8);
 					if (posValid) {
 						for (int dst = LAST_FRAME; dst <= ALTREF_FRAME; dst++) {
 							int refToDst = get_relative_dist(seqHdr->enable_order_hint,seqHdr->OrderHintBits,
@@ -691,6 +693,7 @@ int decode::motion_filed_project(AV1DecodeContext *av1Ctx,int src,int dstSign){
 			}
 		}
 	}
+	return 1;
 }
 //This process starts with a motion vector mv from a previous frame. This motion vector gives the displacement expected
 //when moving a certain number of frames (given by the variable denominator). In order to use the motion vector for
@@ -703,7 +706,7 @@ int decode::get_mv_projection(int *mv,int numerator,int denominator,int *projMv)
 
 	for (int i = 0; i < 2; i++) {
 		int scaled = Round2Signed(mv[i] * clippedNumerator * Div_Mult[clippedDenominator], 14);
-		projMv[i] = scaled;
+		projMv[i] = Clip3( -(1 << 14) + 1, (1 << 14) - 1, scaled );
 	}
 }
 //process returns a flag posValid that indicates if the position should be used
@@ -711,8 +714,8 @@ int decode::get_block_position(AV1DecodeContext *av1Ctx,int *PosX8,int *PosY8, i
 	frameHeader *frameHdr = &av1Ctx->frameHdr;
 	int posValid = 1;
 
-	*PosY8 = project(&posValid,&y8, projMv[ 0 ], dstSign, frameHdr->MiRows >> 1, MAX_OFFSET_HEIGHT);
-	*PosX8 = project(&posValid,&x8, projMv[ 1 ], dstSign, frameHdr->MiCols >> 1, MAX_OFFSET_WIDTH);
+	*PosY8 = project(&posValid,y8, projMv[ 0 ], dstSign, frameHdr->MiRows >> 1, MAX_OFFSET_HEIGHT);
+	*PosX8 = project(&posValid,x8, projMv[ 1 ], dstSign, frameHdr->MiCols >> 1, MAX_OFFSET_WIDTH);
 
 	return posValid;
 }
@@ -729,6 +732,9 @@ int decode::find_mv_stack(int isCompound,SymbolContext *sbCtx, bitSt *bs,
 	av1Ctx->currentFrame->mvpCtx->NewMvCount = 0;
 	setup_global_mv(0,av1Ctx->currentFrame->mvpCtx->GlobalMvs[0],b_data,av1Ctx);
 	setup_global_mv(1,av1Ctx->currentFrame->mvpCtx->GlobalMvs[1],b_data,av1Ctx);
+	printf("GlobalMvs value %d %d %d %d\n",av1Ctx->currentFrame->mvpCtx->GlobalMvs[0][0],
+		av1Ctx->currentFrame->mvpCtx->GlobalMvs[0][1],av1Ctx->currentFrame->mvpCtx->GlobalMvs[1][0],
+		av1Ctx->currentFrame->mvpCtx->GlobalMvs[1][1]);
 	av1Ctx->currentFrame->mvpCtx->FoundMatch = 0;
 	scan_row(-1,isCompound,b_data,av1Ctx);
 	int foundAboveMatch,foundLeftMatch;
@@ -808,10 +814,16 @@ int decode::find_mv_stack(int isCompound,SymbolContext *sbCtx, bitSt *bs,
 int decode::setup_global_mv(int refList,int *mv,
 								 BlockData *b_data,AV1DecodeContext *av1Ctx)
 {
-	int ref,typ;
-	ref = b_data->RefFrame[ refList ];
+
 	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
+	int ref,typ;
+	ref = b_data->RefFrame[ refList ];
+
+	if(ref != INTRA_FRAME){
+		typ = frameHdr->global_motion_params.GmType[ ref ];
+	}
+	
 	if (ref == INTRA_FRAME || typ == IDENTITY)
 	{
 		mv[0] = 0;
@@ -824,8 +836,8 @@ int decode::setup_global_mv(int refList,int *mv,
 	}
 	else
 	{
-		int x = b_data->MiCol * MI_SIZE + Block_Width[ b_data->MiSize ] / 2 - 1;
-		int y = b_data->MiRow * MI_SIZE + Block_Height[ b_data->MiSize ] / 2 - 1;
+		int x = b_data->MiCol * MI_SIZE + (Block_Width[ b_data->MiSize ]) / 2 - 1;
+		int y = b_data->MiRow * MI_SIZE + (Block_Height[ b_data->MiSize ]) / 2 - 1;
 		int xc = (frameHdr->global_motion_params.gm_params[ref][2] - (1 << WARPEDMODEL_PREC_BITS)) * x +
 			 frameHdr->global_motion_params.gm_params[ref][3] * y +
 			 frameHdr->global_motion_params.gm_params[ref][0];
@@ -1108,6 +1120,7 @@ int decode::temporal_scan(int isCompound,BlockData *b_data,AV1DecodeContext *av1
 	{
 		for (int deltaCol = 0; deltaCol < Min(bw4, 16); deltaCol += stepW4)
 		{
+			printf("add_tpl_ref_mv deltaRow %d deltaCol%d\n",deltaRow,deltaCol);
 			add_tpl_ref_mv(deltaRow, deltaCol, isCompound,b_data,av1Ctx);
 		}
 	}
@@ -1126,6 +1139,7 @@ int decode::temporal_scan(int isCompound,BlockData *b_data,AV1DecodeContext *av1
 		{
 			int deltaRow = tplSamplePos[i][0];
 			int deltaCol = tplSamplePos[i][1];
+			printf("allowExtension add_tpl_ref_mv %d\n",i);
 			if (check_sb_border(b_data->MiRow , b_data->MiCol,deltaRow, deltaCol))
 			{
 				add_tpl_ref_mv(deltaRow, deltaCol, isCompound,b_data,av1Ctx);
@@ -1140,30 +1154,42 @@ int decode::add_tpl_ref_mv(int deltaRow, int deltaCol, int isCompound,BlockData 
 {
 	int mvRow = (b_data->MiRow + deltaRow) | 1;
 	int mvCol = (b_data->MiCol + deltaCol) | 1;
+	printf("b_data->MiRow:%d deltaRow:%d  b_data->MiCol:%d  deltaCol:%d  mvRow:%d  mvCol:%d  av1Ctx->MiColStart:%d  av1Ctx->MiColEnd:%d  av1Ctx->MiRowStart:%d  av1Ctx->MiRowEnd:%d \n",
+			b_data->MiRow, deltaRow, b_data->MiCol, deltaCol, mvRow ,mvCol, av1Ctx->MiColStart ,av1Ctx->MiColEnd, av1Ctx->MiRowStart ,av1Ctx->MiRowEnd);
 	if (is_inside(mvRow, mvCol,av1Ctx->MiColStart,av1Ctx->MiColEnd,av1Ctx->MiRowStart,av1Ctx->MiRowEnd) == 0)
 		return 0;
 	int x8 = mvCol >> 1;
 	int y8 = mvRow >> 1;
 
+	printf("add_tpl_ref_mv isCompound %d\n",isCompound);
 	if (deltaRow == 0 && deltaCol == 0)
 	{
 		av1Ctx->currentFrame->mvpCtx->ZeroMvContext = 1;
+		printf("ZeroMvContext 1  111\n");
 	}
 	if (!isCompound)
 	{
 		int candMv[2];
 		//int candMv[2] = av1Ctx->MotionFieldMvs[b_data->RefFrame[0]][y8][x8];
+		//debug dav1d 来看 就是这里 return 掉了 ，所以 应该是 MotionFieldMvs 的问题
 		memcpy(candMv,av1Ctx->MotionFieldMvs[b_data->RefFrame[0]][y8][x8],2 * sizeof(int));
+		printf("candMv[0] %d\n",candMv[0]);
 		if (candMv[0] == -1 << 15)
 			return ERROR_CODE;
 		lower_mv_precision(av1Ctx,candMv);
+		
 		if (deltaRow == 0 && deltaCol == 0)
 		{
+			printf("candMv[0] %d av1Ctx->currentFrame->mvpCtx->GlobalMvs[0][0] %d\n",candMv[0],av1Ctx->currentFrame->mvpCtx->GlobalMvs[0][0]);
+			printf("candMv[1] %d av1Ctx->currentFrame->mvpCtx->GlobalMvs[0][1] %d\n",candMv[1],av1Ctx->currentFrame->mvpCtx->GlobalMvs[0][1]);
 			if (Abs(candMv[0] - av1Ctx->currentFrame->mvpCtx->GlobalMvs[0][0]) >= 16 ||
-				Abs(candMv[1] - av1Ctx->currentFrame->mvpCtx->GlobalMvs[0][1]) >= 16)
+				Abs(candMv[1] - av1Ctx->currentFrame->mvpCtx->GlobalMvs[0][1]) >= 16){
 				av1Ctx->currentFrame->mvpCtx->ZeroMvContext = 1;
-			else
+				printf("ZeroMvContext 1  222\n");
+				}else{
 				av1Ctx->currentFrame->mvpCtx->ZeroMvContext = 0;
+				printf("ZeroMvContext 0  222\n");
+				}
 		}
 		int idx;
 		for (idx = 0; idx < av1Ctx->currentFrame->mvpCtx->NumMvFound; idx++)
@@ -1191,24 +1217,34 @@ int decode::add_tpl_ref_mv(int deltaRow, int deltaCol, int isCompound,BlockData 
 		//int candMv0[2] = av1Ctx->MotionFieldMvs[b_data->RefFrame[0]][y8][x8];
 		int candMv0[2];
 		memcpy(candMv0,av1Ctx->MotionFieldMvs[b_data->RefFrame[0]][y8][x8],2 * sizeof(int)); 
+		printf("candMv0[0] %d\n",candMv0[0]);
 		if (candMv0[0] == -1 << 15)
 			return ERROR_CODE;
 		//int candMv1[2] = av1Ctx->MotionFieldMvs[b_data->RefFrame[1]][y8][x8];
 		int candMv1[2] ;
 		memcpy(candMv1,av1Ctx->MotionFieldMvs[b_data->RefFrame[1]][y8][x8],2 * sizeof(int)); 
+		printf("candMv1[0] %d\n",candMv1[0]);
 		if (candMv1[0] == -1 << 15)
 			return ERROR_CODE;
 		lower_mv_precision(av1Ctx,candMv0);
 		lower_mv_precision(av1Ctx,candMv1);
+		//?
 		if (deltaRow == 0 && deltaCol == 0)
 		{
+			printf("candMv0[0] %d av1Ctx->currentFrame->mvpCtx->GlobalMvs[0][0] %d\n",candMv0[0],av1Ctx->currentFrame->mvpCtx->GlobalMvs[0][0]);
+			printf("candMv0[1] %d av1Ctx->currentFrame->mvpCtx->GlobalMvs[0][1] %d\n",candMv0[1],av1Ctx->currentFrame->mvpCtx->GlobalMvs[0][1]);
+			printf("candMv1[0] %d av1Ctx->currentFrame->mvpCtx->GlobalMvs[1][0] %d\n",candMv1[0],av1Ctx->currentFrame->mvpCtx->GlobalMvs[1][0]);
+			printf("candMv1[1] %d av1Ctx->currentFrame->mvpCtx->GlobalMvs[1][1] %d\n",candMv1[1],av1Ctx->currentFrame->mvpCtx->GlobalMvs[1][1]);
 			if (Abs(candMv0[0] - av1Ctx->currentFrame->mvpCtx->GlobalMvs[0][0]) >= 16 ||
 				Abs(candMv0[1] - av1Ctx->currentFrame->mvpCtx->GlobalMvs[0][1]) >= 16 ||
 				Abs(candMv1[0] - av1Ctx->currentFrame->mvpCtx->GlobalMvs[1][0]) >= 16 ||
-				Abs(candMv1[1] - av1Ctx->currentFrame->mvpCtx->GlobalMvs[1][1]) >= 16)
+				Abs(candMv1[1] - av1Ctx->currentFrame->mvpCtx->GlobalMvs[1][1]) >= 16){
 				av1Ctx->currentFrame->mvpCtx->ZeroMvContext = 1;
-			else
+				printf("ZeroMvContext 1  333\n");
+				}else{
 				av1Ctx->currentFrame->mvpCtx->ZeroMvContext = 0;
+				printf("ZeroMvContext 0  333\n");
+				}
 		}
 		int idx;
 		for (idx = 0; idx < av1Ctx->currentFrame->mvpCtx->NumMvFound; idx++)
@@ -5365,7 +5401,7 @@ void decode::cdefBlock(int r, int c, int idx,AV1DecodeContext *av1Ctx) {
         int priStr = frameHdr->cdef_params.cdef_y_pri_strength[idx] << coeffShift;
         int secStr = frameHdr->cdef_params.cdef_y_sec_strength[idx] << coeffShift;
         int dir = (priStr == 0) ? 0 : yDir;
-		printf("var %d\n",var);
+		//printf("var %d\n",var);
         int varStr = (var >> 6) ? Min(FloorLog2(var >> 6), 12) : 0;
         priStr = (var ? (priStr * (4 + varStr) + 8) >> 4 : 0);
         int damping = frameHdr->cdef_params.CdefDamping + coeffShift;
@@ -6427,7 +6463,11 @@ void decode::referenceFrameUpdate( AV1DecodeContext *av1Ctx){
 			save_segmentation_params(av1Ctx, i);
 		}
 	}
-
+	for (int i = 0; i < NUM_REF_FRAMES; i++) {
+		if ( ((frameHdr->refresh_frame_flags >> i) & 1 ) == 1) {
+			av1Ctx->RefOrderHint[ i ] = frameHdr->OrderHint;
+		}
+	}
 }
 void decode::referenceFrameLoading( AV1DecodeContext *av1Ctx){
 	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;

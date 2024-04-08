@@ -34,7 +34,7 @@ public:
 
 	int set_frame_refs(AV1DecodeContext *av1Ctx);
 	int motion_field_estimation(AV1DecodeContext *av1Ctx);
-	int motion_filed_project(AV1DecodeContext *av1Ctx,int src,int dstSign);
+	int motion_field_projection(AV1DecodeContext *av1Ctx,int src,int dstSign);
 	int get_mv_projection(int *mv,int numerator,int denominator,int *projMv);
 	int get_block_position(AV1DecodeContext *av1Ctx,int *PosX8,int *PosY8, int x8, int y8, int dstSign, int *projMv );
 

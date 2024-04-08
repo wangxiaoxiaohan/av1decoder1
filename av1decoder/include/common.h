@@ -8987,7 +8987,7 @@ void inline av1sort(uint16_t *array, int min, int max)
 }
 int inline get_relative_dist(int enable_order_hint, int OrderHintBits, int a, int b)
 { 
-	if (enable_order_hint)
+	if (!enable_order_hint)
 		return 0;
 	int diff = a - b;
 	int m = 1 << (OrderHintBits - 1);
@@ -9001,9 +9001,9 @@ int inline check_sb_border(int MiRow, int MiCol, int deltaRow, int deltaCol)
 	int col = (MiCol & 15) + deltaCol;
 	return (row >= 0 && row < 16 && col >= 0 && col < 16);
 }
-int inline project(int *posValid, int *v8, int delta, int dstSign, int max8, int maxOff8)
+int inline project(int *posValid, int v8, int delta, int dstSign, int max8, int maxOff8)
 {
-	int base8 = (*v8 >> 3) << 3;
+	int base8 = (v8 >> 3) << 3;
 	int offset8;
 	if (delta >= 0)
 	{
@@ -9013,15 +9013,16 @@ int inline project(int *posValid, int *v8, int delta, int dstSign, int max8, int
 	{
 		offset8 = -((-delta) >> (3 + 1 + MI_SIZE_LOG2));
 	}
-	*v8 += dstSign * offset8;
-	if (*v8 < 0 ||
-		*v8 >= max8 ||
-		*v8 < base8 - maxOff8 ||
-		*v8 >= base8 + 8 + maxOff8)
+	v8 += dstSign * offset8;
+	if (v8 < 0 ||
+		v8 >= max8 ||
+		v8 < (base8 - maxOff8) ||
+		v8 >= (base8 + 8 + maxOff8))
 	{
 		*posValid = 0;
+		printf("posValid not vaild\n");
 	}
-	return *v8;
+	return v8;
 }
 int inline find_tx_size(int w, int h)
 {
