@@ -2,6 +2,7 @@
 #include "header_common.h"
 #include "cdf.h"
 #include <string.h>
+#define INVALID_MV 0x80008000
 decode::decode(){
 	sb = &Symbol::Instance();
 }
@@ -587,7 +588,7 @@ int decode::motion_field_estimation(AV1DecodeContext *av1Ctx){
 		for (int y = 0; y < h8; y++) {
 			for (int x = 0; x < w8; x++) {
 				for (int j = 0; j < 2; j++) {
-					av1Ctx->MotionFieldMvs[ref][y][x][j] = -1 << 15; // Initialize to invalid motion vector
+					av1Ctx->MotionFieldMvs[ref][y][x][j] = INVALID_MV; // Initialize to invalid motion vector
 				}
 			}
 		}
@@ -660,7 +661,8 @@ int decode::motion_field_projection(AV1DecodeContext *av1Ctx,int src,int dstSign
 			int row = 2 * y8 + 1; 
 			int col = 2 * x8 + 1;
 			int srcRef = av1Ctx->SavedRefFrames[srcIdx][row][col];
-			
+			//这个if aom没有进来
+			printf("motion_field_projection srcRef %d\n",srcRef);
 			if (srcRef > INTRA_FRAME) {
 				int refToCur = get_relative_dist(seqHdr->enable_order_hint,seqHdr->OrderHintBits,frameHdr->OrderHints[src], frameHdr->OrderHint);
 				int refOffset = get_relative_dist(seqHdr->enable_order_hint,seqHdr->OrderHintBits,frameHdr->OrderHints[src], av1Ctx->SavedOrderHints[srcIdx][srcRef]);
@@ -679,7 +681,7 @@ int decode::motion_field_projection(AV1DecodeContext *av1Ctx,int src,int dstSign
 					
 					int PosY8,PosX8;
 					posValid = get_block_position(av1Ctx,&PosX8,&PosY8,x8, y8, dstSign, projMv);
-					printf("posValid %d mv[0] %d mv[1]  %d projMv[0] %d projMv[1] %d,PosX8 %d,PosY8 %d\n",posValid,mv[0],mv[1],projMv[0],projMv[1],PosX8,PosY8);
+					//printf("posValid %d mv[0] %d mv[1]  %d projMv[0] %d projMv[1] %d,PosX8 %d,PosY8 %d\n",posValid,mv[0],mv[1],projMv[0],projMv[1],PosX8,PosY8);
 					if (posValid) {
 						for (int dst = LAST_FRAME; dst <= ALTREF_FRAME; dst++) {
 							int refToDst = get_relative_dist(seqHdr->enable_order_hint,seqHdr->OrderHintBits,
@@ -690,6 +692,8 @@ int decode::motion_field_projection(AV1DecodeContext *av1Ctx,int src,int dstSign
 						}
 					}
 				}
+			}else{
+				printf("mv_ref->ref_frame > INTRA_FRAME %d y posy %d posx %d\n",srcRef,y8,x8);
 			}
 		}
 	}
@@ -1173,8 +1177,9 @@ int decode::add_tpl_ref_mv(int deltaRow, int deltaCol, int isCompound,BlockData 
 		//int candMv[2] = av1Ctx->MotionFieldMvs[b_data->RefFrame[0]][y8][x8];
 		//debug dav1d 来看 就是这里 return 掉了 ，所以 应该是 MotionFieldMvs 的问题
 		memcpy(candMv,av1Ctx->MotionFieldMvs[b_data->RefFrame[0]][y8][x8],2 * sizeof(int));
+		printf("MotionFieldMvs[0] %d\n",av1Ctx->MotionFieldMvs[b_data->RefFrame[0]][y8][x8][0]);
 		printf("candMv[0] %d\n",candMv[0]);
-		if (candMv[0] == -1 << 15)
+		if (candMv[0] == INVALID_MV)
 			return ERROR_CODE;
 		lower_mv_precision(av1Ctx,candMv);
 		
@@ -1218,13 +1223,13 @@ int decode::add_tpl_ref_mv(int deltaRow, int deltaCol, int isCompound,BlockData 
 		int candMv0[2];
 		memcpy(candMv0,av1Ctx->MotionFieldMvs[b_data->RefFrame[0]][y8][x8],2 * sizeof(int)); 
 		printf("candMv0[0] %d\n",candMv0[0]);
-		if (candMv0[0] == -1 << 15)
+		if (candMv0[0] == INVALID_MV)
 			return ERROR_CODE;
 		//int candMv1[2] = av1Ctx->MotionFieldMvs[b_data->RefFrame[1]][y8][x8];
 		int candMv1[2] ;
 		memcpy(candMv1,av1Ctx->MotionFieldMvs[b_data->RefFrame[1]][y8][x8],2 * sizeof(int)); 
 		printf("candMv1[0] %d\n",candMv1[0]);
-		if (candMv1[0] == -1 << 15)
+		if (candMv1[0] == INVALID_MV)
 			return ERROR_CODE;
 		lower_mv_precision(av1Ctx,candMv0);
 		lower_mv_precision(av1Ctx,candMv1);
@@ -1716,7 +1721,7 @@ int decode::add_sample(int deltaRow,int deltaCol,
         return ERROR_CODE; 
     }
 		//has not been written for this frame 是否被写了  到底该怎么写 还要想想
-    if (av1Ctx->RefFrames[mvRow][mvCol][0]  == 0) {
+    if (av1Ctx->RefFrames[mvRow][mvCol][0]  == 0xff) {
         return ERROR_CODE; 
     }
 
@@ -6388,6 +6393,9 @@ void decode::motionFieldMotionVectorStorage(AV1DecodeContext *av1Ctx){
 							av1Ctx->currentFrame->mfmvCtx->MfMvs[row][col][1] = mvCol;
 						}
 					}
+				}else{
+					//if(list == 0)
+					//	printf("motionFieldMotionVectorStorage < INTRA_FRAME do not set y %d x %d list %d\n",row,col,list);
 				}
 			}
 		}

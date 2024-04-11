@@ -142,7 +142,7 @@ typedef struct frameHeader{
 	uint8_t frame_refs_short_signaling;
 	uint8_t	last_frame_idx;
 	uint8_t	gold_frame_idx;
-	uint8_t ref_frame_idx[REFS_PER_FRAME];
+	uint16_t ref_frame_idx[REFS_PER_FRAME];
 	uint32_t delta_frame_id[REFS_PER_FRAME];//delta_frame_id_minus_1 + 1;
 	uint32_t expectedFrameId[REFS_PER_FRAME];
 	//uint8_t found_ref[REFS_PER_FRAME]; 后面的码流中并不需要，所以不加在结构体中了
@@ -284,7 +284,7 @@ typedef struct frameHeader{
 
 	uint8_t skipModeAllowed;
 	uint8_t skip_mode_present;
-	uint8_t SkipModeFrame[2];
+	int8_t SkipModeFrame[2];
 	
 	uint8_t allow_warped_motion;//是否使用扭曲运动模式
 	uint8_t reduced_tx_set;
@@ -476,7 +476,7 @@ typedef struct AV1DecodeContext{
 	uint8_t RefBitDepth[NUM_REF_FRAMES];
 	uint8_t SavedOrderHints[NUM_REF_FRAMES][TOTAL_REFS_PER_FRAME];
 	uint16_t **FrameStore[NUM_REF_FRAMES][3];
-	uint8_t **SavedRefFrames[NUM_REF_FRAMES];
+	int **SavedRefFrames[NUM_REF_FRAMES];
 	int ***SavedMvs[NUM_REF_FRAMES];
 	uint8_t SavedGmParams[NUM_REF_FRAMES][NUM_REF_FRAMES][8];
 	uint8_t **SavedSegmentIds[NUM_REF_FRAMES];

@@ -306,22 +306,32 @@ int frame::parseUncompressedHeader(int sz, bitSt *bs, AV1DecodeContext *av1Ctx, 
 	else
 		out->disable_frame_end_update_cdf = readOneBit(bs);
 
-
+	//----------------
+	int WBuffMiSize;
+	int HBuffMiSize;
+	if(seqHdr->use_128x128_superblock){
+		WBuffMiSize = (out->MiCols % 32) ? (out->MiCols / 32 + 1) * 32 : (out->MiCols / 32) * 32;
+		HBuffMiSize = (out->MiRows % 32) ? (out->MiRows / 32 + 1) * 32 : (out->MiRows / 32) * 32;
+	}else{
+		WBuffMiSize = (out->MiCols % 16) ? (out->MiCols / 16 + 1) * 16 : (out->MiCols / 16) * 16;
+		HBuffMiSize = (out->MiRows % 16) ? (out->MiRows / 16 + 1) * 16 : (out->MiRows / 16) * 16;
+	}
 	if(av1Ctx->decAlloced == 0){
-		int WBuffMiSize;
-		int HBuffMiSize;
-		if(seqHdr->use_128x128_superblock){
-			WBuffMiSize = (out->MiCols % 32) ? (out->MiCols / 32 + 1) * 32 : (out->MiCols / 32) * 32;
-			HBuffMiSize = (out->MiRows % 32) ? (out->MiRows / 32 + 1) * 32 : (out->MiRows / 32) * 32;
-		}else{
-			WBuffMiSize = (out->MiCols % 16) ? (out->MiCols / 16 + 1) * 16 : (out->MiCols / 16) * 16;
-			HBuffMiSize = (out->MiRows % 16) ? (out->MiRows / 16 + 1) * 16 : (out->MiRows / 16) * 16;
-		}
+
 		allocFrameContext(out,WBuffMiSize,HBuffMiSize,&av1Ctx->currentFrame);
 		for(int i = 0 ; i < NUM_REF_FRAMES ; i ++){
 			allocFrameContext(out,WBuffMiSize,HBuffMiSize,&av1Ctx->ref_frames[i]);
 		}
+	}else{
+		for(int i = 0 ; i < HBuffMiSize ; i++){
+			for(int j = 0 ; j < WBuffMiSize ; j++){
+				memset(av1Ctx->RefFrames[i][j],0xff,2 * sizeof(int));
+			}
+		}		
 	}
+
+	//----------------
+
 	if (out->primary_ref_frame == PRIMARY_REF_NONE)
 	{
 		printf("init_non_coeff_cdfs\n");
@@ -433,6 +443,7 @@ int frame::parseUncompressedHeader(int sz, bitSt *bs, AV1DecodeContext *av1Ctx, 
 		out->allow_warped_motion = 0;
 	else
 		out->allow_warped_motion = readOneBit(bs);
+	printf("allow_warped_motion %d\n",out->allow_warped_motion);
 	out->reduced_tx_set = readOneBit(bs);
 
 	//global_motion_params
@@ -1199,9 +1210,9 @@ void frame::allocDecodeContext(AV1DecodeContext *av1Ctx){
 		}
 	}
 	for(int i = 0 ; i < NUM_REF_FRAMES ; i ++){
-		av1Ctx->SavedRefFrames[i] = new uint8_t*[HBuffMiSize];
+		av1Ctx->SavedRefFrames[i] = new int*[HBuffMiSize];
 		for(int j = 0 ; j < HBuffMiSize ; j++){
-			av1Ctx->SavedRefFrames[i][j] = new uint8_t[WBuffMiSize];
+			av1Ctx->SavedRefFrames[i][j] = new int[WBuffMiSize];
 		}
 	}
 	for(int i = 0 ; i < NUM_REF_FRAMES ; i ++){
@@ -1315,10 +1326,10 @@ void frame::allocDecodeContext(AV1DecodeContext *av1Ctx){
 		}
 	}
 	for(int i  = 0 ; i < 8 ; i++){
-		av1Ctx->MotionFieldMvs[i] = new int**[HBuffMiSize >> 1];
-		for(int j = 0 ; j < HBuffMiSize >> 1; j++ ){
-			av1Ctx->MotionFieldMvs[i][j] = new int*[WBuffMiSize >> 1];
-			for(int k = 0 ; k < WBuffMiSize >> 1 ;k ++){
+		av1Ctx->MotionFieldMvs[i] = new int**[HBuffMiSize];
+		for(int j = 0 ; j < HBuffMiSize; j++ ){
+			av1Ctx->MotionFieldMvs[i][j] = new int*[WBuffMiSize];
+			for(int k = 0 ; k < WBuffMiSize ;k ++){
 				av1Ctx->MotionFieldMvs[i][j][k] = new int[2];
 			}
 		}
@@ -3341,6 +3352,11 @@ int frame::read_motion_mode(int isCompound,SymbolContext *sbCtx,bitSt *bs,BlockD
 		return ERROR_CODE;
 	}
 	decode_instance->find_warp_samples(sbCtx,bs,b_data,av1Ctx);
+	printf("NumSamples %d\n",av1Ctx->currentFrame->mvpCtx->NumSamples);
+	printf("force_integer_mv %d\n",frameHdr->force_integer_mv);
+	printf("allow_warped_motion %d\n",frameHdr->allow_warped_motion);
+	printf("f->svc[b->ref[0]][0].scale %d\n",is_scaled(b_data->RefFrame[0],frameHdr->ref_frame_idx,av1Ctx->RefUpscaledWidth,
+											av1Ctx->RefFrameHeight,frameHdr->si.FrameWidth,frameHdr->si.RenderHeight));
 	if (frameHdr->force_integer_mv || av1Ctx->currentFrame->mvpCtx->NumSamples == 0 ||
 		!frameHdr->allow_warped_motion || is_scaled(b_data->RefFrame[0],frameHdr->ref_frame_idx,av1Ctx->RefUpscaledWidth,
 											av1Ctx->RefFrameHeight,frameHdr->si.FrameWidth,frameHdr->si.RenderHeight))

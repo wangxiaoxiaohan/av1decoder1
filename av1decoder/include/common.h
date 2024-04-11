@@ -9073,7 +9073,7 @@ int inline has_nearmv(int YMode)
 {
 	return (YMode == NEARMV || YMode == NEAR_NEARMV || YMode == NEAR_NEWMV || YMode == NEW_NEARMV);
 }
-int inline is_scaled(int refFrame, uint8_t *ref_frame_idx, Array16 *RefUpscaledWidth, Array16 *RefFrameHeight,
+int inline is_scaled(int refFrame, uint16_t *ref_frame_idx, Array16 *RefUpscaledWidth, Array16 *RefFrameHeight,
 					 int FrameWidth, int FrameHeight)
 {
 	int refIdx = ref_frame_idx[refFrame - LAST_FRAME];
