@@ -326,6 +326,8 @@ int frame::parseUncompressedHeader(int sz, bitSt *bs, AV1DecodeContext *av1Ctx, 
 		for(int i = 0 ; i < HBuffMiSize ; i++){
 			for(int j = 0 ; j < WBuffMiSize ; j++){
 				memset(av1Ctx->RefFrames[i][j],0xff,2 * sizeof(int));
+				av1Ctx->IsInters[i][j] = 0xff;
+				av1Ctx->Mvs[i][j][0][0] = av1Ctx->Mvs[i][j][0][1] = av1Ctx->Mvs[i][j][1][0] = av1Ctx->Mvs[i][j][1][1] = 0;
 			}
 		}		
 	}
@@ -1602,7 +1604,7 @@ void frame::allocFrameContext(frameHeader *frameHdr ,int WBuffMiSize,int HBuffMi
 		}
 	}
 
-	fc->mvpCtx = (MVPredContext *)malloc(sizeof(MVPredContext));	
+	//fc->mvpCtx = (MVPredContext *)malloc(sizeof(MVPredContext));	
 
 	fc->cdef_idx = new int16_t*[HBuffMiSize];
 	for(int i  = 0 ; i < HBuffMiSize ; i++){
@@ -1703,7 +1705,7 @@ void frame::releaseFrameContext(frameHeader *frameHdr ,int WBuffMiSize,int HBuff
 
 	delete fCtx->mfmvCtx ;
 
-	delete fCtx->mvpCtx ;
+	//delete fCtx->mvpCtx ;
 
 
 	for(int i  = 0 ; i < HBuffMiSize ; i++){
@@ -2595,15 +2597,17 @@ int frame::assign_mv(int isCompound,SymbolContext *sbCtx,bitSt *bs,BlockData *b_
 		}
 		int PredMv[2][2];
 
+		printf("compMode %d\n",compMode);
+		printf("use_intrabc %d\n",b_data->use_intrabc);
 		if (b_data->use_intrabc)
 		{
 
 			//PredMv[0] = b_data->RefStackMv[0][0];
-			 memcpy(PredMv[0], av1Ctx->currentFrame->mvpCtx->RefStackMv[0][0], sizeof(int) * 2);
+			 memcpy(PredMv[0], b_data->mvpCtx.RefStackMv[0][0], sizeof(int) * 2);
 			if (PredMv[0][0] == 0 && PredMv[0][1] == 0)
 			{
 				//PredMv[0] = b_data->RefStackMv[1][0];
-				memcpy(PredMv[0], av1Ctx->currentFrame->mvpCtx->RefStackMv[1][0], sizeof(int) * 2);
+				memcpy(PredMv[0], b_data->mvpCtx.RefStackMv[1][0], sizeof(int) * 2);
 			}
 			if (PredMv[0][0] == 0 && PredMv[0][1] == 0)
 			{
@@ -2625,15 +2629,15 @@ int frame::assign_mv(int isCompound,SymbolContext *sbCtx,bitSt *bs,BlockData *b_
 		{
 
 			//PredMv[i] = b_data->GlobalMvs[i];
-			memcpy(PredMv[i], av1Ctx->currentFrame->mvpCtx->GlobalMvs[i], sizeof(int) * 2);
+			memcpy(PredMv[i], b_data->mvpCtx.GlobalMvs[i], sizeof(int) * 2);
 		}
 		else
 		{
-			int pos = (compMode == NEARESTMV) ? 0 : av1Ctx->currentFrame->mvpCtx->RefMvIdx ;
-			if (compMode == NEWMV && av1Ctx->currentFrame->mvpCtx->NumMvFound <= 1) 
+			int pos = (compMode == NEARESTMV) ? 0 : b_data->mvpCtx.RefMvIdx ;
+			if (compMode == NEWMV && b_data->mvpCtx.NumMvFound <= 1) 
 				pos = 0 ;
 			//PredMv[i] = b_data->RefStackMv[pos][i];
-			memcpy(PredMv[i], av1Ctx->currentFrame->mvpCtx->RefStackMv[pos][i], sizeof(int) * 2);
+			memcpy(PredMv[i], b_data->mvpCtx.RefStackMv[pos][i], sizeof(int) * 2);
 		}
 		int diffMv[2];
 		if (compMode == NEWMV)
@@ -2653,6 +2657,8 @@ int frame::assign_mv(int isCompound,SymbolContext *sbCtx,bitSt *bs,BlockData *b_
 				diffMv[ 0 ] = read_mv_component(MvCtx, 0,sbCtx,bs,b_data,av1Ctx );
 			if ( mv_joint == MV_JOINT_HNZVZ || mv_joint == MV_JOINT_HNZVNZ )
 				diffMv[ 1 ] = read_mv_component(MvCtx ,1,sbCtx,bs,b_data,av1Ctx );
+			
+			printf("assign_mv PredMv: %d %d diffMv %d %d\n",PredMv[ i ][ 0 ],PredMv[ i ][ 1 ],diffMv[ 0 ],diffMv[ 1 ]);
 			b_data->Mv[ i ][ 0 ] = PredMv[ i ][ 0 ] + diffMv[ 0 ];
 			b_data->Mv[ i ][ 1 ] = PredMv[ i ][ 1 ] + diffMv[ 1 ];
 
@@ -2660,6 +2666,7 @@ int frame::assign_mv(int isCompound,SymbolContext *sbCtx,bitSt *bs,BlockData *b_
 		else
 		{
 			//b_data->Mv[i] = PredMv[i];
+			printf("assign_mv PredMv: %d %d \n",PredMv[ i ][ 0 ],PredMv[ i ][ 1 ]);
 			memcpy(b_data->Mv[i], PredMv[i], sizeof(int) * 2);
 		}
 	}
@@ -3110,7 +3117,7 @@ int frame::inter_block_mode_info(SymbolContext *sbCtx, bitSt *bs, BlockData *b_d
 	}
 	else if (isCompound)
 	{
-		int ctx = Compound_Mode_Ctx_Map[ av1Ctx->currentFrame->mvpCtx->RefMvContext >> 1 ][ Min(av1Ctx->currentFrame->mvpCtx->NewMvContext, COMP_NEWMV_CTXS - 1) ];
+		int ctx = Compound_Mode_Ctx_Map[ b_data->mvpCtx.RefMvContext >> 1 ][ Min(b_data->mvpCtx.NewMvContext, COMP_NEWMV_CTXS - 1) ];
 		printf("decodeSymbol compound_mode\n");
 		int compound_mode = 
 			sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->currentTileCdf.Compound_Mode[ctx],COMPOUND_MODES + 1); //S()
@@ -3120,7 +3127,7 @@ int frame::inter_block_mode_info(SymbolContext *sbCtx, bitSt *bs, BlockData *b_d
 	{
 		//new_mv; //S()
 		printf("decodeSymbol new_mv\n");
-		int new_mv = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->currentTileCdf.New_Mv[av1Ctx->currentFrame->mvpCtx->NewMvContext],3);
+		int new_mv = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->currentTileCdf.New_Mv[b_data->mvpCtx.NewMvContext],3);
 		printf("new_mv %d\n",new_mv);
 		if (new_mv == 0)
 		{
@@ -3129,8 +3136,8 @@ int frame::inter_block_mode_info(SymbolContext *sbCtx, bitSt *bs, BlockData *b_d
 		else
 		{
 			//zero_mv; //S()
-			printf("decodeSymbol zero_mv ctx %d\n",av1Ctx->currentFrame->mvpCtx->ZeroMvContext);
-			int zero_mv = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->currentTileCdf.Zero_Mv[av1Ctx->currentFrame->mvpCtx->ZeroMvContext],3 );
+			printf("decodeSymbol zero_mv ctx %d\n",b_data->mvpCtx.ZeroMvContext);
+			int zero_mv = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->currentTileCdf.Zero_Mv[b_data->mvpCtx.ZeroMvContext],3 );
 			printf("zero_mv %d\n",zero_mv);
 			if (zero_mv == 0)
 			{
@@ -3140,48 +3147,48 @@ int frame::inter_block_mode_info(SymbolContext *sbCtx, bitSt *bs, BlockData *b_d
 			{
 				//ref_mv; //S()
 				printf("decodeSymbol ref_mv\n");
-				b_data->YMode = (sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->currentTileCdf.Ref_Mv[av1Ctx->currentFrame->mvpCtx->RefMvContext],3 ) == 0) ? NEARESTMV : NEARMV;
+				b_data->YMode = (sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->currentTileCdf.Ref_Mv[b_data->mvpCtx.RefMvContext],3 ) == 0) ? NEARESTMV : NEARMV;
 			}
 		}
 	}
-	av1Ctx->currentFrame->mvpCtx->RefMvIdx = 0;
+	b_data->mvpCtx.RefMvIdx = 0;
 	if (b_data->YMode == NEWMV || b_data->YMode == NEW_NEWMV)
 	{
 		for (int idx = 0; idx < 2; idx++)
 		{
 
-			if (av1Ctx->currentFrame->mvpCtx->NumMvFound > idx + 1)
+			if (b_data->mvpCtx.NumMvFound > idx + 1)
 			{
 				//drl_mode; // S()
 				// dav1d 没进这里！！
-				printf("av1Ctx->currentFrame->mvpCtx->NumMvFound %d \n",av1Ctx->currentFrame->mvpCtx->NumMvFound);
-				int drl_mode = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->currentTileCdf.Drl_Mode[av1Ctx->currentFrame->mvpCtx->DrlCtxStack[idx]],3 ) ;
+				printf("b_data->mvpCtx.NumMvFound %d \n",b_data->mvpCtx.NumMvFound);
+				int drl_mode = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->currentTileCdf.Drl_Mode[b_data->mvpCtx.DrlCtxStack[idx]],3 ) ;
 				printf("decodeSymbol 1 drl_mode %d \n",drl_mode);
 				if (drl_mode == 0)
 				{
-					av1Ctx->currentFrame->mvpCtx->RefMvIdx = idx;
+					b_data->mvpCtx.RefMvIdx = idx;
 					break;
 				}
-				av1Ctx->currentFrame->mvpCtx->RefMvIdx = idx + 1;
+				b_data->mvpCtx.RefMvIdx = idx + 1;
 			}
 		}
 	}
 	else if (has_nearmv(b_data->YMode))
 	{
-		av1Ctx->currentFrame->mvpCtx->RefMvIdx = 1;
+		b_data->mvpCtx.RefMvIdx = 1;
 		for (int idx = 1; idx < 3; idx++)
 		{
-			if (av1Ctx->currentFrame->mvpCtx->NumMvFound > idx + 1)
+			if (b_data->mvpCtx.NumMvFound > idx + 1)
 			{
 				//drl_mode; // S()
-				int drl_mode = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->currentTileCdf.Drl_Mode[av1Ctx->currentFrame->mvpCtx->DrlCtxStack[idx]],3 );
+				int drl_mode = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->currentTileCdf.Drl_Mode[b_data->mvpCtx.DrlCtxStack[idx]],3 );
 				printf("decodeSymbol 2 drl_mode %d\n",drl_mode);
 				if (drl_mode == 0)
 				{
-					av1Ctx->currentFrame->mvpCtx->RefMvIdx = idx;
+					b_data->mvpCtx.RefMvIdx = idx;
 					break;
 				}
-				av1Ctx->currentFrame->mvpCtx->RefMvIdx = idx + 1;
+				b_data->mvpCtx.RefMvIdx = idx + 1;
 			}
 		}
 	}
@@ -3352,12 +3359,12 @@ int frame::read_motion_mode(int isCompound,SymbolContext *sbCtx,bitSt *bs,BlockD
 		return ERROR_CODE;
 	}
 	decode_instance->find_warp_samples(sbCtx,bs,b_data,av1Ctx);
-	printf("NumSamples %d\n",av1Ctx->currentFrame->mvpCtx->NumSamples);
+	printf("NumSamples %d\n",b_data->mvpCtx.NumSamples);
 	printf("force_integer_mv %d\n",frameHdr->force_integer_mv);
 	printf("allow_warped_motion %d\n",frameHdr->allow_warped_motion);
 	printf("f->svc[b->ref[0]][0].scale %d\n",is_scaled(b_data->RefFrame[0],frameHdr->ref_frame_idx,av1Ctx->RefUpscaledWidth,
 											av1Ctx->RefFrameHeight,frameHdr->si.FrameWidth,frameHdr->si.RenderHeight));
-	if (frameHdr->force_integer_mv || av1Ctx->currentFrame->mvpCtx->NumSamples == 0 ||
+	if (frameHdr->force_integer_mv || b_data->mvpCtx.NumSamples == 0 ||
 		!frameHdr->allow_warped_motion || is_scaled(b_data->RefFrame[0],frameHdr->ref_frame_idx,av1Ctx->RefUpscaledWidth,
 											av1Ctx->RefFrameHeight,frameHdr->si.FrameWidth,frameHdr->si.RenderHeight))
 	{

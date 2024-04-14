@@ -61,8 +61,8 @@ public:
 	int lower_mv_precision(AV1DecodeContext *av1Ctx,int *candMv);
 	int lower_precision(int *candMv,AV1DecodeContext *av1Ctx);
 	int add_tpl_ref_mv(int deltaRow, int deltaCol, int isCompound,BlockData *b_data,AV1DecodeContext *av1Ctx);
-	int Sorting(int start,int end ,int isCompound,AV1DecodeContext *av1Ctx);
-	void swap_stack(int i, int j, int isCompound, int RefStackMv[][2][2], int WeightStack[],AV1DecodeContext *av1Ctx);
+	int Sorting(int start,int end ,int isCompound,BlockData* b_data, AV1DecodeContext *av1Ctx);
+	void swap_stack(int i, int j, int isCompound, int RefStackMv[][2][2], int WeightStack[],BlockData* b_data,AV1DecodeContext *av1Ctx);
 	int extra_search(int isCompound, BlockData *b_data, AV1DecodeContext *av1Ctx);
 	int add_extra_mv_candidate(int mvRow, int mvCol, int isCompound,BlockData *b_data,AV1DecodeContext *av1Ctx);
 	int context_and_clamping(int isCompound, int numNew,BlockData *b_data,AV1DecodeContext *av1Ctx);

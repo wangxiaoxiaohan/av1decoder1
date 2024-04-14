@@ -290,6 +290,30 @@ typedef struct frameHeader{
 	uint8_t reduced_tx_set;
 }frameHeader;
 
+typedef struct MVPredContext{
+	uint8_t NewMvContext;
+	uint8_t RefMvContext;
+	uint8_t RefMvIdx;
+	uint8_t RefIdCount[2];
+	uint8_t RefDiffCount[2]; //参考帧的
+	int RefIdMvs[2][16][2];
+	int RefDiffMvs[2][16][2];
+	int RefStackMv[8][2][2]; //consturct by find_mv_stack
+	int WeightStack[MAX_REF_MV_STACK_SIZE];
+	int DrlCtxStack[MAX_REF_MV_STACK_SIZE];
+
+	int GlobalMvs[2][2];
+	uint8_t NumMvFound;
+	uint8_t NewMvCount;
+	uint8_t FoundMatch;
+	uint8_t TotalMatches;
+	uint8_t CloseMatches;
+	uint8_t ZeroMvContext;
+
+	uint8_t NumSamples;
+	uint8_t NumSamplesScanned;
+
+}MVPredContext;
 typedef struct BlockData{
 	uint8_t HasChroma;
 	uint8_t skip;
@@ -381,6 +405,7 @@ typedef struct BlockData{
 	//7.11.5
 	int MaxLumaW;
 	int MaxLumaH;
+	MVPredContext mvpCtx;
 
 }BlockData;
 typedef struct LoopRestorationContext{
@@ -405,30 +430,7 @@ typedef struct MFMVContext{
 	int **MfRefFrames;
 	int ***MfMvs;
 }MFMVContext;
-typedef struct MVPredContext{
-	uint8_t NewMvContext;
-	uint8_t RefMvContext;
-	uint8_t RefMvIdx;
-	uint8_t RefIdCount[2];
-	uint8_t RefDiffCount[2]; //参考帧的
-	int RefIdMvs[2][16][2];
-	int RefDiffMvs[2][16][2];
-	int RefStackMv[8][2][2]; //consturct by find_mv_stack
-	int WeightStack[MAX_REF_MV_STACK_SIZE];
-	int DrlCtxStack[MAX_REF_MV_STACK_SIZE];
 
-	int GlobalMvs[2][2];
-	uint8_t NumMvFound;
-	uint8_t NewMvCount;
-	uint8_t FoundMatch;
-	uint8_t TotalMatches;
-	uint8_t CloseMatches;
-	uint8_t ZeroMvContext;
-
-	uint8_t NumSamples;
-	uint8_t NumSamplesScanned;
-
-}MVPredContext;
 typedef struct FrameContext{
 	//sizeInfo si;
 	frameHeader frameHdr;
@@ -446,7 +448,7 @@ typedef struct FrameContext{
 	uint16_t **OutV;
 	FilmGainContext *fgCtx;
 	MFMVContext *mfmvCtx;
-	MVPredContext *mvpCtx;
+	//MVPredContext *mvpCtx;
 	int16_t **cdef_idx;
 }FrameContext;
 
