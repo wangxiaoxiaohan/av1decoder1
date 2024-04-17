@@ -527,13 +527,13 @@ typedef struct AV1DecodeContext{
 	uint8_t ***PaletteColors[2];
 	int8_t ***DeltaLFs;
 	uint8_t **InterTxSizes;
-
+	uint8_t **TxTypes; //4 * 4 块为单位
 
 	uint8_t SeenFrameHeader;
 	int ***MotionFieldMvs[8];// [ref][y][x][x/y] 
 	uint8_t **PrevSegmentIds;
 
-	uint8_t **TxTypes; //4 * 4 块为单位
+	
 	
 }AV1DecodeContext;
 

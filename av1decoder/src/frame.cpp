@@ -2124,6 +2124,7 @@ int frame::decode_block(SymbolContext *sbCtx,bitSt *bs,int r,int c,int subSize, 
 					for (int refList = 0; refList < 1 + isCompound; refList++)
 					{
 						//p_data->Mvs[r + y][c + x][refList] = b_data.Mv[refList];
+						printf("decode_block set mv %d %d \n",b_data.Mv[refList][0],b_data.Mv[refList][1]);
 						memcpy(av1Ctx->Mvs[r + y][c + x][refList],b_data.Mv[refList],sizeof(int) * 2);
 					}
 			}

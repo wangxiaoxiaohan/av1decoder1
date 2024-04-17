@@ -1034,23 +1034,39 @@ int decode::compound_search_stack(int  mvRow ,int  mvCol,int weight,
 	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	int candMvs[2][2]; 
 	//int candMvs[2][2] = Mvs[ mvRow ][ mvCol ];
-	memcpy(candMvs,av1Ctx->Mvs[ mvRow ][ mvCol ],2 * 2 * sizeof(int));
+	// printf("compound_search_stack Mvs %d %d %d %d\n",av1Ctx->Mvs[ mvRow ][ mvCol ][0][0],av1Ctx->Mvs[ mvRow ][ mvCol ][0][1],
+	// 												av1Ctx->Mvs[ mvRow ][ mvCol ][1][0],av1Ctx->Mvs[ mvRow ][ mvCol ][1][1]);
+
+	
+	for(int i = 0 ; i < 2 ; i++){
+		memcpy(candMvs[i],av1Ctx->Mvs[ mvRow ][ mvCol ][i],2 * sizeof(int));
+	}
 	int candMode = av1Ctx->YModes[ mvRow ][ mvCol ];
 	int candSize = av1Ctx->MiSizes[ mvRow ][ mvCol ];
 	if(candMode == GLOBAL_GLOBALMV){
 		for(int refList = 0 ; refList < 2; refList ++){
 			if(frameHdr->global_motion_params.GmType[ b_data->RefFrame[ refList ] ] > TRANSLATION)
 			  //candMvs[ refList ] = GlobalMvs[ refList ];
+			  //printf("compound_search_stack GlobalMvs %d %d \n",b_data->mvpCtx.GlobalMvs[ refList ][0],b_data->mvpCtx.GlobalMvs[ refList ][1]);
 			  memcpy(candMvs[ refList ],b_data->mvpCtx.GlobalMvs[ refList ],2 * sizeof(int));
 		}
 
 	}
+	// printf("compound_search_stack 1111 candmv %d %d %d %d \n",candMvs[ 0 ][0],candMvs[ 0 ][1],
+	// 												candMvs[ 1 ][0],candMvs[ 1 ][1]);
 	for(int i = 0 ; i < 2; i ++){
 		lower_precision(candMvs[i],av1Ctx);
 	}
+
+	// printf("compound_search_stack 222 candmv %d %d %d %d \n",candMvs[ 0 ][0],candMvs[ 0 ][1],
+	// 											candMvs[ 1 ][0],candMvs[ 1 ][1]);
 	b_data->mvpCtx.FoundMatch = 1;
 	int idx;
 	for(idx =0 ;idx < b_data->mvpCtx.NumMvFound ;idx ++){
+	// printf("compound_search_stack loop candmv %d %d %d %d RefStackMv %d %d %d %d\n",candMvs[ 0 ][0],candMvs[ 0 ][1],
+	// 												candMvs[ 1 ][0],candMvs[ 1 ][1],
+	// 												b_data->mvpCtx.RefStackMv[ idx ][ 0 ][0],b_data->mvpCtx.RefStackMv[ idx ][ 0 ][1],
+	// 												b_data->mvpCtx.RefStackMv[ idx ][ 1][0],b_data->mvpCtx.RefStackMv[ idx ][ 1 ][1]);
 		if(candMvs[ 0 ][0] == b_data->mvpCtx.RefStackMv[ idx ][ 0 ][0] && candMvs[ 0 ][1] == b_data->mvpCtx.RefStackMv[ idx ][ 0 ][1]
 			&&  candMvs[ 1 ][0] == b_data->mvpCtx.RefStackMv[ idx ][ 1 ][0] && candMvs[ 1 ][1] == b_data->mvpCtx.RefStackMv[ idx ][ 1 ][1]){
 				b_data->mvpCtx.WeightStack[ idx ] += weight;
@@ -3290,6 +3306,8 @@ int decode::intraEdgeFilter(int sz, int strength, int left,BlockData *b_data){
 
 int decode::predict_inter(int plane, int x, int y,int w ,int h ,int candRow,int candCol,int IsInterIntra,
 							BlockData *b_data,AV1DecodeContext *av1Ctx){
+	printf("predict_inter w: %d h :%d candRow %d candCol %d\n",w,h,candRow,candCol);
+
 	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
 	int isCompound =  av1Ctx->RefFrames[ candRow ][ candCol ][ 1 ] > INTRA_FRAME;
@@ -3304,7 +3322,13 @@ int decode::predict_inter(int plane, int x, int y,int w ,int h ,int candRow,int 
 		setupShear(LocalWarpParams,&LocalValid,&a,&b,&g,&d);
 	}
 	int refList = 0;
-
+	uint16_t ***preds = new uint16_t**[2];
+	for(int i = 0 ; i < 2 ; i++){
+		preds[i] = new uint16_t *[h];
+		for(int j = 0 ; j < h ; j++){
+			preds[i][j] = new uint16_t[w];
+		}	
+	}
 genArray:
 	int refFrame = av1Ctx->RefFrames[ candRow ][ candCol ][ refList ];
 	//printf("candRow %d  candCol %d  refList%d  refFrame%d\n",candRow,candCol,refList,refFrame);
@@ -3355,17 +3379,11 @@ genArray:
 	}
 
 	//uint8_t ***preds;
-	uint16_t ***preds = new uint16_t**[2];
-	for(int i = 0 ; i < 2 ; i++){
-		preds[i] = new uint16_t *[h];
-		for(int j = 0 ; j < h ; j++){
-			preds[i][j] = new uint16_t[w];
-		}	
-	}
+
 
 	if(useWarp == 0){
-		for(int i8 = 0 ; i8 < ((h-1) >> 3 );i8 ++){
-			for(int j8 = 0 ; j8 < ((w-1) >> 3) ;j8 ++){
+		for(int i8 = 0 ; i8 <= ((h-1) >> 3 );i8 ++){
+			for(int j8 = 0 ; j8 <= ((w-1) >> 3) ;j8 ++){
 				//块扭曲操作，每次一个 8*8大小的子块
 				blockWarp(useWarp,plane,refList,x,y,i8,j8,w,h,preds[refList],LocalWarpParams,b_data,av1Ctx);
 			}
@@ -3373,7 +3391,7 @@ genArray:
 
 	}
 	if(useWarp == 0){
-		//printf("startX %d startY %d stepX %d stepY %d\n",startX,startY,stepX, stepY);
+		printf("startX %d startY %d stepX %d stepY %d\n",startX,startY,stepX, stepY);
 		block_inter_prediction(plane, refIdx,startX, startY, stepX, stepY, w, h, candRow, candCol,preds[refList],b_data,av1Ctx);
 	}
 
@@ -3394,26 +3412,34 @@ genArray:
 	}
 
 	int FwdWeight,BckWeight;
+	
 	if(b_data->compound_type == COMPOUND_DISTANCE){
 		distanceWeights(candRow,candCol,&FwdWeight,&BckWeight,av1Ctx);
 	}
-
+printf("b_data->compound_type %d isCompound %d IsInterIntra %d\n",b_data->compound_type,isCompound,IsInterIntra);
 	if(isCompound == 0 && IsInterIntra == 0){
 		for(int i = 0 ; i < h ; i ++){
+			printf("\n");
 			for(int j = 0 ; j < w ; j ++){
 			    av1Ctx->currentFrame->CurrFrame[ plane ][ y + i ][ x + j ] = Clip1(preds[ 0 ][ i ][ j ] ,seqHdr->color_config.BitDepth);
+				printf("%d ",av1Ctx->currentFrame->CurrFrame[ plane ][ y + i ][ x + j ]);
 			}
 		}
 	}else if(b_data->compound_type == COMPOUND_AVERAGE){
 		for(int i = 0 ; i < h ; i ++){
+			printf("\n");
 			for(int j = 0 ; j < w ; j ++){
+				
 				av1Ctx->currentFrame->CurrFrame[ plane ][ y + i ][ x + j ] = Clip1( Round2( preds[ 0 ][ i ][ j ] + preds[ 1 ][ i ][ j ], 1 + av1Ctx->InterPostRound ),seqHdr->color_config.BitDepth );
+			printf("%d ",av1Ctx->currentFrame->CurrFrame[ plane ][ y + i ][ x + j ]);
 			}
 		}
 	}else if(b_data->compound_type == COMPOUND_DISTANCE){
 		for(int i = 0 ; i < h ; i ++){
+			printf("\n");
 			for(int j = 0 ; j < w ; j ++){
 				av1Ctx->currentFrame->CurrFrame[ plane ][ y + i ][ x + j ] = Clip1( Round2( FwdWeight * preds[ 0 ][ i ][ j ] + BckWeight * preds[ 1 ][ i ][ j ], 4 + av1Ctx->InterPostRound ) ,seqHdr->color_config.BitDepth);
+				printf("%d ",av1Ctx->currentFrame->CurrFrame[ plane ][ y + i ][ x + j ]);
 			}
 		}
 	}else{
@@ -3737,16 +3763,19 @@ int decode::block_inter_prediction(int plane, int refIdx, int x, int y, int xSte
         }
     }
     int intermediate[intermediateHeight][w];
+	//printf("predict inter intermediate InterRound0 %d\n",av1Ctx->InterRound0);
     for (int r = 0; r < intermediateHeight; r++) {
+		//printf("\n");
         for (int c = 0; c < w; c++) {
             int s = 0;
             int p = x + xStep * c;
             for (int t = 0; t < 8; t++) {
-				//printf("x %d y %d\n",Clip3(0, lastY, (y >> 10) + r - 3),Clip3(0, lastX, (p >> 10) + t - 3));
+				//printf("%d %d |",Subpel_Filters[interpFilter][(p >> 6) & SUBPEL_MASK][t],ref[plane][Clip3(0, lastY, (y >> 10) + r - 3)][Clip3(0, lastX, (p >> 10) + t - 3)]);
                 s += Subpel_Filters[interpFilter][(p >> 6) & SUBPEL_MASK][t] *
                      ref[plane][Clip3(0, lastY, (y >> 10) + r - 3)][Clip3(0, lastX, (p >> 10) + t - 3)];
             }
             intermediate[r][c] = Round2(s, av1Ctx->InterRound0);
+			//printf("* %d %d |",s,intermediate[r][c]);
         }
     }
 
@@ -3759,15 +3788,18 @@ int decode::block_inter_prediction(int plane, int refIdx, int x, int y, int xSte
             interpFilter = 5;
         }
     }
-    
+   // printf("predict inter InterRound1 %d\n",av1Ctx->InterRound1);
     for (int r = 0; r < h; r++) {
+	//	printf("\n");
         for (int c = 0; c < w; c++) {
             int s = 0;
             int p = (y & 1023) + yStep * r;
             for (int t = 0; t < 8; t++) {
                 s += Subpel_Filters[interpFilter][(p >> 6) & SUBPEL_MASK][t] * intermediate[(p >> 10) + t][c];
             }
+			
             pred[r][c] = Round2(s, av1Ctx->InterRound1);
+		//	printf("%d %d |",s,pred[r][c]);
         }
     }
 }
