@@ -19,6 +19,7 @@ public:
 	
 	int init_coeff_cdfs(AV1DecodeContext *av1Ctx,CDFArrays *cdf);
 	int init_non_coeff_cdfs(CDFArrays *cdf);
+	int resetCDFCount(CDFArrays *cdf);
 	int setup_past_independence(AV1DecodeContext *av1Ctx);
 	int load_cdfs(AV1DecodeContext *av1Ctx,int ctx);
 	int save_cdfs(AV1DecodeContext *av1Ctx,int ctx);

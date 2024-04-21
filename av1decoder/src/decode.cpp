@@ -173,6 +173,136 @@ int decode::decode_frame_wrapup( AV1DecodeContext *av1Ctx){
 	}
 
 }
+int decode::resetCDFCount(CDFArrays *cdf){
+
+#define UPDATE_1D(idx,name)\
+	cdf->name[idx] = 0;
+
+#define UPDATE_2D(size3,idx,name) \
+	for(int k = 0 ; k < size3 ; k++) UPDATE_1D(idx,name[k])
+
+#define UPDATE_3D(size2,size3,idx,name) \
+	for(int j = 0 ; j < size2 ; j ++)UPDATE_2D(size3,idx,name[j])
+
+#define UPDATE_4D(size1,size2,size3,idx,name) \
+	for(int i = 0 ; i < size1 ; i ++) UPDATE_3D(size2,size3,idx,name[i])
+
+	UPDATE_3D(INTRA_MODE_CONTEXTS,INTRA_MODE_CONTEXTS,INTRA_MODES,Intra_Frame_Y_Mode);
+	UPDATE_2D(BLOCK_SIZE_GROUPS,INTRA_MODES,Y_Mode);
+	UPDATE_2D(INTRA_MODES,UV_INTRA_MODES_CFL_NOT_ALLOWED,Uv_Mode_Cfl_Not_Allowed);
+	UPDATE_2D(INTRA_MODES,UV_INTRA_MODES_CFL_ALLOWED,Uv_Mode_Cfl_Allowed);
+	UPDATE_2D(DIRECTIONAL_MODES,(2 * MAX_ANGLE_DELTA + 1),Angle_Delta);
+	UPDATE_1D(2,Intrabc);
+	UPDATE_2D(PARTITION_CONTEXTS,4,Partition_W8);
+	UPDATE_2D(PARTITION_CONTEXTS,10,Partition_W16);
+	UPDATE_2D(PARTITION_CONTEXTS,10,Partition_W32);
+	UPDATE_2D(PARTITION_CONTEXTS,10,Partition_W64);
+	UPDATE_2D(PARTITION_CONTEXTS,8,Partition_W128);
+
+	UPDATE_2D(TX_SIZE_CONTEXTS,MAX_TX_DEPTH,Tx_8x8);
+	UPDATE_2D(TX_SIZE_CONTEXTS,MAX_TX_DEPTH,Tx_16x16);
+	UPDATE_2D(TX_SIZE_CONTEXTS,MAX_TX_DEPTH,Tx_32x32);
+	UPDATE_2D(TX_SIZE_CONTEXTS,MAX_TX_DEPTH,Tx_64x64);
+
+	UPDATE_2D(TXFM_PARTITION_CONTEXTS,2,Txfm_Split);
+
+	UPDATE_1D(5,Filter_Intra_Mode);
+
+	UPDATE_2D(BLOCK_SIZES,2,Filter_Intra);
+	UPDATE_2D(SEGMENT_ID_CONTEXTS,MAX_SEGMENTS,Segment_Id);
+	UPDATE_2D(SEGMENT_ID_PREDICTED_CONTEXTS,2,Segment_Id_Predicted);
+
+	UPDATE_3D(2,2,2,Mv_Class0_Hp);
+	UPDATE_3D(2,2,2,Mv_Hp);
+	UPDATE_3D(2,2,2,Mv_Sign);
+
+	UPDATE_4D(2,2,MV_OFFSET_BITS,2,Mv_Bit);
+	UPDATE_3D(2,2,2,Mv_Class0_Bit);
+
+	UPDATE_2D(NEW_MV_CONTEXTS,2,New_Mv);
+	UPDATE_2D(ZERO_MV_CONTEXTS,2,Zero_Mv);
+	UPDATE_2D(REF_MV_CONTEXTS,2,Ref_Mv);
+	UPDATE_2D(DRL_MODE_CONTEXTS,2,Drl_Mode);
+	UPDATE_2D(IS_INTER_CONTEXTS,2,Is_Inter);
+	UPDATE_2D(COMP_INTER_CONTEXTS,2,Comp_Mode);
+	UPDATE_2D(SKIP_MODE_CONTEXTS,2,Skip_Mode);
+	UPDATE_2D(SKIP_CONTEXTS,2,Skip);
+
+	UPDATE_3D(REF_CONTEXTS,FWD_REFS - 1,2,Comp_Ref);
+	UPDATE_3D(REF_CONTEXTS,BWD_REFS - 1,2,Comp_Bwd_Ref);
+	UPDATE_3D(REF_CONTEXTS,SINGLE_REFS - 1,2,Single_Ref);
+
+	UPDATE_2D(COMPOUND_MODE_CONTEXTS,COMPOUND_MODES,Compound_Mode);
+	UPDATE_2D(INTERP_FILTER_CONTEXTS,INTERP_FILTERS,Interp_Filter);
+	UPDATE_2D(BLOCK_SIZES,MOTION_MODES,Motion_Mode);
+
+	UPDATE_2D(2,MV_JOINTS,Mv_Joint);
+	UPDATE_3D(2,2,MV_CLASSES,Mv_Class);
+	UPDATE_4D(2,2,CLASS0_SIZE,MV_JOINTS,Mv_Class0_Fr);
+	UPDATE_3D(2,2,MV_JOINTS,Mv_Fr);
+
+	UPDATE_2D(PALETTE_BLOCK_SIZE_CONTEXTS,PALETTE_SIZES,Palette_Y_Size);
+	UPDATE_2D(PALETTE_BLOCK_SIZE_CONTEXTS,PALETTE_SIZES,Palette_Uv_Size);
+
+	UPDATE_2D(PALETTE_COLOR_CONTEXTS,2,Palette_Size_2_Y_Color);
+	UPDATE_2D(PALETTE_COLOR_CONTEXTS,3,Palette_Size_3_Y_Color);
+	UPDATE_2D(PALETTE_COLOR_CONTEXTS,4,Palette_Size_4_Y_Color);
+	UPDATE_2D(PALETTE_COLOR_CONTEXTS,5,Palette_Size_5_Y_Color);
+	UPDATE_2D(PALETTE_COLOR_CONTEXTS,6,Palette_Size_6_Y_Color);
+	UPDATE_2D(PALETTE_COLOR_CONTEXTS,7,Palette_Size_7_Y_Color);
+	UPDATE_2D(PALETTE_COLOR_CONTEXTS,8,Palette_Size_8_Y_Color);
+
+	UPDATE_2D(PALETTE_COLOR_CONTEXTS,2,Palette_Size_2_Uv_Color);
+	UPDATE_2D(PALETTE_COLOR_CONTEXTS,3,Palette_Size_3_Uv_Color);
+	UPDATE_2D(PALETTE_COLOR_CONTEXTS,4,Palette_Size_4_Uv_Color);
+	UPDATE_2D(PALETTE_COLOR_CONTEXTS,5,Palette_Size_5_Uv_Color);
+	UPDATE_2D(PALETTE_COLOR_CONTEXTS,6,Palette_Size_6_Uv_Color);
+	UPDATE_2D(PALETTE_COLOR_CONTEXTS,7,Palette_Size_7_Uv_Color);
+	UPDATE_2D(PALETTE_COLOR_CONTEXTS,8,Palette_Size_8_Uv_Color);
+
+	UPDATE_3D(PALETTE_BLOCK_SIZE_CONTEXTS,PALETTE_Y_MODE_CONTEXTS,2,Palette_Y_Mode);
+	UPDATE_2D(PALETTE_UV_MODE_CONTEXTS,2,Palette_Uv_Mode);
+
+	UPDATE_1D(DELTA_Q_SMALL + 1,Delta_Q);
+	UPDATE_1D(DELTA_LF_SMALL + 1,Delta_Lf);
+	UPDATE_2D(FRAME_LF_COUNT,DELTA_LF_SMALL + 1,Delta_Lf_Muti);
+
+	UPDATE_3D(2,INTRA_MODES,7,Intra_Tx_Type_Set1);
+	UPDATE_3D(3,INTRA_MODES,5,Intra_Tx_Type_Set2);
+	UPDATE_2D(2,16,Inter_Tx_Type_Set1);
+	UPDATE_1D(12,Inter_Tx_Type_Set2);
+	UPDATE_2D(4,2,Inter_Tx_Type_Set3);
+
+	UPDATE_2D(COMPOUND_IDX_CONTEXTS,2,Compound_Idx);
+	UPDATE_2D(COMP_GROUP_IDX_CONTEXTS,2,Comp_Group_Idx);
+	UPDATE_2D(BLOCK_SIZES,COMPOUND_TYPES,Compound_Type);
+	UPDATE_2D(BLOCK_SIZE_GROUPS - 1,2,Inter_Intra);
+	UPDATE_2D(BLOCK_SIZE_GROUPS - 1,INTERINTRA_MODES,Inter_Intra_Mode);
+	UPDATE_2D(BLOCK_SIZES,16,Wedge_Index);
+	UPDATE_2D(BLOCK_SIZES,2,Wedge_Inter_Intra);
+
+	UPDATE_1D(CFL_JOINT_SIGNS,Cfl_Sign);
+	UPDATE_2D(CFL_ALPHA_CONTEXTS,CFL_ALPHABET_SIZE,Cfl_Alpha);
+	UPDATE_1D(2,Use_Wiener);
+	UPDATE_1D(2,Use_Sgrproj);
+	UPDATE_1D(RESTORE_SWITCHABLE,Restoration_Type);
+
+	UPDATE_3D(TX_SIZES,TXB_SKIP_CONTEXTS,2,Txb_Skip);
+	UPDATE_3D(PLANE_TYPES,INTRA_MODES,5,Eob_Pt_16);
+	UPDATE_3D(PLANE_TYPES,INTRA_MODES,6,Eob_Pt_32);
+	UPDATE_3D(PLANE_TYPES,INTRA_MODES,7,Eob_Pt_64);
+	UPDATE_3D(PLANE_TYPES,INTRA_MODES,8,Eob_Pt_128);
+	UPDATE_3D(PLANE_TYPES,INTRA_MODES,9,Eob_Pt_256);
+	UPDATE_2D(PLANE_TYPES,10,Eob_Pt_512);
+	UPDATE_2D(PLANE_TYPES,11,Eob_Pt_1024);
+
+	UPDATE_4D(TX_SIZES,PLANE_TYPES,EOB_COEF_CONTEXTS,2,Eob_Extra);
+	UPDATE_3D(PLANE_TYPES,DC_SIGN_CONTEXTS,2,Dc_Sign);
+	UPDATE_4D(TX_SIZES,PLANE_TYPES,SIG_COEF_CONTEXTS_EOB,2,Coeff_Base_Eob);
+	UPDATE_4D(TX_SIZES,PLANE_TYPES,SIG_COEF_CONTEXTS,4,Coeff_Base);
+	UPDATE_4D(TX_SIZES,PLANE_TYPES,LEVEL_CONTEXTS,BR_CDF_SIZE,Coeff_Br);
+
+}
 int decode::init_non_coeff_cdfs(CDFArrays *cdf){
     memcpy(cdf->Intra_Frame_Y_Mode,Default_Intra_Frame_Y_Mode_Cdf,sizeof(Default_Intra_Frame_Y_Mode_Cdf));
     memcpy(cdf->Y_Mode,Default_Y_Mode_Cdf,sizeof(Default_Y_Mode_Cdf));
@@ -352,6 +482,7 @@ int decode::init_coeff_cdfs(AV1DecodeContext *av1Ctx,CDFArrays *cdf){
 int decode::load_cdfs(AV1DecodeContext *av1Ctx,int ctx){
 	printf("load_cdfs ctx %d\n",ctx);
 	memcpy(&av1Ctx->currentFrame->cdfCtx,&av1Ctx->ref_frames[ctx]->cdfCtx,sizeof(CDFArrays));
+	resetCDFCount(&av1Ctx->currentFrame->cdfCtx);
 }
 //保存cdf到参考帧上下文
 int decode::save_cdfs(AV1DecodeContext *av1Ctx,int ctx){
@@ -662,7 +793,7 @@ int decode::motion_field_projection(AV1DecodeContext *av1Ctx,int src,int dstSign
 			int col = 2 * x8 + 1;
 			int srcRef = av1Ctx->SavedRefFrames[srcIdx][row][col];
 			//这个if aom没有进来
-			printf("motion_field_projection srcRef %d\n",srcRef);
+			//printf("motion_field_projection srcRef %d\n",srcRef);
 			if (srcRef > INTRA_FRAME) {
 				int refToCur = get_relative_dist(seqHdr->enable_order_hint,seqHdr->OrderHintBits,frameHdr->OrderHints[src], frameHdr->OrderHint);
 				int refOffset = get_relative_dist(seqHdr->enable_order_hint,seqHdr->OrderHintBits,frameHdr->OrderHints[src], av1Ctx->SavedOrderHints[srcIdx][srcRef]);
@@ -3419,27 +3550,27 @@ genArray:
 printf("b_data->compound_type %d isCompound %d IsInterIntra %d\n",b_data->compound_type,isCompound,IsInterIntra);
 	if(isCompound == 0 && IsInterIntra == 0){
 		for(int i = 0 ; i < h ; i ++){
-			printf("\n");
+			//printf("\n");
 			for(int j = 0 ; j < w ; j ++){
 			    av1Ctx->currentFrame->CurrFrame[ plane ][ y + i ][ x + j ] = Clip1(preds[ 0 ][ i ][ j ] ,seqHdr->color_config.BitDepth);
-				printf("%d ",av1Ctx->currentFrame->CurrFrame[ plane ][ y + i ][ x + j ]);
+				//printf("%d ",av1Ctx->currentFrame->CurrFrame[ plane ][ y + i ][ x + j ]);
 			}
 		}
 	}else if(b_data->compound_type == COMPOUND_AVERAGE){
 		for(int i = 0 ; i < h ; i ++){
-			printf("\n");
+			//printf("\n");
 			for(int j = 0 ; j < w ; j ++){
 				
 				av1Ctx->currentFrame->CurrFrame[ plane ][ y + i ][ x + j ] = Clip1( Round2( preds[ 0 ][ i ][ j ] + preds[ 1 ][ i ][ j ], 1 + av1Ctx->InterPostRound ),seqHdr->color_config.BitDepth );
-			printf("%d ",av1Ctx->currentFrame->CurrFrame[ plane ][ y + i ][ x + j ]);
+			//printf("%d ",av1Ctx->currentFrame->CurrFrame[ plane ][ y + i ][ x + j ]);
 			}
 		}
 	}else if(b_data->compound_type == COMPOUND_DISTANCE){
 		for(int i = 0 ; i < h ; i ++){
-			printf("\n");
+			//printf("\n");
 			for(int j = 0 ; j < w ; j ++){
 				av1Ctx->currentFrame->CurrFrame[ plane ][ y + i ][ x + j ] = Clip1( Round2( FwdWeight * preds[ 0 ][ i ][ j ] + BckWeight * preds[ 1 ][ i ][ j ], 4 + av1Ctx->InterPostRound ) ,seqHdr->color_config.BitDepth);
-				printf("%d ",av1Ctx->currentFrame->CurrFrame[ plane ][ y + i ][ x + j ]);
+				//printf("%d ",av1Ctx->currentFrame->CurrFrame[ plane ][ y + i ][ x + j ]);
 			}
 		}
 	}else{

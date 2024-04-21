@@ -2207,9 +2207,11 @@ typedef struct CDFArrays{
   uint16_t Comp_Mode[COMP_INTER_CONTEXTS][3] ;
   uint16_t Skip_Mode[SKIP_MODE_CONTEXTS][3] ;
   uint16_t Skip[SKIP_CONTEXTS][3] ;
+
   uint16_t Comp_Ref[REF_CONTEXTS][FWD_REFS - 1][3];
   uint16_t Comp_Bwd_Ref[REF_CONTEXTS][BWD_REFS - 1][3];
   uint16_t Single_Ref[REF_CONTEXTS][SINGLE_REFS - 1][3] ;
+
   uint16_t Compound_Mode[COMPOUND_MODE_CONTEXTS][COMPOUND_MODES + 1];
   uint16_t Interp_Filter[INTERP_FILTER_CONTEXTS][INTERP_FILTERS + 1] ;
   uint16_t Motion_Mode[BLOCK_SIZES][MOTION_MODES + 1] ;
@@ -2237,6 +2239,7 @@ typedef struct CDFArrays{
   uint16_t Palette_Size_6_Uv_Color[PALETTE_COLOR_CONTEXTS][7] ;
   uint16_t Palette_Size_7_Uv_Color[PALETTE_COLOR_CONTEXTS][8] ;
   uint16_t Palette_Size_8_Uv_Color[PALETTE_COLOR_CONTEXTS][9] ;
+  
   uint16_t Palette_Y_Mode[PALETTE_BLOCK_SIZE_CONTEXTS][PALETTE_Y_MODE_CONTEXTS][3] ;
   uint16_t Palette_Uv_Mode[PALETTE_UV_MODE_CONTEXTS][3] ;
   uint16_t Delta_Q[DELTA_Q_SMALL + 2] ;

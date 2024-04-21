@@ -320,7 +320,8 @@ int frame::parseUncompressedHeader(int sz, bitSt *bs, AV1DecodeContext *av1Ctx, 
 
 		allocFrameContext(out,WBuffMiSize,HBuffMiSize,&av1Ctx->currentFrame);
 		for(int i = 0 ; i < NUM_REF_FRAMES ; i ++){
-			allocFrameContext(out,WBuffMiSize,HBuffMiSize,&av1Ctx->ref_frames[i]);
+			av1Ctx->ref_frames[i] = (FrameContext *)malloc(sizeof(FrameContext));
+			//allocFrameContext(out,WBuffMiSize,HBuffMiSize,&av1Ctx->ref_frames[i]);
 		}
 	}else{
 		for(int i = 0 ; i < HBuffMiSize ; i++){
@@ -1259,7 +1260,7 @@ void frame::allocDecodeContext(AV1DecodeContext *av1Ctx){
 	av1Ctx->CompGroupIdxs = new uint8_t*[HBuffMiSize];
 	av1Ctx->CompoundIdxs = new uint8_t*[HBuffMiSize];
 	av1Ctx->MiSizes = new uint8_t*[HBuffMiSize];
-	av1Ctx->SegmentIds = new uint8_t*[HBuffMiSize];
+	av1Ctx->SegmentIds = new int8_t*[HBuffMiSize];
 	av1Ctx->IsInters = new uint8_t*[HBuffMiSize];
 	av1Ctx->SkipModes = new uint8_t*[HBuffMiSize];
 	av1Ctx->Skips = new uint8_t*[HBuffMiSize];
@@ -1271,7 +1272,7 @@ void frame::allocDecodeContext(AV1DecodeContext *av1Ctx){
 		av1Ctx->CompGroupIdxs[i] = new uint8_t[WBuffMiSize];
 		av1Ctx->CompoundIdxs[i] = new uint8_t[WBuffMiSize];
 		av1Ctx->MiSizes[i] = new uint8_t[WBuffMiSize];
-		av1Ctx->SegmentIds[i] = new uint8_t[WBuffMiSize];
+		av1Ctx->SegmentIds[i] = new int8_t[WBuffMiSize];
 		av1Ctx->IsInters[i] = new uint8_t[WBuffMiSize];
 		av1Ctx->SkipModes[i] = new uint8_t[WBuffMiSize];
 		av1Ctx->Skips[i] = new uint8_t[WBuffMiSize];
@@ -2396,9 +2397,21 @@ int frame::inter_frame_mode_info(SymbolContext *sbCtx, bitSt *bs, BlockData *b_d
 			ctx = 2 * (b_data->AvailU ? b_data->AboveIntra : b_data->LeftIntra);
 		else
 			ctx = 0;
-		
+		printf("is inter context %d\n",ctx);
+		for(int i  = 0 ; i < 4 ; i++){
+			printf("\n");
+			for(int j = 0; j < 2 ;j ++){
+				printf("%d ",32768 - av1Ctx->currentFrame->currentTileCdf.Is_Inter[i][j]);
+			}
+		}
 		b_data->is_inter = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->currentTileCdf.Is_Inter[ctx],3);//S()
 		printf("decodeSymbol is_inter %d\n",b_data->is_inter);
+		for(int i  = 0 ; i < 4 ; i++){
+			printf("\n");
+			for(int j = 0; j < 2 ;j ++){
+				printf("%d ",32768 - av1Ctx->currentFrame->currentTileCdf.Is_Inter[i][j]);
+			}
+		}
 	}
 
 	if (b_data->is_inter)

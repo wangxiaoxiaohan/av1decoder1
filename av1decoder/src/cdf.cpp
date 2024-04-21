@@ -72,6 +72,7 @@ int Symbol::decodeSymbol(SymbolContext *sbCtx,bitSt *bs,uint16_t *cdfArray,int N
         f = ( 1 << 15 ) - cdfArray[ symbol ]; //计算范围
         cur = ((sbCtx->SymbolRange >> 8) * (f >> EC_PROB_SHIFT)) >> (7 - EC_PROB_SHIFT); //将概率进行缩放
         cur += EC_MIN_PROB * (N - symbol - 1);//进行修正，保证概率总和为1
+        printf("cur %d\n",cur);
         if(symbol >= N){
             printf("symbol out of range\n");
         }
@@ -105,16 +106,19 @@ int Symbol::decodeSymbol(SymbolContext *sbCtx,bitSt *bs,uint16_t *cdfArray,int N
 //update
     if(sbCtx->isUpdate){
         int rate = 3 + ( cdfArray[ N ] > 15 ) + ( cdfArray[ N ] > 31 ) + Min( FloorLog2( N ), 2 );
+        printf("rate delta source %d N %d\n",cdfArray[ N ],N);
         int tmp = 0;
         for (int i = 0; i < N - 1; i++ ) {
             tmp = ( i == symbol ) ? ( 1 << 15 ) : tmp;
             if ( tmp < cdfArray[ i ] ) {
+                printf("cdf += %d rate %d\n",( cdfArray[ i ] - tmp ) >> rate,rate );
                 cdfArray[ i ] -= ( ( cdfArray[ i ] - tmp ) >> rate );
             } else {
+                printf("cdf -= %d rate %d\n",( tmp - cdfArray[ i ] ) >> rate,rate   );
                 cdfArray[ i ] += ( ( tmp - cdfArray[ i ] ) >> rate );
             }
         }
-        cdfArray[ N ] += ( cdfArray[ N ] < 32 );
+        cdfArray[ N ] += ( cdfArray[ N ] < 32 );//cdf 计数
     }
     return symbol;
 }
