@@ -824,7 +824,7 @@ int decode::motion_field_projection(AV1DecodeContext *av1Ctx,int src,int dstSign
 					}
 				}
 			}else{
-				printf("mv_ref->ref_frame > INTRA_FRAME %d y posy %d posx %d\n",srcRef,y8,x8);
+				//printf("mv_ref->ref_frame > INTRA_FRAME %d y posy %d posx %d\n",srcRef,y8,x8);
 			}
 		}
 	}
@@ -867,9 +867,9 @@ int decode::find_mv_stack(int isCompound,SymbolContext *sbCtx, bitSt *bs,
 	b_data->mvpCtx.NewMvCount = 0;
 	setup_global_mv(0,b_data->mvpCtx.GlobalMvs[0],b_data,av1Ctx);
 	setup_global_mv(1,b_data->mvpCtx.GlobalMvs[1],b_data,av1Ctx);
-	printf("GlobalMvs value %d %d %d %d\n",b_data->mvpCtx.GlobalMvs[0][0],
-		b_data->mvpCtx.GlobalMvs[0][1],b_data->mvpCtx.GlobalMvs[1][0],
-		b_data->mvpCtx.GlobalMvs[1][1]);
+	// printf("GlobalMvs value %d %d %d %d\n",b_data->mvpCtx.GlobalMvs[0][0],
+	// 	b_data->mvpCtx.GlobalMvs[0][1],b_data->mvpCtx.GlobalMvs[1][0],
+	// 	b_data->mvpCtx.GlobalMvs[1][1]);
 	b_data->mvpCtx.FoundMatch = 0;
 	scan_row(-1,isCompound,b_data,av1Ctx);
 	int foundAboveMatch,foundLeftMatch;
@@ -1081,7 +1081,7 @@ int decode::add_ref_mv_candidate(int mvRow,int  mvCol,int  isCompound,int weight
 								BlockData *b_data,AV1DecodeContext *av1Ctx){
 	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	if(av1Ctx->IsInters[ mvRow ][ mvCol ] == 0){
-		printf("add_ref_mv_candidate not inter\n");
+		//printf("add_ref_mv_candidate not inter\n");
 		return ERROR_CODE;
 	}
 	if(isCompound == 0){
@@ -1103,7 +1103,7 @@ int decode::add_ref_mv_candidate(int mvRow,int  mvCol,int  isCompound,int weight
 //7.10.2.8
 int decode::search_stack(int mvRow,int mvCol,int candList,int weight,
 						BlockData *b_data,AV1DecodeContext *av1Ctx){
-							printf("search_stack \n");
+	//printf("search_stack \n");
 	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	int candMode = av1Ctx->YModes[ mvRow ][ mvCol ];
 	int candSize = av1Ctx->MiSizes[ mvRow ][ mvCol ];
@@ -1113,12 +1113,12 @@ int decode::search_stack(int mvRow,int mvCol,int candList,int weight,
 				( frameHdr->global_motion_params.GmType[ b_data->RefFrame[ 0 ] ] > TRANSLATION )  && ( large == 1 ))
 	{
 		//candMv = av1Ctx->GlobalMvs[ 0 ];
-		printf("is_gm_block 1\n");
+		//printf("is_gm_block 1\n");
 		memcpy(candMv,b_data->mvpCtx.GlobalMvs[ 0 ],2* sizeof(int));
 	}else{	
-		printf("is_gm_block 0\n");
+		//printf("is_gm_block 0\n");
 		//candMv = p_data->Mvs[ mvRow ][ mvCol ][ candList ];
-		printf("Mvs[0]  %d MVs[1] %d\n",av1Ctx->Mvs[ mvRow ][ mvCol ][ candList ][0],av1Ctx->Mvs[ mvRow ][ mvCol ][ candList ][1]);
+		//printf("Mvs[0]  %d MVs[1] %d\n",av1Ctx->Mvs[ mvRow ][ mvCol ][ candList ][0],av1Ctx->Mvs[ mvRow ][ mvCol ][ candList ][1]);
 		memcpy(candMv,av1Ctx->Mvs[ mvRow ][ mvCol ][ candList ],2* sizeof(int));
 	}
 	lower_precision(candMv,av1Ctx);
@@ -1135,22 +1135,22 @@ int decode::search_stack(int mvRow,int mvCol,int candList,int weight,
 
 	int idx;
 	for (idx = 0; idx < b_data->mvpCtx.NumMvFound; idx++) {
-		printf("stach mv %d  %d candmv %d %d \n",b_data->mvpCtx.RefStackMv[idx][0][0],b_data->mvpCtx.RefStackMv[idx][0][1],
-							candMv[0],candMv[1]);
+		// printf("stach mv %d  %d candmv %d %d \n",b_data->mvpCtx.RefStackMv[idx][0][0],b_data->mvpCtx.RefStackMv[idx][0][1],
+		// 					candMv[0],candMv[1]);
 		if (candMv[0] == b_data->mvpCtx.RefStackMv[idx][0][0] && candMv[1] == b_data->mvpCtx.RefStackMv[idx][0][1]) {
 			b_data->mvpCtx.WeightStack[idx] += weight;
 			//printf("search_stack loop \n");
 			//return 0; //？
-			printf("break index %d\n",idx);
+			//printf("break index %d\n",idx);
 			break;
 		}
 	}
-	printf("index %d NumMvFound %d\n",idx,b_data->mvpCtx.NumMvFound);
+	//printf("index %d NumMvFound %d\n",idx,b_data->mvpCtx.NumMvFound);
 	if(idx == b_data->mvpCtx.NumMvFound && b_data->mvpCtx.NumMvFound < MAX_REF_MV_STACK_SIZE){
 		//av1Ctx->RefStackMv[ av1Ctx->NumMvFound][0] = candMv;
 		memcpy(b_data->mvpCtx.RefStackMv[ b_data->mvpCtx.NumMvFound][0],candMv,2 * sizeof(int));
 		b_data->mvpCtx.WeightStack[ b_data->mvpCtx.NumMvFound] = weight;
-		printf("search_stack add NumMvFound\n");
+		//printf("search_stack add NumMvFound\n");
 		b_data->mvpCtx.NumMvFound++;
 	}
 
@@ -1161,7 +1161,7 @@ int decode::search_stack(int mvRow,int mvCol,int candList,int weight,
 //motion vectors to the stack.
 int decode::compound_search_stack(int  mvRow ,int  mvCol,int weight,
 				BlockData *b_data,AV1DecodeContext *av1Ctx){
-	printf("compound_search_stack \n");
+	//printf("compound_search_stack \n");
 	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	int candMvs[2][2]; 
 	//int candMvs[2][2] = Mvs[ mvRow ][ mvCol ];
@@ -1206,13 +1206,13 @@ int decode::compound_search_stack(int  mvRow ,int  mvCol,int weight,
 				break;
 		}
 	}
-	printf("index %d NumMvFound %d\n",idx,b_data->mvpCtx.NumMvFound);
+	//printf("index %d NumMvFound %d\n",idx,b_data->mvpCtx.NumMvFound);
 	if(idx == b_data->mvpCtx.NumMvFound && b_data->mvpCtx.NumMvFound < MAX_REF_MV_STACK_SIZE){
 		for(int i = 0 ; i < 2 ; i++)
 			//av1Ctx->RefStackMv[ av1Ctx->NumMvFound ][ i ] = candMvs[ i ] ;
 			memcpy(b_data->mvpCtx.RefStackMv[ b_data->mvpCtx.NumMvFound ][ i ] ,candMvs[ i ],2 * sizeof(int));
 		b_data->mvpCtx.WeightStack[ b_data->mvpCtx.NumMvFound ] = weight;
-		printf("compound_search_stack add NumMvFound\n");
+		//printf("compound_search_stack add NumMvFound\n");
 		b_data->mvpCtx.NumMvFound += 1;
 
 	}
@@ -1249,7 +1249,7 @@ int decode::temporal_scan(int isCompound,BlockData *b_data,AV1DecodeContext *av1
 	{
 		for (int deltaCol = 0; deltaCol < Min(bw4, 16); deltaCol += stepW4)
 		{
-			printf("add_tpl_ref_mv deltaRow %d deltaCol%d\n",deltaRow,deltaCol);
+			//printf("add_tpl_ref_mv deltaRow %d deltaCol%d\n",deltaRow,deltaCol);
 			add_tpl_ref_mv(deltaRow, deltaCol, isCompound,b_data,av1Ctx);
 		}
 	}
@@ -1268,7 +1268,7 @@ int decode::temporal_scan(int isCompound,BlockData *b_data,AV1DecodeContext *av1
 		{
 			int deltaRow = tplSamplePos[i][0];
 			int deltaCol = tplSamplePos[i][1];
-			printf("allowExtension add_tpl_ref_mv %d\n",i);
+			//printf("allowExtension add_tpl_ref_mv %d\n",i);
 			if (check_sb_border(b_data->MiRow , b_data->MiCol,deltaRow, deltaCol))
 			{
 				add_tpl_ref_mv(deltaRow, deltaCol, isCompound,b_data,av1Ctx);
@@ -1283,18 +1283,18 @@ int decode::add_tpl_ref_mv(int deltaRow, int deltaCol, int isCompound,BlockData 
 {
 	int mvRow = (b_data->MiRow + deltaRow) | 1;
 	int mvCol = (b_data->MiCol + deltaCol) | 1;
-	printf("b_data->MiRow:%d deltaRow:%d  b_data->MiCol:%d  deltaCol:%d  mvRow:%d  mvCol:%d  av1Ctx->MiColStart:%d  av1Ctx->MiColEnd:%d  av1Ctx->MiRowStart:%d  av1Ctx->MiRowEnd:%d \n",
-			b_data->MiRow, deltaRow, b_data->MiCol, deltaCol, mvRow ,mvCol, av1Ctx->MiColStart ,av1Ctx->MiColEnd, av1Ctx->MiRowStart ,av1Ctx->MiRowEnd);
+	//printf("b_data->MiRow:%d deltaRow:%d  b_data->MiCol:%d  deltaCol:%d  mvRow:%d  mvCol:%d  av1Ctx->MiColStart:%d  av1Ctx->MiColEnd:%d  av1Ctx->MiRowStart:%d  av1Ctx->MiRowEnd:%d \n",
+	//		b_data->MiRow, deltaRow, b_data->MiCol, deltaCol, mvRow ,mvCol, av1Ctx->MiColStart ,av1Ctx->MiColEnd, av1Ctx->MiRowStart ,av1Ctx->MiRowEnd);
 	if (is_inside(mvRow, mvCol,av1Ctx->MiColStart,av1Ctx->MiColEnd,av1Ctx->MiRowStart,av1Ctx->MiRowEnd) == 0)
 		return 0;
 	int x8 = mvCol >> 1;
 	int y8 = mvRow >> 1;
 
-	printf("add_tpl_ref_mv isCompound %d\n",isCompound);
+	//printf("add_tpl_ref_mv isCompound %d\n",isCompound);
 	if (deltaRow == 0 && deltaCol == 0)
 	{
 		b_data->mvpCtx.ZeroMvContext = 1;
-		printf("ZeroMvContext 1  111\n");
+		//printf("ZeroMvContext 1  111\n");
 	}
 	if (!isCompound)
 	{
@@ -1302,23 +1302,23 @@ int decode::add_tpl_ref_mv(int deltaRow, int deltaCol, int isCompound,BlockData 
 		//int candMv[2] = av1Ctx->MotionFieldMvs[b_data->RefFrame[0]][y8][x8];
 		//debug dav1d 来看 就是这里 return 掉了 ，所以 应该是 MotionFieldMvs 的问题
 		memcpy(candMv,av1Ctx->MotionFieldMvs[b_data->RefFrame[0]][y8][x8],2 * sizeof(int));
-		printf("MotionFieldMvs[0] %d\n",av1Ctx->MotionFieldMvs[b_data->RefFrame[0]][y8][x8][0]);
-		printf("candMv[0] %d\n",candMv[0]);
+		//printf("MotionFieldMvs[0] %d\n",av1Ctx->MotionFieldMvs[b_data->RefFrame[0]][y8][x8][0]);
+		//printf("candMv[0] %d\n",candMv[0]);
 		if (candMv[0] == INVALID_MV)
 			return ERROR_CODE;
 		lower_mv_precision(av1Ctx,candMv);
 		
 		if (deltaRow == 0 && deltaCol == 0)
 		{
-			printf("candMv[0] %d b_data->mvpCtx.GlobalMvs[0][0] %d\n",candMv[0],b_data->mvpCtx.GlobalMvs[0][0]);
-			printf("candMv[1] %d b_data->mvpCtx.GlobalMvs[0][1] %d\n",candMv[1],b_data->mvpCtx.GlobalMvs[0][1]);
+			//printf("candMv[0] %d b_data->mvpCtx.GlobalMvs[0][0] %d\n",candMv[0],b_data->mvpCtx.GlobalMvs[0][0]);
+			//printf("candMv[1] %d b_data->mvpCtx.GlobalMvs[0][1] %d\n",candMv[1],b_data->mvpCtx.GlobalMvs[0][1]);
 			if (Abs(candMv[0] - b_data->mvpCtx.GlobalMvs[0][0]) >= 16 ||
 				Abs(candMv[1] - b_data->mvpCtx.GlobalMvs[0][1]) >= 16){
 				b_data->mvpCtx.ZeroMvContext = 1;
-				printf("ZeroMvContext 1  222\n");
+				//printf("ZeroMvContext 1  222\n");
 				}else{
 				b_data->mvpCtx.ZeroMvContext = 0;
-				printf("ZeroMvContext 0  222\n");
+				//printf("ZeroMvContext 0  222\n");
 				}
 		}
 		int idx;
@@ -1338,7 +1338,7 @@ int decode::add_tpl_ref_mv(int deltaRow, int deltaCol, int isCompound,BlockData 
 			//av1Ctx->RefStackMv[av1Ctx->NumMvFound][0] = candMv;
 			memcpy(b_data->mvpCtx.RefStackMv[b_data->mvpCtx.NumMvFound][0],candMv,2 * sizeof(int)); 
 			b_data->mvpCtx.WeightStack[b_data->mvpCtx.NumMvFound] = 2;
-			printf("add_tpl_ref_mv 11 add NumMvFound\n");
+			//printf("add_tpl_ref_mv 11 add NumMvFound\n");
 			b_data->mvpCtx.NumMvFound += 1;
 		}
 	}
@@ -1347,13 +1347,13 @@ int decode::add_tpl_ref_mv(int deltaRow, int deltaCol, int isCompound,BlockData 
 		//int candMv0[2] = av1Ctx->MotionFieldMvs[b_data->RefFrame[0]][y8][x8];
 		int candMv0[2];
 		memcpy(candMv0,av1Ctx->MotionFieldMvs[b_data->RefFrame[0]][y8][x8],2 * sizeof(int)); 
-		printf("candMv0[0] %d\n",candMv0[0]);
+		//printf("candMv0[0] %d\n",candMv0[0]);
 		if (candMv0[0] == INVALID_MV)
 			return ERROR_CODE;
 		//int candMv1[2] = av1Ctx->MotionFieldMvs[b_data->RefFrame[1]][y8][x8];
 		int candMv1[2] ;
 		memcpy(candMv1,av1Ctx->MotionFieldMvs[b_data->RefFrame[1]][y8][x8],2 * sizeof(int)); 
-		printf("candMv1[0] %d\n",candMv1[0]);
+		//printf("candMv1[0] %d\n",candMv1[0]);
 		if (candMv1[0] == INVALID_MV)
 			return ERROR_CODE;
 		lower_mv_precision(av1Ctx,candMv0);
@@ -1361,19 +1361,19 @@ int decode::add_tpl_ref_mv(int deltaRow, int deltaCol, int isCompound,BlockData 
 		//?
 		if (deltaRow == 0 && deltaCol == 0)
 		{
-			printf("candMv0[0] %d b_data->mvpCtx.GlobalMvs[0][0] %d\n",candMv0[0],b_data->mvpCtx.GlobalMvs[0][0]);
-			printf("candMv0[1] %d b_data->mvpCtx.GlobalMvs[0][1] %d\n",candMv0[1],b_data->mvpCtx.GlobalMvs[0][1]);
-			printf("candMv1[0] %d b_data->mvpCtx.GlobalMvs[1][0] %d\n",candMv1[0],b_data->mvpCtx.GlobalMvs[1][0]);
-			printf("candMv1[1] %d b_data->mvpCtx.GlobalMvs[1][1] %d\n",candMv1[1],b_data->mvpCtx.GlobalMvs[1][1]);
+			// printf("candMv0[0] %d b_data->mvpCtx.GlobalMvs[0][0] %d\n",candMv0[0],b_data->mvpCtx.GlobalMvs[0][0]);
+			// printf("candMv0[1] %d b_data->mvpCtx.GlobalMvs[0][1] %d\n",candMv0[1],b_data->mvpCtx.GlobalMvs[0][1]);
+			// printf("candMv1[0] %d b_data->mvpCtx.GlobalMvs[1][0] %d\n",candMv1[0],b_data->mvpCtx.GlobalMvs[1][0]);
+			// printf("candMv1[1] %d b_data->mvpCtx.GlobalMvs[1][1] %d\n",candMv1[1],b_data->mvpCtx.GlobalMvs[1][1]);
 			if (Abs(candMv0[0] - b_data->mvpCtx.GlobalMvs[0][0]) >= 16 ||
 				Abs(candMv0[1] - b_data->mvpCtx.GlobalMvs[0][1]) >= 16 ||
 				Abs(candMv1[0] - b_data->mvpCtx.GlobalMvs[1][0]) >= 16 ||
 				Abs(candMv1[1] - b_data->mvpCtx.GlobalMvs[1][1]) >= 16){
 				b_data->mvpCtx.ZeroMvContext = 1;
-				printf("ZeroMvContext 1  333\n");
+				//printf("ZeroMvContext 1  333\n");
 				}else{
 				b_data->mvpCtx.ZeroMvContext = 0;
-				printf("ZeroMvContext 0  333\n");
+				//printf("ZeroMvContext 0  333\n");
 				}
 		}
 		int idx;
@@ -1396,7 +1396,7 @@ int decode::add_tpl_ref_mv(int deltaRow, int deltaCol, int isCompound,BlockData 
 			memcpy(b_data->mvpCtx.RefStackMv[b_data->mvpCtx.NumMvFound][0],candMv0,2 * sizeof(int)); 
 			memcpy(b_data->mvpCtx.RefStackMv[b_data->mvpCtx.NumMvFound][1],candMv1,2 * sizeof(int)); 
 			b_data->mvpCtx.WeightStack[b_data->mvpCtx.NumMvFound] = 2;
-			printf("add_tpl_ref_mv 22 add NumMvFound\n");
+			//printf("add_tpl_ref_mv 22 add NumMvFound\n");
 			b_data->mvpCtx.NumMvFound += 1;
 		}
 	}
@@ -1520,7 +1520,7 @@ int decode::extra_search(int isCompound, BlockData *b_data, AV1DecodeContext *av
 				memcpy(b_data->mvpCtx.RefStackMv[b_data->mvpCtx.NumMvFound][1],combinedMvs[0][1],2* sizeof(int));
 			}
 			b_data->mvpCtx.WeightStack[b_data->mvpCtx.NumMvFound] = 2;
-			printf("extra_search 11 add NumMvFound\n");
+			//printf("extra_search 11 add NumMvFound\n");
 			b_data->mvpCtx.NumMvFound++;
 		}
 		else
@@ -1532,7 +1532,7 @@ int decode::extra_search(int isCompound, BlockData *b_data, AV1DecodeContext *av
 				memcpy(b_data->mvpCtx.RefStackMv[b_data->mvpCtx.NumMvFound][0],combinedMvs[idx][0],2* sizeof(int));
 				memcpy(b_data->mvpCtx.RefStackMv[b_data->mvpCtx.NumMvFound][1],combinedMvs[idx][1],2* sizeof(int));
 				b_data->mvpCtx.WeightStack[b_data->mvpCtx.NumMvFound] = 2;
-				printf("extra_search 22 add NumMvFound\n");
+				//printf("extra_search 22 add NumMvFound\n");
 				b_data->mvpCtx.NumMvFound++;
 			}
 		}
@@ -2719,7 +2719,7 @@ int decode::predict_intra(int plane,int x,int y,int haveLeft,int haveAbove,
 	}
 	// int wLimit = frameHdr->si.FrameWidth % MI_SIZE == 0 ? maxX : maxX + MI_SIZE;
 	// int hLimit = frameHdr->si.FrameHeight % MI_SIZE == 0 ? maxY : maxY + MI_SIZE;
-	printf("haveLeft:%d haveAbove:%d haveAboveRight %d haveBelowLeft %d\n",haveLeft,haveAbove,haveAboveRight,haveBelowLeft);
+	//printf("haveLeft:%d haveAbove:%d haveAboveRight %d haveBelowLeft %d\n",haveLeft,haveAbove,haveAboveRight,haveBelowLeft);
     for (int i = 0; i < w + h; i++) {
         if (haveAbove == 0 && haveLeft == 1) {
             // 如果haveAbove为0且haveLeft为1，设置AboveRow[i]等于左侧的像素值
@@ -3437,7 +3437,7 @@ int decode::intraEdgeFilter(int sz, int strength, int left,BlockData *b_data){
 
 int decode::predict_inter(int plane, int x, int y,int w ,int h ,int candRow,int candCol,int IsInterIntra,
 							BlockData *b_data,AV1DecodeContext *av1Ctx){
-	printf("predict_inter w: %d h :%d candRow %d candCol %d\n",w,h,candRow,candCol);
+	//printf("predict_inter w: %d h :%d candRow %d candCol %d\n",w,h,candRow,candCol);
 
 	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
@@ -3522,7 +3522,7 @@ genArray:
 
 	}
 	if(useWarp == 0){
-		printf("startX %d startY %d stepX %d stepY %d\n",startX,startY,stepX, stepY);
+		//printf("startX %d startY %d stepX %d stepY %d\n",startX,startY,stepX, stepY);
 		block_inter_prediction(plane, refIdx,startX, startY, stepX, stepY, w, h, candRow, candCol,preds[refList],b_data,av1Ctx);
 	}
 
@@ -3547,7 +3547,7 @@ genArray:
 	if(b_data->compound_type == COMPOUND_DISTANCE){
 		distanceWeights(candRow,candCol,&FwdWeight,&BckWeight,av1Ctx);
 	}
-printf("b_data->compound_type %d isCompound %d IsInterIntra %d\n",b_data->compound_type,isCompound,IsInterIntra);
+//printf("b_data->compound_type %d isCompound %d IsInterIntra %d\n",b_data->compound_type,isCompound,IsInterIntra);
 	if(isCompound == 0 && IsInterIntra == 0){
 		for(int i = 0 ; i < h ; i ++){
 			//printf("\n");
@@ -4421,13 +4421,13 @@ int decode::reconstruct(int plane, int x, int y, int txSz,BlockData *b_data,AV1D
 			//注意这里写的和spec 不一样，临时解法！！
             //av1Ctx->currentFrame->CurrFrame[plane][Y + yy][X + xx] = Clip3(0,255,av1Ctx->currentFrame->CurrFrame[plane][Y + yy][X + xx] + Residual[i][j]);
         	av1Ctx->currentFrame->CurrFrame[plane][Y + yy][X + xx] = Clip1( av1Ctx->currentFrame->CurrFrame[ plane ][ y + yy ][ x + xx ] +Residual[ i ][ j ],seqHdr->color_config.BitDepth);
-			//printf("%d ",Residual[i][j]);
+			printf("%d ",Residual[i][j]);
 			
 		}
-		//printf("\n");
+		printf("\n");
     }
 
-	//printf("\n");
+	printf("\n");
 	for(int i = 0 ; i < h ; i ++){
 		delete []  Residual[i];
 	}

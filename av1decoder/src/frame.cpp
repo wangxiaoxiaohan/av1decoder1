@@ -2125,7 +2125,7 @@ int frame::decode_block(SymbolContext *sbCtx,bitSt *bs,int r,int c,int subSize, 
 					for (int refList = 0; refList < 1 + isCompound; refList++)
 					{
 						//p_data->Mvs[r + y][c + x][refList] = b_data.Mv[refList];
-						printf("decode_block set mv %d %d \n",b_data.Mv[refList][0],b_data.Mv[refList][1]);
+						//printf("decode_block set mv %d %d \n",b_data.Mv[refList][0],b_data.Mv[refList][1]);
 						memcpy(av1Ctx->Mvs[r + y][c + x][refList],b_data.Mv[refList],sizeof(int) * 2);
 					}
 			}
@@ -2335,8 +2335,8 @@ int frame::inter_frame_mode_info(SymbolContext *sbCtx, bitSt *bs, BlockData *b_d
 	b_data->AboveSingle = b_data->AboveRefFrame[1] <= INTRA_FRAME;
 	b_data->skip = 0;
 	inter_segment_id(1,sbCtx,bs,b_data,av1Ctx);
-	printf("b->seg_id %d\n",b_data->segment_id );
-	printf("skip_mode_enabled 222 %d\n",frameHdr->skip_mode_present);
+	//printf("b->seg_id %d\n",b_data->segment_id );
+	//printf("skip_mode_enabled 222 %d\n",frameHdr->skip_mode_present);
 	//read_skip_mode();
 	if ( seg_instance->seg_feature_active( b_data->segment_id,SEG_LVL_SKIP,frameHdr ) ||
 		seg_instance->seg_feature_active( b_data->segment_id,SEG_LVL_REF_FRAME ,frameHdr) ||
@@ -2352,8 +2352,9 @@ int frame::inter_frame_mode_info(SymbolContext *sbCtx, bitSt *bs, BlockData *b_d
 			ctx += av1Ctx->SkipModes[ b_data->MiRow - 1 ][ b_data->MiCol ];
 		if ( b_data->AvailL )
 			ctx += av1Ctx->SkipModes[ b_data->MiRow ][ b_data->MiCol - 1 ];
-		printf("decodeSymbol skip_mode\n");
+		
 		b_data->skip_mode = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->currentTileCdf.Skip_Mode[ctx],3);// S()
+		printf("decodeSymbol skip_mode %d\n",b_data->skip_mode);
 	}
 
 	if (b_data->skip_mode)
@@ -2611,8 +2612,8 @@ int frame::assign_mv(int isCompound,SymbolContext *sbCtx,bitSt *bs,BlockData *b_
 		}
 		int PredMv[2][2];
 
-		printf("compMode %d\n",compMode);
-		printf("use_intrabc %d\n",b_data->use_intrabc);
+		//printf("compMode %d\n",compMode);
+		//printf("use_intrabc %d\n",b_data->use_intrabc);
 		if (b_data->use_intrabc)
 		{
 
@@ -2672,7 +2673,7 @@ int frame::assign_mv(int isCompound,SymbolContext *sbCtx,bitSt *bs,BlockData *b_
 			if ( mv_joint == MV_JOINT_HNZVZ || mv_joint == MV_JOINT_HNZVNZ )
 				diffMv[ 1 ] = read_mv_component(MvCtx ,1,sbCtx,bs,b_data,av1Ctx );
 			
-			printf("assign_mv PredMv: %d %d diffMv %d %d\n",PredMv[ i ][ 0 ],PredMv[ i ][ 1 ],diffMv[ 0 ],diffMv[ 1 ]);
+			//printf("assign_mv PredMv: %d %d diffMv %d %d\n",PredMv[ i ][ 0 ],PredMv[ i ][ 1 ],diffMv[ 0 ],diffMv[ 1 ]);
 			b_data->Mv[ i ][ 0 ] = PredMv[ i ][ 0 ] + diffMv[ 0 ];
 			b_data->Mv[ i ][ 1 ] = PredMv[ i ][ 1 ] + diffMv[ 1 ];
 
@@ -2680,7 +2681,7 @@ int frame::assign_mv(int isCompound,SymbolContext *sbCtx,bitSt *bs,BlockData *b_
 		else
 		{
 			//b_data->Mv[i] = PredMv[i];
-			printf("assign_mv PredMv: %d %d \n",PredMv[ i ][ 0 ],PredMv[ i ][ 1 ]);
+			//printf("assign_mv PredMv: %d %d \n",PredMv[ i ][ 0 ],PredMv[ i ][ 1 ]);
 			memcpy(b_data->Mv[i], PredMv[i], sizeof(int) * 2);
 		}
 	}

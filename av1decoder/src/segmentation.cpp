@@ -29,7 +29,7 @@ int segmentation::seg_feature_active_idx(int idx, int feature,frameHeader *frame
 
 int segmentation::seg_feature_active(int segment_id,int feature,frameHeader *frameHdr){
     int seg = seg_feature_active_idx( segment_id, feature,frameHdr);
-    printf("seg %d\n");
+   // printf("seg %d\n");
 	return seg;
 
 }
