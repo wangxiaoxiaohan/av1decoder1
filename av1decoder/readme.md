@@ -162,3 +162,13 @@ AV1使用了一种称为CDF（Cumulative Distribution Function）的算术编码
 
 由于AV1中使用了CDF算术编码，解码器需要实现逆CDF查找等算法，这可能使得解码器的复杂性略高于使用CABAC的H.265/H.264解码器。
 总的来说，尽管AV1和H.265/H.264都使用了熵编码技术，但它们在具体的编码方法和解码过程中存在一些差异。AV1中使用的CDF算术编码相对于H.265/H.264中的CABAC来说，有着不同的解码算法、状态更新方式以及上下文建模方式。
+
+
+
+single_ref_p* 这些的 ctx  后面几个根本没有计算！
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!bw4  2 bh4 4
+blockWidth + blockHeight 24 
+SymbolValue 3929 SymbolRange 63200
+
+50173
