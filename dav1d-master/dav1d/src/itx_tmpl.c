@@ -57,12 +57,13 @@ inv_txfm_add_c(pixel *dst, const ptrdiff_t stride, coef *const coeff,
         dc = (dc * 181 + 128) >> 8;
         dc = (dc + rnd) >> shift;
         dc = (dc * 181 + 128 + 2048) >> 12;
-        for (int y = 0; y < h; y++, dst += PXSTRIDE(stride))
+        for (int y = 0; y < h; y++, dst += PXSTRIDE(stride)){
+            //printf("\n");
             for (int x = 0; x < w; x++){
                 dst[x] = iclip_pixel(dst[x] + dc);
                  // printf("%d ",dst[x]);
             }
-                
+         }       
         return;
     }
 
@@ -93,14 +94,14 @@ inv_txfm_add_c(pixel *dst, const ptrdiff_t stride, coef *const coeff,
                 
                 c[x] = coeff[y + x * sh];
                 //printf("%d ",c[x]);
-               printf("%d ",coeff[y + x * sh]);//这是经过反量化之后 尚未反变换的数据
+               //printf("%d ",coeff[y + x * sh]);//这是经过反量化之后 尚未反变换的数据
             }
         }
-        printf("\n");
+        //printf("\n");
         first_1d_fn(c, 1, row_clip_min, row_clip_max);
     }
     printf("\n");
-    printf("first_1d_fn done\n");
+    //printf("first_1d_fn done\n");
 
 
     memset(coeff, 0, sizeof(*coeff) * sw * sh);
@@ -114,11 +115,11 @@ inv_txfm_add_c(pixel *dst, const ptrdiff_t stride, coef *const coeff,
     printf("residual\n");
     for (int y = 0; y < h; y++, dst += PXSTRIDE(stride)){
         for (int x = 0; x < w; x++){
-            //printf("%d ",(*c + 8 ) >> 4);
+            printf("%d ",(*c + 8 ) >> 4);
             dst[x] = iclip_pixel(dst[x] + ((*c++ + 8) >> 4));
             
         }
-        //printf("\n");
+        printf("\n");
     }
     printf("\n");
 }

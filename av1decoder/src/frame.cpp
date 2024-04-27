@@ -327,7 +327,8 @@ int frame::parseUncompressedHeader(int sz, bitSt *bs, AV1DecodeContext *av1Ctx, 
 		for(int i = 0 ; i < HBuffMiSize ; i++){
 			for(int j = 0 ; j < WBuffMiSize ; j++){
 				memset(av1Ctx->RefFrames[i][j],0xff,2 * sizeof(int));
-				av1Ctx->IsInters[i][j] = 0xff;
+				av1Ctx->IsInters[i][j] = 0;
+				av1Ctx->Skips[i][j] = 0;
 				av1Ctx->Mvs[i][j][0][0] = av1Ctx->Mvs[i][j][0][1] = av1Ctx->Mvs[i][j][1][0] = av1Ctx->Mvs[i][j][1][1] = 0;
 			}
 		}		
@@ -1265,7 +1266,7 @@ void frame::allocDecodeContext(AV1DecodeContext *av1Ctx){
 	av1Ctx->SkipModes = new uint8_t*[HBuffMiSize];
 	av1Ctx->Skips = new uint8_t*[HBuffMiSize];
 	av1Ctx->TxSizes = new uint8_t*[HBuffMiSize];
-	av1Ctx->InterTxSizes = new uint8_t*[HBuffMiSize];
+	av1Ctx->InterTxSizes = new int8_t*[HBuffMiSize];
 	for(int i = 0 ; i < HBuffMiSize ; i++){
 		av1Ctx->YModes[i] = new uint8_t[WBuffMiSize];
 		av1Ctx->UVModes[i] = new uint8_t[WBuffMiSize];
@@ -1277,7 +1278,7 @@ void frame::allocDecodeContext(AV1DecodeContext *av1Ctx){
 		av1Ctx->SkipModes[i] = new uint8_t[WBuffMiSize];
 		av1Ctx->Skips[i] = new uint8_t[WBuffMiSize];
 		av1Ctx->TxSizes[i] = new uint8_t[WBuffMiSize];
-		av1Ctx->InterTxSizes[i] = new uint8_t[WBuffMiSize];
+		av1Ctx->InterTxSizes[i] = new int8_t[WBuffMiSize];
 	}
 
 	for(int i = 0 ; i < 2 ; i++){
@@ -1313,8 +1314,7 @@ void frame::allocDecodeContext(AV1DecodeContext *av1Ctx){
 		for(int j = 0 ; j < HBuffMiSize ; j++){
 			av1Ctx->PaletteColors[i][j] = new uint8_t*[WBuffMiSize];
 			for(int k = 0 ; k < WBuffMiSize ; k++){
-				//av1Ctx->PaletteColors[i][j][k] = new uint8_t[b_data.PaletteSizeY];
-				//PaletteColors 的内存 在 decode_block 中分配
+				av1Ctx->PaletteColors[i][j][k] = new uint8_t[8/*SYMBOL MAX 8*/];
 			}
 		}
 	}
@@ -2148,8 +2148,8 @@ int frame::decode_block(SymbolContext *sbCtx,bitSt *bs,int r,int c,int subSize, 
 			av1Ctx->PaletteSizes[1][r + y][c + x] = b_data.PaletteSizeUV ;
 			
 			//在 releasecontext中释放
-			av1Ctx->PaletteColors[0][r + y][c + x] = new uint8_t[b_data.PaletteSizeY];
-			av1Ctx->PaletteColors[1][r + y][c + x] = new uint8_t[b_data.PaletteSizeUV];
+			//av1Ctx->PaletteColors[0][r + y][c + x] = new uint8_t[b_data.PaletteSizeY];
+			//av1Ctx->PaletteColors[1][r + y][c + x] = new uint8_t[b_data.PaletteSizeUV];
 			for (int i = 0; i < b_data.PaletteSizeY; i++)
 				av1Ctx->PaletteColors[0][r + y][c + x][i] = b_data.palette_colors_y[i] ;
 			for (int i = 0; i < b_data.PaletteSizeUV; i++)
@@ -2830,8 +2830,8 @@ int frame::palette_mode_info(SymbolContext *sbCtx,bitSt *bs,
 		//	palette_size_y_minus_2; // S()
 		printf("decodeSymbol PaletteSizeY\n");
 			b_data->PaletteSizeY = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->currentTileCdf.Palette_Y_Size[bsizeCtx],PALETTE_SIZES + 1) + 2;
-			b_data->palette_colors_y = new uint16_t[b_data->PaletteSizeY];
-			b_data->PaletteCache = new uint16_t[b_data->PaletteSizeY];
+			//b_data->palette_colors_y = new uint16_t[b_data->PaletteSizeY];
+			//b_data->PaletteCache = new uint16_t[b_data->PaletteSizeY];
 			int cacheN = get_palette_cache(0,b_data,av1Ctx);
 			
 			int idx = 0;
@@ -2883,10 +2883,10 @@ int frame::palette_mode_info(SymbolContext *sbCtx,bitSt *bs,
 			//palette_size_uv_minus_2; // S()
 			printf("decodeSymbol PaletteSizeUV\n");
 			b_data->PaletteSizeUV = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->currentTileCdf.Palette_Uv_Size[bsizeCtx],PALETTE_SIZES + 1) + 2;
-			b_data->palette_colors_u = new uint16_t[b_data->PaletteSizeUV];
-			b_data->palette_colors_v = new uint16_t[b_data->PaletteSizeUV];
+			//b_data->palette_colors_u = new uint16_t[b_data->PaletteSizeUV];
+			//b_data->palette_colors_v = new uint16_t[b_data->PaletteSizeUV];
 			if(!b_data->has_palette_y){
-				b_data->PaletteCache = new uint16_t[b_data->PaletteSizeUV];
+				//b_data->PaletteCache = new uint16_t[b_data->PaletteSizeUV];
 			}
 			int cacheN = get_palette_cache(1, b_data,av1Ctx);
 			int idx = 0;
@@ -3620,7 +3620,7 @@ int frame::read_ref_frames(SymbolContext *sbCtx, bitSt *bs, BlockData *b_data, A
 			{
 				ctx = 2;
 			}
-			printf("decodeSymbol comp_ref_type\n");
+			printf("decodeSymbol comp_ref_type ctx %d\n",ctx);
 			int comp_ref_type = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->currentTileCdf.Comp_Ref_Type[ctx],3); // S()
 			if (comp_ref_type == UNIDIR_COMP_REFERENCE)
 			{
@@ -3964,13 +3964,18 @@ int frame::read_var_tx_size(int row,int col,int txSz,int depth,SymbolContext *sb
 	}
 	else
 	{
+		printf("row %d col %d MiRow  %d Micol %d\n",row,col,b_data->MiRow,b_data->MiCol);
 		int above = decode_instance->get_above_tx_width( row, col ,b_data,av1Ctx) < Tx_Width[ txSz ];
 		int left = decode_instance->get_left_tx_height( row, col,b_data,av1Ctx ) < Tx_Height[ txSz ];
+		printf("a %d %d\n",decode_instance->get_above_tx_width( row, col ,b_data,av1Ctx),Tx_Width[ txSz ]);
+		printf("l %d %d\n",decode_instance->get_left_tx_height( row, col ,b_data,av1Ctx),Tx_Height[ txSz ]);
 		int size = Min( 64, Max( Block_Width[ b_data->MiSize ], Block_Height[ b_data->MiSize ] ) );
 		int maxTxSz = find_tx_size( size, size );
 		int txSzSqrUp = Tx_Size_Sqr_Up[ txSz ];
 		int ctx = (txSzSqrUp != maxTxSz) * 3 + (TX_SIZES - 1 - maxTxSz) * 6 + above + left;
-		printf("decodeSymbol txfm_split\n");
+		printf("decodeSymbol txfm_split ctx:%d a %d l %d maxTxSz %d\n",ctx,above,left,maxTxSz);
+		printf("%d %d %d \n",av1Ctx->currentFrame->currentTileCdf.Txfm_Split[ctx][0],av1Ctx->currentFrame->currentTileCdf.Txfm_Split[ctx][1],
+											av1Ctx->currentFrame->currentTileCdf.Txfm_Split[ctx][2]);
 		txfm_split = sb->decodeSymbol(sbCtx,bs,av1Ctx->currentFrame->currentTileCdf.Txfm_Split[ctx],3); // S()！！！
 		printf(" txfm_split %d\n",txfm_split);
 	}

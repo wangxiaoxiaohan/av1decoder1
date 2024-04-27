@@ -92,10 +92,10 @@ enum TaskType {
 
 struct Dav1dContext {
     Dav1dFrameContext *fc;
-    unsigned n_fc;
+    unsigned n_fc; //frame 并行数?
 
     Dav1dTaskContext *tc;
-    unsigned n_tc;
+    unsigned n_tc; //行并行数?
 
     // cache of OBUs that make up a single frame before we submit them
     // to a frame worker to be decoded

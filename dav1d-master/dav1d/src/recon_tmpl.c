@@ -409,6 +409,9 @@ static int decode_coefs(Dav1dTaskContext *const t,
     const enum TxClass tx_class = dav1d_tx_type_class[*txtp];
     const int is_1d = tx_class != TX_CLASS_2D;
     printf("is_1d %d\n",is_1d);
+    for(int i= 0 ; i < 10 ; i ++){
+    printf("%d \n",ts->cdf.coef.eob_bin_1024[chroma][i]);
+        }
     switch (tx2dszctx) {
 #define case_sz(sz, bin, ns, is_1d) \
     case sz: { \
@@ -1357,7 +1360,7 @@ void bytefn(dav1d_recon_b_intra)(Dav1dTaskContext *const t, const enum BlockSize
                                               [txtp](dst,
                                                      f->cur.stride[0],
                                                      cf, eob HIGHBD_CALL_SUFFIX);
-                            //if (DEBUG_BLOCK_INFO && DEBUG_B_PIXELS)
+                            if (DEBUG_BLOCK_INFO && DEBUG_B_PIXELS)
                                 hex_dump(dst, f->cur.stride[0],
                                          t_dim->w * 4, t_dim->h * 4, "recon");
                         }

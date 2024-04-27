@@ -56,7 +56,7 @@ static void add_spatial_candidate(refmvs_candidate *const mvstack, int *const cn
                 *have_newmv_match |= b->mf >> 1;
 
                 const int last = *cnt;
-                printf("search_stack 1 weight %d\n",weight);
+               // printf("search_stack 1 weight %d\n",weight);
                 for (int m = 0; m < last; m++)
                     if (mvstack[m].mv.mv[0].n == cand_mv.n) {
                         mvstack[m].weight += weight;
@@ -81,7 +81,7 @@ static void add_spatial_candidate(refmvs_candidate *const mvstack, int *const cn
         *have_newmv_match |= b->mf >> 1;
 
         const int last = *cnt;
-        printf("search_stack 2 weight %d\n",weight);
+        //printf("search_stack 2 weight %d\n",weight);
         for (int n = 0; n < last; n++)
             if (mvstack[n].mv.n == cand_mv.n) {
                 mvstack[n].weight += weight;
@@ -156,7 +156,7 @@ static int scan_col(refmvs_candidate *const mvstack, int *const cnt,
         // FIXME why can this not be cand_bh4?
         const int weight = bh4 == 1 ? 2 :
                            imax(2, imin(2 * max_cols, first_cand_b_dim[0]));
-        printf("scan_col 1 weight %d len %d\n",weight,len);
+       // printf("scan_col 1 weight %d len %d\n",weight,len);
         add_spatial_candidate(mvstack, cnt, len * weight, cand_b, ref, gmv,
                             have_newmv_match, have_refmv_match);
         return weight >> 1;
@@ -166,7 +166,7 @@ static int scan_col(refmvs_candidate *const mvstack, int *const cnt,
         // FIXME if we overhang above, we could fill a bitmask so we don't have
         // to repeat the add_spatial_candidate() for the next row, but just increase
         // the weight here
-        printf("scan_col 2 weight %d\n",len * 2);
+        //printf("scan_col 2 weight %d\n",len * 2);
         add_spatial_candidate(mvstack, cnt, len * 2, cand_b, ref, gmv,
                               have_newmv_match, have_refmv_match);
         y += len;
@@ -202,13 +202,24 @@ static void add_temporal_candidate(const refmvs_frame *const rf,
                                    const union refmvs_refpair ref, int *const globalmv_ctx,
                                    const union mv gmv[])
 {
-    if (rb->mv.n == INVALID_MV) return;
-
+    //printf("rb->mv.n %d\n",rb->mv.n );
+    if (rb->mv.n == INVALID_MV){
+        //printf("add_temporal_candidate INVALID_MV\n");
+         return;
+    }
+    
     union mv mv = mv_projection(rb->mv, rf->pocdiff[ref.ref[0] - 1], rb->ref);
     fix_mv_precision(rf->frm_hdr, &mv);
 
     const int last = *cnt;
     if (ref.ref[1] == -1) {
+        // printf("add_temporal_candidate ref.ref[1] == -1\n");
+        // if(gmv){
+        //     printf("candMv[0] %d av1Ctx->currentFrame->mvpCtx->GlobalMvs[0][0] %d\n",mv.x,gmv[0].x);
+        //     printf("candMv[1] %d av1Ctx->currentFrame->mvpCtx->GlobalMvs[0][1] %d\n",mv.y,gmv[0].y);     
+        // }
+
+
         if (globalmv_ctx)
             *globalmv_ctx = (abs(mv.x - gmv[0].x) | abs(mv.y - gmv[0].y)) >= 16;
 
@@ -223,6 +234,7 @@ static void add_temporal_candidate(const refmvs_frame *const rf,
             *cnt = last + 1;
         }
     } else {
+        //printf("add_temporal_candidate not ref.ref[1] == -1\n");
         refmvs_mvpair mvp = { .mv = {
             [0] = mv,
             [1] = mv_projection(rb->mv, rf->pocdiff[ref.ref[1] - 1], rb->ref),
@@ -430,6 +442,7 @@ void dav1d_refmvs_find(const refmvs_tile *const rt,
         const int w8 = imin((w4 + 1) >> 1, 8), h8 = imin((h4 + 1) >> 1, 8);
         for (int y = 0; y < h8; y += step_v) {
             for (int x = 0; x < w8; x+= step_h) {
+               // printf("11 add_temporal_candidate\n");
                 add_temporal_candidate(rf, mvstack, cnt, &rb[x], ref,
                                        !(x | y) ? &globalmv_ctx : NULL, tgmv);
             }
@@ -741,8 +754,9 @@ static void load_tmvs_c(const refmvs_frame *const rf, int tile_row_idx,
                     const ptrdiff_t pos = (pos_y & 15) * stride;
                     for (;;) {
                         const int x_sb_align = x & ~7;
-                        if (pos_x >= imax(x_sb_align - 8, col_start8) &&
-                            pos_x < imin(x_sb_align + 16, col_end8))
+                        int posvaild = (pos_x >= imax(x_sb_align - 8, col_start8)) && (pos_x < imin(x_sb_align + 16, col_end8));
+                       // printf("posValid %d\n");
+                        if (posvaild)
                         {
                             rp_proj[pos + pos_x].mv = rb->mv;
                             rp_proj[pos + pos_x].ref = ref2ref;
@@ -936,11 +950,11 @@ COLD void dav1d_refmvs_dsp_init(Dav1dRefmvsDSPContext *const c)
     c->save_tmvs = save_tmvs_c;
     c->splat_mv = splat_mv_c;
 
-#if HAVE_ASM
-#if ARCH_AARCH64 || ARCH_ARM
-    refmvs_dsp_init_arm(c);
-#elif ARCH_X86
-    refmvs_dsp_init_x86(c);
-#endif
-#endif
+// #if HAVE_ASM
+// #if ARCH_AARCH64 || ARCH_ARM
+//     refmvs_dsp_init_arm(c);
+// #elif ARCH_X86
+//     refmvs_dsp_init_x86(c);
+// #endif
+// #endif
 }

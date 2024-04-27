@@ -164,9 +164,14 @@ static void read_tx_tree(Dav1dTaskContext *const t,
         const int cat = 2 * (TX_64X64 - t_dim->max) - depth;
         const int a = t->a->tx[bx4] < txw;
         const int l = t->l.tx[by4] < txh;
-
+        printf("a %d %d\n",t->a->tx[bx4],txw);
+		printf("l %d %d\n",t->l.tx[by4],txh);
+        printf("ctx1 %d ctx2 %d a %d l %d maxTxSz %d \n",cat,a + l,a,l,t_dim->max);
+        printf("%d %d %d \n",t->ts->cdf.m.txpart[cat][a + l][0],t->ts->cdf.m.txpart[cat][a + l][1],
+                                    t->ts->cdf.m.txpart[cat][a + l][2]);
         is_split = dav1d_msac_decode_bool_adapt(&t->ts->msac,
                        t->ts->cdf.m.txpart[cat][a + l]);
+        printf(" txfm_split %d range %d\n",is_split,t->ts->msac.rng);
         if (is_split)
             masks[depth] |= 1 << (y_off * 4 + x_off);
     } else {
@@ -917,7 +922,8 @@ static int decode_b(Dav1dTaskContext *const t,
     } else {
         b->seg_id = 0;
     }
-
+    printf("b->seg_id %d\n",b->seg_id );
+    printf("skip_mode_enabled 222 %d\n",f->frame_hdr->skip_mode_enabled);
     // skip_mode
     if ((!seg || (!seg->globalmv && seg->ref == -1 && !seg->skip)) &&
         f->frame_hdr->skip_mode_enabled && imin(bw4, bh4) > 1)
@@ -938,7 +944,7 @@ static int decode_b(Dav1dTaskContext *const t,
         const int sctx = t->a->skip[bx4] + t->l.skip[by4];
         b->skip = dav1d_msac_decode_bool_adapt(&ts->msac, ts->cdf.m.skip[sctx]);
         if (DEBUG_BLOCK_INFO)
-            printf("Post-skip[%d]: r=%d\n", b->skip, ts->msac.rng);
+            printf("Post-skip[%d]: r=%d dif %d\n", b->skip, ts->msac.rng,ts->msac.dif);
     }
 
     // segment_id
@@ -1086,8 +1092,21 @@ static int decode_b(Dav1dTaskContext *const t,
         } else {
             const int ictx = get_intra_ctx(t->a, &t->l, by4, bx4,
                                            have_top, have_left);
+            printf("is inter context %d\n",ictx);
+            for(int i  = 0 ; i < 4 ; i++){
+                printf("\n");
+                for(int j = 0; j < 2 ;j ++){
+                    printf("%d ",ts->cdf.m.intra[i][j]);
+                }
+		    }
             b->intra = !dav1d_msac_decode_bool_adapt(&ts->msac,
                             ts->cdf.m.intra[ictx]);
+            for(int i  = 0 ; i < 4 ; i++){
+                printf("\n");
+                for(int j = 0; j < 2 ;j ++){
+                    printf("%d ",ts->cdf.m.intra[i][j]);
+                }
+		    }
             if (DEBUG_BLOCK_INFO)
                 printf("Post-intra[%d]: r=%d\n", b->intra, ts->msac.rng);
         }
@@ -1475,26 +1494,32 @@ static int decode_b(Dav1dTaskContext *const t,
                        b->mv[0].y, b->mv[0].x, b->mv[1].y, b->mv[1].x,
                        b->ref[0], b->ref[1]);
         } else if (is_comp) {
+            //这里面加 range打印。。。。
             const int dir_ctx = get_comp_dir_ctx(t->a, &t->l, by4, bx4,
                                                  have_top, have_left);
             if (dav1d_msac_decode_bool_adapt(&ts->msac,
                     ts->cdf.m.comp_dir[dir_ctx]))
             {
+                printf("Post-comp_dir 1111 r=%d dir_ctx %d \n",ts->msac.rng,dir_ctx);
                 // bidir - first reference (fw)
                 const int ctx1 = av1_get_fwd_ref_ctx(t->a, &t->l, by4, bx4,
                                                      have_top, have_left);
                 if (dav1d_msac_decode_bool_adapt(&ts->msac,
                         ts->cdf.m.comp_fwd_ref[0][ctx1]))
                 {
+                    printf("comp_fwd_ref 1111 r=%d\n",ts->msac.rng);
                     const int ctx2 = av1_get_fwd_ref_2_ctx(t->a, &t->l, by4, bx4,
                                                            have_top, have_left);
                     b->ref[0] = 2 + dav1d_msac_decode_bool_adapt(&ts->msac,
                                         ts->cdf.m.comp_fwd_ref[2][ctx2]);
+                    printf("comp_fwd_ref 333 r=%d\n",ts->msac.rng);
                 } else {
+                    printf("comp_fwd_ref 222 r=%d\n",ts->msac.rng);
                     const int ctx2 = av1_get_fwd_ref_1_ctx(t->a, &t->l, by4, bx4,
                                                            have_top, have_left);
                     b->ref[0] = dav1d_msac_decode_bool_adapt(&ts->msac,
                                     ts->cdf.m.comp_fwd_ref[1][ctx2]);
+                    printf("comp_fwd_ref 444 r=%d\n",ts->msac.rng);
                 }
 
                 // second reference (bw)
@@ -1503,33 +1528,42 @@ static int decode_b(Dav1dTaskContext *const t,
                 if (dav1d_msac_decode_bool_adapt(&ts->msac,
                         ts->cdf.m.comp_bwd_ref[0][ctx3]))
                 {
+                    printf("comp_bwd_ref 11 r=%d\n",ts->msac.rng);
                     b->ref[1] = 6;
                 } else {
+                    printf("comp_bwd_ref 222 r=%d\n",ts->msac.rng);
                     const int ctx4 = av1_get_bwd_ref_1_ctx(t->a, &t->l, by4, bx4,
                                                            have_top, have_left);
                     b->ref[1] = 4 + dav1d_msac_decode_bool_adapt(&ts->msac,
                                         ts->cdf.m.comp_bwd_ref[1][ctx4]);
+                    printf("comp_bwd_ref 333 r=%d\n",ts->msac.rng);
+                    
                 }
             } else {
+                printf("Post-comp_dir 222 r=%d\n",ts->msac.rng);
                 // unidir
                 const int uctx_p = av1_get_uni_p_ctx(t->a, &t->l, by4, bx4,
                                                      have_top, have_left);
                 if (dav1d_msac_decode_bool_adapt(&ts->msac,
                         ts->cdf.m.comp_uni_ref[0][uctx_p]))
                 {
+                    printf("comp_uni_ref 111 r=%d\n",ts->msac.rng);
                     b->ref[0] = 4;
                     b->ref[1] = 6;
                 } else {
+                    printf("comp_uni_ref 22 r=%d\n",ts->msac.rng);
                     const int uctx_p1 = av1_get_uni_p1_ctx(t->a, &t->l, by4, bx4,
                                                            have_top, have_left);
                     b->ref[0] = 0;
                     b->ref[1] = 1 + dav1d_msac_decode_bool_adapt(&ts->msac,
                                         ts->cdf.m.comp_uni_ref[1][uctx_p1]);
+                    printf("comp_uni_ref 33 r=%d\n",ts->msac.rng);
                     if (b->ref[1] == 2) {
                         const int uctx_p2 = av1_get_uni_p2_ctx(t->a, &t->l, by4, bx4,
                                                                have_top, have_left);
                         b->ref[1] += dav1d_msac_decode_bool_adapt(&ts->msac,
                                          ts->cdf.m.comp_uni_ref[2][uctx_p2]);
+                        printf("comp_uni_ref 444 r=%d\n",ts->msac.rng);
                     }
                 }
             }
@@ -1675,36 +1709,60 @@ static int decode_b(Dav1dTaskContext *const t,
             } else {
                 const int ctx1 = av1_get_ref_ctx(t->a, &t->l, by4, bx4,
                                                  have_top, have_left);
+                printf("ctx %d\n",ctx1);
                 if (dav1d_msac_decode_bool_adapt(&ts->msac,
                                                  ts->cdf.m.ref[0][ctx1]))
                 {
+                    if (DEBUG_BLOCK_INFO)
+                            printf("Post-ref1 r=%d\n", ts->msac.rng);
                     const int ctx2 = av1_get_ref_2_ctx(t->a, &t->l, by4, bx4,
                                                        have_top, have_left);
+                    printf("ctx2 %d\n",ctx2);
                     if (dav1d_msac_decode_bool_adapt(&ts->msac,
                                                      ts->cdf.m.ref[1][ctx2]))
                     {
+                        if (DEBUG_BLOCK_INFO)
+                            printf("Post-ref2 r=%d\n", ts->msac.rng);
                         b->ref[0] = 6;
                     } else {
+                        if (DEBUG_BLOCK_INFO)
+                            printf("Post-ref2 r=%d\n", ts->msac.rng);
                         const int ctx3 = av1_get_ref_6_ctx(t->a, &t->l, by4, bx4,
                                                            have_top, have_left);
+                        printf("ctx3 %d\n",ctx3);
                         b->ref[0] = 4 + dav1d_msac_decode_bool_adapt(&ts->msac,
                                             ts->cdf.m.ref[5][ctx3]);
+                        if (DEBUG_BLOCK_INFO)
+                            printf("Post-ref6 r=%d\n", ts->msac.rng);
                     }
                 } else {
+                    if (DEBUG_BLOCK_INFO)
+                            printf("Post-ref1 r=%d\n", ts->msac.rng);
                     const int ctx2 = av1_get_ref_3_ctx(t->a, &t->l, by4, bx4,
                                                        have_top, have_left);
+                    printf("ctx2 %d\n",ctx2);
                     if (dav1d_msac_decode_bool_adapt(&ts->msac,
                                                      ts->cdf.m.ref[2][ctx2]))
                     {
+                        if (DEBUG_BLOCK_INFO)
+                            printf("Post-ref3 r=%d\n", ts->msac.rng);
                         const int ctx3 = av1_get_ref_5_ctx(t->a, &t->l, by4, bx4,
                                                            have_top, have_left);
+                        printf("ctx3 %d\n",ctx3);
                         b->ref[0] = 2 + dav1d_msac_decode_bool_adapt(&ts->msac,
                                             ts->cdf.m.ref[4][ctx3]);
+                        if (DEBUG_BLOCK_INFO)
+                            printf("Post-ref5 r=%d\n", ts->msac.rng);
                     } else {
+                        if (DEBUG_BLOCK_INFO)
+                            printf("Post-ref3 r=%d\n", ts->msac.rng);
                         const int ctx3 = av1_get_ref_4_ctx(t->a, &t->l, by4, bx4,
                                                            have_top, have_left);
+                         printf("ctx3 %d\n",ctx3);
                         b->ref[0] = dav1d_msac_decode_bool_adapt(&ts->msac,
                                         ts->cdf.m.ref[3][ctx3]);
+                        if (DEBUG_BLOCK_INFO)
+                            printf("Post-ref4 r=%d\n", ts->msac.rng);
                     }
                 }
                 if (DEBUG_BLOCK_INFO)
@@ -1723,34 +1781,48 @@ static int decode_b(Dav1dTaskContext *const t,
                 dav1d_msac_decode_bool_adapt(&ts->msac,
                                              ts->cdf.m.newmv_mode[ctx & 7]))
             {
+                if (DEBUG_BLOCK_INFO)
+                    printf(" newmv_mode 11 r=%d\n",ts->msac.rng);
                 if ((seg && (seg->skip || seg->globalmv)) ||
                     !dav1d_msac_decode_bool_adapt(&ts->msac,
                          ts->cdf.m.globalmv_mode[(ctx >> 3) & 1]))
                 {
+                    if (DEBUG_BLOCK_INFO)
+                        printf("maybe globalmv_mode 11 ctx %d r=%d\n",(ctx >> 3) & 1,ts->msac.rng);
                     b->inter_mode = GLOBALMV;
                     b->mv[0] = get_gmv_2d(&f->frame_hdr->gmv[b->ref[0]],
                                           t->bx, t->by, bw4, bh4, f->frame_hdr);
                     has_subpel_filter = imin(bw4, bh4) == 1 ||
                         f->frame_hdr->gmv[b->ref[0]].type == DAV1D_WM_TYPE_TRANSLATION;
                 } else {
+                    if (DEBUG_BLOCK_INFO)
+                        printf("globalmv_mode  22 ctx %d r=%d\n",(ctx >> 3) & 1 ,ts->msac.rng);
                     has_subpel_filter = 1;
                     if (dav1d_msac_decode_bool_adapt(&ts->msac,
                             ts->cdf.m.refmv_mode[(ctx >> 4) & 15]))
                     { // NEAREST, NEARER, NEAR or NEARISH
+                        if (DEBUG_BLOCK_INFO)
+                            printf("refmv_mode 11 r=%d\n",ts->msac.rng);
                         b->inter_mode = NEARMV;
                         b->drl_idx = NEARER_DRL;
                         if (n_mvs > 2) { // NEARER, NEAR or NEARISH
                             const int drl_ctx_v2 = get_drl_context(mvstack, 1);
                             b->drl_idx += dav1d_msac_decode_bool_adapt(&ts->msac,
                                               ts->cdf.m.drl_bit[drl_ctx_v2]);
+                            if (DEBUG_BLOCK_INFO)
+                                printf("drl_bit r=%d\n",ts->msac.rng);
                             if (b->drl_idx == NEAR_DRL && n_mvs > 3) { // NEAR or NEARISH
                                 const int drl_ctx_v3 =
                                     get_drl_context(mvstack, 2);
                                 b->drl_idx += dav1d_msac_decode_bool_adapt(&ts->msac,
                                                   ts->cdf.m.drl_bit[drl_ctx_v3]);
+                                if (DEBUG_BLOCK_INFO)
+                                    printf("drl_bit r=%d\n",ts->msac.rng);
                             }
                         }
                     } else {
+                        if (DEBUG_BLOCK_INFO)
+                            printf("refmv_mode 22 r=%d\n",ts->msac.rng);
                         b->inter_mode = NEARESTMV;
                         b->drl_idx = NEAREST_DRL;
                     }
@@ -1765,6 +1837,8 @@ static int decode_b(Dav1dTaskContext *const t,
                            b->inter_mode, b->drl_idx, b->mv[0].y, b->mv[0].x, n_mvs,
                            ts->msac.rng);
             } else {
+                if (DEBUG_BLOCK_INFO)
+                    printf("newmv_mode r=%d\n",ts->msac.rng);
                 has_subpel_filter = 1;
                 b->inter_mode = NEWMV;
                 b->drl_idx = NEAREST_DRL;
@@ -1843,7 +1917,10 @@ static int decode_b(Dav1dTaskContext *const t,
                 const int allow_warp = !f->svc[b->ref[0]][0].scale &&
                     !f->frame_hdr->force_integer_mv &&
                     f->frame_hdr->warp_motion && (mask[0] | mask[1]);
-
+                    
+                printf("force_integer_mv %d\n",f->frame_hdr->force_integer_mv);
+                printf("f->svc[b->ref[0]][0].scale %d\n",f->svc[b->ref[0]][0].scale);
+                printf("warp_motion %d\n",f->frame_hdr->warp_motion);
                 b->motion_mode = allow_warp ?
                     dav1d_msac_decode_symbol_adapt4(&ts->msac,
                         ts->cdf.m.motion_mode[bs], 2) :
@@ -3259,14 +3336,22 @@ int dav1d_decode_frame_main(Dav1dFrameContext *const f) {
     for(int i = 0 ; i < 2; i ++){
         for(int j = 0 ; j < 2 ; j++){
             for(int k = 0 ; k < 8 ; k++){
-             printf("%d ", f->ts->cdf.coef.eob_bin_32[i][j][k]);
+             printf("%d ", f->ts->cdf.coef.eob_bin_64[i][j][k]);
             }
             printf("\n");
         }
         printf("\n");
     }
     printf("Wedge_Index cdf\n");
+    printf("skipmode cdf\n");
+    for(int i = 0 ; i < 3; i ++){
+        for(int j = 0 ; j < 2 ; j++){
+             printf("%d ", f->ts->cdf.m.skip[i][j]);
 
+        }
+        printf("\n");
+    }
+    printf("skipmode cdf\n");
     assert(f->c->n_tc == 1);
 
     Dav1dTaskContext *const t = &c->tc[f - c->fc];

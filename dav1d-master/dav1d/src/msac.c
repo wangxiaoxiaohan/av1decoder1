@@ -92,6 +92,7 @@ unsigned dav1d_msac_decode_bool_c(MsacContext *const s, const unsigned f) {
     ec_win dif = s->dif;
     assert((dif >> (EC_WIN_SIZE - 16)) < r);
     unsigned v = ((r >> 8) * (f >> EC_PROB_SHIFT) >> (7 - EC_PROB_SHIFT)) + EC_MIN_PROB;
+    //printf("cur %d\n",v);
     const ec_win vw = (ec_win)v << (EC_WIN_SIZE - 16);
     const unsigned ret = dif >= vw;
     dif -= ret * vw;
@@ -168,10 +169,15 @@ unsigned dav1d_msac_decode_bool_adapt_c(MsacContext *const s,
         // update_cdf() specialized for boolean CDFs
         const unsigned count = cdf[1];
         const int rate = 4 + (count >> 4);
-        if (bit)
+       // printf("rate delta source %d\n",cdf[1]);
+        if (bit){
+            //printf("cdf += %d rate %d\n",(32768 - cdf[0]) >> rate,rate);
             cdf[0] += (32768 - cdf[0]) >> rate;
-        else
+            
+        }else{
+            //printf("cdf -= %d rate %d\n",cdf[0] >> rate,rate);
             cdf[0] -= cdf[0] >> rate;
+        }
         cdf[1] = count + (count < 32);
     }
 

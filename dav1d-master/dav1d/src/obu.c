@@ -445,6 +445,7 @@ static int parse_frame_hdr(Dav1dContext *const c, GetBits *const gb) {
         (hdr->frame_type == DAV1D_FRAME_TYPE_KEY && hdr->show_frame) ||
         hdr->frame_type == DAV1D_FRAME_TYPE_SWITCH ||
         seqhdr->reduced_still_picture_header || dav1d_get_bit(gb);
+printf("error_resilient_mode %d\n", hdr->error_resilient_mode);
 #if DEBUG_FRAME_HDR
     printf("HDR: post-frametype_bits: off=%td\n",
            (gb->ptr - init_ptr) * 8 - gb->bits_left);
@@ -625,6 +626,7 @@ static int parse_frame_hdr(Dav1dContext *const c, GetBits *const gb) {
             seqhdr->ref_frame_mvs && seqhdr->order_hint &&
             IS_INTER_OR_SWITCH(hdr) && dav1d_get_bit(gb);
     }
+printf("refresh_frame_flags %d\n",hdr->refresh_frame_flags);
 #if DEBUG_FRAME_HDR
     printf("HDR: post-frametype-specific-bits: off=%td\n",
            (gb->ptr - init_ptr) * 8 - gb->bits_left);
@@ -986,11 +988,15 @@ static int parse_frame_hdr(Dav1dContext *const c, GetBits *const gb) {
         unsigned off_before = 0xFFFFFFFFU;
         int off_after = -1;
         int off_before_idx, off_after_idx;
+		printf("order_hint %d\n",seqhdr->order_hint);
+		printf("OrderHintBits %d\n",seqhdr->order_hint_n_bits);
+		printf("OrderHint %d\n",hdr->frame_offset);
         for (int i = 0; i < 7; i++) {
             if (!c->refs[hdr->refidx[i]].p.p.frame_hdr) goto error;
             const unsigned refpoc = c->refs[hdr->refidx[i]].p.p.frame_hdr->frame_offset;
-
+            printf("frameHdr->ref_frame_idx[ i ] %d refHint %d frameHdr->OrderHint  %d\n",hdr->refidx[i],refpoc,poc);
             const int diff = get_poc_diff(seqhdr->order_hint_n_bits, refpoc, poc);
+            printf("pocdiff %d\n",diff);
             if (diff > 0) {
                 if (off_after == -1 || get_poc_diff(seqhdr->order_hint_n_bits,
                                                     off_after, refpoc) > 0)
@@ -1004,9 +1010,16 @@ static int parse_frame_hdr(Dav1dContext *const c, GetBits *const gb) {
             {
                 off_before = refpoc;
                 off_before_idx = i;
+            }else{
+                printf("not any case\n");
             }
         }
 
+
+		printf("forwardIdx %d\n",off_after_idx);
+		printf("forwardHint %d\n",off_after);
+		printf("backwardIdx %d\n",off_before_idx);
+		printf("backwardHint %d\n",off_before);
         if (off_before != 0xFFFFFFFFU && off_after != -1) {
             hdr->skip_mode_refs[0] = imin(off_before_idx, off_after_idx);
             hdr->skip_mode_refs[1] = imax(off_before_idx, off_after_idx);
@@ -1036,7 +1049,9 @@ static int parse_frame_hdr(Dav1dContext *const c, GetBits *const gb) {
             }
         }
     }
+    printf("skipModeAllowed 111 %d\n",hdr->skip_mode_allowed);
     hdr->skip_mode_enabled = hdr->skip_mode_allowed ? dav1d_get_bit(gb) : 0;
+    printf("skip_mode_enabled 111 %d\n",hdr->skip_mode_enabled);
 #if DEBUG_FRAME_HDR
     printf("HDR: post-extskip: off=%td\n",
            (gb->ptr - init_ptr) * 8 - gb->bits_left);
