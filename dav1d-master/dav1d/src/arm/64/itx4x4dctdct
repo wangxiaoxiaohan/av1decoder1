@@ -1,4 +1,31 @@
 //
+arm 寄存器
+X/W寄存器：用于一般计算和整数运算。
+X是64位，W是对应的低32位。
+V寄存器：用于向量和浮点运算，128位宽。
+Q寄存器：也是用于向量运算，别名表示128位的V寄存器。
+D寄存器：用于64位的向量运算和浮点运算，表示V寄存器的低64位。
+
+也就说一般写的就是 
+
+X 和 V
+
+ld1 指令格式
+ld1 {Vt.<T>}[index], [Xn|SP], Xm
+.<T>
+举例
+.b - 8位无符号整数（Unsigned byte）
+.h - 16位无符号整数（Unsigned halfword）
+.s - 32位单精度浮点数（Single precision float） - 已经提及
+.d - 64位双精度浮点数（Double precision float）
+.8 或 .8b - 8位有符号/无符号整数，具体取决于上下文，通常用于表示8位整数向量
+.16 或 .16b - 16位有符号/无符号整数向量
+.4s - 4个32位单精度浮点数组成的向量
+.2d - 2个64位双精度浮点数组成的向量
+
+
+
+
 #define L(x) .L ## x
 
                        //这个   export=0 是默认值？？   
@@ -65,6 +92,21 @@ endconst
         vtrn.16         \r2,  \r3
 .endm
 
+.macro idct_4 r0, r1, r2, r3, sz
+        smull_smlal     v6,  v7,  \r1, \r3, v0.h[3], v0.h[2], \sz
+        smull_smlsl     v4,  v5,  \r1, \r3, v0.h[2], v0.h[3], \sz
+        smull_smlal     v2,  v3,  \r0, \r2, v0.h[0], v0.h[0], \sz
+        sqrshrn_sz      v6,  v6,  v7,  #12, \sz
+        sqrshrn_sz      v7,  v4,  v5,  #12, \sz
+        smull_smlsl     v4,  v5,  \r0, \r2, v0.h[0], v0.h[0], \sz
+        sqrshrn_sz      v2,  v2,  v3,  #12, \sz
+        sqrshrn_sz      v3,  v4,  v5,  #12, \sz
+        sqadd           \r0\sz,  v2\sz,   v6\sz
+        sqsub           \r3\sz,  v2\sz,   v6\sz
+        sqadd           \r1\sz,  v3\sz,   v7\sz
+        sqsub           \r2\sz,  v3\sz,   v7\sz
+.endm
+
 function inv_dct_4h_x4_neon, export=1
         movrel          x16, idct_coeffs
         ld1             {v0.4h}, [x16]
@@ -114,11 +156,11 @@ function inv_txfm_add_dct_dct_4x4_8bpc_neon, export=1
 
 //这里当然只有dct dct会进
 .ifc dct_dct, dct_dct
-        cbnz            w3,  1f
+        cbnz            w3,  1f //如果W3 不为0 则 调到标签1，相当于 goto
         mov             w16, #2896*8
-        ld1r            {v16.8h}, [x2]
+        ld1r            {v16.8h}, [x2] 从地址x2加载一个8个16位元素的向量到寄存器v16，并且所有元素都等于该地址处的值。
         dup             v4.8h,   w16
-        strh            wzr, [x2]
+        strh            wzr, [x2] 存储零到地址x2指向的位置，使用半字（16位）存储，这里是清零操作。
         sqrdmulh        v16.8h,  v16.8h,  v4.h[0]
         ld1             {v0.s}[0], [x0], x1
         sqrdmulh        v20.8h,  v16.8h,  v4.h[0]
