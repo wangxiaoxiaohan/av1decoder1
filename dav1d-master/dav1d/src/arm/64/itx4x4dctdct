@@ -20,6 +20,7 @@ ld1 {Vt.<T>}[index], [Xn|SP], Xm
 .d - 64位双精度浮点数（Double precision float）
 .8 或 .8b - 8位有符号/无符号整数，具体取决于上下文，通常用于表示8位整数向量
 .16 或 .16b - 16位有符号/无符号整数向量
+
 .4s - 4个32位单精度浮点数组成的向量
 .2d - 2个64位双精度浮点数组成的向量
 
@@ -159,8 +160,13 @@ function inv_txfm_add_dct_dct_4x4_8bpc_neon, export=1
         cbnz            w3,  1f //如果W3 不为0 则 调到标签1，相当于 goto
         mov             w16, #2896*8
         ld1r            {v16.8h}, [x2] 从地址x2加载一个8个16位元素的向量到寄存器v16，并且所有元素都等于该地址处的值。
-        dup             v4.8h,   w16
+        dup             v4.8h,   w16 复制寄存器w16的内容到向量寄存器v4的所有8个16位元素中。
         strh            wzr, [x2] 存储零到地址x2指向的位置，使用半字（16位）存储，这里是清零操作。
+
+        使用sqrdmulh指令执行平方然后乘以某个系数的操作（在这个例子中是与v4.h[0]相乘，即利用之前加载并复制的系数）。
+        通过ld1指令逐步从地址x0（并根据x1的值递增地址）加载32位浮点数到向量寄存器v0和v1的不同元素中。
+        srshr指令执行右移并饱和操作，这里用于除以16（即右移4位，对应于#4），并保持结果在有效范围内。
+
         sqrdmulh        v16.8h,  v16.8h,  v4.h[0]
         ld1             {v0.s}[0], [x0], x1
         sqrdmulh        v20.8h,  v16.8h,  v4.h[0]
@@ -169,6 +175,7 @@ function inv_txfm_add_dct_dct_4x4_8bpc_neon, export=1
         ld1             {v1.s}[0], [x0], x1
         srshr           v18.8h,  v20.8h,  #4
         ld1             {v1.s}[1], [x0], x1
+
         b               L(itx_4x4_end) //在inv_txfm_add_4x4_neon 函数里面
 1:
 .endif
