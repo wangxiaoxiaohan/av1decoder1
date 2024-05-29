@@ -23,6 +23,7 @@ ld1 {Vt.<T>}[index], [Xn|SP], Xm
 
 .4s - 4个32位单精度浮点数组成的向量
 .2d - 2个64位双精度浮点数组成的向量
+依次类推
 
 
 
@@ -93,6 +94,65 @@ endconst
         vtrn.16         \r2,  \r3
 .endm
 
+//smlal  比 smull 多了累加操作
+.macro smull_smlal d0, d1, s0, s1, c0, c1, sz
+        smull           \d0\().4s, \s0\().4h, \c0 //使用 smull 指令，将 \s0 寄存器中的4个半字（16位）数据与 \c0 相乘，得到的结果是有符号的32位整数，并累加到 \d0 寄存器对应的低位元素中（.4s 表示四个32位数据）。
+        smlal           \d0\().4s, \s1\().4h, \c1
+.ifc \sz, .8h
+        smull2          \d1\().4s, \s0\().8h, \c0 //smull2 和 smlal2 分别是 smull 和 smlal 的变体，用于处理寄存器中的高半部分数据。当 \sz 为 .8h 时，这意味着 \s0 和 \s1 被视为包含8个半字数据（.8h），前4个已经处理，这里处理后4个。结果累加到 \d1 寄存器中。
+        smlal2          \d1\().4s, \s1\().8h, \c1
+.endif
+.endm
+
+.macro smull_smlsl d0, d1, s0, s1, c0, c1, sz
+        smull           \d0\().4s, \s0\().4h, \c0
+//接着使用 smlsl 指令，将 \s1 中每个16位数与 \c1 相乘后，所得的乘积从 \d0 寄存器当前的值中减去（即先乘后减），结果累加到 \d0 寄存器中。
+        smlsl           \d0\().4s, \s1\().4h, \c1
+.ifc \sz, .8h
+        smull2          \d1\().4s, \s0\().8h, \c0
+        smlsl2          \d1\().4s, \s1\().8h, \c1
+.endif
+.endm
+
+.macro sqrshrn_sz d0, s0, s1, shift, sz
+        sqrshrn         \d0\().4h, \s0\().4s, \shift //使用 sqrshrn 指令，对 \s0 寄存器中每个32位有符号整数元素执行以下操作：首先取绝对值并平方，然后按照 \shift 指定的位数右移并饱和处理（确保结果仍在数据类型的范围内），最后将结果转换为16位并存入 \d0 寄存器的低四位
+.ifc \sz, .8h
+        sqrshrn2        \d0\().8h, \s1\().4s, \shift
+.endif
+.endm
+
+
+
+.macro  movrel rd, val, offset=0
+#if defined(__APPLE__)
+  .if \offset < 0
+        adrp            \rd, \val@PAGE
+        add             \rd, \rd, \val@PAGEOFF
+        sub             \rd, \rd, -(\offset)
+  .else
+        adrp            \rd, \val+(\offset)@PAGE
+        add             \rd, \rd, \val+(\offset)@PAGEOFF
+  .endif
+#elif defined(PIC) && defined(_WIN32)
+  .if \offset < 0
+        adrp            \rd, \val
+        add             \rd, \rd, :lo12:\val
+        sub             \rd, \rd, -(\offset)
+  .else
+        adrp            \rd, \val+(\offset)
+        add             \rd, \rd, :lo12:\val+(\offset)
+  .endif
+#elif defined(PIC)
+        adrp            \rd, \val+(\offset)
+        add             \rd, \rd, :lo12:\val+(\offset)
+#else
+        ldr             \rd, =\val+\offset
+#endif
+.endm
+
+
+
+
 .macro idct_4 r0, r1, r2, r3, sz
         smull_smlal     v6,  v7,  \r1, \r3, v0.h[3], v0.h[2], \sz
         smull_smlsl     v4,  v5,  \r1, \r3, v0.h[2], v0.h[3], \sz
@@ -108,6 +168,7 @@ endconst
         sqsub           \r2\sz,  v3\sz,   v7\sz
 .endm
 
+
 function inv_dct_4h_x4_neon, export=1
         movrel          x16, idct_coeffs
         ld1             {v0.4h}, [x16]
@@ -116,19 +177,20 @@ function inv_dct_4h_x4_neon, export=1
 endfunc
 
 function inv_txfm_add_4x4_neon
+        //这些在DCT DCT中没有用到？ v31 仅仅是存数据？
         movi            v31.8h,  #0
-        ld1             {v16.4h,v17.4h,v18.4h,v19.4h}, [x2]
-        st1             {v31.8h}, [x2], #16
+        ld1             {v16.4h,v17.4h,v18.4h,v19.4h}, [x2]  //从 X2 开始加载 16个 16 位
+        st1             {v31.8h}, [x2], #16              //将 X2中的2值的地址开始的 8 个16位存到 V31中，之后将X2的值增加16个字节
 
-        blr             x4
+        blr             x4      //调用 X4指向的函数 ，也就是 inv_dct_4h_x4_neon 对比原型 ，这就是一次一维变换 ，和下面X5组成完整的二维逆变换
 
         st1             {v31.8h}, [x2], #16
         transpose_4x4h  v16, v17, v18, v19, v20, v21, v22, v23
 
-        blr             x5
+        blr             x5   //调用 X5指向的函数 ，也就是 inv_dct_4h_x4_neon
 
-        ld1             {v0.s}[0], [x0], x1
-        ld1             {v0.s}[1], [x0], x1
+        ld1             {v0.s}[0], [x0], x1 //从X0所指地址开始加载 一个32位，这里是加载到V0的第一个32位中，之后地址 增加 X1的值
+        ld1             {v0.s}[1], [x0], x1 //同上，只不过加载到第二个32位中
         ins             v16.d[1], v17.d[0]
         ins             v18.d[1], v19.d[0]
         ld1             {v1.s}[0], [x0], x1
@@ -159,7 +221,7 @@ function inv_txfm_add_dct_dct_4x4_8bpc_neon, export=1
 .ifc dct_dct, dct_dct
         cbnz            w3,  1f //如果W3 不为0 则 调到标签1，相当于 goto
         mov             w16, #2896*8
-        ld1r            {v16.8h}, [x2] 从地址x2加载一个8个16位元素的向量到寄存器v16，并且所有元素都等于该地址处的值。
+        ld1r            {v16.8h}, [x2] 从地址x2加载8个16位元素的向量到寄存器v16，并且所有元素都等于该地址处的值。
         dup             v4.8h,   w16 复制寄存器w16的内容到向量寄存器v4的所有8个16位元素中。
         strh            wzr, [x2] 存储零到地址x2指向的位置，使用半字（16位）存储，这里是清零操作。
 
@@ -179,7 +241,7 @@ function inv_txfm_add_dct_dct_4x4_8bpc_neon, export=1
         b               L(itx_4x4_end) //在inv_txfm_add_4x4_neon 函数里面
 1:
 .endif
-        adr             x4,  inv_dct_4h_x4_neon
+        adr             x4,  inv_dct_4h_x4_neon 
         adr             x5,  inv_dct_4h_x4_neon
         b               inv_txfm_add_4x4_neon
 endfunc
