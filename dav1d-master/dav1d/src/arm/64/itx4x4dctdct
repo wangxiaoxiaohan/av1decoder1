@@ -87,11 +87,16 @@ const idct_coeffs, align=4
         .short          2440, 3290, 4052, 601
 endconst
 
-.macro transpose_4x4h q0, q1, r0, r1, r2, r3
-        vtrn.32         \q0,  \q1
+.macro  transpose_4x4h  r0, r1, r2, r3, t4, t5, t6, t7
+        trn1            \t4\().4h,  \r0\().4h,  \r1\().4h
+        trn2            \t5\().4h,  \r0\().4h,  \r1\().4h
+        trn1            \t6\().4h,  \r2\().4h,  \r3\().4h
+        trn2            \t7\().4h,  \r2\().4h,  \r3\().4h
 
-        vtrn.16         \r0,  \r1
-        vtrn.16         \r2,  \r3
+        trn1            \r0\().2s,  \t4\().2s,  \t6\().2s
+        trn2            \r2\().2s,  \t4\().2s,  \t6\().2s
+        trn1            \r1\().2s,  \t5\().2s,  \t7\().2s
+        trn2            \r3\().2s,  \t5\().2s,  \t7\().2s
 .endm
 
 //smlal  比 smull 多了累加操作
@@ -177,17 +182,17 @@ function inv_dct_4h_x4_neon, export=1
 endfunc
 
 function inv_txfm_add_4x4_neon
-        //这些在DCT DCT中没有用到？ v31 仅仅是存数据？
+        // v31 仅仅是存数据？
         movi            v31.8h,  #0
         ld1             {v16.4h,v17.4h,v18.4h,v19.4h}, [x2]  //从 X2 开始加载 16个 16 位
         st1             {v31.8h}, [x2], #16              //将 X2中的2值的地址开始的 8 个16位存到 V31中，之后将X2的值增加16个字节
 
-        blr             x4      //调用 X4指向的函数 ，也就是 inv_dct_4h_x4_neon 对比原型 ，这就是一次一维变换 ，和下面X5组成完整的二维逆变换
-
+        blr             x4      //调用 X4指向的函数 ，，这就是一次一维变换 ，和下面X5组成完整的二维逆变换
+                                //注意是 所有四行的一维变换，不是一次一行 
         st1             {v31.8h}, [x2], #16
         transpose_4x4h  v16, v17, v18, v19, v20, v21, v22, v23
 
-        blr             x5   //调用 X5指向的函数 ，也就是 inv_dct_4h_x4_neon
+        blr             x5   //调用 X5指向的函数 
 
         ld1             {v0.s}[0], [x0], x1 //从X0所指地址开始加载 一个32位，这里是加载到V0的第一个32位中，之后地址 增加 X1的值
         ld1             {v0.s}[1], [x0], x1 //同上，只不过加载到第二个32位中
@@ -198,7 +203,7 @@ function inv_txfm_add_4x4_neon
         srshr           v16.8h,  v16.8h,  #4
         srshr           v18.8h,  v18.8h,  #4
 
-L(itx_4x4_end): //展开为 .L itx_4x4_end
+L(itx_4x4_end): //展开为 .L itx_4x4_end  包含叠加操作？
         sub             x0,  x0,  x1, lsl #2
         uaddw           v16.8h,  v16.8h,  v0.8b
         sqxtun          v0.8b,   v16.8h
@@ -241,7 +246,7 @@ function inv_txfm_add_dct_dct_4x4_8bpc_neon, export=1
         b               L(itx_4x4_end) //在inv_txfm_add_4x4_neon 函数里面
 1:
 .endif
-        adr             x4,  inv_dct_4h_x4_neon 
+        adr             x4,  inv_dct_4h_x4_neon //这里不是调用函数 而是 把函数地址存到X4 X5 中 ，以方便调用
         adr             x5,  inv_dct_4h_x4_neon
         b               inv_txfm_add_4x4_neon
 endfunc
