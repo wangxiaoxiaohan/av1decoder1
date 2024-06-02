@@ -99,35 +99,6 @@ endconst
         trn2            \r3\().2s,  \t5\().2s,  \t7\().2s
 .endm
 
-//smlal  比 smull 多了累加操作
-.macro smull_smlal d0, d1, s0, s1, c0, c1, sz
-        smull           \d0\().4s, \s0\().4h, \c0 //使用 smull 指令，将 \s0 寄存器中的4个半字（16位）数据与 \c0 相乘，得到的结果是有符号的32位整数，并累加到 \d0 寄存器对应的低位元素中（.4s 表示四个32位数据）。
-        smlal           \d0\().4s, \s1\().4h, \c1
-.ifc \sz, .8h
-        smull2          \d1\().4s, \s0\().8h, \c0 //smull2 和 smlal2 分别是 smull 和 smlal 的变体，用于处理寄存器中的高半部分数据。当 \sz 为 .8h 时，这意味着 \s0 和 \s1 被视为包含8个半字数据（.8h），前4个已经处理，这里处理后4个。结果累加到 \d1 寄存器中。
-        smlal2          \d1\().4s, \s1\().8h, \c1
-.endif
-.endm
-
-.macro smull_smlsl d0, d1, s0, s1, c0, c1, sz
-        smull           \d0\().4s, \s0\().4h, \c0
-//接着使用 smlsl 指令，将 \s1 中每个16位数与 \c1 相乘后，所得的乘积从 \d0 寄存器当前的值中减去（即先乘后减），结果累加到 \d0 寄存器中。
-        smlsl           \d0\().4s, \s1\().4h, \c1
-.ifc \sz, .8h
-        smull2          \d1\().4s, \s0\().8h, \c0
-        smlsl2          \d1\().4s, \s1\().8h, \c1
-.endif
-.endm
-
-.macro sqrshrn_sz d0, s0, s1, shift, sz
-        sqrshrn         \d0\().4h, \s0\().4s, \shift //使用 sqrshrn 指令，对 \s0 寄存器中每个32位有符号整数元素执行以下操作：首先取绝对值并平方，然后按照 \shift 指定的位数右移并饱和处理（确保结果仍在数据类型的范围内），最后将结果转换为16位并存入 \d0 寄存器的低四位
-.ifc \sz, .8h
-        sqrshrn2        \d0\().8h, \s1\().4s, \shift
-.endif
-.endm
-
-
-
 .macro  movrel rd, val, offset=0
 #if defined(__APPLE__)
   .if \offset < 0
@@ -153,27 +124,71 @@ endconst
 #else
         ldr             \rd, =\val+\offset
 #endif
+.endm             
+
+
+.macro smull_smlsl d0, d1, s0, s1, c0, c1, sz
+        smull           \d0\().4s, \s0\().4h, \c0
+//接着使用 smlsl 指令，将 \s1 中每个16位数与 \c1 相乘后，所得的乘积从 \d0 寄存器当前的值中减去（即先乘后减），结果累加到 \d0 寄存器中。
+        smlsl           \d0\().4s, \s1\().4h, \c1
+.ifc \sz, .8h
+        smull2          \d1\().4s, \s0\().8h, \c0
+        smlsl2          \d1\().4s, \s1\().8h, \c1
+.endif
+.endm
+
+//smlal  比 smull 多了累加操作
+.macro smull_smlal d0, d1, s0, s1, c0, c1, sz
+        smull           \d0\().4s, \s0\().4h, \c0 //使用 smull 指令，将 \s0 寄存器中的4个半字（16位）数据与 \c0 相乘，得到的结果是有符号的32位整数，并累加到 \d0 寄存器对应的低位元素中（.4s 表示四个32位数据）。
+        smlal           \d0\().4s, \s1\().4h, \c1
+.ifc \sz, .8h
+        smull2          \d1\().4s, \s0\().8h, \c0 //smull2 和 smlal2 分别是 smull 和 smlal 的变体，用于处理寄存器中的高半部分数据。当 \sz 为 .8h 时，这意味着 \s0 和 \s1 被视为包含8个半字数据（.8h），前4个已经处理，这里处理后4个。结果累加到 \d1 寄存器中。
+        smlal2          \d1\().4s, \s1\().8h, \c1
+.endif
+.endm
+
+.macro sqrshrn_sz d0, s0, s1, shift, sz
+        sqrshrn         \d0\().4h, \s0\().4s, \shift //按照 \shift 指定的位数右移并饱和处理（确保结果仍在数据类型的范围内），最后将结果转换为16位并存入 \d0 寄存器的低四位
+.ifc \sz, .8h
+        sqrshrn2        \d0\().8h, \s1\().4s, \shift
+.endif
 .endm
 
 
 
+//t0 = ((in0 + in2) * 181 + 128) >> 8;
+//t1 = ((in0 - in2) * 181 + 128) >> 8;
+//t2 =  (in1 *  1567         - in3 *  3784         + 2048) >> 12
+//t3 =  (in1 *  3784         + in3 *  1567         + 2048) >> 12
+//c[0 * stride] = CLIP(t0 + t3);
+//c[1 * stride] = CLIP(t1 + t2);
+//c[2 * stride] = CLIP(t1 - t2);
+//c[3 * stride] = CLIP(t0 - t3);
+
+//2896, 2896*8, 1567, 3784 这里的2896*8 应该是 v0.h[1] 似乎没有用上 那干嘛写这个
 
 .macro idct_4 r0, r1, r2, r3, sz
-        smull_smlal     v6,  v7,  \r1, \r3, v0.h[3], v0.h[2], \sz
-        smull_smlsl     v4,  v5,  \r1, \r3, v0.h[2], v0.h[3], \sz
-        smull_smlal     v2,  v3,  \r0, \r2, v0.h[0], v0.h[0], \sz
-        sqrshrn_sz      v6,  v6,  v7,  #12, \sz
-        sqrshrn_sz      v7,  v4,  v5,  #12, \sz
-        smull_smlsl     v4,  v5,  \r0, \r2, v0.h[0], v0.h[0], \sz
-        sqrshrn_sz      v2,  v2,  v3,  #12, \sz
-        sqrshrn_sz      v3,  v4,  v5,  #12, \sz
-        sqadd           \r0\sz,  v2\sz,   v6\sz
-        sqsub           \r3\sz,  v2\sz,   v6\sz
-        sqadd           \r1\sz,  v3\sz,   v7\sz
-        sqsub           \r2\sz,  v3\sz,   v7\sz
+        smull_smlal //加//    v6,  v7,  \r1, \r3, v0.h[3], v0.h[2], \sz //r1内的值 乘以 v0.h[3]， r3内的值 乘以 v0.h[2]
+        smull_smlsl //减//    v4,  v5,  \r1, \r3, v0.h[2], v0.h[3], \sz
+        smull_smlal //加//    v2,  v3,  \r0, \r2, v0.h[0], v0.h[0], \sz
+        sqrshrn_sz  //移位//     v6,  v6,  v7,  #12, \sz
+        sqrshrn_sz  //移位//     v7,  v4,  v5,  #12, \sz
+                     //这里将 V6 V7 V4 V5计算出来的中间值经过移位后存在了 V6 V7 里面
+                     //此时V4 V5 存的中间已经使用过了，所以修改也没有关系，所以再次作为中间值存储寄存器使用 
+        smull_smlsl //减//   v4,  v5,  \r0, \r2, v0.h[0], v0.h[0], \sz
+        sqrshrn_sz  //移位//     v2,  v2,  v3,  #12, \sz
+        sqrshrn_sz  //移位//     v3,  v4,  v5,  #12, \sz
+                    //这一段将 V2 V3 V5 V5 计算出来的中间值经过移位存储在 V2 V3 中
+
+
+        //进行蝶形变换的  clip 操作 ，此时 只使用  V6 V7 V2 V3 中经过移位的中间值
+        sqadd       //clip//    \r0\sz,  v2\sz,   v6\sz
+        sqsub       //clip//    \r3\sz,  v2\sz,   v6\sz
+        sqadd       //clip//    \r1\sz,  v3\sz,   v7\sz
+        sqsub       //clip//    \r2\sz,  v3\sz,   v7\sz
 .endm
 
-
+//思路是 同时四行的数据进行同样的操作，每次完成四行的每一行的蝶形变换的一个步骤:中间值计算、移位、clip
 function inv_dct_4h_x4_neon, export=1
         movrel          x16, idct_coeffs
         ld1             {v0.4h}, [x16]
