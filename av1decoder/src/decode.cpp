@@ -2,6 +2,9 @@
 #include "header_common.h"
 #include "cdf.h"
 #include <string.h>
+extern "C" {
+    int inv_dct_4h_x4_neon(int arg);
+}
 #define INVALID_MV 0x80008000
 decode::decode(){
 	sb = &Symbol::Instance();
@@ -12,6 +15,7 @@ decode::~decode(){
 }
 //这个函数内部 不应该用到  TileData PartitionData BlockData 需要想办法去掉
 int decode::decode_frame_wrapup( AV1DecodeContext *av1Ctx){
+	inv_dct_4h_x4_neon(1);
 	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	if(frameHdr->show_existing_frame == 0){
 		if( frameHdr->loop_filter_params.loop_filter_level[ 0 ] != 0 || frameHdr->loop_filter_params.loop_filter_level[ 1 ] != 0){
@@ -743,6 +747,7 @@ int decode::motion_field_estimation(AV1DecodeContext *av1Ctx){
 	int useLast = (lastAltOrderHint != curGoldOrderHint) ? 1 : 0; // Whether to project motion vectors from LAST_FRAME
 
 	if (useLast == 1) {
+		printf("motion_field_projection 111\n");
 		// Invoke projection process for LAST_FRAME with dstSign = -1 (discard output)
 		motion_field_projection(av1Ctx,LAST_FRAME, -1);
 	}
@@ -751,6 +756,7 @@ int decode::motion_field_estimation(AV1DecodeContext *av1Ctx){
 	int useBwd = (get_relative_dist(seqHdr->enable_order_hint,seqHdr->OrderHintBits,frameHdr->OrderHints[BWDREF_FRAME], frameHdr->OrderHint) > 0) ? 1 : 0; // Whether to use BWDREF_FRAME
 
 	if (useBwd == 1) {
+		printf("motion_field_projection 222\n");
 		int projOutput = motion_field_projection(av1Ctx,BWDREF_FRAME, 1); // Invoke projection for BWDREF_FRAME with dstSign = 1
 		if (projOutput == 1) {
 			refStamp--;
@@ -760,6 +766,7 @@ int decode::motion_field_estimation(AV1DecodeContext *av1Ctx){
 	int useAlt2 = (get_relative_dist(seqHdr->enable_order_hint,seqHdr->OrderHintBits,frameHdr->OrderHints[ALTREF2_FRAME], frameHdr->OrderHint) > 0) ? 1 : 0; // Whether to use ALTREF2_FRAME
 
 	if (useAlt2 == 1) {
+		printf("motion_field_projection 333\n");
 		int projOutput = motion_field_projection(av1Ctx,ALTREF2_FRAME, 1); // Invoke projection for ALTREF2_FRAME with dstSign = 1
 		if (projOutput == 1) {
 			refStamp--;
@@ -769,6 +776,7 @@ int decode::motion_field_estimation(AV1DecodeContext *av1Ctx){
 	int useAlt = (get_relative_dist(seqHdr->enable_order_hint,seqHdr->OrderHintBits,frameHdr->OrderHints[ALTREF_FRAME], frameHdr->OrderHint) > 0) ? 1 : 0; // Whether to use ALTREF_FRAME
 
 	if (useAlt == 1 && refStamp >= 0) {
+		printf("motion_field_projection 444\n");
 		int projOutput = motion_field_projection(av1Ctx,ALTREF_FRAME, 1); // Invoke projection for ALTREF_FRAME with dstSign = 1
 		if (projOutput == 1) {
 			refStamp--;
@@ -777,6 +785,7 @@ int decode::motion_field_estimation(AV1DecodeContext *av1Ctx){
 
 	if (refStamp >= 0) {
 		// Invoke projection process for LAST2_FRAME with dstSign = -1 (discard output)
+		printf("motion_field_projection 555\n");
 		motion_field_projection(av1Ctx,LAST2_FRAME, -1);
 	}
 
@@ -824,8 +833,9 @@ int decode::motion_field_projection(AV1DecodeContext *av1Ctx,int src,int dstSign
 					
 					int PosY8,PosX8;
 					posValid = get_block_position(av1Ctx,&PosX8,&PosY8,x8, y8, dstSign, projMv);
-					//printf("posValid %d mv[0] %d mv[1]  %d projMv[0] %d projMv[1] %d,PosX8 %d,PosY8 %d\n",posValid,mv[0],mv[1],projMv[0],projMv[1],PosX8,PosY8);
+					printf("********posValid %d PosX8 %d,PosY8 %d\n",posValid,PosX8,PosY8);
 					if (posValid) {
+						printf("---------posValid %d PosX8 %d,PosY8 %d\n",posValid,PosX8,PosY8);
 						for (int dst = LAST_FRAME; dst <= ALTREF_FRAME; dst++) {
 							int refToDst = get_relative_dist(seqHdr->enable_order_hint,seqHdr->OrderHintBits,
 																		frameHdr->OrderHint, frameHdr->OrderHints[dst]);
@@ -1261,7 +1271,7 @@ int decode::temporal_scan(int isCompound,BlockData *b_data,AV1DecodeContext *av1
 	{
 		for (int deltaCol = 0; deltaCol < Min(bw4, 16); deltaCol += stepW4)
 		{
-			//printf("add_tpl_ref_mv deltaRow %d deltaCol%d\n",deltaRow,deltaCol);
+			printf("add_tpl_ref_mv deltaRow %d deltaCol%d\n",deltaRow,deltaCol);
 			add_tpl_ref_mv(deltaRow, deltaCol, isCompound,b_data,av1Ctx);
 		}
 	}
@@ -1280,7 +1290,7 @@ int decode::temporal_scan(int isCompound,BlockData *b_data,AV1DecodeContext *av1
 		{
 			int deltaRow = tplSamplePos[i][0];
 			int deltaCol = tplSamplePos[i][1];
-			//printf("allowExtension add_tpl_ref_mv %d\n",i);
+			printf("allowExtension add_tpl_ref_mv %d\n",i);
 			if (check_sb_border(b_data->MiRow , b_data->MiCol,deltaRow, deltaCol))
 			{
 				add_tpl_ref_mv(deltaRow, deltaCol, isCompound,b_data,av1Ctx);
@@ -1314,10 +1324,14 @@ int decode::add_tpl_ref_mv(int deltaRow, int deltaCol, int isCompound,BlockData 
 		//int candMv[2] = av1Ctx->MotionFieldMvs[b_data->RefFrame[0]][y8][x8];
 		//debug dav1d 来看 就是这里 return 掉了 ，所以 应该是 MotionFieldMvs 的问题
 		memcpy(candMv,av1Ctx->MotionFieldMvs[b_data->RefFrame[0]][y8][x8],2 * sizeof(int));
+		printf("get mv x8 %d y8 %d\n",x8,y8);
 		//printf("MotionFieldMvs[0] %d\n",av1Ctx->MotionFieldMvs[b_data->RefFrame[0]][y8][x8][0]);
 		//printf("candMv[0] %d\n",candMv[0]);
-		if (candMv[0] == INVALID_MV)
+		if (candMv[0] == INVALID_MV){
+			printf("mv INVALID_MV\n");
 			return ERROR_CODE;
+		}
+			
 		lower_mv_precision(av1Ctx,candMv);
 		
 		if (deltaRow == 0 && deltaCol == 0)
@@ -1359,9 +1373,13 @@ int decode::add_tpl_ref_mv(int deltaRow, int deltaCol, int isCompound,BlockData 
 		//int candMv0[2] = av1Ctx->MotionFieldMvs[b_data->RefFrame[0]][y8][x8];
 		int candMv0[2];
 		memcpy(candMv0,av1Ctx->MotionFieldMvs[b_data->RefFrame[0]][y8][x8],2 * sizeof(int)); 
+		printf("get mv x8 %d y8 %d\n",x8,y8);
 		//printf("candMv0[0] %d\n",candMv0[0]);
-		if (candMv0[0] == INVALID_MV)
+		if (candMv0[0] == INVALID_MV){
+			printf("com mv INVALID_MV\n");
 			return ERROR_CODE;
+		}
+			
 		//int candMv1[2] = av1Ctx->MotionFieldMvs[b_data->RefFrame[1]][y8][x8];
 		int candMv1[2] ;
 		memcpy(candMv1,av1Ctx->MotionFieldMvs[b_data->RefFrame[1]][y8][x8],2 * sizeof(int)); 
@@ -2352,13 +2370,14 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 				}
 			}
 		}
-		// (eob means end-of-block)
+		// (eob means end-of-block) 最后一个非0系数
 		printf("eob %d\n",eob);
 		//eob + ac + dc， 最后一个下标0是 dc
 		printf("coeffs\n");
 		//系数幅值
 		for (int c = eob - 1; c >= 0; c--)
 		{
+
 			int pos = scan[c];
 			int level;
 			//eob
@@ -4471,12 +4490,14 @@ int decode::inverseDCTArrayPermutation(int16_t T[],int n)
 int decode::inverseDCT(int16_t T[], int n, int r) {
     inverseDCTArrayPermutation(T, n);
 
+	//4
 	 if(n >= 2){
 	 	for(int i = 0 ; i < 2 ; i ++)
 	 		B( 2 * i, 2 * i + 1, 32 + 16 * i, 1 - i, r ,T );
 	 	for(int i = 0 ; i < 2 ; i ++)
 	 		H( i, 3 - i, 0, r  ,T);
 	 }
+	 //8
 	 if(n >= 3){
 	 	for(int i = 0 ; i < 2 ; i++){
 	 		 B( 4 + i, 7 - i, 56 - 32 * i, 0, r ,T );
@@ -4489,6 +4510,7 @@ int decode::inverseDCT(int16_t T[], int n, int r) {
 	 		H( i, 7 - i, 0, r ,T ) ;
 	 	}
 	 }
+	 //16
 	 if(n >= 4){
 	 	for(int i = 0 ; i < 4 ; i++){
 	 		 B( 8 + i, 15 - i, 12 + ( brev( 2, 3 - i ) << 4 ), 0, r ,T);
@@ -4510,6 +4532,7 @@ int decode::inverseDCT(int16_t T[], int n, int r) {
 	 		H( i, 15 - i, 0, r  ,T);
 	 	}
 	 }
+	 //32
 	 if(n >= 5){
 	 	for(int i = 0 ; i < 8 ; i++){
 	 		 B( 16 + i, 31 - i, 6 + ( brev( 3, 7 - i ) << 3 ), 0, r ,T);
@@ -4538,6 +4561,7 @@ int decode::inverseDCT(int16_t T[], int n, int r) {
 	 		H( i, 31 - i, 0, r ,T );
 	 	}
 	 }
+	 //64
 	 if(n == 6){
 	 	for(int i = 0 ; i < 16 ; i++){
 	 		B( 32 + i, 63 - i, 63 - 4 * brev( 4, i ), 0, r ,T);

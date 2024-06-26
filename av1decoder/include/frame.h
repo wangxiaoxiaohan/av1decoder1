@@ -121,7 +121,7 @@ private:
 	Symbol *sb;
 	segmentation *seg_instance;
 	decode *decode_instance;
-	int scount = 0;
+	int scount;
 
 };
 #endif
