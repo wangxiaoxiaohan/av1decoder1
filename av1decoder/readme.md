@@ -167,8 +167,4 @@ AV1使用了一种称为CDF（Cumulative Distribution Function）的算术编码
 
 single_ref_p* 这些的 ctx  后面几个根本没有计算！
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!bw4  2 bh4 4
-blockWidth + blockHeight 24 
-SymbolValue 3929 SymbolRange 63200
-
-50173
+https://mirrors.tuna.tsinghua.edu.cn/armbian-releases/_toolchain/

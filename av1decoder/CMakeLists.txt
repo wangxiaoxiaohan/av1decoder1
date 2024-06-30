@@ -16,7 +16,7 @@ set(ASM_LIST
     
     )
 
-enable_language(ASM) #编译arm汇编 需要加上这个
+enable_language(ASM) #编译汇编 需要加上这个
 #set_source_files_properties(${ASM_LIST}  PROPERTIES LANGUAGE ASM)
 
 set (EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
@@ -27,10 +27,14 @@ SET(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -Wall  -g2 -ggdb")
 #SET(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -Wall -fsanitize=address -fno-omit-frame-pointer  -g2 -ggdb")
 SET(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -O3 -Wall")
 
-set(CMAKE_C_COMPILER /home/wanghan/Downloads/gcc-arm-11.2-2022.02-x86_64-aarch64-none-linux-gnu/bin/aarch64-none-linux-gnu-gcc)
-set(CMAKE_CXX_COMPILER /home/wanghan/Downloads/gcc-arm-11.2-2022.02-x86_64-aarch64-none-linux-gnu/bin/aarch64-none-linux-gnu-g++)
-set(CMAKE_SYSTEM_NAME Linux)
-set(CMAKE_SYSTEM_PROCESSOR arm)
+set(CMAKE_SYSTEM_NAME linux)
+set(CMAKE_SYSTEM_PROCESSOR aarch64) 
 
+#gcc-linaro-7.4.1-2019.02-x86_64_aarch64-linux-gnu/bin/aarch64-none-linux-gnu-
+set(CMAKE_C_COMPILER /home/wanghan/Downloads/gcc-linaro-7.4.1-2019.02-x86_64_aarch64-linux-gnu/bin/aarch64-linux-gnu-gcc)
+set(CMAKE_CXX_COMPILER /home/wanghan/Downloads/gcc-linaro-7.4.1-2019.02-x86_64_aarch64-linux-gnu/bin/aarch64-linux-gnu-g++)
+set(CMAKE_ASM_COMPILER /home/wanghan/Downloads/gcc-linaro-7.4.1-2019.02-x86_64_aarch64-linux-gnu/bin/aarch64-linux-gnu-as) #汇编器
+set(CMAKE_LINKER /home/wanghan/Downloads/gcc-linaro-7.4.1-2019.02-x86_64_aarch64-linux-gnu/bin/aarch64-linux-gnu-ld)
+#target_compile_options(av1decoder PRIVATE -march=armv8-a)
 
 #enable_language(CXX C ASM ASM-ATT)
