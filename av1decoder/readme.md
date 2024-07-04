@@ -167,4 +167,6 @@ AV1使用了一种称为CDF（Cumulative Distribution Function）的算术编码
 
 single_ref_p* 这些的 ctx  后面几个根本没有计算！
 
-https://mirrors.tuna.tsinghua.edu.cn/armbian-releases/_toolchain/
+板子 toolchain 地址 https://mirrors.tuna.tsinghua.edu.cn/armbian-releases/_toolchain/
+应该是CMAKE 的原因，在arm 板子上编译同样有 __MACH__ 问题
+应该是没链接上 成功编译了 使用nm 查看函数列表也有

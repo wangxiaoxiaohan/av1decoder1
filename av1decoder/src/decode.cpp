@@ -3,7 +3,7 @@
 #include "cdf.h"
 #include <string.h>
 extern "C" {
-    int inv_dct_4h_x4_neon(int arg);
+    int EXTERNinv_dct_4h_x4_neon(int arg);
 }
 #define INVALID_MV 0x80008000
 decode::decode(){
@@ -15,7 +15,7 @@ decode::~decode(){
 }
 //这个函数内部 不应该用到  TileData PartitionData BlockData 需要想办法去掉
 int decode::decode_frame_wrapup( AV1DecodeContext *av1Ctx){
-	inv_dct_4h_x4_neon(1);
+	EXTERNinv_dct_4h_x4_neon(1);
 	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	if(frameHdr->show_existing_frame == 0){
 		if( frameHdr->loop_filter_params.loop_filter_level[ 0 ] != 0 || frameHdr->loop_filter_params.loop_filter_level[ 1 ] != 0){

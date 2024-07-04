@@ -282,7 +282,7 @@ function inv_txfm_add_dct_dct_4x4_8bpc_neon, export=1
         mov             x15, x30
 
 
-.ifc dct_dct, dct_dct   这个case /*是专门用来 做dc 系数的变换的,在解码器的代码中*/
+.ifc dct_dct, dct_dct   /*这个case 是专门用来 做dc 系数的变换的,在解码器的代码中*/
         cbnz            w3,  1f /*如果W3 不为0 则 调到标签1，相当于 goto，w3中存储的是eob，当其为0的时候 ，则表示只有dc系数，这种情况分析下才不会跳到1f去*/
         mov             w16, #2896*8
         ld1r            {v16.8h}, [x2] /*从地址x2加载8个16位元素的向量到寄存器v16，并且所有元素都等于该地址处的值。*/
