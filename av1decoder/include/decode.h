@@ -211,6 +211,9 @@ public:
 		static decode m_pInstance;
 		return m_pInstance;
 	}
+
+
+	void neonDctDct();
 private :
 	Symbol *sb;
 	segmentation *seg_instance;

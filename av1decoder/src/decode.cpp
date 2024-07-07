@@ -3,7 +3,8 @@
 #include "cdf.h"
 #include <string.h>
 extern "C" {
-    int EXTERNinv_dct_4h_x4_neon(int arg);
+	////函数原形 第一个参数:dst 第二个参数:一行有多少个 第三个参数：系数，也就是src，第四个参数：eob，也就是矩阵内有效的系数个 数
+    int EXTERNinv_txfm_add_dct_dct_4x4_8bpc_neon(uint8_t *dst,int str,uint8_t *coeff,int eob);
 }
 #define INVALID_MV 0x80008000
 decode::decode(){
@@ -15,7 +16,7 @@ decode::~decode(){
 }
 //这个函数内部 不应该用到  TileData PartitionData BlockData 需要想办法去掉
 int decode::decode_frame_wrapup( AV1DecodeContext *av1Ctx){
-	EXTERNinv_dct_4h_x4_neon(1);
+	//EXTERNinv_txfm_add_dct_dct_4x4_8bpc_neon(1);
 	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	if(frameHdr->show_existing_frame == 0){
 		if( frameHdr->loop_filter_params.loop_filter_level[ 0 ] != 0 || frameHdr->loop_filter_params.loop_filter_level[ 1 ] != 0){
@@ -5016,8 +5017,12 @@ void decode::inverseIdentityTransform(int16_t *T,int n){
 	}else if(n == 4){
 		inverseIdentityTransform16(T);
 	}else if(n == 5){
-		inverseIdentityTransform32(T);
-	}
+		inverseIdentityTransform32(T);   
+ 	}
+}
+void decode::neonDctDct(){
+
+	
 }
 void decode::twoDInverseTransformBlock(int txSz,int16_t **Residual,BlockData *b_data, AV1DecodeContext *av1Ctx) {
 	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
