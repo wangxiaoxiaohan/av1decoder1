@@ -256,27 +256,51 @@ function inv_txfm_add_4x4_neon
         ; //在这里X1的值会是4?，正好是4*4矩阵的一行 这里也会用到V0 只是暂时使用v0寄存器，和idct_4中使用v0寄存器并不冲突
         //要么dc的时候不会调用 idct_4，要么 idct_4已经完成，v0作为暂存数据的寄存器已经完成使命
         //这里参考dav1d 的 itx.s而不是itx16.s 不考虑像素值大于255 ，也就是 超过8位，所以一行的四个数据只用了一个32位.s来装
-        ld1             {v0.s}[0], [x0], x1 /*从X0所指地址开始加载 一个32位，这里是加载到V0的第一个32位中，之后地址 增加 X1的值*/
-        ld1             {v0.s}[1], [x0], x1 /*同上，只不过加载到第二个32位中*/
-        ins             v16.d[1], v17.d[0] /*将v17的低64位插入到v16的高64位*/
+ 
+ /* 原版 dst 为8位
+        ld1             {v0.s}[0], [x0], x1 从X0所指地址开始加载 一个32位，这里是加载到V0的第一个32位中，之后地址 增加 X1的值
+        ld1             {v0.s}[1], [x0], x1 同上，只不过加载到第二个32位中
+        ins             v16.d[1], v17.d[0] 将v17的低64位插入到v16的高64位
         ins             v18.d[1], v19.d[0]
         ld1             {v1.s}[0], [x0], x1
         ld1             {v1.s}[1], [x0], x1
         srshr           v16.8h,  v16.8h,  #4
         srshr           v18.8h,  v18.8h,  #4
+*/  
+/*修改后*/
+        ld1             {v0.d}[0], [x0], x1
+        ld1             {v0.d}[1], [x0], x1
+        ins             v16.d[1], v17.d[0]
+        ins             v18.d[1], v19.d[0]
+        ld1             {v1.d}[0], [x0], x1
+        ld1             {v1.d}[1], [x0], x1
+        srshr           v16.8h,  v16.8h,  #4
+        srshr           v18.8h,  v18.8h,  #4
 
 L(itx_4x4_end): /*展开为 .L itx_4x4_end  这一段 把V0 ,V1的数据 分别加上 V16,v18的数据自之后，存到X0指向的地址里面 ，也就是叠加操作*/
-        sub            x0,  x0,  x1, lsl #2
+ /* 原版 dst 为8位
+        sub            x0,  x0,  x1, lsl #2  这里把X0的地址减了4行，是因为前面 ld1 加载数据的时候，把X0的值加了，现在要减回去存数据
         uaddw           v16.8h,  v16.8h,  v0.8b
-        sqxtun          v0.8b,   v16.8h  /*sqx指令 主要功能是从更宽的带有符号的整数向量中提取并转换为无符号的较窄整数*/
-        uaddw           v18.8h,  v18.8h,  v1.8b  /*uaddw它的基本作用是将两个无符号整数向量相加，并将结果的宽度拓宽一倍，以容纳可能的溢出*/
+        sqxtun          v0.8b,   v16.8h  sqx指令 主要功能是从更宽的带有符号的整数向量中提取并转换为无符号的较窄整数
+        uaddw           v18.8h,  v18.8h,  v1.8b  uaddw它的基本作用是将两个无符号整数向量相加，并将结果的宽度拓宽一倍，以容纳可能的溢出
         st1             {v0.s}[0], [x0], x1   
         sqxtun          v1.8b,   v18.8h
         st1             {v0.s}[1], [x0], x1
         st1             {v1.s}[0], [x0], x1
         st1             {v1.s}[1], [x0], x1
 
-        ret             x15  /*因为这里返回了 ，所以inv_txfm_add_dct_dct_4x4_8bpc_neon 后续的代码也不会继续执行了，如果没这一句则会继续*/
+        ret             x15  因为这里返回了 ，所以inv_txfm_add_dct_dct_4x4_8bpc_neon 后续的代码也不会继续执行了，如果没这一句则会继续
+*/
+/*修改后：不使用扩展waddw sqxtun，直接加就完了*/
+        sub            x0,  x0,  x1, lsl #2
+        vadd.u16       v0.8h,v0.8h, v16.8h
+        vadd.u16       v1.8h,v1.8h, v18.8h
+        st1             {v0.d}[0], [x0], x1   
+        st1             {v0.d}[1], [x0], x1
+        st1             {v1.d}[0], [x0], x1
+        st1             {v1.d}[1], [x0], x1
+
+        ret             x15
 endfunc
 
 
@@ -299,6 +323,7 @@ function inv_txfm_add_dct_dct_4x4_8bpc_neon, export=1
 
         ;这一段也是把x0的值加载到V0,V1, 修改V16,V18的值，和 inv_txfm_add_4x4_neon里面做了类似的操作
 */
+/* 原版
         sqrdmulh        v16.8h,  v16.8h,  v4.h[0]
         ld1             {v0.s}[0], [x0], x1
         sqrdmulh        v20.8h,  v16.8h,  v4.h[0] 
@@ -308,7 +333,19 @@ function inv_txfm_add_dct_dct_4x4_8bpc_neon, export=1
         srshr           v18.8h,  v20.8h,  #4
         ld1             {v1.s}[1], [x0], x1
 
-        b               L(itx_4x4_end) /*在inv_txfm_add_4x4_neon ;函数里面 这里如果跳了 后面就不再执行 */
+        b               L(itx_4x4_end) 在inv_txfm_add_4x4_neon ;函数里面 这里如果跳了 后面就不再执行 
+ */       
+ /*修改后*/
+        sqrdmulh        v16.8h,  v16.8h,  v4.h[0]
+        ld1             {v0.d}[0], [x0], x1
+        sqrdmulh        v20.8h,  v16.8h,  v4.h[0] 
+        ld1             {v0.d}[1], [x0], x1
+        srshr           v16.8h,  v20.8h,  #4
+        ld1             {v1.d}[0], [x0], x1
+        srshr           v18.8h,  v20.8h,  #4
+        ld1             {v1.d}[1], [x0], x1
+
+        b               L(itx_4x4_end) 
 1:
 .endif
         adr             x4,  inv_dct_4h_x4_neon /*这里不是调用函数 而是 把函数地址存到X4 X5 中 ，以方便调用*/
