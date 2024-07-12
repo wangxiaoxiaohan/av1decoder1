@@ -171,6 +171,45 @@ endconst
 /*************
 定义8X8系列变换函数
 ****/
+/*
+    const int in1 = c[1 * stride], in3 = c[3 * stride];
+    int t4a, t5a, t6a, t7a;
+    if (tx64) {
+        t4a = (in1 *   799 + 2048) >> 12;//cos
+        t5a = (in3 * -2276 + 2048) >> 12;//sin
+        t6a = (in3 *  3406 + 2048) >> 12;//cos
+        t7a = (in1 *  4017 + 2048) >> 12;//sin
+    } else {
+        const int in5 = c[5 * stride], in7 = c[7 * stride];
+
+        t4a = ((in1 *   799         - in7 * (4017 - 4096) + 2048) >> 12) - in7;
+        t5a =  (in5 *  1703         - in3 *  1138         + 1024) >> 11;
+        t6a =  (in5 *  1138         + in3 *  1703         + 1024) >> 11;
+        t7a = ((in1 * (4017 - 4096) + in7 *  799          + 2048) >> 12) + in1;
+    }
+    const int t4  = CLIP(t4a + t5a);
+              t5a = CLIP(t4a - t5a);
+    const int t7  = CLIP(t7a + t6a);
+              t6a = CLIP(t7a - t6a);
+
+    const int t5  = ((t6a - t5a) * 181 + 128) >> 8;
+    const int t6  = ((t6a + t5a) * 181 + 128) >> 8;
+
+    const int t0 = c[0 * stride];
+    const int t1 = c[2 * stride];
+    const int t2 = c[4 * stride];
+    const int t3 = c[6 * stride];
+
+    c[0 * stride] = CLIP(t0 + t7);
+    c[1 * stride] = CLIP(t1 + t6);
+    c[2 * stride] = CLIP(t2 + t5);
+    c[3 * stride] = CLIP(t3 + t4);
+    c[4 * stride] = CLIP(t3 - t4);
+    c[5 * stride] = CLIP(t2 - t5);
+    c[6 * stride] = CLIP(t1 - t6);
+    c[7 * stride] = CLIP(t0 - t7); 
+
+ */       /*  v16, v17, v18, v19, v20, v21, v22, v23 */
 .macro idct_8 r0, r1, r2, r3, r4, r5, r6, r7, sz, szb
         idct_4          \r0, \r2, \r4, \r6, \sz
 
@@ -204,6 +243,14 @@ endconst
         mov             \r6\szb, v6\szb         // out6
 .endm
 
+/*
+    load 加载目标
+     shift 需要移位目标 这个是最后的 colshit
+     addsrc adddst 扩宽 src/dst
+     narrowsrc narrowdst 缩窄 src/dst
+     store 存储目标
+    uaddw sqxtun应该不需要？
+*/
 .macro load_add_store load, shift, addsrc, adddst, narrowsrc, narrowdst, store, dst, src, shiftbits=4
 .ifnb \load
         ld1             {\load},  [\src], x1
@@ -222,20 +269,21 @@ endconst
 .endif
 .endm
 
+/*这一段 V2-V7 的 .8b改成了 .8h*/
 .macro load_add_store_8x8 dst, src, shiftbits=4
         mov             \src, \dst
-        load_add_store  v2.8b, v16.8h,      ,       ,       ,      ,      , \dst, \src, \shiftbits
-        load_add_store  v3.8b, v17.8h,      ,       ,       ,      ,      , \dst, \src, \shiftbits
-        load_add_store  v4.8b, v18.8h, v2.8b, v16.8h,       ,      ,      , \dst, \src, \shiftbits
-        load_add_store  v5.8b, v19.8h, v3.8b, v17.8h, v16.8h, v2.8b,      , \dst, \src, \shiftbits
-        load_add_store  v6.8b, v20.8h, v4.8b, v18.8h, v17.8h, v3.8b, v2.8b, \dst, \src, \shiftbits
-        load_add_store  v7.8b, v21.8h, v5.8b, v19.8h, v18.8h, v4.8b, v3.8b, \dst, \src, \shiftbits
-        load_add_store  v2.8b, v22.8h, v6.8b, v20.8h, v19.8h, v5.8b, v4.8b, \dst, \src, \shiftbits
-        load_add_store  v3.8b, v23.8h, v7.8b, v21.8h, v20.8h, v6.8b, v5.8b, \dst, \src, \shiftbits
-        load_add_store       ,       , v2.8b, v22.8h, v21.8h, v7.8b, v6.8b, \dst, \src, \shiftbits
-        load_add_store       ,       , v3.8b, v23.8h, v22.8h, v2.8b, v7.8b, \dst, \src, \shiftbits
-        load_add_store       ,       ,      ,       , v23.8h, v3.8b, v2.8b, \dst, \src, \shiftbits
-        load_add_store       ,       ,      ,       ,       ,      , v3.8b, \dst, \src, \shiftbits
+        load_add_store  v2.8h, v16.8h,      ,       ,       ,      ,      , \dst, \src, \shiftbits
+        load_add_store  v3.8h, v17.8h,      ,       ,       ,      ,      , \dst, \src, \shiftbits
+        load_add_store  v4.8h, v18.8h, v2.8h, v16.8h,       ,      ,      , \dst, \src, \shiftbits
+        load_add_store  v5.8h, v19.8h, v3.8h, v17.8h, v16.8h, v2.8h,      , \dst, \src, \shiftbits
+        load_add_store  v6.8h, v20.8h, v4.8h, v18.8h, v17.8h, v3.8h, v2.8h, \dst, \src, \shiftbits
+        load_add_store  v7.8h, v21.8h, v5.8h, v19.8h, v18.8h, v4.8h, v3.8h, \dst, \src, \shiftbits
+        load_add_store  v2.8h, v22.8h, v6.8h, v20.8h, v19.8h, v5.8h, v4.8h, \dst, \src, \shiftbits
+        load_add_store  v3.8h, v23.8h, v7.8h, v21.8h, v20.8h, v6.8h, v5.8h, \dst, \src, \shiftbits
+        load_add_store       ,       , v2.8h, v22.8h, v21.8h, v7.8h, v6.8h, \dst, \src, \shiftbits
+        load_add_store       ,       , v3.8h, v23.8h, v22.8h, v2.8h, v7.8h, \dst, \src, \shiftbits
+        load_add_store       ,       ,      ,       , v23.8h, v3.8h, v2.8h, \dst, \src, \shiftbits
+        load_add_store       ,       ,      ,       ,       ,      , v3.8h, \dst, \src, \shiftbits
 .endm
 
 function inv_adst_8h_x8_neon, export=1
@@ -275,16 +323,16 @@ function inv_txfm_\variant\()add_8x8_neon
         movi            v29.8h,  #0
         movi            v30.8h,  #0
         movi            v31.8h,  #0
-        ld1             {v16.8h,v17.8h,v18.8h,v19.8h}, [x2]
-        st1             {v28.8h,v29.8h,v30.8h,v31.8h}, [x2], #64
-        ld1             {v20.8h,v21.8h,v22.8h,v23.8h}, [x2]
-        st1             {v28.8h,v29.8h,v30.8h,v31.8h}, [x2]
+        ld1             {v16.8h,v17.8h,v18.8h,v19.8h}, [x2] /*加载前四行*/
+        st1             {v28.8h,v29.8h,v30.8h,v31.8h}, [x2], #64 /*把v28-V31存到X2,其实就是置0，最后偏移64字节*/
+        ld1             {v20.8h,v21.8h,v22.8h,v23.8h}, [x2] /*加载后四行*/
+        st1             {v28.8h,v29.8h,v30.8h,v31.8h}, [x2] /*这里不增加地址 因为X2不用了*/
 
 .ifc \variant, identity_
         // The identity shl #1 and downshift srshr #1 cancel out
 .else
         blr             x4
-
+/*rowshift*/
         srshr           v16.8h,  v16.8h,  #1
         srshr           v17.8h,  v17.8h,  #1
         srshr           v18.8h,  v18.8h,  #1
@@ -308,9 +356,13 @@ def_fn_8x8_base
 def_fn_8x8_base identity_
 
 /**************************/
-
-
 /*定义8X8系列变换的入口*/
+
+.macro def_fn_8x8 txfm1, txfm2
+function inv_txfm_add_\txfm1\()_\txfm2\()_8x8_8bpc_neon, export=1
+        mov             x15, x30
+
+
 .ifc \txfm1\()_\txfm2, dct_dct
         idct_dc         8,   8,   1
 .endif
