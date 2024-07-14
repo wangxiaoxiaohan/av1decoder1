@@ -13,7 +13,7 @@ set(SRC_LIST
 	)
 set(ASM_LIST 
        ./asm/itx4x4.S 
-    
+       ./asm/itx8x8.S
     )
 
 enable_language(ASM ) #编译汇编 需要加上这个

@@ -293,8 +293,8 @@ L(itx_4x4_end): /*展开为 .L itx_4x4_end  这一段 把V0 ,V1的数据 分别�
 */
 /*修改后：不使用扩展waddw sqxtun，直接加就完了*/
         sub            x0,  x0,  x1, lsl #2
-        vadd.u16       v0.8h,v0.8h, v16.8h
-        vadd.u16       v1.8h,v1.8h, v18.8h
+        usqadd      v0.8h, v16.8h
+        usqadd       v1.8h, v18.8h
         st1             {v0.d}[0], [x0], x1   
         st1             {v0.d}[1], [x0], x1
         st1             {v1.d}[0], [x0], x1
