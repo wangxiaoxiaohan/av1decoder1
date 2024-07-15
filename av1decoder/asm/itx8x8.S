@@ -348,13 +348,15 @@ endfunc
 .endif
 
 /*
-改为使用sqadd
 .ifnb \addsrc
         uaddw           \adddst, \adddst, \addsrc
 .endif
 */
+/*
+改为使用sqadd 由于少了一个步骤，所有需要交换dst和src
+*/
 .ifnb \addsrc
-        sqadd           \adddst, \adddst, \addsrc
+        sqadd           \addsrc, \addsrc, \adddst
 .endif
 /* 不再需要
 .ifnb \narrowsrc
@@ -372,14 +374,14 @@ endfunc
         load_add_store  v2.8h, v16.8h,      ,       ,       ,      ,      , \dst, \src, \shiftbits
         load_add_store  v3.8h, v17.8h,      ,       ,       ,      ,      , \dst, \src, \shiftbits
         load_add_store  v4.8h, v18.8h, v2.8h, v16.8h,       ,      ,      , \dst, \src, \shiftbits
-        load_add_store  v5.8h, v19.8h, v3.8h, v17.8h, v16.8h, v2.8h,      , \dst, \src, \shiftbits
-        load_add_store  v6.8h, v20.8h, v4.8h, v18.8h, v17.8h, v3.8h, v2.8h, \dst, \src, \shiftbits
-        load_add_store  v7.8h, v21.8h, v5.8h, v19.8h, v18.8h, v4.8h, v3.8h, \dst, \src, \shiftbits
-        load_add_store  v2.8h, v22.8h, v6.8h, v20.8h, v19.8h, v5.8h, v4.8h, \dst, \src, \shiftbits
-        load_add_store  v3.8h, v23.8h, v7.8h, v21.8h, v20.8h, v6.8h, v5.8h, \dst, \src, \shiftbits
-        load_add_store       ,       , v2.8h, v22.8h, v21.8h, v7.8h, v6.8h, \dst, \src, \shiftbits
-        load_add_store       ,       , v3.8h, v23.8h, v22.8h, v2.8h, v7.8h, \dst, \src, \shiftbits
-        load_add_store       ,       ,      ,       , v23.8h, v3.8h, v2.8h, \dst, \src, \shiftbits
+        load_add_store  v5.8h, v19.8h, v3.8h, v17.8h,       ,      ,      , \dst, \src, \shiftbits
+        load_add_store  v6.8h, v20.8h, v4.8h, v18.8h,       ,      , v2.8h, \dst, \src, \shiftbits
+        load_add_store  v7.8h, v21.8h, v5.8h, v19.8h,       ,      , v3.8h, \dst, \src, \shiftbits
+        load_add_store  v2.8h, v22.8h, v6.8h, v20.8h,       ,      , v4.8h, \dst, \src, \shiftbits
+        load_add_store  v3.8h, v23.8h, v7.8h, v21.8h,       ,      , v5.8h, \dst, \src, \shiftbits
+        load_add_store       ,       , v2.8h, v22.8h,       ,      , v6.8h, \dst, \src, \shiftbits
+        load_add_store       ,       , v3.8h, v23.8h,       ,      , v7.8h, \dst, \src, \shiftbits
+        load_add_store       ,       ,      ,       ,       ,      , v2.8h, \dst, \src, \shiftbits
         load_add_store       ,       ,      ,       ,       ,      , v3.8h, \dst, \src, \shiftbits
 .endm
 
