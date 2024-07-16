@@ -119,39 +119,41 @@ endconst
 
 
 
+function inv_txfm_add_vert_8x16_neon
+        mov             x14, x30
+.irp i, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31
+        ld1             {v\i\().8h}, [x7], x8
+.endr
+        blr             x5
+        load_add_store_8x16 x6, x7
+        ret             x14
+endfunc
+
 function inv_txfm_add_16x16_neon
         mov             x15, x30
         sub             sp,  sp,  #512
-        ldrh            w12, [x13], #2
-.irp i, 0, 4, 8, 12
+.irp i, 0, 8
         add             x6,  sp,  #(\i*16*2)
-.if \i > 0
-        mov             w8,  #(16 - \i)
-        cmp             w3,  w12
+.if \i == 8
+        cmp             w3,  w13
         b.lt            1f
-.if \i < 12
-        ldrh            w12, [x13], #2
 .endif
-.endif
-        add             x7,  x2,  #(\i*4)
-        mov             x8,  #16*4
-        bl              inv_txfm_horz_16x4_neon
+        add             x7,  x2,  #(\i*2)
+        mov             x8,  #16*2
+        blr             x9
 .endr
-        b               3f
+        b               2f
 1:
         movi            v4.8h,  #0
         movi            v5.8h,  #0
         movi            v6.8h,  #0
         movi            v7.8h,  #0
-2:
-        subs            w8,  w8,  #4
-.rept 2
+.rept 4
         st1             {v4.8h, v5.8h, v6.8h, v7.8h}, [x6], #64
 .endr
-        b.gt            2b
-3:
+2:
 .irp i, 0, 8
-        add             x6,  x0,  #(\i*2)
+        add             x6,  x0,  #(\i)
         add             x7,  sp,  #(\i*2)
         mov             x8,  #32
         bl              inv_txfm_add_vert_8x16_neon
@@ -161,48 +163,32 @@ function inv_txfm_add_16x16_neon
         ret             x15
 endfunc
 
-const eob_16x16
-        .short 10, 36, 78, 256
-endconst
-
-const eob_16x16_identity
-        .short 4, 8, 12, 256
-endconst
-
-
-.macro def_fn_16x16 txfm1, txfm2
-function inv_txfm_add_\txfm1\()_\txfm2\()_16x16_16bpc_neon, export=1
+.macro def_fn_16x16 txfm1, txfm2, eob_half
+function inv_txfm_add_\txfm1\()_\txfm2\()_16x16_8bpc_neon, export=1
 .ifc \txfm1\()_\txfm2, dct_dct
         idct_dc         16,  16,  2
 .endif
-        adr             x4,  inv_\txfm1\()_4s_x16_neon
-        movrel          x5,  X(inv_\txfm2\()_8h_x16_neon)
 .ifc \txfm1, identity
-.ifc \txfm2, identity
-        movrel          x13, eob_16x16
+        adr             x9,  inv_txfm_horz_identity_16x8_neon
 .else
-        movrel          x13, eob_16x16_identity
+        adr             x9,  inv_txfm_horz_16x8_neon
+        adr             x4,  inv_\txfm1\()_8h_x16_neon
 .endif
-.else
-.ifc \txfm2, identity
-        movrel          x13, eob_16x16_identity
-.else
-        movrel          x13, eob_16x16
-.endif
-.endif
+        adr             x5,  inv_\txfm2\()_8h_x16_neon
+        mov             x13, #\eob_half
         b               inv_txfm_add_16x16_neon
 endfunc
 .endm
 
-def_fn_16x16 dct, dct
-def_fn_16x16 identity, identity
-def_fn_16x16 dct, adst
-def_fn_16x16 dct, flipadst
-def_fn_16x16 dct, identity
-def_fn_16x16 adst, dct
-def_fn_16x16 adst, adst
-def_fn_16x16 adst, flipadst
-def_fn_16x16 flipadst, dct
-def_fn_16x16 flipadst, adst
-def_fn_16x16 flipadst, flipadst
-def_fn_16x16 identity, dct
+def_fn_16x16 dct, dct, 36
+def_fn_16x16 identity, identity, 36
+def_fn_16x16 dct, adst, 36
+def_fn_16x16 dct, flipadst, 36
+def_fn_16x16 dct, identity, 8
+def_fn_16x16 adst, dct, 36
+def_fn_16x16 adst, adst, 36
+def_fn_16x16 adst, flipadst, 36
+def_fn_16x16 flipadst, dct, 36
+def_fn_16x16 flipadst, adst, 36
+def_fn_16x16 flipadst, flipadst, 36
+def_fn_16x16 identity, dct, 8

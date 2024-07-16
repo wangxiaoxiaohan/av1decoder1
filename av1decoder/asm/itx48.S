@@ -173,20 +173,25 @@ endconst
 .endif
 .endm
 
-
+/*这一段 V2-V5 的 .8b改成了 .8h*/
 .macro load_add_store_8x4 dst, src
         mov             \src, \dst
-        load_add_store  v2.8b, v16.8h,      ,       ,       ,      ,      , \dst, \src
-        load_add_store  v3.8b, v17.8h,      ,       ,       ,      ,      , \dst, \src
-        load_add_store  v4.8b, v18.8h, v2.8b, v16.8h,       ,      ,      , \dst, \src
-        load_add_store  v5.8b, v19.8h, v3.8b, v17.8h,       ,      ,      , \dst, \src
-        load_add_store       ,       , v4.8b, v18.8h,       ,      , v2.8b, \dst, \src
-        load_add_store       ,       , v5.8b, v19.8h,       ,      , v3.8b, \dst, \src
-        load_add_store       ,       ,      ,       ,       ,      , v4.8b, \dst, \src
-        load_add_store       ,       ,      ,       ,       ,      , v5.8b, \dst, \src
+        load_add_store  v2.8h, v16.8h,      ,       ,       ,      ,      , \dst, \src
+        load_add_store  v3.8h, v17.8h,      ,       ,       ,      ,      , \dst, \src
+        load_add_store  v4.8h, v18.8h, v2.8h, v16.8h,       ,      ,      , \dst, \src
+        load_add_store  v5.8h, v19.8h, v3.8h, v17.8h,       ,      ,      , \dst, \src
+        load_add_store       ,       , v4.8h, v18.8h,       ,      , v2.8h, \dst, \src
+        load_add_store       ,       , v5.8h, v19.8h,       ,      , v3.8h, \dst, \src
+        load_add_store       ,       ,      ,       ,       ,      , v4.8h, \dst, \src
+        load_add_store       ,       ,      ,       ,       ,      , v5.8h, \dst, \src
 .endm
 
+
+
+
+
 .macro load_add_store4 load, inssrc, insdst, shift, addsrc, adddst, narrowsrc, narrowdst, store, dst, src
+/*加载一行四个数据 因此用的时候的是v0.d（原本是v0.s被我改了，对应v0.8b改为 v0.8h）*/
 .ifnb \load
         ld1             {\load}[0],  [\src], x1
 .endif
@@ -199,32 +204,47 @@ endconst
 .ifnb \load
         ld1             {\load}[1],  [\src], x1
 .endif
+/*
 .ifnb \addsrc
         uaddw           \adddst, \adddst, \addsrc
+.endif
+*/
+/*
+改为使用sqadd 由于少了一个步骤，所有需要交换dst和src
+*/
+
+.ifnb \addsrc
+        sqadd           \addsrc, \addsrc, \adddst
 .endif
 .ifnb \store
         st1             {\store}[0],  [\dst], x1
 .endif
+/*不再需要 
 .ifnb \narrowsrc
         sqxtun          \narrowdst, \narrowsrc
 .endif
+*/
 .ifnb \store
         st1             {\store}[1],  [\dst], x1
 .endif
 .endm
-
+/*这里的修改逻辑是 原本是v0-v3 加到 V16 V18 V29 V22上，因为 v0-v3之前使用 .8b 8位数据 所以需要扩展
+然后加完之后 再把结果缩回8位回到 V0-V3 ,现在因为V0-V3里面数据也是16位了，所以省去这个扩展再缩回的步骤*/
 .macro load_add_store_4x8 dst, src
         mov             \src, \dst
-        load_add_store4 v0.s, v17, v16,       ,      ,       ,       ,      ,     , \dst, \src
-        load_add_store4 v1.s, v19, v18,       ,      ,       ,       ,      ,     , \dst, \src
-        load_add_store4 v2.s, v21, v20, v16.8h,      ,       ,       ,      ,     , \dst, \src
-        load_add_store4 v3.s, v23, v22, v18.8h, v0.8b, v16.8h,       ,      ,     , \dst, \src
-        load_add_store4     ,    ,    , v20.8h, v1.8b, v18.8h, v16.8h, v0.8b,     , \dst, \src
-        load_add_store4     ,    ,    , v22.8h, v2.8b, v20.8h, v18.8h, v1.8b, v0.s, \dst, \src
-        load_add_store4     ,    ,    ,       , v3.8b, v22.8h, v20.8h, v2.8b, v1.s, \dst, \src
-        load_add_store4     ,    ,    ,       ,      ,       , v22.8h, v3.8b, v2.s, \dst, \src
-        load_add_store4     ,    ,    ,       ,      ,       ,       ,      , v3.s, \dst, \src
+        load_add_store4 v0.d, v17, v16,       ,      ,       ,       ,      ,     , \dst, \src
+        load_add_store4 v1.d, v19, v18,       ,      ,       ,       ,      ,     , \dst, \src
+        load_add_store4 v2.d, v21, v20, v16.8h,      ,       ,       ,      ,     , \dst, \src
+        load_add_store4 v3.d, v23, v22, v18.8h, v0.8h, v16.8h,       ,      ,     , \dst, \src
+        load_add_store4     ,    ,    , v20.8h, v1.8h, v18.8h,       ,      ,     , \dst, \src
+        load_add_store4     ,    ,    , v22.8h, v2.8h, v20.8h,       ,      , v0.d, \dst, \src
+        load_add_store4     ,    ,    ,       , v3.8h, v22.8h,       ,      , v1.d, \dst, \src
+        load_add_store4     ,    ,    ,       ,      ,       ,       ,      , v2.d, \dst, \src
+        load_add_store4     ,    ,    ,       ,      ,       ,       ,      , v3.d, \dst, \src
 .endm
+
+
+
 
 .macro idct_8 r0, r1, r2, r3, r4, r5, r6, r7, sz, szb
         idct_4          \r0, \r2, \r4, \r6, \sz
