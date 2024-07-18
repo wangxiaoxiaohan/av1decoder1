@@ -160,64 +160,76 @@ endconst
 .ifnb \shift
         srshr           \shift,  \shift,  #\shiftbits
 .endif
+/*
 .ifnb \addsrc
         uaddw           \adddst, \adddst, \addsrc
 .endif
+*/
+/*
+改为使用sqadd 由于少了一个步骤，所有需要交换dst和src
+*/
+.ifnb \addsrc
+        sqadd           \addsrc, \addsrc, \adddst
+.endif
+/* 不再需要
 .ifnb \narrowsrc
         sqxtun          \narrowdst, \narrowsrc
 .endif
+*/
 .ifnb \store
         st1             {\store},  [\dst], x1
 .endif
 .endm
+
+/*这三段v0-v7的.8b 改成了 .8h*/
 .macro load_add_store_8x16 dst, src
         mov             \src, \dst
-        load_add_store  v2.8b, v16.8h,      ,       ,       ,      ,      , \dst, \src
-        load_add_store  v3.8b, v17.8h,      ,       ,       ,      ,      , \dst, \src
-        load_add_store  v4.8b, v18.8h, v2.8b, v16.8h,       ,      ,      , \dst, \src
-        load_add_store  v5.8b, v19.8h, v3.8b, v17.8h, v16.8h, v2.8b,      , \dst, \src
-        load_add_store  v6.8b, v20.8h, v4.8b, v18.8h, v17.8h, v3.8b, v2.8b, \dst, \src
-        load_add_store  v7.8b, v21.8h, v5.8b, v19.8h, v18.8h, v4.8b, v3.8b, \dst, \src
-        load_add_store  v2.8b, v22.8h, v6.8b, v20.8h, v19.8h, v5.8b, v4.8b, \dst, \src
-        load_add_store  v3.8b, v23.8h, v7.8b, v21.8h, v20.8h, v6.8b, v5.8b, \dst, \src
-        load_add_store  v4.8b, v24.8h, v2.8b, v22.8h, v21.8h, v7.8b, v6.8b, \dst, \src
-        load_add_store  v5.8b, v25.8h, v3.8b, v23.8h, v22.8h, v2.8b, v7.8b, \dst, \src
-        load_add_store  v6.8b, v26.8h, v4.8b, v24.8h, v23.8h, v3.8b, v2.8b, \dst, \src
-        load_add_store  v7.8b, v27.8h, v5.8b, v25.8h, v24.8h, v4.8b, v3.8b, \dst, \src
-        load_add_store  v2.8b, v28.8h, v6.8b, v26.8h, v25.8h, v5.8b, v4.8b, \dst, \src
-        load_add_store  v3.8b, v29.8h, v7.8b, v27.8h, v26.8h, v6.8b, v5.8b, \dst, \src
-        load_add_store  v4.8b, v30.8h, v2.8b, v28.8h, v27.8h, v7.8b, v6.8b, \dst, \src
-        load_add_store  v5.8b, v31.8h, v3.8b, v29.8h, v28.8h, v2.8b, v7.8b, \dst, \src
-        load_add_store       ,       , v4.8b, v30.8h, v29.8h, v3.8b, v2.8b, \dst, \src
-        load_add_store       ,       , v5.8b, v31.8h, v30.8h, v4.8b, v3.8b, \dst, \src
-        load_add_store       ,       ,      ,       , v31.8h, v5.8b, v4.8b, \dst, \src
-        load_add_store       ,       ,      ,       ,       ,      , v5.8b, \dst, \src
+        load_add_store  v2.8h, v16.8h,      ,       ,       ,      ,      , \dst, \src
+        load_add_store  v3.8h, v17.8h,      ,       ,       ,      ,      , \dst, \src
+        load_add_store  v4.8h, v18.8h, v2.8h, v16.8h,       ,      ,      , \dst, \src
+        load_add_store  v5.8h, v19.8h, v3.8h, v17.8h,       ,      ,     , \dst, \src
+        load_add_store  v6.8h, v20.8h, v4.8h, v18.8h,       ,      , v2.8h, \dst, \src
+        load_add_store  v7.8h, v21.8h, v5.8h, v19.8h,       ,      , v3.8h, \dst, \src
+        load_add_store  v2.8h, v22.8h, v6.8h, v20.8h,       ,      , v4.8h, \dst, \src
+        load_add_store  v3.8h, v23.8h, v7.8h, v21.8h,       ,      , v5.8h, \dst, \src
+        load_add_store  v4.8h, v24.8h, v2.8h, v22.8h,       ,      , v6.8h, \dst, \src
+        load_add_store  v5.8h, v25.8h, v3.8h, v23.8h,       ,      , v7.8h, \dst, \src
+        load_add_store  v6.8h, v26.8h, v4.8h, v24.8h,       ,      , v2.8h, \dst, \src
+        load_add_store  v7.8h, v27.8h, v5.8h, v25.8h,       ,      , v3.8h, \dst, \src
+        load_add_store  v2.8h, v28.8h, v6.8h, v26.8h,       ,      , v4.8h, \dst, \src
+        load_add_store  v3.8h, v29.8h, v7.8h, v27.8h,       ,      , v5.8h, \dst, \src
+        load_add_store  v4.8h, v30.8h, v2.8h, v28.8h,       ,      , v6.8h, \dst, \src
+        load_add_store  v5.8h, v31.8h, v3.8h, v29.8h,       ,      , v7.8h, \dst, \src
+        load_add_store       ,       , v4.8h, v30.8h,       ,      , v2.8h, \dst, \src
+        load_add_store       ,       , v5.8h, v31.8h,       ,      , v3.8h, \dst, \src
+        load_add_store       ,       ,      ,       ,       ,      , v4.8h, \dst, \src
+        load_add_store       ,       ,      ,       ,       ,      , v5.8h, \dst, \src
 .endm
 .macro load_add_store_8x8 dst, src, shiftbits=4
         mov             \src, \dst
-        load_add_store  v2.8b, v16.8h,      ,       ,       ,      ,      , \dst, \src, \shiftbits
-        load_add_store  v3.8b, v17.8h,      ,       ,       ,      ,      , \dst, \src, \shiftbits
-        load_add_store  v4.8b, v18.8h, v2.8b, v16.8h,       ,      ,      , \dst, \src, \shiftbits
-        load_add_store  v5.8b, v19.8h, v3.8b, v17.8h, v16.8h, v2.8b,      , \dst, \src, \shiftbits
-        load_add_store  v6.8b, v20.8h, v4.8b, v18.8h, v17.8h, v3.8b, v2.8b, \dst, \src, \shiftbits
-        load_add_store  v7.8b, v21.8h, v5.8b, v19.8h, v18.8h, v4.8b, v3.8b, \dst, \src, \shiftbits
-        load_add_store  v2.8b, v22.8h, v6.8b, v20.8h, v19.8h, v5.8b, v4.8b, \dst, \src, \shiftbits
-        load_add_store  v3.8b, v23.8h, v7.8b, v21.8h, v20.8h, v6.8b, v5.8b, \dst, \src, \shiftbits
-        load_add_store       ,       , v2.8b, v22.8h, v21.8h, v7.8b, v6.8b, \dst, \src, \shiftbits
-        load_add_store       ,       , v3.8b, v23.8h, v22.8h, v2.8b, v7.8b, \dst, \src, \shiftbits
-        load_add_store       ,       ,      ,       , v23.8h, v3.8b, v2.8b, \dst, \src, \shiftbits
-        load_add_store       ,       ,      ,       ,       ,      , v3.8b, \dst, \src, \shiftbits
+        load_add_store  v2.8h, v16.8h,      ,       ,       ,      ,      , \dst, \src, \shiftbits
+        load_add_store  v3.8h, v17.8h,      ,       ,       ,      ,      , \dst, \src, \shiftbits
+        load_add_store  v4.8h, v18.8h, v2.8h, v16.8h,       ,      ,      , \dst, \src, \shiftbits
+        load_add_store  v5.8h, v19.8h, v3.8h, v17.8h,       ,      ,      , \dst, \src, \shiftbits
+        load_add_store  v6.8h, v20.8h, v4.8h, v18.8h,       ,      , v2.8h, \dst, \src, \shiftbits
+        load_add_store  v7.8h, v21.8h, v5.8h, v19.8h,       ,      , v3.8h, \dst, \src, \shiftbits
+        load_add_store  v2.8h, v22.8h, v6.8h, v20.8h,       ,      , v4.8h, \dst, \src, \shiftbits
+        load_add_store  v3.8h, v23.8h, v7.8h, v21.8h,       ,      , v5.8h, \dst, \src, \shiftbits
+        load_add_store       ,       , v2.8h, v22.8h,       ,      , v6.8h, \dst, \src, \shiftbits
+        load_add_store       ,       , v3.8h, v23.8h,       ,      , v7.8h, \dst, \src, \shiftbits
+        load_add_store       ,       ,      ,       ,       ,      , v2.8h, \dst, \src, \shiftbits
+        load_add_store       ,       ,      ,       ,       ,      , v3.8h, \dst, \src, \shiftbits
 .endm
 .macro load_add_store_8x4 dst, src
         mov             \src, \dst
-        load_add_store  v2.8b, v16.8h,      ,       ,       ,      ,      , \dst, \src
-        load_add_store  v3.8b, v17.8h,      ,       ,       ,      ,      , \dst, \src
-        load_add_store  v4.8b, v18.8h, v2.8b, v16.8h,       ,      ,      , \dst, \src
-        load_add_store  v5.8b, v19.8h, v3.8b, v17.8h, v16.8h, v2.8b,      , \dst, \src
-        load_add_store       ,       , v4.8b, v18.8h, v17.8h, v3.8b, v2.8b, \dst, \src
-        load_add_store       ,       , v5.8b, v19.8h, v18.8h, v4.8b, v3.8b, \dst, \src
-        load_add_store       ,       ,      ,       , v19.8h, v5.8b, v4.8b, \dst, \src
-        load_add_store       ,       ,      ,       ,       ,      , v5.8b, \dst, \src
+        load_add_store  v2.8h, v16.8h,      ,       ,       ,      ,      , \dst, \src
+        load_add_store  v3.8h, v17.8h,      ,       ,       ,      ,      , \dst, \src
+        load_add_store  v4.8h, v18.8h, v2.8h, v16.8h,       ,      ,      , \dst, \src
+        load_add_store  v5.8h, v19.8h, v3.8h, v17.8h,       ,      ,      , \dst, \src
+        load_add_store       ,       , v4.8h, v18.8h,       ,      , v2.8h, \dst, \src
+        load_add_store       ,       , v5.8h, v19.8h,       ,      , v3.8h, \dst, \src
+        load_add_store       ,       ,      ,       ,       ,      , v4.8h, \dst, \src
+        load_add_store       ,       ,      ,       ,       ,      , v5.8h, \dst, \src
 .endm
 .macro load_add_store4 load, inssrc, insdst, shift, addsrc, adddst, narrowsrc, narrowdst, store, dst, src
 .ifnb \load
@@ -232,46 +244,58 @@ endconst
 .ifnb \load
         ld1             {\load}[1],  [\src], x1
 .endif
+/*
 .ifnb \addsrc
         uaddw           \adddst, \adddst, \addsrc
 .endif
+*/
+/*
+改为使用sqadd 由于少了一个步骤，所有需要交换dst和src
+*/
+.ifnb \addsrc
+        sqadd           \addsrc, \addsrc, \adddst
+.endif
+
 .ifnb \store
         st1             {\store}[0],  [\dst], x1
 .endif
+/* 不再需要
 .ifnb \narrowsrc
         sqxtun          \narrowdst, \narrowsrc
 .endif
+*/
 .ifnb \store
         st1             {\store}[1],  [\dst], x1
 .endif
 .endm
+/*这两段的v0-v7.s 改成了.d,对应于.8b 改成.8h*/
 .macro load_add_store_4x16 dst, src
         mov             \src, \dst
-        load_add_store4 v0.s, v17, v16,       ,      ,       ,       ,      ,     , \dst, \src
-        load_add_store4 v1.s, v19, v18,       ,      ,       ,       ,      ,     , \dst, \src
-        load_add_store4 v2.s, v21, v20, v16.8h,      ,       ,       ,      ,     , \dst, \src
-        load_add_store4 v3.s, v23, v22, v18.8h, v0.8b, v16.8h,       ,      ,     , \dst, \src
-        load_add_store4 v4.s, v25, v24, v20.8h, v1.8b, v18.8h, v16.8h, v0.8b,     , \dst, \src
-        load_add_store4 v5.s, v27, v26, v22.8h, v2.8b, v20.8h, v18.8h, v1.8b, v0.s, \dst, \src
-        load_add_store4 v6.s, v29, v28, v24.8h, v3.8b, v22.8h, v20.8h, v2.8b, v1.s, \dst, \src
-        load_add_store4 v7.s, v31, v30, v26.8h, v4.8b, v24.8h, v22.8h, v3.8b, v2.s, \dst, \src
-        load_add_store4     ,    ,    , v28.8h, v5.8b, v26.8h, v24.8h, v4.8b, v3.s, \dst, \src
-        load_add_store4     ,    ,    , v30.8h, v6.8b, v28.8h, v26.8h, v5.8b, v4.s, \dst, \src
-        load_add_store4     ,    ,    ,       , v7.8b, v30.8h, v28.8h, v6.8b, v5.s, \dst, \src
-        load_add_store4     ,    ,    ,       ,      ,       , v30.8h, v7.8b, v6.s, \dst, \src
-        load_add_store4     ,    ,    ,       ,      ,       ,       ,      , v7.s, \dst, \src
+        load_add_store4 v0.d, v17, v16,       ,      ,       ,       ,      ,     , \dst, \src
+        load_add_store4 v1.d, v19, v18,       ,      ,       ,       ,      ,     , \dst, \src
+        load_add_store4 v2.d, v21, v20, v16.8h,      ,       ,       ,      ,     , \dst, \src
+        load_add_store4 v3.d, v23, v22, v18.8h, v0.8h, v16.8h,       ,      ,     , \dst, \src
+        load_add_store4 v4.d, v25, v24, v20.8h, v1.8h, v18.8h,       ,      ,    , \dst, \src
+        load_add_store4 v5.d, v27, v26, v22.8h, v2.8h, v20.8h,       ,      , v0.d, \dst, \src
+        load_add_store4 v6.d, v29, v28, v24.8h, v3.8h, v22.8h,       ,      , v1.d, \dst, \src
+        load_add_store4 v7.d, v31, v30, v26.8h, v4.8h, v24.8h,       ,      , v2.d, \dst, \src
+        load_add_store4     ,    ,    , v28.8h, v5.8h, v26.8h,       ,      , v3.d, \dst, \src
+        load_add_store4     ,    ,    , v30.8h, v6.8h, v28.8h,       ,      , v4.d, \dst, \src
+        load_add_store4     ,    ,    ,       , v7.8h, v30.8h,       ,      , v5.d, \dst, \src
+        load_add_store4     ,    ,    ,       ,      ,       ,       ,      , v6.d, \dst, \src
+        load_add_store4     ,    ,    ,       ,      ,       ,       ,      , v7.d, \dst, \src
 .endm
 .macro load_add_store_4x8 dst, src
         mov             \src, \dst
-        load_add_store4 v0.s, v17, v16,       ,      ,       ,       ,      ,     , \dst, \src
-        load_add_store4 v1.s, v19, v18,       ,      ,       ,       ,      ,     , \dst, \src
-        load_add_store4 v2.s, v21, v20, v16.8h,      ,       ,       ,      ,     , \dst, \src
-        load_add_store4 v3.s, v23, v22, v18.8h, v0.8b, v16.8h,       ,      ,     , \dst, \src
-        load_add_store4     ,    ,    , v20.8h, v1.8b, v18.8h, v16.8h, v0.8b,     , \dst, \src
-        load_add_store4     ,    ,    , v22.8h, v2.8b, v20.8h, v18.8h, v1.8b, v0.s, \dst, \src
-        load_add_store4     ,    ,    ,       , v3.8b, v22.8h, v20.8h, v2.8b, v1.s, \dst, \src
-        load_add_store4     ,    ,    ,       ,      ,       , v22.8h, v3.8b, v2.s, \dst, \src
-        load_add_store4     ,    ,    ,       ,      ,       ,       ,      , v3.s, \dst, \src
+        load_add_store4 v0.d, v17, v16,       ,      ,       ,       ,      ,     , \dst, \src
+        load_add_store4 v1.d, v19, v18,       ,      ,       ,       ,      ,     , \dst, \src
+        load_add_store4 v2.d, v21, v20, v16.8h,      ,       ,       ,      ,     , \dst, \src
+        load_add_store4 v3.d, v23, v22, v18.8h, v0.8h, v16.8h,       ,      ,     , \dst, \src
+        load_add_store4     ,    ,    , v20.8h, v1.8h, v18.8h,       ,      ,     , \dst, \src
+        load_add_store4     ,    ,    , v22.8h, v2.8h, v20.8h,       ,      , v0.d, \dst, \src
+        load_add_store4     ,    ,    ,       , v3.8h, v22.8h,       ,      , v1.d, \dst, \src
+        load_add_store4     ,    ,    ,       ,      ,       ,       ,      , v2.d, \dst, \src
+        load_add_store4     ,    ,    ,       ,      ,       ,       ,      , v3.d, \dst, \src
 .endm
 
 .macro idct_dc w, h, shift
@@ -296,50 +320,58 @@ endconst
 
 function idct_dc_w4_neon
 1:
-        ld1             {v0.s}[0], [x0], x1
-        ld1             {v0.s}[1], [x0], x1
-        ld1             {v1.s}[0], [x0], x1
-        ld1             {v1.s}[1], [x0], x1
+        ld1             {v0.d}[0], [x0], x1
+        ld1             {v0.d}[1], [x0], x1
+        ld1             {v1.d}[0], [x0], x1
+        ld1             {v1.d}[1], [x0], x1
         subs            w4,  w4,  #4
         sub             x0,  x0,  x1, lsl #2
-        uaddw           v0.8h,   v16.8h,  v0.8b
-        sqxtun          v0.8b,   v0.8h
-        uaddw           v1.8h,   v16.8h,  v1.8b
-        st1             {v0.s}[0], [x0], x1
-        sqxtun          v1.8b,   v1.8h
-        st1             {v0.s}[1], [x0], x1
-        st1             {v1.s}[0], [x0], x1
-        st1             {v1.s}[1], [x0], x1
+        /*这里原版为什么要交叉着写 ？ 性能？*/
+        /*uaddw           v0.8h,   v16.8h,  v0.8b */
+        /*sqxtun          v0.8b,   v0.8h */
+        usqadd          v0.8h,    v16.8h   
+        /*uaddw           v1.8h,   v16.8h,  v1.8b */
+        st1             {v0.d}[0], [x0], x1
+        /*sqxtun          v1.8b,   v1.8h */
+        st1             {v0.d}[1], [x0], x1
+        usqadd          v1.8h,    v16.8h
+        st1             {v1.d}[0], [x0], x1
+        st1             {v1.d}[1], [x0], x1
         b.gt            1b
         ret
 endfunc
 
 function idct_dc_w8_neon
 1:
-        ld1             {v0.8b}, [x0], x1
-        ld1             {v1.8b}, [x0], x1
-        ld1             {v2.8b}, [x0], x1
-        uaddw           v20.8h,  v16.8h, v0.8b
-        ld1             {v3.8b}, [x0], x1
+        ld1             {v0.8h}, [x0], x1
+        ld1             {v1.8h}, [x0], x1
+        ld1             {v2.8h}, [x0], x1
+        /*uaddw           v20.8h,  v16.8h, v0.8b*/
+        usqadd          v0.8h,  v16.8h
+        ld1             {v3.8h}, [x0], x1
         sub             x0,  x0,  x1, lsl #2
         subs            w4,  w4,  #4
-        uaddw           v21.8h,  v16.8h, v1.8b
-        sqxtun          v0.8b,   v20.8h
-        uaddw           v22.8h,  v16.8h, v2.8b
-        sqxtun          v1.8b,   v21.8h
-        uaddw           v23.8h,  v16.8h, v3.8b
-        st1             {v0.8b}, [x0], x1
-        sqxtun          v2.8b,   v22.8h
-        st1             {v1.8b}, [x0], x1
-        sqxtun          v3.8b,   v23.8h
-        st1             {v2.8b}, [x0], x1
-        st1             {v3.8b}, [x0], x1
+        /*uaddw           v21.8h,  v16.8h, v1.8b*/
+        /*sqxtun          v0.8b,   v20.8h*/
+        usqadd          v1.8h,  v16.8h
+        /*uaddw           v22.8h,  v16.8h, v2.8b*/
+        /*sqxtun          v1.8b,   v21.8h*/
+        /*uaddw           v23.8h,  v16.8h, v3.8b*/
+        st1             {v0.8h}, [x0], x1
+        usqadd          v2.8h,  v16.8h
+        /*sqxtun          v2.8b,   v22.8h*/
+        st1             {v2.8h}, [x0], x1
+        /*sqxtun          v3.8b,   v23.8h*/
+        usqadd          v3.8h,  v16.8h
+        st1             {v2.8h}, [x0], x1
+        st1             {v3.8h}, [x0], x1
         b.gt            1b
         ret
 endfunc
 
 function idct_dc_w16_neon
 1:
+/* 
         ld1             {v0.16b}, [x0], x1
         ld1             {v1.16b}, [x0], x1
         ld1             {v2.16b}, [x0], x1
@@ -366,12 +398,37 @@ function idct_dc_w16_neon
         st1             {v1.16b}, [x0], x1
         st1             {v2.16b}, [x0], x1
         st1             {v3.16b}, [x0], x1
+*/
+        ld1             {v0.8h,v1.8h}, [x0], x1
+        ld1             {v2.8h,v3.8h}, [x0], x1
+        ld1             {v4.8h,v5.8h}, [x0], x1
+        subs            w4,  w4,  #4
+        ld1             {v6.8h,v7.8h}, [x0], x1
+
+        usqadd          v0.8h, v16.8h
+        usqadd          v1.8h, v16.8h
+        usqadd          v2.8h, v16.8h
+        usqadd          v3.8h, v16.8h
+
+        usqadd          v4.8h, v16.8h
+        usqadd          v5.8h, v16.8h
+        usqadd          v6.8h, v16.8h      
+        usqadd          v7.8h, v16.8h
+
+        sub             x0,  x0,  x1, lsl #2 
+
+        st1             {v0.16b}, [x0], x1
+        st1             {v1.16b}, [x0], x1
+        st1             {v2.16b}, [x0], x1
+        st1             {v3.16b}, [x0], x1    
+
         b.gt            1b
         ret
 endfunc
 
 function idct_dc_w32_neon
 1:
+/* 
         ld1             {v0.16b, v1.16b},  [x0], x1
         subs            w4,  w4,  #2
         uaddw           v20.8h,  v16.8h, v0.8b
@@ -394,12 +451,36 @@ function idct_dc_w32_neon
         sqxtun          v3.8b,   v26.8h
         sqxtun2         v3.16b,  v27.8h
         st1             {v2.16b, v3.16b},  [x0], x1
+*/
+        ld1             {v0.8h, v1.8h,v2.8h,v3.8h},  [x0], x1
+
+        subs            w4,  w4,  #2
+        ld1             {v4.8h, v5.8h,v6.8h,v7.8h},  [x0] 
+
+
+        sub             x0,  x0,  x1 /*第二次load 没有增加地址，因此这里 只sub x1 一次*/
+
+        usqadd          v0.8h, v16.8h
+        usqadd          v1.8h, v16.8h
+        usqadd          v2.8h, v16.8h
+        usqadd          v3.8h, v16.8h
+        
+        st1             {v0.8h, v1.8h,v2.8h,v3.8h},  [x0], x1
+
+        usqadd          v4.8h, v16.8h
+        usqadd          v5.8h, v16.8h
+        usqadd          v6.8h, v16.8h
+        usqadd          v7.8h, v16.8h      
+
+        st1             {v4.8h, v5.8h,v6.8h,v7.8h},  [x0], x1
+
         b.gt            1b
         ret
 endfunc
 
 function idct_dc_w64_neon
 1:
+/* 
         ld1             {v0.16b, v1.16b, v2.16b, v3.16b},  [x0]
         subs            w4,  w4,  #1
         uaddw           v20.8h,  v16.8h, v0.8b
@@ -419,6 +500,22 @@ function idct_dc_w64_neon
         sqxtun          v3.8b,   v26.8h
         sqxtun2         v3.16b,  v27.8h
         st1             {v0.16b, v1.16b, v2.16b, v3.16b},  [x0], x1
+*/
+        ld1             {v0.8h, v1.8h, v2.8h, v3.8h,v4.8h, v5.8h, v6.8h, v7.8h},  [x0]
+        subs            w4,  w4,  #1
+
+        usqadd          v0.8h, v16.8h
+        usqadd          v1.8h, v16.8h
+        usqadd          v2.8h, v16.8h
+        usqadd          v3.8h, v16.8h
+
+        usqadd          v4.8h, v16.8h
+        usqadd          v5.8h, v16.8h
+        usqadd          v6.8h, v16.8h
+        usqadd          v7.8h, v16.8h 
+
+        st1             {v0.8h, v1.8h, v2.8h, v3.8h,v4.8h, v5.8h, v6.8h, v7.8h},  [x0], x1
+
         b.gt            1b
         ret
 endfunc
@@ -618,12 +715,12 @@ function inv_txfm_add_wht_wht_4x4_8bpc_neon, export=1
 
         iwht4
 
-        ld1             {v0.s}[0], [x0], x1
-        ld1             {v0.s}[1], [x0], x1
+        ld1             {v0.d}[0], [x0], x1
+        ld1             {v0.d}[1], [x0], x1
         ins             v16.d[1], v17.d[0]
         ins             v18.d[1], v19.d[0]
-        ld1             {v1.s}[0], [x0], x1
-        ld1             {v1.s}[1], [x0], x1
+        ld1             {v1.d}[0], [x0], x1
+        ld1             {v1.d}[1], [x0], x1
 
         b               L(itx_4x4_end)
 endfunc
@@ -640,25 +737,27 @@ function inv_txfm_add_4x4_neon
 
         blr             x5
 
-        ld1             {v0.s}[0], [x0], x1
-        ld1             {v0.s}[1], [x0], x1
+        ld1             {v0.d}[0], [x0], x1
+        ld1             {v0.d}[1], [x0], x1
         ins             v16.d[1], v17.d[0]
         ins             v18.d[1], v19.d[0]
-        ld1             {v1.s}[0], [x0], x1
-        ld1             {v1.s}[1], [x0], x1
+        ld1             {v1.d}[0], [x0], x1
+        ld1             {v1.d}[1], [x0], x1
         srshr           v16.8h,  v16.8h,  #4
         srshr           v18.8h,  v18.8h,  #4
 
 L(itx_4x4_end):
         sub             x0,  x0,  x1, lsl #2
-        uaddw           v16.8h,  v16.8h,  v0.8b
-        sqxtun          v0.8b,   v16.8h
-        uaddw           v18.8h,  v18.8h,  v1.8b
-        st1             {v0.s}[0], [x0], x1
-        sqxtun          v1.8b,   v18.8h
-        st1             {v0.s}[1], [x0], x1
-        st1             {v1.s}[0], [x0], x1
-        st1             {v1.s}[1], [x0], x1
+        //uaddw           v16.8h,  v16.8h,  v0.8b
+        //sqxtun          v0.8b,   v16.8h
+        //uaddw           v18.8h,  v18.8h,  v1.8b
+        usqadd          v0.8h, v16.8h
+        usqadd          v1.8h, v18.8h
+        st1             {v0.d}[0], [x0], x1
+        //sqxtun          v1.8b,   v18.8h
+        st1             {v0.d}[1], [x0], x1
+        st1             {v1.d}[0], [x0], x1
+        st1             {v1.d}[1], [x0], x1
 
         ret             x15
 endfunc
@@ -674,13 +773,13 @@ function inv_txfm_add_\txfm1\()_\txfm2\()_4x4_8bpc_neon, export=1
         dup             v4.8h,   w16
         strh            wzr, [x2]
         sqrdmulh        v16.8h,  v16.8h,  v4.h[0]
-        ld1             {v0.s}[0], [x0], x1
+        ld1             {v0.d}[0], [x0], x1
         sqrdmulh        v20.8h,  v16.8h,  v4.h[0]
-        ld1             {v0.s}[1], [x0], x1
+        ld1             {v0.d}[1], [x0], x1
         srshr           v16.8h,  v20.8h,  #4
-        ld1             {v1.s}[0], [x0], x1
+        ld1             {v1.d}[0], [x0], x1
         srshr           v18.8h,  v20.8h,  #4
-        ld1             {v1.s}[1], [x0], x1
+        ld1             {v1.d}[1], [x0], x1
         b               L(itx_4x4_end)
 1:
 .endif
