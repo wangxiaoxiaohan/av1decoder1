@@ -24,10 +24,10 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *****************************************************************************/
-
+/*
 #include "src/arm/asm.S"
 #include "util.S"
-
+*/
 // The exported functions in this file have got the following signature:
 // void itxfm_add(pixel *dst, ptrdiff_t dst_stride, coef *coeff, int eob);
 
@@ -58,6 +58,285 @@
 //   indicates only a quarter of input values are set, for idct16 and up,
 //   a significant amount of calculation can be skipped, at the cost of more
 //   code duplication and special casing.
+
+#if defined(__ARM_FEATURE_BTI_DEFAULT) && (__ARM_FEATURE_BTI_DEFAULT == 1)
+#define GNU_PROPERTY_AARCH64_BTI (1 << 0)   // Has Branch Target Identification
+#define AARCH64_VALID_JUMP_CALL_TARGET hint #38  // BTI 'jc'
+#define AARCH64_VALID_CALL_TARGET      hint #34  // BTI 'c'
+#define AARCH64_VALID_JUMP_TARGET      hint #36  // BTI 'j'
+#else
+#define GNU_PROPERTY_AARCH64_BTI 0          // No Branch Target Identification
+#define AARCH64_VALID_JUMP_CALL_TARGET
+#define AARCH64_VALID_CALL_TARGET
+#define AARCH64_VALID_JUMP_TARGET
+#endif
+
+
+.macro sub_sp space
+#ifdef _WIN32
+.if \space > 8192
+        // Here, we'd need to touch two (or more) pages while decrementing
+        // the stack pointer.
+        .error          "sub_sp_align doesn't support values over 8K at the moment"
+.elseif \space > 4096
+        sub             x16, sp,  #4096
+        ldr             xzr, [x16]
+        sub             sp,  x16, #(\space - 4096)
+.else
+        sub             sp,  sp,  #\space
+.endif
+#else
+.if \space >= 4096
+        sub             sp,  sp,  #(\space)/4096*4096
+.endif
+.if (\space % 4096) != 0
+        sub             sp,  sp,  #(\space)%4096
+.endif
+#endif
+.endm
+
+
+#define L(x) .L ## x
+
+
+/*定义function 宏*/
+.macro function name, export=0, align=2
+    .macro endfunc
+#ifdef __ELF__
+        .size   \name, . - \name
+#endif
+#if HAVE_AS_FUNC
+        .endfunc
+#endif
+        .purgem endfunc
+    .endm
+        .text
+        .align \align
+    .if \export
+        .global EXTERN\name
+#ifdef __ELF__
+        .type   EXTERN\name, %function
+        .hidden EXTERN\name
+#elif defined(__MACH__)
+        .private_extern EXTERN\name
+#endif
+#if HAVE_AS_FUNC
+        .func   EXTERN\name
+#endif
+EXTERN\name:
+    .else
+#ifdef __ELF__
+        .type \name, %function
+#endif
+#if HAVE_AS_FUNC
+        .func \name
+#endif
+    .endif
+\name:
+#if ARCH_AARCH64
+    .if \export
+         AARCH64_VALID_CALL_TARGET
+    .endif
+#endif
+.endm
+
+
+/*这一坨是 定义const 宏*/
+.macro  const   name, export=0, align=2
+    .macro endconst  /*内部宏 endconst 的主要作用是标记常量定义的结束位置*/
+#ifdef __ELF__
+        .size   \name, . - \name  /*这部分是针对ELF格式的目标文件，在宏结束的地方计算并设置符号\name的大小。.表示当前地址，所以. - \name计算的是从符号开始到当前位置的距离，即数据的实际大小。*/
+                                  /*这里应该是计算当前位置到 /NAME 的 size，也就是 整个const 宏的最后面那里 */                                                              
+#endif
+        .purgem endconst   /*.purgem 是一个汇编指令，用于从当前汇编环境中移除（清除）之前定义的宏*/
+    .endm
+/*数据段*/
+#if defined(_WIN32)
+        .section        .rdata
+#elif !defined(__MACH__)
+        .section        .rodata
+#else
+        .const_data
+#endif
+        .align          \align
+/*外部可见*/
+    .if \export
+        .global EXTERN\name
+#ifdef __ELF__
+        .hidden EXTERN\name              /*使用.hidden标记符号为外部链接但不在符号表中显示，以减少链接时的可见性。*/
+#elif defined(__MACH__)
+        .private_extern EXTERN\name
+#endif
+EXTERN\name:
+    .endif
+\name:
+.endm
+
+
+.macro  movrel rd, val, offset=0
+#if defined(__APPLE__)
+  .if \offset < 0
+        adrp            \rd, \val@PAGE
+        add             \rd, \rd, \val@PAGEOFF
+        sub             \rd, \rd, -(\offset)
+  .else
+        adrp            \rd, \val+(\offset)@PAGE
+        add             \rd, \rd, \val+(\offset)@PAGEOFF
+  .endif
+#elif defined(PIC) && defined(_WIN32)
+  .if \offset < 0
+        adrp            \rd, \val
+        add             \rd, \rd, :lo12:\val
+        sub             \rd, \rd, -(\offset)
+  .else
+        adrp            \rd, \val+(\offset)
+        add             \rd, \rd, :lo12:\val+(\offset)
+  .endif
+#elif defined(PIC)
+        adrp            \rd, \val+(\offset)
+        add             \rd, \rd, :lo12:\val+(\offset)
+#else
+        ldr             \rd, =\val+\offset
+#endif
+.endm   
+
+
+
+
+.macro transpose_8x8h r0, r1, r2, r3, r4, r5, r6, r7, t8, t9
+        trn1            \t8\().8h,  \r0\().8h,  \r1\().8h
+        trn2            \t9\().8h,  \r0\().8h,  \r1\().8h
+        trn1            \r1\().8h,  \r2\().8h,  \r3\().8h
+        trn2            \r3\().8h,  \r2\().8h,  \r3\().8h
+        trn1            \r0\().8h,  \r4\().8h,  \r5\().8h
+        trn2            \r5\().8h,  \r4\().8h,  \r5\().8h
+        trn1            \r2\().8h,  \r6\().8h,  \r7\().8h
+        trn2            \r7\().8h,  \r6\().8h,  \r7\().8h
+
+        trn1            \r4\().4s,  \r0\().4s,  \r2\().4s
+        trn2            \r2\().4s,  \r0\().4s,  \r2\().4s
+        trn1            \r6\().4s,  \r5\().4s,  \r7\().4s
+        trn2            \r7\().4s,  \r5\().4s,  \r7\().4s
+        trn1            \r5\().4s,  \t9\().4s,  \r3\().4s
+        trn2            \t9\().4s,  \t9\().4s,  \r3\().4s
+        trn1            \r3\().4s,  \t8\().4s,  \r1\().4s
+        trn2            \t8\().4s,  \t8\().4s,  \r1\().4s
+
+        trn1            \r0\().2d,  \r3\().2d,  \r4\().2d
+        trn2            \r4\().2d,  \r3\().2d,  \r4\().2d
+        trn1            \r1\().2d,  \r5\().2d,  \r6\().2d
+        trn2            \r5\().2d,  \r5\().2d,  \r6\().2d
+        trn2            \r6\().2d,  \t8\().2d,  \r2\().2d
+        trn1            \r2\().2d,  \t8\().2d,  \r2\().2d
+        trn1            \r3\().2d,  \t9\().2d,  \r7\().2d
+        trn2            \r7\().2d,  \t9\().2d,  \r7\().2d
+.endm
+
+.macro transpose_8x16b r0, r1, r2, r3, r4, r5, r6, r7, t8, t9
+        trn1            \t8\().16b, \r0\().16b, \r1\().16b
+        trn2            \t9\().16b, \r0\().16b, \r1\().16b
+        trn1            \r1\().16b, \r2\().16b, \r3\().16b
+        trn2            \r3\().16b, \r2\().16b, \r3\().16b
+        trn1            \r0\().16b, \r4\().16b, \r5\().16b
+        trn2            \r5\().16b, \r4\().16b, \r5\().16b
+        trn1            \r2\().16b, \r6\().16b, \r7\().16b
+        trn2            \r7\().16b, \r6\().16b, \r7\().16b
+
+        trn1            \r4\().8h,  \r0\().8h,  \r2\().8h
+        trn2            \r2\().8h,  \r0\().8h,  \r2\().8h
+        trn1            \r6\().8h,  \r5\().8h,  \r7\().8h
+        trn2            \r7\().8h,  \r5\().8h,  \r7\().8h
+        trn1            \r5\().8h,  \t9\().8h,  \r3\().8h
+        trn2            \t9\().8h,  \t9\().8h,  \r3\().8h
+        trn1            \r3\().8h,  \t8\().8h,  \r1\().8h
+        trn2            \t8\().8h,  \t8\().8h,  \r1\().8h
+
+        trn1            \r0\().4s,  \r3\().4s,  \r4\().4s
+        trn2            \r4\().4s,  \r3\().4s,  \r4\().4s
+        trn1            \r1\().4s,  \r5\().4s,  \r6\().4s
+        trn2            \r5\().4s,  \r5\().4s,  \r6\().4s
+        trn2            \r6\().4s,  \t8\().4s,  \r2\().4s
+        trn1            \r2\().4s,  \t8\().4s,  \r2\().4s
+        trn1            \r3\().4s,  \t9\().4s,  \r7\().4s
+        trn2            \r7\().4s,  \t9\().4s,  \r7\().4s
+.endm
+
+.macro  transpose_4x16b r0, r1, r2, r3, t4, t5, t6, t7
+        trn1            \t4\().16b, \r0\().16b, \r1\().16b
+        trn2            \t5\().16b, \r0\().16b, \r1\().16b
+        trn1            \t6\().16b, \r2\().16b, \r3\().16b
+        trn2            \t7\().16b, \r2\().16b, \r3\().16b
+
+        trn1            \r0\().8h,  \t4\().8h,  \t6\().8h
+        trn2            \r2\().8h,  \t4\().8h,  \t6\().8h
+        trn1            \r1\().8h,  \t5\().8h,  \t7\().8h
+        trn2            \r3\().8h,  \t5\().8h,  \t7\().8h
+.endm
+.macro  transpose_4x4h  r0, r1, r2, r3, t4, t5, t6, t7
+        trn1            \t4\().4h,  \r0\().4h,  \r1\().4h
+        trn2            \t5\().4h,  \r0\().4h,  \r1\().4h
+        trn1            \t6\().4h,  \r2\().4h,  \r3\().4h
+        trn2            \t7\().4h,  \r2\().4h,  \r3\().4h
+
+        trn1            \r0\().2s,  \t4\().2s,  \t6\().2s
+        trn2            \r2\().2s,  \t4\().2s,  \t6\().2s
+        trn1            \r1\().2s,  \t5\().2s,  \t7\().2s
+        trn2            \r3\().2s,  \t5\().2s,  \t7\().2s
+.endm
+
+.macro  transpose_4x4s  r0, r1, r2, r3, t4, t5, t6, t7
+        trn1            \t4\().4s,  \r0\().4s,  \r1\().4s
+        trn2            \t5\().4s,  \r0\().4s,  \r1\().4s
+        trn1            \t6\().4s,  \r2\().4s,  \r3\().4s
+        trn2            \t7\().4s,  \r2\().4s,  \r3\().4s
+
+        trn1            \r0\().2d,  \t4\().2d,  \t6\().2d
+        trn2            \r2\().2d,  \t4\().2d,  \t6\().2d
+        trn1            \r1\().2d,  \t5\().2d,  \t7\().2d
+        trn2            \r3\().2d,  \t5\().2d,  \t7\().2d
+.endm
+
+.macro  transpose_4x8h  r0, r1, r2, r3, t4, t5, t6, t7
+        trn1            \t4\().8h,  \r0\().8h,  \r1\().8h
+        trn2            \t5\().8h,  \r0\().8h,  \r1\().8h
+        trn1            \t6\().8h,  \r2\().8h,  \r3\().8h
+        trn2            \t7\().8h,  \r2\().8h,  \r3\().8h
+
+        trn1            \r0\().4s,  \t4\().4s,  \t6\().4s
+        trn2            \r2\().4s,  \t4\().4s,  \t6\().4s
+        trn1            \r1\().4s,  \t5\().4s,  \t7\().4s
+        trn2            \r3\().4s,  \t5\().4s,  \t7\().4s
+.endm
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 const idct_coeffs, align=4
         // idct4
@@ -501,7 +780,9 @@ function idct_dc_w64_neon
         sqxtun2         v3.16b,  v27.8h
         st1             {v0.16b, v1.16b, v2.16b, v3.16b},  [x0], x1
 */
-        ld1             {v0.8h, v1.8h, v2.8h, v3.8h,v4.8h, v5.8h, v6.8h, v7.8h},  [x0]
+        ld1             {v0.8h, v1.8h, v2.8h, v3.8h},  [x0], #64  /*x地址增加64个字节*/
+        ld1             {v4.8h, v5.8h, v6.8h, v7.8h},  [x0]
+        sub             x0,  x0,  #32 /*x0地址减少32个字节，回到原来的地址*/
         subs            w4,  w4,  #1
 
         usqadd          v0.8h, v16.8h
@@ -514,7 +795,8 @@ function idct_dc_w64_neon
         usqadd          v6.8h, v16.8h
         usqadd          v7.8h, v16.8h 
 
-        st1             {v0.8h, v1.8h, v2.8h, v3.8h,v4.8h, v5.8h, v6.8h, v7.8h},  [x0], x1
+        st1             {v0.8h, v1.8h, v2.8h, v3.8h},  [x0], #64
+        st1             {v4.8h, v5.8h, v6.8h, v7.8h},  [x0], #64
 
         b.gt            1b
         ret
@@ -837,7 +1119,7 @@ def_fn_4x4 identity, flipadst
         sqsub           \r5\sz,  \r4\sz,  v4\sz // out5
         sqadd           \r3\sz,  \r6\sz,  v2\sz // out3
         sqsub           \r4\sz,  \r6\sz,  v2\sz // out4
-        mov             \r6\szb, v6\szb         // out6
+        mov             \r6\szb, v6\szb         // out6  没什么特殊的 ，就是r6 之前里面有值需要用 ,但是为什么要用szb 而不是SZ?
 .endm
 
 function inv_dct_8h_x8_neon, export=1
@@ -1078,7 +1360,8 @@ function inv_txfm_add_4x8_neon
 
         blr             x4
 
-        transpose_4x8h  v16, v17, v18, v19, v4,  v5,  v6,  v7
+        transpose_4x8h  v16, v17, v18, v19, v4,  v5,  v6,  v7 //详细分析这里面
+        /*需要分析清楚 blr x4 之后 V20 -V23 中的数据不是在低位吗 ，还没有写入X0 这里怎么覆盖了 因为 transpose_4x8h 里面的操作吧？*/
         ins             v20.d[0], v16.d[1]
         ins             v21.d[0], v17.d[1]
         ins             v22.d[0], v18.d[1]
