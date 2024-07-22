@@ -272,6 +272,47 @@ EXTERN\name:
         trn1            \r1\().8h,  \t5\().8h,  \t7\().8h
         trn2            \r3\().8h,  \t5\().8h,  \t7\().8h
 .endm
+/*
+假设的4x4矩阵（以半字为单位表示，但仅展示数值以便理解）
+深色版本
+原矩阵:
+r0 = [a0, a1, a2, a3]
+r1 = [b0, b1, b2, b3]
+r2 = [c0, c1, c2, c3]
+r3 = [d0, d1, d2, d3]
+转置过程：
+第一步：半字转置（使用trn1和trn2）
+trn1 \t4\().4h, \r0\().4h, \r1\().4h:
+t4 = [a0, b0, a1, b1]
+trn2 \t5\().4h, \r0\().4h, \r1\().4h:
+t5 = [a2, b2, a3, b3]
+trn1 \t6\().4h, \r2\().4h, \r3\().4h:
+t6 = [c0, d0, c1, d1]
+trn2 \t7\().4h, \r2\().4h, \r3\().4h:
+t7 = [c2, d2, c3, d3]
+此时，我们已经完成了矩阵列间的半字转置。
+
+第二步：单字转置（再次使用trn1和trn2）
+trn1 \r0\().2s, \t4\().2s, \t6\().2s:
+r0 = [a0, b0, c0, d0]
+trn2 \r2\().2s, \t4\().2s, \t6\().2s:
+r2 = [a2, b2, c2, d2]
+trn1 \r1\().2s, \t5\().2s, \t7\().2s:
+r1 = [a1, b1, c1, d1]
+trn2 \r3\().2s, \t5\().2s, \t7\().2s:
+r3 = [a3, b3, c3, d3]
+转置后的矩阵：
+经过上述宏操作后，矩阵的元素被重新排列，实现了转置：
+
+深色版本
+转置后矩阵:
+r0 = [a0, b0, c0, d0]
+r1 = [a1, b1, c1, d1]
+r2 = [a2, b2, c2, d2]
+r3 = [a3, b3, c3, d3]
+这就是通过.macro transpose_4x4h宏完成的4x4矩阵转置的完整过程。
+
+*/
 .macro  transpose_4x4h  r0, r1, r2, r3, t4, t5, t6, t7
         trn1            \t4\().4h,  \r0\().4h,  \r1\().4h
         trn2            \t5\().4h,  \r0\().4h,  \r1\().4h
@@ -1360,8 +1401,7 @@ function inv_txfm_add_4x8_neon
 
         blr             x4
 
-        transpose_4x8h  v16, v17, v18, v19, v4,  v5,  v6,  v7 //详细分析这里面
-        /*需要分析清楚 blr x4 之后 V20 -V23 中的数据不是在低位吗 ，还没有写入X0 这里怎么覆盖了 因为 transpose_4x8h 里面的操作吧？*/
+        transpose_4x8h  v16, v17, v18, v19, v4,  v5,  v6,  v7
         ins             v20.d[0], v16.d[1]
         ins             v21.d[0], v17.d[1]
         ins             v22.d[0], v18.d[1]
@@ -1380,6 +1420,7 @@ function inv_txfm_add_\txfm1\()_\txfm2\()_\w\()x\h\()_8bpc_neon, export=1
 .ifc \txfm1\()_\txfm2, dct_dct
         idct_dc         \w,  \h,  0
 .endif
+        /*注意这两个不一样 一个是 8h_x4 一个是4h_x8  */
         adr             x4,  inv_\txfm1\()_\h\()h_x\w\()_neon
         adr             x5,  inv_\txfm2\()_\w\()h_x\h\()_neon
         b               inv_txfm_add_\w\()x\h\()_neon
