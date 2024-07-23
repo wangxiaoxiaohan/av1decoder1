@@ -737,10 +737,10 @@ function idct_dc_w16_neon
 
         sub             x0,  x0,  x1, lsl #2 
 
-        st1             {v0.16b}, [x0], x1
-        st1             {v1.16b}, [x0], x1
-        st1             {v2.16b}, [x0], x1
-        st1             {v3.16b}, [x0], x1    
+        st1             {v0.8h}, [x0], x1
+        st1             {v1.8h}, [x0], x1
+        st1             {v2.8h}, [x0], x1
+        st1             {v3.8h}, [x0], x1    
 
         b.gt            1b
         ret
