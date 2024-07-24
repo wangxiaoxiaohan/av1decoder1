@@ -175,3 +175,5 @@ single_ref_p* 这些的 ctx  后面几个根本没有计算！
 确认为什么某些地方要多一次mov
 
 add_dest_addsub combine
+
+def_dct64_func

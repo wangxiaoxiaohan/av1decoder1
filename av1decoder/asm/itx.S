@@ -2588,28 +2588,28 @@ function inv_txfm_add_vert_dct_8x32_neon
         ld1             {v4.8h}, [x10],   x1
         srshr           v5.8h,   v5.8h,   #4
         \op             v6.8h,   v6.8h,   \r1
-        //uaddw           v5.8h,   v5.8h,   v2.8b
-        sqadd           v2.8h,   v5.8h     
+        /*uaddw           v5.8h,   v5.8h,   v2.8b */
+        sqadd           v2.8h,   v5.8h,   v5.8h     
         srshr           v6.8h,   v6.8h,   #4
         \op             v7.8h,   v7.8h,   \r2
-        //sqxtun          v2.8b,   v5.8h
+        /*sqxtun          v2.8b,   v5.8h*/
         ld1             {v5.8h}, [x7],    \stride
-        //uaddw           v6.8h,   v6.8h,   v3.8b
-        sqadd           v3.8h,   v6.8h 
+        /*uaddw           v6.8h,   v6.8h,   v3.8b*/
+        sqadd           v3.8h,   v6.8h,   v6.8h 
         srshr           v7.8h,   v7.8h,   #4
         \op             v5.8h,   v5.8h,   \r3
         st1             {v2.8h}, [x6],    x1
         ld1             {v2.8h}, [x10],   x1
-        //sqxtun          v3.8b,   v6.8h
-        //uaddw           v7.8h,   v7.8h,   v4.8b
-        sqadd           v4.8h,   v7.8h 
+        /*sqxtun          v3.8b,   v6.8h*/
+        /*uaddw           v7.8h,   v7.8h,   v4.8b*/
+        sqadd           v4.8h,   v7.8h,   v7.8h 
         srshr           v5.8h,   v5.8h,   #4
         st1             {v3.8h}, [x6],    x1
-        //sqxtun          v4.8b,   v7.8h
-        //uaddw           v5.8h,   v5.8h,   v2.8b
-        sqadd           v2.8h,   v5.8h 
+        /*sqxtun          v4.8b,   v7.8h*/
+        /*uaddw           v5.8h,   v5.8h,   v2.8b*/
+        sqadd           v2.8h,   v5.8h,   v5.8h 
         st1             {v4.8h}, [x6],    x1
-        //sqxtun          v2.8b,   v5.8h
+        /*sqxtun          v2.8b,   v5.8h*/
         st1             {v2.8h}, [x6],    x1
 .endm
         combine         v31.8h, v30.8h, v29.8h, v28.8h, sqadd, x8
@@ -3408,7 +3408,7 @@ endfunc
 
 function inv_txfm_add_vert_dct_8x64_neon
         mov             x14, x30
-        lsl             x8,  x8,  #1
+        lsl             x8,  x8,  #1 /*X8存的是stride 为什么不用 而去用X1? 是因为 inv_txfm_dct_8h_x64_neon 函数里面做了什么？*/
 
         mov             x7,  sp
         add             x8,  sp,  #2*8*(64 - 4)
@@ -3467,15 +3467,15 @@ function inv_txfm_add_vert_dct_8x64_neon
         srshr           v5.8h,   v5.8h,   #4
         srshr           v6.8h,   v6.8h,   #4
         //uaddw           v4.8h,   v4.8h,   v0.8b
-        sqadd           v0.8h,   v4.8h
+        sqadd           v0.8h,   v4.8h,   v4.8h
         srshr           v7.8h,   v7.8h,   #4
-        sqadd           v1.8h,   v5.8h
+        sqadd           v1.8h,   v5.8h,   v5.8h
         //uaddw           v5.8h,   v5.8h,   v1.8b
-        sqadd           v2.8h,   v6.8h
+        sqadd           v2.8h,   v6.8h,   v6.8h
         //uaddw           v6.8h,   v6.8h,   v2.8b
         //sqxtun          v0.8b,   v4.8h
         //uaddw           v7.8h,   v7.8h,   v3.8b
-        sqadd           v3.8h,   v7.8h
+        sqadd           v3.8h,   v7.8h,   v7.8h
         //sqxtun          v1.8b,   v5.8h
         st1             {v0.8h}, [x6], x1
         //sqxtun          v2.8b,   v6.8h
@@ -3753,7 +3753,7 @@ function inv_txfm_add_dct_dct_16x64_8bpc_neon, export=1
         add             x7,  x5,  #(\i*2)
         mov             x8,  #16*2
         bl              inv_txfm_dct_8h_x64_neon
-        add             x6,  x0,  #(\i)
+        add             x6,  x0,  #(\i) /*根据i增加X6的地址值*/
         bl              inv_txfm_add_vert_dct_8x64_neon
 .endr
 
