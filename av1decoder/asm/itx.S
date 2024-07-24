@@ -2546,6 +2546,7 @@ function inv_txfm_add_vert_dct_8x32_neon
 
         neg             x9,  x8
         mov             x10, x6
+/* 
 .macro combine r0, r1, r2, r3, op, stride
         ld1             {v5.8h}, [x7],    \stride
         ld1             {v2.8b}, [x10],   x1
@@ -2575,6 +2576,41 @@ function inv_txfm_add_vert_dct_8x32_neon
         st1             {v4.8b}, [x6],    x1
         sqxtun          v2.8b,   v5.8h
         st1             {v2.8b}, [x6],    x1
+.endm
+*/
+.macro combine r0, r1, r2, r3, op, stride
+        ld1             {v5.8h}, [x7],    \stride
+        ld1             {v2.8h}, [x10],   x1
+        ld1             {v6.8h}, [x7],    \stride
+        ld1             {v3.8h}, [x10],   x1
+        \op             v5.8h,   v5.8h,   \r0
+        ld1             {v7.8h}, [x7],    \stride
+        ld1             {v4.8h}, [x10],   x1
+        srshr           v5.8h,   v5.8h,   #4
+        \op             v6.8h,   v6.8h,   \r1
+        //uaddw           v5.8h,   v5.8h,   v2.8b
+        sqadd           v2.8h,   v5.8h     
+        srshr           v6.8h,   v6.8h,   #4
+        \op             v7.8h,   v7.8h,   \r2
+        //sqxtun          v2.8b,   v5.8h
+        ld1             {v5.8h}, [x7],    \stride
+        //uaddw           v6.8h,   v6.8h,   v3.8b
+        sqadd           v3.8h,   v6.8h 
+        srshr           v7.8h,   v7.8h,   #4
+        \op             v5.8h,   v5.8h,   \r3
+        st1             {v2.8h}, [x6],    x1
+        ld1             {v2.8h}, [x10],   x1
+        //sqxtun          v3.8b,   v6.8h
+        //uaddw           v7.8h,   v7.8h,   v4.8b
+        sqadd           v4.8h,   v7.8h 
+        srshr           v5.8h,   v5.8h,   #4
+        st1             {v3.8h}, [x6],    x1
+        //sqxtun          v4.8b,   v7.8h
+        //uaddw           v5.8h,   v5.8h,   v2.8b
+        sqadd           v2.8h,   v5.8h 
+        st1             {v4.8h}, [x6],    x1
+        //sqxtun          v2.8b,   v5.8h
+        st1             {v2.8h}, [x6],    x1
 .endm
         combine         v31.8h, v30.8h, v29.8h, v28.8h, sqadd, x8
         combine         v27.8h, v26.8h, v25.8h, v24.8h, sqadd, x8
@@ -3376,9 +3412,9 @@ function inv_txfm_add_vert_dct_8x64_neon
 
         mov             x7,  sp
         add             x8,  sp,  #2*8*(64 - 4)
-        add             x9,  x6,  x1, lsl #6
+        add             x9,  x6,  x1, lsl #6 /*下面从X9 反向加载数据，这里X9的位置需要考虑对不对*/
         sub             x9,  x9,  x1
-        neg             x10, x1
+        neg             x10, x1   /*取负*/
         mov             x11, #-2*8*4
 
 1:
@@ -3386,7 +3422,7 @@ function inv_txfm_add_vert_dct_8x64_neon
         ld1             {v28.8h, v29.8h, v30.8h, v31.8h}, [x8], x11
         ld1             {v20.8h, v21.8h, v22.8h, v23.8h}, [x7], #64
         ld1             {v24.8h, v25.8h, v26.8h, v27.8h}, [x8], x11
-
+/* 
 .macro add_dest_addsub src0, src1, src2, src3
         ld1             {v0.8b}, [x6], x1
         ld1             {v1.8b}, [x9], x10
@@ -3414,6 +3450,39 @@ function inv_txfm_add_vert_dct_8x64_neon
         sqxtun          v3.8b,   v7.8h
         st1             {v2.8b}, [x6], x1
         st1             {v3.8b}, [x9], x10
+.endm
+*/
+.macro add_dest_addsub src0, src1, src2, src3
+        ld1             {v0.8h}, [x6], x1
+        ld1             {v1.8h}, [x9], x10
+        sqadd           v4.8h,   \src0,   \src1
+        ld1             {v2.8h}, [x6]
+        sqsub           v5.8h,   \src0,   \src1
+        ld1             {v3.8h}, [x9]
+        sqadd           v6.8h,   \src2,   \src3
+        sqsub           v7.8h,   \src2,   \src3
+        sub             x6,  x6,  x1
+        sub             x9,  x9,  x10
+        srshr           v4.8h,   v4.8h,   #4
+        srshr           v5.8h,   v5.8h,   #4
+        srshr           v6.8h,   v6.8h,   #4
+        //uaddw           v4.8h,   v4.8h,   v0.8b
+        sqadd           v0.8h,   v4.8h
+        srshr           v7.8h,   v7.8h,   #4
+        sqadd           v1.8h,   v5.8h
+        //uaddw           v5.8h,   v5.8h,   v1.8b
+        sqadd           v2.8h,   v6.8h
+        //uaddw           v6.8h,   v6.8h,   v2.8b
+        //sqxtun          v0.8b,   v4.8h
+        //uaddw           v7.8h,   v7.8h,   v3.8b
+        sqadd           v3.8h,   v7.8h
+        //sqxtun          v1.8b,   v5.8h
+        st1             {v0.8h}, [x6], x1
+        //sqxtun          v2.8b,   v6.8h
+        st1             {v1.8h}, [x9], x10
+        //sqxtun          v3.8b,   v7.8h
+        st1             {v2.8h}, [x6], x1
+        st1             {v3.8h}, [x9], x10
 .endm
         add_dest_addsub v16.8h,  v31.8h,  v17.8h,  v30.8h
         add_dest_addsub v18.8h,  v29.8h,  v19.8h,  v28.8h
