@@ -2521,6 +2521,7 @@ def_horz_32 scale=0, shift=2
 def_horz_32 scale=1, shift=1, suffix=_scale
 
 function inv_txfm_add_vert_dct_8x32_neon
+/*这个函数里面 X8 就发挥了其存stride的作用*/
         mov             x14, x30
         lsl             x8,  x8,  #1
 
@@ -2827,7 +2828,7 @@ function inv_txfm_add_dct_dct_32x32_8bpc_neon, export=1
 
 3:
 .irp i, 0, 8, 16, 24
-        add             x6,  x0,  #(\i)
+        add             x6,  x0,  #(\i*2) /*dst这个地方就应该乘以2*/
         add             x7,  sp,  #(\i*2)
         mov             x8,  #32*2
         bl              inv_txfm_add_vert_dct_8x32_neon
@@ -2876,7 +2877,7 @@ function inv_txfm_add_dct_dct_16x32_8bpc_neon, export=1
 
 3:
 .irp i, 0, 8
-        add             x6,  x0,  #(\i)
+        add             x6,  x0,  #(\i*2)/*dst这个地方就应该乘以2*/
         add             x7,  sp,  #(\i*2)
         mov             x8,  #16*2
         bl              inv_txfm_add_vert_dct_8x32_neon
@@ -3408,10 +3409,13 @@ endfunc
 
 function inv_txfm_add_vert_dct_8x64_neon
         mov             x14, x30
-        lsl             x8,  x8,  #1 /*X8存的是stride 为什么不用 而去用X1? 是因为 inv_txfm_dct_8h_x64_neon 函数里面做了什么？*/
+        lsl             x8,  x8,  #1 /*X8存的是stride 为什么不用 而去用X1? \
+                                        这里又为什么 乘以2？\
+                                                是因为 inv_txfm_dct_8h_x64_neon 函数里面做了什么？*/
 
         mov             x7,  sp
-        add             x8,  sp,  #2*8*(64 - 4)
+        add             x8,  sp,  #2*8*(64 - 4)  /*x8的值被覆盖了 那前面的 左移操作有什么用？x8被用作存sp位移后的地址，没有用作存stride
+                                                   后面stride 还是用的X1             */
         add             x9,  x6,  x1, lsl #6 /*下面从X9 反向加载数据，这里X9的位置需要考虑对不对*/
         sub             x9,  x9,  x1
         neg             x10, x1   /*取负*/
@@ -3541,7 +3545,7 @@ function inv_txfm_add_dct_dct_64x64_8bpc_neon, export=1
         add             x7,  x5,  #(\i*2)
         mov             x8,  #64*2
         bl              inv_txfm_dct_8h_x64_neon
-        add             x6,  x0,  #(\i)
+        add             x6,  x0,  #(\i*2)/*这里应该乘以2*/
         bl              inv_txfm_add_vert_dct_8x64_neon
 .endr
 
@@ -3592,7 +3596,7 @@ function inv_txfm_add_dct_dct_64x32_8bpc_neon, export=1
 
 3:
 .irp i, 0, 8, 16, 24, 32, 40, 48, 56
-        add             x6,  x0,  #(\i)
+        add             x6,  x0,  #(\i*2)/*dst这个地方就应该乘以2*/
         add             x7,  x5,  #(\i*2)
         mov             x8,  #64*2
         bl              inv_txfm_add_vert_dct_8x32_neon
@@ -3646,7 +3650,7 @@ function inv_txfm_add_dct_dct_32x64_8bpc_neon, export=1
         add             x7,  x5,  #(\i*2)
         mov             x8,  #32*2
         bl              inv_txfm_dct_8h_x64_neon
-        add             x6,  x0,  #(\i)
+        add             x6,  x0,  #(\i*2)/*这里应该乘以2*/
         bl              inv_txfm_add_vert_dct_8x64_neon
 .endr
 
@@ -3753,7 +3757,7 @@ function inv_txfm_add_dct_dct_16x64_8bpc_neon, export=1
         add             x7,  x5,  #(\i*2)
         mov             x8,  #16*2
         bl              inv_txfm_dct_8h_x64_neon
-        add             x6,  x0,  #(\i) /*根据i增加X6的地址值*/
+        add             x6,  x0,  #(\i*2) /*这里应该乘以2*/
         bl              inv_txfm_add_vert_dct_8x64_neon
 .endr
 
