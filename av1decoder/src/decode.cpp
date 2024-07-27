@@ -3,8 +3,9 @@
 #include "cdf.h"
 #include <string.h>
 extern "C" {
-	////函数原形 第一个参数:dst 第二个参数:一行有多少个 第三个参数：系数，也就是src，第四个参数：eob，也就是矩阵内有效的系数个 数
-    int EXTERNinv_txfm_add_dct_dct_4x4_8bpc_neon(uint8_t *dst,int str,uint8_t *coeff,int eob);
+	////函数原形 第一个参数:dst 第二个参数:一行有多少个字节 第三个参数：系数，也就是src，第四个参数：eob，也就是矩阵内有效的系数个数
+    int EXTERNinv_txfm_add_dct_dct_4x4_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_dct_dct_16x64_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
 }
 #define INVALID_MV 0x80008000
 decode::decode(){
