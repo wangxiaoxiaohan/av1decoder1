@@ -2745,6 +2745,7 @@ endfunc
 def_identity_1632 16, 32, _shortside,
 def_identity_1632 32, 16, , _shortside
 
+
 .macro def_identity_832 w, h
 function inv_txfm_add_identity_identity_\w\()x\h\()_8bpc_neon, export=1
         movi            v0.8h,  #0
@@ -2759,25 +2760,25 @@ function inv_txfm_add_identity_identity_\w\()x\h\()_8bpc_neon, export=1
 .endr
 
 .if \w == 8
-        // 8x32
-        shift_8_regs    srshr, 1
-.endif
+        // 8x32 第一次 变换 为 8 ，左移1位，rowShift 查表8x32 为2，因此总计右移1位
+        shift_8_regs    srshr, 1  
+.endif // 32x8的时候 第一次为 32 ，左移2位 ，rowShift 查表8x32 为2，因此总计不用动
 
         transpose_8x8h  v16, v17, v18, v19, v20, v21, v22, v23, v4, v5
 
-        cmp             w3,  w12
-.if \w == 8
-        load_add_store_8x8 x0, x7, shiftbits=2
-.else
+        cmp             w3,  w12  /*w3 存的是eob 也就是有效系数个数*/
+.if \w == 8 /*8x32 第二次变换为32 因此 identity变换本身左移两位，colshift右移四位，总共就是右移2位*/
+        load_add_store_8x8 x0, x7, shiftbits=2  /**/
+.else /*32x8 第二次变换为8 identity本身变换左移1位 colshift 右移四位 总共是右移3位*/
         load_add_store_8x8 x0, x7, shiftbits=3
-.endif
+.endif  
 
-        b.lt            9f
+        b.lt            9f /*满足条件 eob 小于当前W12中的值 再跳出循环*/
 .if \w == 8
         sub             x2,  x2,  x8, lsl #3
         add             x2,  x2,  #2*8
 .else
-        sub             x0,  x0,  x1, lsl #3
+        sub             x0,  x0,  x1, lsl #3     
         add             x0,  x0,  #8
 .endif
         b               1b
@@ -2922,7 +2923,7 @@ function inv_txfm_add_dct_dct_32x16_8bpc_neon, export=1
 
 3:
 .irp i, 0, 8, 16, 24
-        add             x6,  x0,  #(\i)
+        add             x6,  x0,  #(\i*2)
         add             x7,  sp,  #(\i*2)
         mov             x8,  #32*2
         bl              inv_txfm_add_vert_8x16_neon
@@ -3002,28 +3003,28 @@ function inv_txfm_add_dct_dct_32x8_8bpc_neon, export=1
 
         mov             x8,  #2*32
         mov             w9,  #0
-1:
-        add             x6,  x0,  x9
+1:   /*循环中， w9递增 并add到X0上 ，赋给X0，最后使用X6叠加残差,因此下面的增加W9的常数值是需要改的，现在是一行的8位*/
+        add             x6,  x0,  x9 /* 这里用 了X9 ,设置的地方用的W9*/
         add             x7,  sp,  x9, lsl #1 // #(\i*2)
 
 .irp i, 16, 17, 18, 19, 20, 21, 22, 23
         ld1             {v\i\().8h}, [x7], x8
 .endr
-        add             w9,  w9,  #8
+        add             w9,  w9,  #16 /*这里改了 8->16*/
 
         bl              inv_dct_8h_x8_neon
 
-        cmp             w9,  #32
+        cmp             w9,  #64 /*这里改了 32->64*/
 
         load_add_store_8x8 x6, x7
 
-        b.lt            1b
+        b.lt            1b  /*直到w9的值大于32 才往下走，不然就调回去，也就是循环*/
 
         add             sp,  sp,  #512
         ret             x15
 endfunc
 
-function inv_dct64_step1_neon
+function inv_dct64_step1_neon·
         // in1/31/17/15 -> t32a/33/34a/35/60/61a/62/63a
         // in7/25/23/ 9 -> t56a/57/58a/59/36/37a/38/39a
         // in5/27/21/11 -> t40a/41/42a/43/52/53a/54/55a
@@ -3702,7 +3703,7 @@ function inv_txfm_add_dct_dct_64x16_8bpc_neon, export=1
 3:
         adr             x5,  inv_dct_8h_x16_neon
 .irp i, 0, 8, 16, 24, 32, 40, 48, 56
-        add             x6,  x0,  #(\i)
+        add             x6,  x0,  #(\i*2)
         add             x7,  x4,  #(\i*2)
         mov             x8,  #64*2
         bl              inv_txfm_add_vert_8x16_neon
