@@ -2746,12 +2746,14 @@ def_identity_1632 16, 32, _shortside,
 def_identity_1632 32, 16, , _shortside
 
 
+
+
 .macro def_identity_832 w, h
 function inv_txfm_add_identity_identity_\w\()x\h\()_8bpc_neon, export=1
         movi            v0.8h,  #0
         movrel          x13, eob_8x32
 
-        mov             w8,  #2*\h
+        mov             w8,  #2*\h  /*数据是一列一列的加载的 ？交错存储？，所以是 2*h 而不是2*w */
 1:
         ldrh            w12, [x13], #2
 .irp i, v16.8h, v17.8h, v18.8h, v19.8h, v20.8h, v21.8h, v22.8h, v23.8h
@@ -2774,12 +2776,13 @@ function inv_txfm_add_identity_identity_\w\()x\h\()_8bpc_neon, export=1
 .endif  
 
         b.lt            9f /*满足条件 eob 小于当前W12中的值 再跳出循环*/
-.if \w == 8
-        sub             x2,  x2,  x8, lsl #3
+.if \w == 8  /*8x32的时候不需要进行 X0地址的修正 ，但是需要进行x2(source)的修正*/
+        sub             x2,  x2,  x8, lsl #3 /*8x32的时候,每次加载一列数据 会增加X2的地址，做完一个8X8 后 */
+                                              /*  x2会指向矩阵外，先减去整个矩阵长度，再加8X8的一列                                         */
         add             x2,  x2,  #2*8
-.else
-        sub             x0,  x0,  x1, lsl #3     
-        add             x0,  x0,  #8
+.else   /*32x8 的时候每做一个8X8之后需要进行 X0地址的修正*/
+        sub             x0,  x0,  x1, lsl #3                     /*32x8的时候 ，load_add_store_8x8 内会把X0地址按x1增加 最后指向矩阵外*/
+        add             x0,  x0,  #2*8  /*这里加8改为加16*/         /*这里两步走，先直接减去整个矩阵的长度，然后再加上 8x8的一行的长度 */
 .endif
         b               1b
 
