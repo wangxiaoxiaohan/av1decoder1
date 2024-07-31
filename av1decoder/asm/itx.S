@@ -501,6 +501,7 @@ endconst
 .endif
 .endm
 
+/*由于上面交换了 add dst 和 add src，因此最后的store的寄存器全部需要改动 ？ 好像不需要改 */
 /*这三段v0-v7的.8b 改成了 .8h*/
 .macro load_add_store_8x16 dst, src
         mov             \src, \dst
@@ -2152,7 +2153,7 @@ function inv_txfm_\variant\()add_16x8_neon
 
         blr             x5
 
-        add             x0,  x0,  #8
+        add             x0,  x0,  #8*2 /*这里 8 乘以2*/
         load_add_store_8x8 x0, x7
 
         ret             x15
@@ -2226,7 +2227,7 @@ function inv_txfm_\variant\()add_8x16_neon
 
         blr             x5
 
-        load_add_store_8x16 x0, x6
+        load_add_store_8x16 x0, x6 /*这里的 X6 在load_add_store_8x16 会被直接覆盖 ，所以前面x6 add 了不影响这里，和前面的动作无关*/
 
         ret             x15
 endfunc
@@ -2652,7 +2653,7 @@ function inv_txfm_add_identity_identity_32x32_8bpc_neon, export=1
         mov             w9,  #0
         movrel          x12, eob_32x32
 2:
-        add             w9,  w9,  #8
+        add             w9,  w9,  #8*2 /*这里乘以2了*/
 .irp i, 16, 17, 18, 19, 20, 21, 22, 23
         ld1             {v\i\().8h}, [x2]
         st1             {v0.8h}, [x2], x8
@@ -2662,7 +2663,7 @@ function inv_txfm_add_identity_identity_32x32_8bpc_neon, export=1
         load_add_store_8x8 x0, x7, shiftbits=2
         ldrh            w11, [x12], #2
         sub             x0,  x0,  x1, lsl #3
-        add             x0,  x0,  #8
+        add             x0,  x0,  #8*2 /*这里乘以2了*/
         cmp             w3,  w11
         b.ge            2b
 
@@ -2699,7 +2700,7 @@ function inv_txfm_add_identity_identity_\w\()x\h\()_8bpc_neon, export=1
         mov             w9,  #0
         movrel          x12, eob_16x32\wshort
 2:
-        add             w9,  w9,  #8
+        add             w9,  w9,  #8*2 /*这里8 改为16*/
 .irp i, v16.8h, v17.8h, v18.8h, v19.8h, v20.8h, v21.8h, v22.8h, v23.8h
         ld1             {\i}, [x2]
         st1             {v0.8h}, [x2], x8
@@ -2724,7 +2725,7 @@ function inv_txfm_add_identity_identity_\w\()x\h\()_8bpc_neon, export=1
 .endif
         ldrh            w11, [x12], #2
         sub             x0,  x0,  x1, lsl #3
-        add             x0,  x0,  #8
+        add             x0,  x0,  #8*2 /*这里8 改为16*/
         cmp             w3,  w11
         b.ge            2b
 
@@ -2746,14 +2747,16 @@ def_identity_1632 16, 32, _shortside,
 def_identity_1632 32, 16, , _shortside
 
 
-
-
+/*还有疑问 系数按照列存储，dst按行存储的话 ，叠加的 时候岂不是交错的？
+     ==》中间那次 transpose_8x8h？  所以说 起始所有的块的系数的数据都是按列存储的？
+     然后中间经过transpose 正好与dst的 按列存储契合起来
+*/
 .macro def_identity_832 w, h
 function inv_txfm_add_identity_identity_\w\()x\h\()_8bpc_neon, export=1
         movi            v0.8h,  #0
         movrel          x13, eob_8x32
 
-        mov             w8,  #2*\h  /*数据是一列一列的加载的 ？交错存储？，所以是 2*h 而不是2*w */
+        mov             w8,  #2*\h  /*src 数据是按列存储的 至少这里是,*/
 1:
         ldrh            w12, [x13], #2
 .irp i, v16.8h, v17.8h, v18.8h, v19.8h, v20.8h, v21.8h, v22.8h, v23.8h
@@ -2778,10 +2781,10 @@ function inv_txfm_add_identity_identity_\w\()x\h\()_8bpc_neon, export=1
         b.lt            9f /*满足条件 eob 小于当前W12中的值 再跳出循环*/
 .if \w == 8  /*8x32的时候不需要进行 X0地址的修正 ，但是需要进行x2(source)的修正*/
         sub             x2,  x2,  x8, lsl #3 /*8x32的时候,每次加载一列数据 会增加X2的地址，做完一个8X8 后 */
-                                              /*  x2会指向矩阵外，先减去整个矩阵长度，再加8X8的一列                                         */
+                                              /*  x2会指向矩阵末尾或者外部，先减去整个矩阵长度，到再8X8的一列 ，到达下一个矩阵的起始位置  */
         add             x2,  x2,  #2*8
-.else   /*32x8 的时候每做一个8X8之后需要进行 X0地址的修正*/
-        sub             x0,  x0,  x1, lsl #3                     /*32x8的时候 ，load_add_store_8x8 内会把X0地址按x1增加 最后指向矩阵外*/
+.else   /*32x8 的时候每做一个8X8之后需要进行 X0地址的修正 dst的数据仍然是按行的*/ 
+        sub             x0,  x0,  x1, lsl #3     /*32x8的时候 ，load_add_store_8x8 内会把X0地址按x1增加 最后指向矩阵末尾*/
         add             x0,  x0,  #2*8  /*这里加8改为加16*/         /*这里两步走，先直接减去整个矩阵的长度，然后再加上 8x8的一行的长度 */
 .endif
         b               1b
