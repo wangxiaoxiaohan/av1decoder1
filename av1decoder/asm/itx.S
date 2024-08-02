@@ -723,7 +723,7 @@ function idct_dc_w16_neon
         ld1             {v0.8h,v1.8h}, [x0], x1
         ld1             {v2.8h,v3.8h}, [x0], x1
         ld1             {v4.8h,v5.8h}, [x0], x1
-        subs            w4,  w4,  #4
+        subs            w4,  w4,  #4 /*一次四列*/
         ld1             {v6.8h,v7.8h}, [x0], x1
 
         usqadd          v0.8h, v16.8h
@@ -743,7 +743,7 @@ function idct_dc_w16_neon
         st1             {v2.8h}, [x0], x1
         st1             {v3.8h}, [x0], x1    
 
-        b.gt            1b
+        b.gt            1b  /*如果前面w4的值减去4之后大于零 则跳回标签1*/
         ret
 endfunc
 
@@ -775,7 +775,7 @@ function idct_dc_w32_neon
 */
         ld1             {v0.8h, v1.8h,v2.8h,v3.8h},  [x0], x1
 
-        subs            w4,  w4,  #2
+        subs            w4,  w4,  #2/*一次二列*/
         ld1             {v4.8h, v5.8h,v6.8h,v7.8h},  [x0] 
 
 
@@ -824,8 +824,8 @@ function idct_dc_w64_neon
 */
         ld1             {v0.8h, v1.8h, v2.8h, v3.8h},  [x0], #64  /*x地址增加64个字节*/
         ld1             {v4.8h, v5.8h, v6.8h, v7.8h},  [x0]
-        sub             x0,  x0,  #32 /*x0地址减少32个字节，回到原来的地址*/
-        subs            w4,  w4,  #1
+        sub             x0,  x0,  #64 /*x0地址减少64个字节，回到原来的地址*/
+        subs            w4,  w4,  #1/*一次一列*/
 
         usqadd          v0.8h, v16.8h
         usqadd          v1.8h, v16.8h
@@ -1871,7 +1871,7 @@ function inv_txfm_add_16x16_neon
 .endr
 2:
 .irp i, 0, 8
-        add             x6,  x0,  #(\i)
+        add             x6,  x0,  #(\i*2) /*这里乘以2*/
         add             x7,  sp,  #(\i*2)
         mov             x8,  #32
         bl              inv_txfm_add_vert_8x16_neon
@@ -1975,7 +1975,7 @@ function inv_txfm_\variant\()add_16x4_neon
 .endif
         transpose_4x8h  v16, v17, v18, v19, v2,  v3,  v4,  v5
         blr             x5
-        add             x6,  x0,  #8
+        add             x6,  x0,  #8*2 /*乘以2，这里的目的是越过第一个4X8，到达第二个4X8的起始地址*/
         load_add_store_8x4 x6, x7
 
         ret             x15
