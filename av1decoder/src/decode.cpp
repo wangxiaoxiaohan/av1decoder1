@@ -4,8 +4,191 @@
 #include <string.h>
 extern "C" {
 	////函数原形 第一个参数:dst 第二个参数:一行有多少个字节 第三个参数：系数，也就是src，第四个参数：eob，也就是矩阵内有效的系数个数
-    int EXTERNinv_txfm_add_dct_dct_4x4_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_adst_4h_x16_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_adst_4h_x4_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_adst_4h_x8_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_adst_8h_x16_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_adst_8h_x4_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_adst_8h_x8_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_dct32_odd_8h_x16_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_dct_4h_x16_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_dct_4h_x4_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_dct_4h_x8_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_dct_8h_x16_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_dct_8h_x4_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_dct_8h_x8_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_flipadst_4h_x16_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_flipadst_4h_x4_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_flipadst_4h_x8_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_flipadst_8h_x16_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_flipadst_8h_x4_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_flipadst_8h_x8_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_identity_4h_x16_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_identity_4h_x4_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_identity_4h_x8_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_identity_8h_x16_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_identity_8h_x4_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_identity_8h_x8_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_adst_adst_16x16_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_adst_adst_16x4_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_adst_adst_16x8_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_adst_adst_4x16_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_adst_adst_4x4_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_adst_adst_4x8_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_adst_adst_8x16_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_adst_adst_8x4_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_adst_adst_8x8_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_adst_dct_16x16_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_adst_dct_16x4_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_adst_dct_16x8_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_adst_dct_4x16_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_adst_dct_4x4_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_adst_dct_4x8_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_adst_dct_8x16_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_adst_dct_8x4_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_adst_dct_8x8_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_adst_flipadst_16x16_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_adst_flipadst_16x4_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_adst_flipadst_16x8_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_adst_flipadst_4x16_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_adst_flipadst_4x4_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_adst_flipadst_4x8_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_adst_flipadst_8x16_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_adst_flipadst_8x4_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_adst_flipadst_8x8_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_adst_identity_16x4_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_adst_identity_16x8_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_adst_identity_4x16_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_adst_identity_4x4_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_adst_identity_4x8_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_adst_identity_8x16_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_adst_identity_8x4_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_adst_identity_8x8_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_dct_adst_16x16_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_dct_adst_16x4_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_dct_adst_16x8_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_dct_adst_4x16_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_dct_adst_4x4_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_dct_adst_4x8_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_dct_adst_8x16_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_dct_adst_8x4_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_dct_adst_8x8_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_dct_dct_16x16_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_dct_dct_16x32_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_dct_dct_16x4_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
 	int EXTERNinv_txfm_add_dct_dct_16x64_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_dct_dct_16x8_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_dct_dct_32x16_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_dct_dct_32x32_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_dct_dct_32x64_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_dct_dct_32x8_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_dct_dct_4x16_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_dct_dct_4x4_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_dct_dct_4x8_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_dct_dct_64x16_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_dct_dct_64x32_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_dct_dct_64x64_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_dct_dct_8x16_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_dct_dct_8x32_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_dct_dct_8x4_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_dct_dct_8x8_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_dct_flipadst_16x16_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_dct_flipadst_16x4_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_dct_flipadst_16x8_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_dct_flipadst_4x16_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_dct_flipadst_4x4_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_dct_flipadst_4x8_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_dct_flipadst_8x16_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_dct_flipadst_8x4_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_dct_flipadst_8x8_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_dct_identity_16x16_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_dct_identity_16x4_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_dct_identity_16x8_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_dct_identity_4x16_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_dct_identity_4x4_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_dct_identity_4x8_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_dct_identity_8x16_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_dct_identity_8x4_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_dct_identity_8x8_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_flipadst_adst_16x16_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_flipadst_adst_16x4_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_flipadst_adst_16x8_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_flipadst_adst_4x16_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_flipadst_adst_4x4_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_flipadst_adst_4x8_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_flipadst_adst_8x16_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_flipadst_adst_8x4_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_flipadst_adst_8x8_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_flipadst_dct_16x16_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_flipadst_dct_16x4_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_flipadst_dct_16x8_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_flipadst_dct_4x16_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_flipadst_dct_4x4_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_flipadst_dct_4x8_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_flipadst_dct_8x16_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_flipadst_dct_8x4_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_flipadst_dct_8x8_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_flipadst_flipadst_16x16_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_flipadst_flipadst_16x4_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_flipadst_flipadst_16x8_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_flipadst_flipadst_4x16_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_flipadst_flipadst_4x4_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_flipadst_flipadst_4x8_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_flipadst_flipadst_8x16_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_flipadst_flipadst_8x4_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_flipadst_flipadst_8x8_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_flipadst_identity_16x4_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_flipadst_identity_16x8_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_flipadst_identity_4x16_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_flipadst_identity_4x4_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_flipadst_identity_4x8_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_flipadst_identity_8x16_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_flipadst_identity_8x4_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_flipadst_identity_8x8_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_identity_adst_16x4_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_identity_adst_16x8_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_identity_adst_4x16_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_identity_adst_4x4_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_identity_adst_4x8_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_identity_adst_8x16_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_identity_adst_8x4_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_identity_adst_8x8_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_identity_dct_16x16_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_identity_dct_16x4_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_identity_dct_16x8_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_identity_dct_4x16_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_identity_dct_4x4_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_identity_dct_4x8_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_identity_dct_8x16_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_identity_dct_8x4_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_identity_dct_8x8_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_identity_flipadst_16x4_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_identity_flipadst_16x8_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_identity_flipadst_4x16_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_identity_flipadst_4x4_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_identity_flipadst_4x8_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_identity_flipadst_8x16_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_identity_flipadst_8x4_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_identity_flipadst_8x8_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_identity_identity_16x16_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_identity_identity_16x32_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_identity_identity_16x4_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_identity_identity_16x8_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_identity_identity_32x16_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_identity_identity_32x32_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_identity_identity_32x8_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_identity_identity_4x16_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_identity_identity_4x4_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_identity_identity_4x8_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_identity_identity_8x16_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_identity_identity_8x32_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_identity_identity_8x4_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_identity_identity_8x8_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_add_wht_wht_4x4_8bpc_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_dct_8h_x64_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_dct_clear_8h_x64_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+	int EXTERNinv_txfm_dct_clear_scale_8h_x64_neon(uint16_t *dst,int str,uint16_t *coeff,int eob);
+
 }
 #define INVALID_MV 0x80008000
 decode::decode(){
@@ -17,7 +200,6 @@ decode::~decode(){
 }
 //这个函数内部 不应该用到  TileData PartitionData BlockData 需要想办法去掉
 int decode::decode_frame_wrapup( AV1DecodeContext *av1Ctx){
-	//EXTERNinv_txfm_add_dct_dct_4x4_8bpc_neon(1);
 	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	if(frameHdr->show_existing_frame == 0){
 		if( frameHdr->loop_filter_params.loop_filter_level[ 0 ] != 0 || frameHdr->loop_filter_params.loop_filter_level[ 1 ] != 0){
@@ -5021,9 +5203,30 @@ void decode::inverseIdentityTransform(int16_t *T,int n){
 		inverseIdentityTransform32(T);   
  	}
 }
-void decode::neonDctDct(){
+void decode::neontrans(int txSz,int16_t **Residual,BlockData *b_data, AV1DecodeContext *av1Ctx){
+	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
+	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
+	int log2W = Tx_Width_Log2[ txSz ];
+    int log2H = Tx_Height_Log2[txSz];
+    int w = 1 << log2W;
+    int h = 1 << log2H;
+	int16_t T[h][w];
+	for(int i = 0 ; i < w; i ++){
+		for(int j = 0 ; j < h ; j++){
+            if (i < 32 && j < 32) {
+                T[i][j] = b_data->Dequant[i][j];
+            } else {
+                T[i][j] = 0;
+            }
+		}
+	}
+	//调用汇编函数 还要考虑 这一段是不是 要不要 ，在汇编做的还是 这里加上继续做 查一下
+	// if (Abs(log2W - log2H) == 1) {
+	// 	for (int j = 0; j < w; j++) {
+	// 		T[j] = Round2(T[j] * 2896, 12);
+	// 	}
+	// }
 
-	
 }
 void decode::twoDInverseTransformBlock(int txSz,int16_t **Residual,BlockData *b_data, AV1DecodeContext *av1Ctx) {
 	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;

@@ -212,8 +212,8 @@ public:
 		return m_pInstance;
 	}
 
-
-	void neonDctDct();
+	
+	void neontrans(int txSz,int16_t **Residual,BlockData *b_data, AV1DecodeContext *av1Ctx);
 private :
 	Symbol *sb;
 	segmentation *seg_instance;

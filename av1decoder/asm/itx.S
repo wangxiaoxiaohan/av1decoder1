@@ -3030,7 +3030,7 @@ function inv_txfm_add_dct_dct_32x8_8bpc_neon, export=1
         ret             x15
 endfunc
 
-function inv_dct64_step1_neon·
+function inv_dct64_step1_neon
         // in1/31/17/15 -> t32a/33/34a/35/60/61a/62/63a
         // in7/25/23/ 9 -> t56a/57/58a/59/36/37a/38/39a
         // in5/27/21/11 -> t40a/41/42a/43/52/53a/54/55a
