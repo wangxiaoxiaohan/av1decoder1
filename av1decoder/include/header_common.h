@@ -3,6 +3,7 @@
 
 #include "common.h"
 #include "cdf.h"
+typedef void (*tx_add)(uint16_t *dst,int str,int16_t *coeff,int eob);
 typedef struct obuHeader{
 	uint8_t obu_type;
 	uint8_t obu_extension_flag;
@@ -533,7 +534,7 @@ typedef struct AV1DecodeContext{
 	int ***MotionFieldMvs[8];// [ref][y][x][x/y] 
 	uint8_t **PrevSegmentIds;
 
-	
+	tx_add tx_adds[TX_SIZES_ALL][TX_TYPES];
 	
 }AV1DecodeContext;
 

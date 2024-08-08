@@ -461,7 +461,7 @@ endconst
 .endm
 
 .macro scale_input sz, c, r0, r1, r2 r3, r4, r5, r6, r7
-        sqrdmulh        \r0\sz,  \r0\sz,  \c
+        sqrdmulh        \r0\sz,  \r0\sz,  \c  
         sqrdmulh        \r1\sz,  \r1\sz,  \c
         sqrdmulh        \r2\sz,  \r2\sz,  \c
         sqrdmulh        \r3\sz,  \r3\sz,  \c
@@ -1371,6 +1371,10 @@ function inv_txfm_add_8x4_neon
         ld1             {v20.4h,v21.4h,v22.4h,v23.4h}, [x2]
         st1             {v30.8h,v31.8h}, [x2]
 
+        /*这个就是spec中的 w = 2h 进行缩放的case
+        原操作是 乘2896 再右移12位
+        这里是让他 乘2896*8， ,也就是多左移3位
+         */
         scale_input     .4h, v0.h[0], v16, v17, v18, v19, v20, v21, v22, v23
 
         blr             x4
