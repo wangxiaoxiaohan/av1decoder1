@@ -770,6 +770,7 @@ enum em_inverse_transform
 	H_ADST = 13,
 	V_FLIPADST = 14,
 	H_FLIPADST = 15,
+	WHT_WHT = 16,
 };
 enum em_tx_set
 {

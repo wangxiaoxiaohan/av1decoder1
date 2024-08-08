@@ -5018,9 +5018,44 @@ void decode::inverseIdentityTransform(int16_t *T,int n){
 }
 void decode::initNeon(AV1DecodeContext *av1Ctx){
 	#define add_itx_fun( w, h, type,type1,type2) \
-	c->tx_adds[TX_##w##X##h][type] = \
+	av1Ctx->tx_adds[TX_##w##X##h][type] = \
 		EXTERNinv_txfm_add_##type1##_##type2##_##w##x##h##_8bpc_neon;
-	add_itx_fun(4,4,TX_4X4,dct,dct);
+	// 	DCT_DCT = 0,
+	// ADST_DCT = 1,
+	// DCT_ADST = 2,
+	// ADST_ADST = 3,
+	// FLIPADST_DCT = 4,
+	// DCT_FLIPADST = 5,
+	// FLIPADST_FLIPADST = 6,
+	// ADST_FLIPADST = 7,
+	// FLIPADST_ADST = 8,
+	// IDTX = 9,
+	// V_DCT = 10,
+	// H_DCT = 11,
+	// V_ADST = 12,
+	// H_ADST = 13,
+	// V_FLIPADST = 14,
+	// H_FLIPADST = 15,
+	// WHT_WHT = 16,
+	#define add_itx_fun_all( w, h) \
+		add_itx_fun(w,h,DCT_DCT,dct,dct)\
+		add_itx_fun(w,h,DCT_DCT,adst,dct)\
+		add_itx_fun(w,h,DCT_DCT,dct,adst)\
+		add_itx_fun(w,h,DCT_DCT,adst,adst) \
+		add_itx_fun(w,h,DCT_DCT,identity,dct) \
+		add_itx_fun(w,h,DCT_DCT,dct,identity) \
+		add_itx_fun(w,h,DCT_DCT,identity,adst) \
+		add_itx_fun(w,h,DCT_DCT,adst,identity) \
+		add_itx_fun(w,h,DCT_DCT,identity,identity) 
+
+	
+	add_itx_fun_all(4,4)
+	add_itx_fun_all(4,4)
+	add_itx_fun_all(4,4)
+	add_itx_fun_all(4,4)
+	add_itx_fun_all(4,4)
+	
+
 }
 void decode::neontrans(int txSz,int16_t **Residual,BlockData *b_data, AV1DecodeContext *av1Ctx){
 	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
@@ -5038,58 +5073,6 @@ void decode::neontrans(int txSz,int16_t **Residual,BlockData *b_data, AV1DecodeC
                 T[i][j] = 0;
             }
 		}
-	}
-
-	switch(b_data->PlaneTxType){
-		case DCT_DCT :
-			EXTERNinv_txfm_add_dct_dct_##w##x##h##_8bpc_neon();
-		break;
-		case ADST_DCT :
-			EXTERNinv_txfm_add_dct_adst_##w##x##h##_8bpc_neon();
-		break;
-		case DCT_ADST :
-			EXTERNinv_txfm_add_adst_dct_##w##x##h##_8bpc_neon();
-		break;
-		case ADST_ADST :
-			EXTERNinv_txfm_add_adst_adst_##w##x##h##_8bpc_neon();
-		break;
-		case FLIPADST_DCT :
-			EXTERNinv_txfm_add_dct_adst_##w##x##h##_8bpc_neon();
-		break;
-		case DCT_FLIPADST :
-			EXTERNinv_txfm_add_adst_dct_##w##x##h##_8bpc_neon();
-		break;
-		case FLIPADST_FLIPADST :
-			EXTERNinv_txfm_add_adst_adst_##w##x##h##_8bpc_neon();
-		break;
-		case ADST_FLIPADST :
-			EXTERNinv_txfm_add_adst_adst_##w##x##h##_8bpc_neon();
-		break;
-		case FLIPADST_ADST :
-			EXTERNinv_txfm_add_adst_adst_##w##x##h##_8bpc_neon();
-		break;
-		case IDTX  :
-			EXTERNinv_txfm_add_identity_identity_##w##x##h##_8bpc_neon();
-		break;
-		case V_DCT :
-			EXTERNinv_txfm_add_dct_identity_##w##x##h##_8bpc_neon();
-		break;
-		case H_DCT :
-			EXTERNinv_txfm_add_identity_dct_##w##x##h##_8bpc_neon();
-		break;
-		case V_ADST :
-			EXTERNinv_txfm_add_adst_identity_##w##x##h##_8bpc_neon();
-		break;
-		case H_ADST :
-			EXTERNinv_txfm_add_identity_adst_##w##x##h##_8bpc_neon();
-		break;
-		case V_FLIPADST :
-			EXTERNinv_txfm_add_adst_identity_##w##x##h##_8bpc_neon();
-		break;
-		case H_FLIPADST :
-			EXTERNinv_txfm_add_identity_adst_##w##x##h##_8bpc_neon();
-		break;
-
 	}
 	
 
