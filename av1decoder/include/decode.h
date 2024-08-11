@@ -401,7 +401,7 @@ public:
 	}
 
 	
-	void neontrans(int txSz,int16_t **Residual,BlockData *b_data, AV1DecodeContext *av1Ctx);
+	void neontrans(int txSz,uint16_t *Residual,BlockData *b_data, AV1DecodeContext *av1Ctx);
 private :
 	Symbol *sb;
 	segmentation *seg_instance;

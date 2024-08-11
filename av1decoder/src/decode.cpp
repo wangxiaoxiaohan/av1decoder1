@@ -2369,6 +2369,7 @@ int decode::coeffs(int plane,int startX,int startY,int txSz,SymbolContext *sbCtx
 		}
 		// (eob means end-of-block) 最后一个非0系数
 		printf("eob %d\n",eob);
+		b_data->eob = eob;
 		//eob + ac + dc， 最后一个下标0是 dc
 		printf("coeffs\n");
 		//系数幅值
@@ -4436,36 +4437,46 @@ int decode::reconstruct(int plane, int x, int y, int txSz,BlockData *b_data,AV1D
         }
 		//printf("\n");
     }
-	//反变换
-    //uint16_t Residual[h][w];
-	int16_t **Residual = new int16_t *[h];
-	for(int i = 0 ; i < h ; i ++){
-		Residual[i] = new int16_t[w];
-	}
-	//printf("residual 22\n");
-	twoDInverseTransformBlock(txSz,Residual,b_data,av1Ctx);
-	printf("residual 33 \n");
 
-	int X = x;
-	int Y = y;
-    for (int i = 0; i < h; i++) {
-        for (int j = 0; j < w; j++) {
-            int xx = flipLR ? (w - j - 1) : j;
-            int yy = flipUD ? (h - i - 1) : i;
-			//注意这里写的和spec 不一样，临时解法！！
-            //av1Ctx->currentFrame->CurrFrame[plane][Y + yy][X + xx] = Clip3(0,255,av1Ctx->currentFrame->CurrFrame[plane][Y + yy][X + xx] + Residual[i][j]);
-        	av1Ctx->currentFrame->CurrFrame[plane][Y + yy][X + xx] = Clip1( av1Ctx->currentFrame->CurrFrame[ plane ][ y + yy ][ x + xx ] +Residual[ i ][ j ],seqHdr->color_config.BitDepth);
-			//printf("%d ",Residual[i][j]);
-			
+	// C transform
+	{
+		int16_t **Residual = new int16_t *[h];
+		for(int i = 0 ; i < h ; i ++){
+			Residual[i] = new int16_t[w];
 		}
-		//printf("\n");
-    }
+		//printf("residual 22\n");
+		twoDInverseTransformBlock(txSz,Residual,b_data,av1Ctx);
+		printf("residual 33 \n");
 
-	printf("\n");
-	for(int i = 0 ; i < h ; i ++){
-		delete []  Residual[i];
+
+		int X = x;
+		int Y = y;
+		for (int i = 0; i < h; i++) {
+			for (int j = 0; j < w; j++) {
+				int xx = flipLR ? (w - j - 1) : j;
+				int yy = flipUD ? (h - i - 1) : i;
+				//注意这里写的和spec 不一样，临时解法！！
+				//av1Ctx->currentFrame->CurrFrame[plane][Y + yy][X + xx] = Clip3(0,255,av1Ctx->currentFrame->CurrFrame[plane][Y + yy][X + xx] + Residual[i][j]);
+				av1Ctx->currentFrame->CurrFrame[plane][Y + yy][X + xx] = Clip1( av1Ctx->currentFrame->CurrFrame[ plane ][ y + yy ][ x + xx ] + Residual[ i ][ j ],seqHdr->color_config.BitDepth);
+				//printf("%d ",Residual[i][j]);
+				
+			}
+			//printf("\n");
+		}	
+		printf("\n");
+		for(int i = 0 ; i < h ; i ++){
+			delete []  Residual[i];
+		}
+		delete [] Residual;
 	}
-	delete [] Residual;
+	
+	//arm assembly transform
+	{
+		uint16_t *Residual = new uint16_t[h * w];
+		neontrans(txSz,Residual,b_data,av1Ctx);
+	}
+	
+
     // 无损模式下 需要完全无损 ，因此 Residual 内的每个像素 用 1 + BitDepth位来表示，即比位深度还多一位
 	//确保不会溢出 ，保证数据 无损
     if (b_data->Lossless == 1) {
@@ -5020,44 +5031,68 @@ void decode::initNeon(AV1DecodeContext *av1Ctx){
 	#define add_itx_fun( w, h, type,type1,type2) \
 	av1Ctx->tx_adds[TX_##w##X##h][type] = \
 		EXTERNinv_txfm_add_##type1##_##type2##_##w##x##h##_8bpc_neon;
-	// 	DCT_DCT = 0,
-	// ADST_DCT = 1,
-	// DCT_ADST = 2,
-	// ADST_ADST = 3,
-	// FLIPADST_DCT = 4,
-	// DCT_FLIPADST = 5,
-	// FLIPADST_FLIPADST = 6,
-	// ADST_FLIPADST = 7,
-	// FLIPADST_ADST = 8,
-	// IDTX = 9,
-	// V_DCT = 10,
-	// H_DCT = 11,
-	// V_ADST = 12,
-	// H_ADST = 13,
-	// V_FLIPADST = 14,
-	// H_FLIPADST = 15,
-	// WHT_WHT = 16,
-	#define add_itx_fun_all( w, h) \
+
+	#define add_itx_fun_all1( w, h) \
 		add_itx_fun(w,h,DCT_DCT,dct,dct)\
-		add_itx_fun(w,h,DCT_DCT,adst,dct)\
-		add_itx_fun(w,h,DCT_DCT,dct,adst)\
-		add_itx_fun(w,h,DCT_DCT,adst,adst) \
-		add_itx_fun(w,h,DCT_DCT,identity,dct) \
-		add_itx_fun(w,h,DCT_DCT,dct,identity) \
-		add_itx_fun(w,h,DCT_DCT,identity,adst) \
-		add_itx_fun(w,h,DCT_DCT,adst,identity) \
-		add_itx_fun(w,h,DCT_DCT,identity,identity) 
+		add_itx_fun(w,h,DCT_FLIPADST,flipadst,dct)\
+		add_itx_fun(w,h,DCT_ADST,adst,dct)\
+		add_itx_fun(w,h,FLIPADST_DCT,dct,flipadst)\
+		add_itx_fun(w,h,ADST_DCT,dct,adst)\
+		add_itx_fun(w,h,ADST_ADST,adst,adst) \
+		add_itx_fun(w,h,FLIPADST_FLIPADST,flipadst,flipadst)\
+		add_itx_fun(w,h,ADST_FLIPADST,adst,flipadst) \
+		add_itx_fun(w,h,FLIPADST_ADST,flipadst,adst) \
+		add_itx_fun(w,h,V_DCT,identity,dct) \
+		add_itx_fun(w,h,H_DCT,dct,identity) \
+		add_itx_fun(w,h,H_ADST,identity,adst) \
+		add_itx_fun(w,h,V_ADST,adst,identity) \
+		add_itx_fun(w,h,H_FLIPADST,identity,flipadst) \
+		add_itx_fun(w,h,V_FLIPADST,flipadst,identity) \
+		add_itx_fun(w,h,IDTX,identity,identity) 
 
-	
-	add_itx_fun_all(4,4)
-	add_itx_fun_all(4,4)
-	add_itx_fun_all(4,4)
-	add_itx_fun_all(4,4)
-	add_itx_fun_all(4,4)
-	
+	#define add_itx_fun_all2( w, h) \
+		add_itx_fun(w,h,DCT_DCT,dct,dct)\
+		add_itx_fun(w,h,IDTX,identity,identity) 
 
+	#define add_itx_fun_all3( w, h) \
+		add_itx_fun(w,h,DCT_DCT,dct,dct)\
+		add_itx_fun(w,h,DCT_FLIPADST,dct,dct)\
+		add_itx_fun(w,h,DCT_ADST,adst,dct)\
+		add_itx_fun(w,h,FLIPADST_DCT,dct,flipadst)\
+		add_itx_fun(w,h,ADST_DCT,dct,adst)\
+		add_itx_fun(w,h,ADST_ADST,adst,adst) \
+		add_itx_fun(w,h,FLIPADST_FLIPADST,flipadst,flipadst)\
+		add_itx_fun(w,h,ADST_FLIPADST,adst,flipadst) \
+		add_itx_fun(w,h,FLIPADST_ADST,flipadst,adst) \
+		add_itx_fun(w,h,V_DCT,identity,dct) \
+		add_itx_fun(w,h,H_DCT,dct,identity) \
+		add_itx_fun(w,h,IDTX,identity,identity) 
+
+	add_itx_fun_all1(4,4)
+	add_itx_fun_all1(4,16)
+	add_itx_fun_all1(16,4)
+	add_itx_fun_all1(4,8)
+	add_itx_fun_all1(8,4)
+	add_itx_fun_all1(8,8)
+	add_itx_fun_all1(8,16)
+	add_itx_fun_all1(16,8)
+	add_itx_fun_all3(16,16)
+
+	add_itx_fun_all2(32,16)
+	add_itx_fun_all2(16,32)
+	add_itx_fun_all2(32,32)
+	add_itx_fun_all2(8,32)
+	add_itx_fun_all2(32,8)
+
+	add_itx_fun(32,64,DCT_DCT,dct,dct);
+	add_itx_fun(64,32,DCT_DCT,dct,dct);
+	add_itx_fun(64,64,DCT_DCT,dct,dct);
+	add_itx_fun(64,16,DCT_DCT,dct,dct);
+	add_itx_fun(16,64,DCT_DCT,dct,dct);
+	
+	add_itx_fun(4,4,WHT_WHT,wht,wht);
 }
-void decode::neontrans(int txSz,int16_t **Residual,BlockData *b_data, AV1DecodeContext *av1Ctx){
+void decode::neontrans(int txSz,uint16_t *Residual,BlockData *b_data, AV1DecodeContext *av1Ctx){
 	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
 	int log2W = Tx_Width_Log2[ txSz ];
@@ -5074,10 +5109,14 @@ void decode::neontrans(int txSz,int16_t **Residual,BlockData *b_data, AV1DecodeC
             }
 		}
 	}
-	
+	//uint16_t *dst,int str,int16_t *coeff,int eob
+	//blocksize 和 txsize的枚举值的大小是一样的,匹配的
+	av1Ctx->tx_adds[b_data->MiSize][b_data->PlaneTxType](Residual,h,(int16_t *)T,b_data->eob);
 
 }
 void decode::twoDInverseTransformBlock(int txSz,int16_t **Residual,BlockData *b_data, AV1DecodeContext *av1Ctx) {
+
+
 	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
 	int log2W = Tx_Width_Log2[ txSz ];

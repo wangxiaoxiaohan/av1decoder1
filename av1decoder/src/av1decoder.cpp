@@ -1,6 +1,7 @@
 #include "stdio.h"
 #include "stdlib.h"
 #include "av1decoder.h"
+#include "decode.h"
 #include "frame.h"
 
 int main(int argc ,char **argv){
@@ -15,6 +16,7 @@ int main(int argc ,char **argv){
 	frame* f =  &frame::Instance();
 	
 	//f->allocDecodeContext(ctx);
+    decode::Instance().initNeon(ctx);
     while(1){
         int size = obu::Instance().parseObuInfo(fp,offset,buffer,0,ctx);
         offset += size;

@@ -399,6 +399,7 @@ typedef struct BlockData{
 	//pos 也小于 1024 分布 于整个块内
 	int16_t Quant[1024]; //先直接拉满
 	int16_t Dequant[32][32];//先直接拉满
+	int16_t eob;
 
 	//reconstruct 重建图像
 	int PlaneTxType;
