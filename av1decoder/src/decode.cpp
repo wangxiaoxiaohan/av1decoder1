@@ -4474,6 +4474,20 @@ int decode::reconstruct(int plane, int x, int y, int txSz,BlockData *b_data,AV1D
 	{
 		uint16_t *Residual = new uint16_t[h * w];
 		neontrans(txSz,Residual,b_data,av1Ctx);
+		int X = x;
+		int Y = y;
+		for (int i = 0; i < h; i++) {
+			for (int j = 0; j < w; j++) {
+				int xx = flipLR ? (w - j - 1) : j;
+				int yy = flipUD ? (h - i - 1) : i;
+				//注意这里写的和spec 不一样，临时解法！！
+				//av1Ctx->currentFrame->CurrFrame[plane][Y + yy][X + xx] = Clip3(0,255,av1Ctx->currentFrame->CurrFrame[plane][Y + yy][X + xx] + Residual[i][j]);
+				av1Ctx->currentFrame->CurrFrame[plane][Y + yy][X + xx] = Clip1( av1Ctx->currentFrame->CurrFrame[ plane ][ y + yy ][ x + xx ] + Residual[ i * w + j ],seqHdr->color_config.BitDepth);
+				//printf("%d ",Residual[i][j]);
+				
+			}
+			//printf("\n");
+		}	
 	}
 	
 
