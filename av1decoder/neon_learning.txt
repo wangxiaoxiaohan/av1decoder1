@@ -93,3 +93,19 @@ srshr 指令在 ARM64 架构中用于无符号右移并舍弃溢出的位
 
 sqrdmulh        v0.4h,  v0.4h,  #2896*8
 把后面两个相乘结果再乘以2，只保留高半部分存入第一个
+
+
+uabd： Unsigned Absolute Difference Long 绝对值差
+tst：   按位与 并设置CPSR标志位，
+cmtst :Compare bitwise Test bits nonzero 按位与，
+            如果结果不为0，则把对应的元素每一位都设置为1，否则为每一位都设置为0. ？？
+
+sxtl / uxtl： 扩展较窄寄存器中的值到更宽的寄存器中
+
+ushl： 无符号左移
+    ushl            v12.8h,  v12.8h,  v31.8h :V12中的每一个元素移动 V31 中匹配的元素的位数
+urshl： 舍入无符号左移
+
+
+cmhs : Compare unsigned Higher or Same  第一个大于或等于第二个则设置dst元素的每一位都为1，否则每一位都为0
+        cmhs            v1.8h,   v11.8h,  v0.8h 

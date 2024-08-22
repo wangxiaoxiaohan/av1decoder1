@@ -45,7 +45,7 @@ function lpf_8_wd\wd\()_neon
 .endif
 .if \wd >= 8
         uabd            v6.8h,   v20.8h,  v21.8h  // abs(p3 - p2)
-        uabd            v7.8h,   v27.8h,  v26.8h  // abs(q3 - q2)
+        uabd            v7.8h,   v27.8h,  v26.8h  // abs(q3 - q3)
 .endif
 .if \wd >= 6
         umax            v4.8h,   v4.8h,   v5.8h
