@@ -4472,7 +4472,8 @@ int decode::reconstruct(int plane, int x, int y, int txSz,BlockData *b_data,AV1D
 	
 	//arm assembly transform
 	{
-		uint16_t *Residual = new uint16_t[h * w];
+		//uint16_t *Residual = new uint16_t[h * w];
+		uint16_t Residual[h * w];
 		neontrans(txSz,Residual,b_data,av1Ctx);
 		int X = x;
 		int Y = y;
@@ -5248,10 +5249,11 @@ void decode::loopFilter(AV1DecodeContext *av1Ctx){
 	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
 	for (int  plane = 0; plane < seqHdr->color_config.NumPlanes; plane++ ) {
 		if ( plane == 0 || frameHdr->loop_filter_params.loop_filter_level[ 1 + plane ] ) {
-			for (int pass = 0; pass < 2; pass++ ) {
+			for (int pass = 0; pass < 2; pass++ ) { //两个pass 一个是横向 一个是纵向 
 				int rowStep = ( plane == 0 ) ? 1 : ( 1 << seqHdr->color_config.subsampling_y );
 				int colStep = ( plane == 0 ) ? 1 : ( 1 << seqHdr->color_config.subsampling_x );
-				for (int row = 0; row < frameHdr->MiRows; row += rowStep )
+				for (int row = 0; row < frameHdr->MiRows; row += rowStep )   //这里看起来很像进行了二维的loopfilter
+																			 //实际上由于 pass的值 取数据的时候要么是·同一行或者同一列 还是一维的						
 					for (int col = 0; col < frameHdr->MiCols; col += colStep )
 						edgeLoopFilter( plane, pass, row, col,av1Ctx);
 			}

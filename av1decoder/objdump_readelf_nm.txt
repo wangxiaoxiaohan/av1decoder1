@@ -5,7 +5,7 @@ objdump > readelf > nm
 readelf能做的 objdump都能做，nm主要就是查看符号表
 
 readelf -h elf-file：查看ELF文件头
-readelf -S 、objdump -h elf-file：查看段表结构，即一个文件有那些段。
+readelf -S objdump -h elf-file：查看段表结构，即一个文件有那些段。
 objdump -s elf-file：将所有段的内容以16进制打印出来。
 objdump -d elf-file：将所有代码段的内容反汇编，段表中flags为AX的都为代码段。
 readelf -p sh_name elf-file：查看字符串表，即sh_name的type为STRTAB的段的内容
