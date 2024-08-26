@@ -98,7 +98,7 @@ sqrdmulh        v0.4h,  v0.4h,  #2896*8
 uabd： Unsigned Absolute Difference Long 绝对值差
 tst：   按位与 并设置CPSR标志位，
 cmtst :Compare bitwise Test bits nonzero 按位与，
-            如果结果不为0，则把对应的元素每一位都设置为1，否则为每一位都设置为0. ？？
+            如果结果不为0，则把对应的元素每一位都设置为1(即整个元素的值为-1)，否则为每一位都设置为0. ？？
 
 sxtl / uxtl： 扩展较窄寄存器中的值到更宽的寄存器中
 
