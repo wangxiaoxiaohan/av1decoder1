@@ -644,6 +644,8 @@ enum em_compound_type
 	COMPOUND_INTRA,
 	COMPOUND_DISTANCE
 };
+//  specifies how the motion vector used by inter prediction is obtained when using compound prediction.
+// An offset is added to compound_mode to compute YMode as follows
 enum em_inter_predict_ymode
 {
 	NEARESTMV = 14,
