@@ -8,11 +8,11 @@ CPSR 寄存器知识:  用与保存一些当前的程序运行状态：比如cmp
 
 N   Z   C   V Q  DNM(RAZ) I F T M4 M3 M2 M1 M0
 
-N ： n=1表示运算结果为负数  0为正数
+N（借位标志） ： n=1表示运算结果为负数  0为正数
 
-Z ： z=1表示运算的结果为零；z=0表示运算的结果不为零。对于[CMP指令](https://baike.baidu.com/item/CMP%E6%8C%87%E4%BB%A4/3934316?fromModule=lemma_inlink)，Z=1表示进行比较的两个数大小相等
+Z（zero condition flag） ： z=1表示运算的结果为零；z=0表示运算的结果不为零。对于[CMP指令]Z=1表示进行比较的两个数大小相等
 
-C ： 在[加法指令](https://baike.baidu.com/item/%E5%8A%A0%E6%B3%95%E6%8C%87%E4%BB%A4/21122053?fromModule=lemma_inlink)中（包括比较指令CMN），当结果产生了进位,则C=1,表示无符号运算发生溢出(overflow)；其他情况C=0。
+C (进位标志)： 在[加法指令]中（包括比较指令CMN），当结果产生了进位,则C=1,表示无符号运算发生溢出(overflow)；其他情况C=0。
 
 在减法指令中（包括比较指令CMP），当运算中发生借位，则C=0，表示无符号运算数发生进位；其他情况下C=1。
 
@@ -20,7 +20,7 @@ C ： 在[加法指令](https://baike.baidu.com/item/%E5%8A%A0%E6%B3%95%E6%8C%87
 
 对于其他非加减运算指令，C位的值通常不受影响
 
-V ： 对于加减运算指令，当[操作数](https://baike.baidu.com/item/%E6%93%8D%E4%BD%9C%E6%95%B0/7658270?fromModule=lemma_inlink)和运算结果为二进制的[补码](https://baike.baidu.com/item/%E8%A1%A5%E7%A0%81/6854613?fromModule=lemma_inlink)表示的[带符号](https://baike.baidu.com/item/%E5%B8%A6%E7%AC%A6%E5%8F%B7/53957685?fromModule=lemma_inlink)数时，V=1表示符号位溢出；通常其他指令不影响V位。
+V (溢出标志)： 对于加减运算指令，当[操作数]和运算结果为二进制的[补码]表示的[带符号]数时，V=1表示符号位溢出；通常其他指令不影响V位。
 
 -----------
 
@@ -72,7 +72,18 @@ X19-X28: Callee Saved寄存器，于存储函数参数、局部变量和临时�
 X29: 也称为帧指针寄存器（Frame Pointer，FP），用于存储当前函数的堆栈帧指针。当函数调用发生时，x29寄存器的值被保存到堆栈中，以便在函数执行期间可以轻松地访问上一级函数的堆栈帧。这样，当函数返回时，可以通过恢复x29寄存器的值来恢复到正确的堆栈帧。
 X30: 也称为链接寄存器（Link Register，LR），用于存储函数调用的返回地址。当函数执行完毕时，处理器将使用x30寄存器中存储的返回地址来恢复到调用点。这样，控制流程可以顺利返回到调用函数的位置继续执行。
 
-
+状态寄存器：arm 64下 没有cpsr寄存器了，将其分为多个寄存器？
+寄存器名       查看的标志
+NZCV          N, Z, C, V
+DAIF          D, A, I, F
+CurrentEL     EL
+SPSel         SP
+PAN           PAN
+UAO           UAO
+DIT           DIT
+SSBS          SSBS
+TCO           TCO
+ALLINT        ALLINT
 
 
 
