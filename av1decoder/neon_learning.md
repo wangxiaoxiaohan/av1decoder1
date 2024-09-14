@@ -1,4 +1,4 @@
-arm64  SIMD 汇编学习笔记
+cbnzarm64  SIMD 汇编学习笔记
 指令 XX XX2 这样两个一组的指令，不带2的操作低位，带2的操作高位，这里的高位 低位针对的是 source寄存器
 
 arm 寄存器
@@ -30,6 +30,8 @@ ld1 {Vt.<T>}[index], [Xn|SP], Xm
 
 ARM32（AArch32）：指令通常以“V”开头，如VADD, VMUL等。
 ARM64（AArch64）：指令通常以“ADD”, “MUL”等标准操作符开头，并且有更一致的命名规则，例如ADD, MLA, SADDL等。
+
+指令后面多个l ，也就是多个long，表示 扩宽，即src寄存器比dst寄存器窄
 
 如果掩码对应位为 1，则从第二个源寄存器中复制该位。
 
@@ -86,8 +88,8 @@ XZR 64位零寄存器
 ● CASB, CASAB, CASALB, CASLB：在内存中比较并交换字节。
 ● CASH, CASAH, CASALH, CASLH：在内存中比较并交换半字。
 ● CASP, CASPA, CASPAL, CASPL：在内存中比较并交换字对或双字对。
-● CBNZ：非零比较并分支。
-● CBZ：零比较并分支。
+● CBNZ：非零比较并分支。  如果该寄存器的值不为零，则跳转到指定的标签或地址
+● CBZ：零比较并分支。 如果该寄存器的值为零，则跳转到指定的标签或地址
 ● CCMN (immediate)：立即数条件比较负数。
 ● CCMN (register)：寄存器条件比较负数。
 ● CCMP (immediate)：立即数条件比较。
@@ -98,7 +100,7 @@ XZR 64位零寄存器
 ● CINV：条件反转：CSINV的别名。
 ● CLREX：清除独占。
 ● CLS：计数前导符号位。
-● CLZ：计数前导零。
+● CLZ：计数前导零。 计算前导的零的数量
 ● CMN (extended register)：扩展寄存器比较负数：ADDS (extended register)的别名。
 ● CMN (immediate)：立即数比较负数：ADDS (immediate)的别名。
 ● CMN (shifted register)：移位寄存器比较负数：ADDS (shifted register)的别名。
@@ -204,7 +206,7 @@ XZR 64位零寄存器
 ● LDLARB：加载LOAcquire寄存器字节。
 ● LDLARH：加载LOAcquire寄存器半字。
 ● LDNP：加载寄存器对，带有非临时性提示。
-● LDP：加载寄存器对。
+● LDP：加载寄存器对。 将内中的值加载到提供的一堆寄存器中
 ● LDPSW：加载寄存器对有符号字。
 ● LDR (immediate)：立即数加载寄存器。
 ● LDR (literal)：字面量加载寄存器。
@@ -242,7 +244,7 @@ XZR 64位零寄存器
 ● LDUMIN, LDUMINA, LDUMINAL, LDUMINL：内存中字或双字的原子无符号最小值。
 ● LDUMINB, LDUMINAB, LDUMINALB, LDUMINLB：内存中字节的原子无符号最小值。
 ● LDUMINH, LDUMINAH, LDUMINALH, LDUMINLH：内存中半字的原子无符号最小值。
-● LDUR：未缩放加载寄存器。
+● LDUR：未缩放加载寄存器。参考stur
 ● LDURB：未缩放加载寄存器字节。
 ● LDURH：未缩放加载寄存器半字。
 ● LDURSB：未缩放加载寄存器有符号字节。
@@ -361,7 +363,7 @@ XZR 64位零寄存器
 ● STLXRB：存储释放排他寄存器字节。
 ● STLXRH：存储释放排他寄存器半字。
 ● STNP：带有非临时性提示的存储寄存器对。
-● STP：存储寄存器对。
+● STP：存储寄存器对。将提供的一堆寄存器中的值存储到内存中
 ● STR (immediate)：立即数存储寄存器。
 ● STR (register)：寄存器存储寄存器。
 ● STRB (immediate)：立即数存储寄存器字节。
@@ -386,7 +388,19 @@ XZR 64位零寄存器
 ● STUMIN, STUMINL：内存中字或双字的原子无符号最小值，无返回：LDUMIN, LDUMINA, LDUMINAL, LDUMINL的别名。
 ● STUMINB, STUMINLB：内存中字节的原子无符号最小值，无返回：LDUMINB, LDUMINAB, LDUMINALB, LDUMINLB的别名。
 ● STUMINH, STUMINLH：内存中半字的原子无符号最小值，无返回：LDUMINH, LDUMINAH, LDUMINALH, LDUMINLH的别名。
-● STUR：未缩放存储寄存器。
+● STUR：未缩放存储寄存器。 offset 不需要对齐，str则需要对齐，例如在当前arm64的case中，str的offset需要8字节对齐（arm32是4字节对齐），也就是这个offset必须是
+
+​		8的倍数(不是8的倍数会不会编译不过？ 这个可以验证一下)	
+
+​		如果移位的立即数 imm 						% 8 = 0，即为8的整数倍，那么，stur和str没有区别
+
+		    simm：也就是stur 使用的，不论平台 -256 ~ 255
+​                pimm 也就是str使用的
+​                32-bit : 0 ~ 16380
+​                    but is must mutilple of 4, that is: pimm % 4 == 0
+​       	64-bit : 0 ~ 32760
+​          		 but is must mutilple of 8, that is: pimm % 8 == 0
+
 ● STURB：未缩放存储寄存器字节。
 ● STURH：未缩放存储寄存器半字。
 ● STXP：存储排他寄存器对。
@@ -414,8 +428,8 @@ XZR 64位零寄存器
 ● SXTW：有符号扩展字：SBFM的别名。
 ● SYS：系统指令。
 ● SYSL：带结果的系统指令。
-● TBNZ：测试位并如果非零则分支。
-● TBZ：测试位并如果为零则分支。
+● TBNZ：测试位并如果非零则分支。如果第一个寄存器相应(由立即数指定)的位置的值不为0，则跳转
+● TBZ：测试位并如果为零则分支。 如果第一个寄存器相应(由立即数指定)的位置的值为0，则跳转
 ● TCANCEL：取消当前事务。
 ● TCOMMIT：提交当前事务。
 ● TLBI：TLB使无效操作：SYS的别名。
@@ -446,237 +460,122 @@ XZR 64位零寄存器
 
 ------------------------------------------------------------------------(SIMD)
 
-- **ABS (scalar) (A64 SIMD)**
-  Absolute value (vector).
-- **ADD (scalar) (A64 SIMD)**
-  Add (vector).
-- **ADDP (scalar) (A64 SIMD)**
-  Add Pair of elements (scalar).
-- **CMEQ (scalar, register) (A64 SIMD)**
-  Compare bitwise Equal (vector).
-- **CMEQ (scalar, zero) (A64 SIMD)**
-  Compare bitwise Equal to zero (vector).
-- **CMGE (scalar, register) (A64 SIMD)**
-  Compare signed Greater than or Equal (vector).
-- **CMGE (scalar, zero) (A64 SIMD)**
-  Compare signed Greater than or Equal to zero (vector).
-- **CMGT (scalar, register) (A64 SIMD)**
-  Compare signed Greater than (vector).
-- **CMGT (scalar, zero) (A64 SIMD)**
-  Compare signed Greater than zero (vector).
-- **CMHI (scalar, register) (A64 SIMD)**
-  Compare unsigned Higher (vector).
-- **CMHS (scalar, register) (A64 SIMD)**
-  Compare unsigned Higher or Same (vector).
-- **CMLE (scalar, zero) (A64 SIMD)**
-  Compare signed Less than or Equal to zero (vector).
-- **CMLT (scalar, zero) (A64 SIMD)**
-  Compare signed Less than zero (vector).
-- **CMTST (scalar) (A64 SIMD)**
-  Compare bitwise Test bits nonzero (vector).
-- **DUP (scalar, element) (A64 SIMD)**
-  Duplicate vector element to scalar.
-- **FABD (scalar) (A64 SIMD)**
-  Floating-point Absolute Difference (vector).
-- **FACGE (scalar) (A64 SIMD)**
-  Floating-point Absolute Compare Greater than or Equal (vector).
-- **FACGT (scalar) (A64 SIMD)**
-  Floating-point Absolute Compare Greater than (vector).
-- **FADDP (scalar) (A64 SIMD)**
-  Floating-point Add Pair of elements (scalar).
-- **FCMEQ (scalar, register) (A64 SIMD)**
-  Floating-point Compare Equal (vector).
-- **FCMEQ (scalar, zero) (A64 SIMD)**
-  Floating-point Compare Equal to zero (vector).
-- **FCMGE (scalar, register) (A64 SIMD)**
-  Floating-point Compare Greater than or Equal (vector).
-- **FCMGE (scalar, zero) (A64 SIMD)**
-  Floating-point Compare Greater than or Equal to zero (vector).
-- **FCMGT (scalar, register) (A64 SIMD)**
-  Floating-point Compare Greater than (vector).
-- **FCMGT (scalar, zero) (A64 SIMD)**
-  Floating-point Compare Greater than zero (vector).
-- **FCMLA (scalar, by element) (A64 SIMD)**
-  Floating-point Complex Multiply Accumulate (by element).
-- **FCMLE (scalar, zero) (A64 SIMD)**
-  Floating-point Compare Less than or Equal to zero (vector).
-- **FCMLT (scalar, zero) (A64 SIMD)**
-  Floating-point Compare Less than zero (vector).
-- **FCVTAS (scalar) (A64 SIMD)**
-  Floating-point Convert to Signed integer, rounding to nearest with ties to Away (vector).
-- **FCVTAU (scalar) (A64 SIMD)**
-  Floating-point Convert to Unsigned integer, rounding to nearest with ties to Away (vector).
-- **FCVTMS (scalar) (A64 SIMD)**
-  Floating-point Convert to Signed integer, rounding toward Minus infinity (vector).
-- **FCVTMU (scalar) (A64 SIMD)**
-  Floating-point Convert to Unsigned integer, rounding toward Minus infinity (vector).
-- **FCVTNS (scalar) (A64 SIMD)**
-  Floating-point Convert to Signed integer, rounding to nearest with ties to even (vector).
-- **FCVTNU (scalar) (A64 SIMD)**
-  Floating-point Convert to Unsigned integer, rounding to nearest with ties to even (vector).
-- **FCVTPS (scalar) (A64 SIMD)**
-  Floating-point Convert to Signed integer, rounding toward Plus infinity (vector).
-- **FCVTPU (scalar) (A64 SIMD)**
-  Floating-point Convert to Unsigned integer, rounding toward Plus infinity (vector).
-- **FCVTXN (scalar) (A64 SIMD)**
-  Floating-point Convert to lower precision Narrow, rounding to odd (vector).
-- **FCVTZS (scalar, fixed-point) (A64 SIMD)**
-  Floating-point Convert to Signed fixed-point, rounding toward Zero (vector).
-- **FCVTZS (scalar, integer) (A64 SIMD)**
-  Floating-point Convert to Signed integer, rounding toward Zero (vector).
-- **FCVTZU (scalar, fixed-point) (A64 SIMD)**
-  Floating-point Convert to Unsigned fixed-point, rounding toward Zero (vector).
-- **FCVTZU (scalar, integer) (A64 SIMD)**
-  Floating-point Convert to Unsigned integer, rounding toward Zero (vector).
-- **FMAXNMP (scalar) (A64 SIMD)**
-  Floating-point Maximum Number of Pair of elements (scalar).
-- **FMAXP (scalar) (A64 SIMD)**
-  Floating-point Maximum of Pair of elements (scalar).
-- **FMINNMP (scalar) (A64 SIMD)**
-  Floating-point Minimum Number of Pair of elements (scalar).
-- **FMINP (scalar) (A64 SIMD)**
-  Floating-point Minimum of Pair of elements (scalar).
-- **FMLA (scalar, by element) (A64 SIMD)**
-  Floating-point fused Multiply-Add to accumulator (by element).
-- **FMLS (scalar, by element) (A64 SIMD)**
-  Floating-point fused Multiply-Subtract from accumulator (by element).
-- **FMUL (scalar, by element) (A64 SIMD)**
-  Floating-point Multiply (by element).
-- **FMULX (scalar, by element) (A64 SIMD)**
-  Floating-point Multiply extended (by element).
-- **FMULX (scalar) (A64 SIMD)**
-  Floating-point Multiply extended.
-- **FRECPE (scalar) (A64 SIMD)**
-  Floating-point Reciprocal Estimate.
-- **FRECPS (scalar) (A64 SIMD)**
-  Floating-point Reciprocal Step.
-- **FRSQRTE (scalar) (A64 SIMD)**
-  Floating-point Reciprocal Square Root Estimate.
-- **FRSQRTS (scalar) (A64 SIMD)**
-  Floating-point Reciprocal Square Root Step.
-- **MOV (scalar) (A64 SIMD)**
-  Move vector element to scalar.
-- **NEG (scalar) (A64 SIMD)**
-  Negate (vector).
-- **SCVTF (scalar, fixed-point) (A64 SIMD)**
-  Signed fixed-point Convert to Floating-point (vector).
-- **SCVTF (scalar, integer) (A64 SIMD)**
-  Signed integer Convert to Floating-point (vector).
-- **SHL (scalar) (A64 SIMD)**
-  Shift Left (immediate).
-- **SLI (scalar) (A64 SIMD)**
-  Shift Left and Insert (immediate).
-- **SQABS (scalar) (A64 SIMD)**
-  Signed saturating Absolute value.
-- **SQADD (scalar) (A64 SIMD)**
-  Signed saturating Add.
-- **SQDMLAL (scalar, by element) (A64 SIMD)**
-  Signed saturating Doubling Multiply-Add Long (by element).
-- **SQDMLAL (scalar) (A64 SIMD)**
-  Signed saturating Doubling Multiply-Add Long.
-- **SQDMLSL (scalar, by element) (A64 SIMD)**
-  Signed saturating Doubling Multiply-Subtract Long (by element).
-- **SQDMLSL (scalar) (A64 SIMD)**
-  Signed saturating Doubling Multiply-Subtract Long.
-- **SQDMULH (scalar, by element) (A64 SIMD)**
-  Signed saturating Doubling Multiply returning High half (by element).
-- **SQDMULH (scalar) (A64 SIMD)**
-  Signed saturating Doubling Multiply returning High half.
-- **SQDMULL (scalar, by element) (A64 SIMD)**
-  Signed saturating Doubling Multiply Long (by element).
-- **SQDMULL (scalar) (A64 SIMD)**
-  Signed saturating Doubling Multiply Long.
-- **SQNEG (scalar) (A64 SIMD)**
-  Signed saturating Negate.
-- **SQRDMLAH (scalar, by element) (A64 SIMD)**
-  Signed Saturating Rounding Doubling Multiply Accumulate returning High Half (by element).
-- **SQRDMLAH (scalar) (A64 SIMD)**
-  Signed Saturating Rounding Doubling Multiply Accumulate returning High Half (vector).
-- **SQRDMLSH (scalar, by element) (A64 SIMD)**
-  Signed Saturating Rounding Doubling Multiply Subtract returning High Half (by element).
-- **SQRDMLSH (scalar) (A64 SIMD)**
-  Signed Saturating Rounding Doubling Multiply Subtract returning High Half (vector).
-- **SQRDMULH (scalar, by element) (A64 SIMD)**
-  Signed saturating Rounding Doubling Multiply returning High half (by element).
-- **SQRDMULH (scalar) (A64 SIMD)**
-  Signed saturating Rounding Doubling Multiply returning High half.
-- **SQRSHL (scalar) (A64 SIMD)**
-  Signed saturating Rounding Shift Left (register).
-- **SQRSHRN (scalar) (A64 SIMD)**
-  Signed saturating Rounded Shift Right Narrow (immediate).
-- **SQRSHRUN (scalar) (A64 SIMD)**
-  Signed saturating Rounded Shift Right Unsigned Narrow (immediate).
-- **SQSHL (scalar, immediate) (A64 SIMD)**
-  Signed saturating Shift Left (immediate).
-- **SQSHL (scalar, register) (A64 SIMD)**
-  Signed saturating Shift Left (register).
-- **SQSHLU (scalar) (A64 SIMD)**
-  Signed saturating Shift Left Unsigned (immediate).
-- **SQSHRN (scalar) (A64 SIMD)**
-  Signed saturating Shift Right Narrow (immediate).
-- **SQSHRUN (scalar) (A64 SIMD)**
-  Signed saturating Shift Right Unsigned Narrow (immediate).
-- **SQSUB (scalar) (A64 SIMD)**
-  Signed saturating Subtract.
-- **SQXTN (scalar) (A64 SIMD)**
-  Signed saturating extract Narrow.
-- **SQXTUN (scalar) (A64 SIMD)**
-  Signed saturating extract Unsigned Narrow.
-- **SRI (scalar) (A64 SIMD)**
-  Shift Right and Insert (immediate).
-- **SRSHL (scalar) (A64 SIMD)**
-  Signed Rounding Shift Left (register).
-- **SRSHR (scalar) (A64 SIMD)**
-  Signed Rounding Shift Right (immediate).
-- **SRSRA (scalar) (A64 SIMD)**
-  Signed Rounding Shift Right and Accumulate (immediate).
-- **SSHL (scalar) (A64 SIMD)**
-  Signed Shift Left (register).
-- **SSHR (scalar) (A64 SIMD)**
-  Signed Shift Right (immediate).
-- **SSRA (scalar) (A64 SIMD)**
-  Signed Shift Right and Accumulate (immediate).
-- **SUB (scalar) (A64 SIMD)**
-  Subtract (vector).
-- **SUQADD (scalar) (A64 SIMD)**
-  Signed saturating Accumulate of Unsigned value.
-- **UCVTF (scalar, fixed-point) (A64 SIMD)**
-  Unsigned fixed-point Convert to Floating-point (vector).
-- **UCVTF (scalar, integer) (A64 SIMD)**
-  Unsigned integer Convert to Floating-point (vector).
-- **UQADD (scalar) (A64 SIMD)**
-  Unsigned saturating Add.
-- **UQRSHL (scalar) (A64 SIMD)**
-  Unsigned saturating Rounding Shift Left (register).
-- **UQRSHRN (scalar) (A64 SIMD)**
-  Unsigned saturating Rounded Shift Right Narrow (immediate).
-- **UQSHL (scalar, immediate) (A64 SIMD)**
-  Unsigned saturating Shift Left (immediate).
-- **UQSHL (scalar, register) (A64 SIMD)**
-  Unsigned saturating Shift Left (register).
-- **UQSHRN (scalar) (A64 SIMD)**
-  Unsigned saturating Shift Right Narrow (immediate).
-- **UQSUB (scalar) (A64 SIMD)**
-  Unsigned saturating Subtract.
-- **UQXTN (scalar) (A64 SIMD)**
-  Unsigned saturating extract Narrow.
-- **URSHL (scalar) (A64 SIMD)**
-  Unsigned Rounding Shift Left (register).
-- **URSHR (scalar) (A64 SIMD)**
-  Unsigned Rounding Shift Right (immediate).
-- **URSRA (scalar) (A64 SIMD)**
-  Unsigned Rounding Shift Right and Accumulate (immediate).
-- **USHL (scalar) (A64 SIMD)**
-  Unsigned Shift Left (register).
-- **USHR (scalar) (A64 SIMD)**
-  Unsigned Shift Right (immediate).
-- **USQADD (scalar) (A64 SIMD)**
-  Unsigned saturating Accumulate of Signed value.
-- **USRA (scalar) (A64 SIMD)**
-  Unsigned Shift Right and Accumulate (immediate).
+- **ABS (scalar) (A64 SIMD)** Absolute value (vector).
+- **ADD (scalar) (A64 SIMD)** Add (vector).
+- **ADDP (scalar) (A64 SIMD)** Add Pair of elements (scalar).
+- **CMEQ (scalar, register) (A64 SIMD)** Compare bitwise Equal (vector).
+- **CMEQ (scalar, zero) (A64 SIMD)** Compare bitwise Equal to zero (vector).
+- **CMGE (scalar, register) (A64 SIMD)** Compare signed Greater than or Equal (vector).
+- **CMGE (scalar, zero) (A64 SIMD)** Compare signed Greater than or Equal to zero (vector).
+- **CMGT (scalar, register) (A64 SIMD)** Compare signed Greater than (vector).
+- **CMGT (scalar, zero) (A64 SIMD)** Compare signed Greater than zero (vector).
+- **CMHI (scalar, register) (A64 SIMD)** Compare unsigned Higher (vector).
+- **CMHS (scalar, register) (A64 SIMD)** Compare unsigned Higher or Same (vector).
+- **CMLE (scalar, zero) (A64 SIMD)** Compare signed Less than or Equal to zero (vector).
+- **CMLT (scalar, zero) (A64 SIMD)** Compare signed Less than zero (vector).
+- **CMTST (scalar) (A64 SIMD)** Compare bitwise Test bits nonzero (vector).如果结果不为0，则把对应的元素每一位都设置为1(即整个元素的值为-1)，否则为每一位都设置为0
+- **DUP (scalar, element) (A64 SIMD)** Duplicate vector element to scalar.
+- **FABD (scalar) (A64 SIMD)** Floating-point Absolute Difference (vector).
+- **FACGE (scalar) (A64 SIMD)** Floating-point Absolute Compare Greater than or Equal (vector).
+- **FACGT (scalar) (A64 SIMD)** Floating-point Absolute Compare Greater than (vector).
+- **FADDP (scalar) (A64 SIMD)** Floating-point Add Pair of elements (scalar).
+- **FCMEQ (scalar, register) (A64 SIMD)** Floating-point Compare Equal (vector).
+- **FCMEQ (scalar, zero) (A64 SIMD)** Floating-point Compare Equal to zero (vector).
+- **FCMGE (scalar, register) (A64 SIMD)** Floating-point Compare Greater than or Equal (vector).
+- **FCMGE (scalar, zero) (A64 SIMD)** Floating-point Compare Greater than or Equal to zero (vector).
+- **FCMGT (scalar, register) (A64 SIMD)** Floating-point Compare Greater than (vector).
+- **FCMGT (scalar, zero) (A64 SIMD)** Floating-point Compare Greater than zero (vector).
+- **FCMLA (scalar, by element) (A64 SIMD)** Floating-point Complex Multiply Accumulate (by element).
+- **FCMLE (scalar, zero) (A64 SIMD)** Floating-point Compare Less than or Equal to zero (vector).
+- **FCMLT (scalar, zero) (A64 SIMD)** Floating-point Compare Less than zero (vector).
+- **FCVTAS (scalar) (A64 SIMD)** Floating-point Convert to Signed integer, rounding to nearest with ties to Away (vector).
+- **FCVTAU (scalar) (A64 SIMD)** Floating-point Convert to Unsigned integer, rounding to nearest with ties to Away (vector).
+- **FCVTMS (scalar) (A64 SIMD)** Floating-point Convert to Signed integer, rounding toward Minus infinity (vector).
+- **FCVTMU (scalar) (A64 SIMD)** Floating-point Convert to Unsigned integer, rounding toward Minus infinity (vector).
+- **FCVTNS (scalar) (A64 SIMD)** Floating-point Convert to Signed integer, rounding to nearest with ties to even (vector).
+- **FCVTNU (scalar) (A64 SIMD)** Floating-point Convert to Unsigned integer, rounding to nearest with ties to even (vector).
+- **FCVTPS (scalar) (A64 SIMD)** Floating-point Convert to Signed integer, rounding toward Plus infinity (vector).
+- **FCVTPU (scalar) (A64 SIMD)** Floating-point Convert to Unsigned integer, rounding toward Plus infinity (vector).
+- **FCVTXN (scalar) (A64 SIMD)** Floating-point Convert to lower precision Narrow, rounding to odd (vector).
+- **FCVTZS (scalar, fixed-point) (A64 SIMD)** Floating-point Convert to Signed fixed-point, rounding toward Zero (vector).
+- **FCVTZS (scalar, integer) (A64 SIMD)** Floating-point Convert to Signed integer, rounding toward Zero (vector).
+- **FCVTZU (scalar, fixed-point) (A64 SIMD)** Floating-point Convert to Unsigned fixed-point, rounding toward Zero (vector).
+- **FCVTZU (scalar, integer) (A64 SIMD)** Floating-point Convert to Unsigned integer, rounding toward Zero (vector).
+- **FMAXNMP (scalar) (A64 SIMD)** Floating-point Maximum Number of Pair of elements (scalar).
+- **FMAXP (scalar) (A64 SIMD)** Floating-point Maximum of Pair of elements (scalar).
+- **FMINNMP (scalar) (A64 SIMD)** Floating-point Minimum Number of Pair of elements (scalar).
+- **FMINP (scalar) (A64 SIMD)** Floating-point Minimum of Pair of elements (scalar).
+- **FMLA (scalar, by element) (A64 SIMD)** Floating-point fused Multiply-Add to accumulator (by element).
+- **FMLS (scalar, by element) (A64 SIMD)** Floating-point fused Multiply-Subtract from accumulator (by element).
+- **FMUL (scalar, by element) (A64 SIMD)** Floating-point Multiply (by element).
+- **FMULX (scalar, by element) (A64 SIMD)** Floating-point Multiply extended (by element).
+- **FMULX (scalar) (A64 SIMD)** Floating-point Multiply extended.
+- **FRECPE (scalar) (A64 SIMD)** Floating-point Reciprocal Estimate.
+- **FRECPS (scalar) (A64 SIMD)** Floating-point Reciprocal Step.
+- **FRSQRTE (scalar) (A64 SIMD)** Floating-point Reciprocal Square Root Estimate.
+- **FRSQRTS (scalar) (A64 SIMD)** Floating-point Reciprocal Square Root Step.
+- **MOV (scalar) (A64 SIMD)** Move vector element to scalar.
+- **NEG (scalar) (A64 SIMD)** Negate (vector).
+- **SCVTF (scalar, fixed-point) (A64 SIMD)** Signed fixed-point Convert to Floating-point (vector).
+- **SCVTF (scalar, integer) (A64 SIMD)** Signed integer Convert to Floating-point (vector).
+- **SHL (scalar) (A64 SIMD)** Shift Left (immediate).
+- **SLI (scalar) (A64 SIMD)** Shift Left and Insert (immediate).
+- **SQABS (scalar) (A64 SIMD)** Signed saturating Absolute value.
+- **SQADD (scalar) (A64 SIMD)** Signed saturating Add.
+- **SQDMLAL (scalar, by element) (A64 SIMD)** Signed saturating Doubling Multiply-Add Long (by element).
+- **SQDMLAL (scalar) (A64 SIMD)** Signed saturating Doubling Multiply-Add Long.
+- **SQDMLSL (scalar, by element) (A64 SIMD)** Signed saturating Doubling Multiply-Subtract Long (by element).
+- **SQDMLSL (scalar) (A64 SIMD)** Signed saturating Doubling Multiply-Subtract Long.
+- **SQDMULH (scalar, by element) (A64 SIMD)** Signed saturating Doubling Multiply returning High half (by element).
+- **SQDMULH (scalar) (A64 SIMD)** Signed saturating Doubling Multiply returning High half.
+- **SQDMULL (scalar, by element) (A64 SIMD)** Signed saturating Doubling Multiply Long (by element).
+- **SQDMULL (scalar) (A64 SIMD)** Signed saturating Doubling Multiply Long.
+- **SQNEG (scalar) (A64 SIMD)** Signed saturating Negate.
+- **SQRDMLAH (scalar, by element) (A64 SIMD)** Signed Saturating Rounding Doubling Multiply Accumulate returning High Half (by element).
+- **SQRDMLAH (scalar) (A64 SIMD)** Signed Saturating Rounding Doubling Multiply Accumulate returning High Half (vector).
+- **SQRDMLSH (scalar, by element) (A64 SIMD)** Signed Saturating Rounding Doubling Multiply Subtract returning High Half (by element).
+- **SQRDMLSH (scalar) (A64 SIMD)** Signed Saturating Rounding Doubling Multiply Subtract returning High Half (vector).
+- **SQRDMULH (scalar, by element) (A64 SIMD)** Signed saturating Rounding Doubling Multiply returning High half (by element).
+- **SQRDMULH (scalar) (A64 SIMD)** Signed saturating Rounding Doubling Multiply returning High half.
+- **SQRSHL (scalar) (A64 SIMD)** Signed saturating Rounding Shift Left (register).
+- **SQRSHRN (scalar) (A64 SIMD)** Signed saturating Rounded Shift Right Narrow (immediate).
+- **SQRSHRUN (scalar) (A64 SIMD)** Signed saturating Rounded Shift Right Unsigned Narrow (immediate).
+- **SQSHL (scalar, immediate) (A64 SIMD)** Signed saturating Shift Left (immediate).
+- **SQSHL (scalar, register) (A64 SIMD)** Signed saturating Shift Left (register).
+- **SQSHLU (scalar) (A64 SIMD)** Signed saturating Shift Left Unsigned (immediate).
+- **SQSHRN (scalar) (A64 SIMD)** Signed saturating Shift Right Narrow (immediate).
+- **SQSHRUN (scalar) (A64 SIMD)** Signed saturating Shift Right Unsigned Narrow (immediate).
+- **SQSUB (scalar) (A64 SIMD)** Signed saturating Subtract.
+- **SQXTN (scalar) (A64 SIMD)** Signed saturating extract Narrow.
+- **SQXTUN (scalar) (A64 SIMD)** Signed saturating extract Unsigned Narrow.
+- **SRI (scalar) (A64 SIMD)** Shift Right and Insert (immediate).
+- **SRSHL (scalar) (A64 SIMD)** Signed Rounding Shift Left (register).
+- **SRSHR (scalar) (A64 SIMD)** Signed Rounding Shift Right (immediate).
+- **SRSRA (scalar) (A64 SIMD)** Signed Rounding Shift Right and Accumulate (immediate).
+- **SSHL (scalar) (A64 SIMD)** Signed Shift Left (register).
+- **SSHR (scalar) (A64 SIMD)** Signed Shift Right (immediate).
+- **SSRA (scalar) (A64 SIMD)** Signed Shift Right and Accumulate (immediate).
+- **SUB (scalar) (A64 SIMD)** Subtract (vector).
+- **SUQADD (scalar) (A64 SIMD)** Signed saturating Accumulate of Unsigned value.
+- **UCVTF (scalar, fixed-point) (A64 SIMD)** Unsigned fixed-point Convert to Floating-point (vector).
+- **UCVTF (scalar, integer) (A64 SIMD)** Unsigned integer Convert to Floating-point (vector).
+- **UQADD (scalar) (A64 SIMD)** Unsigned saturating Add.
+- **UQRSHL (scalar) (A64 SIMD)** Unsigned saturating Rounding Shift Left (register).
+- **UQRSHRN (scalar) (A64 SIMD)** Unsigned saturating Rounded Shift Right Narrow (immediate).
+- **UQSHL (scalar, immediate) (A64 SIMD)** Unsigned saturating Shift Left (immediate).
+- **UQSHL (scalar, register) (A64 SIMD)** Unsigned saturating Shift Left (register).
+- **UQSHRN (scalar) (A64 SIMD)** Unsigned saturating Shift Right Narrow (immediate).
+- **UQSUB (scalar) (A64 SIMD)** Unsigned saturating Subtract.
+- **UQXTN (scalar) (A64 SIMD)** Unsigned saturating extract Narrow.
+- **URSHL (scalar) (A64 SIMD)** Unsigned Rounding Shift Left (register).
+- **URSHR (scalar) (A64 SIMD)** Unsigned Rounding Shift Right (immediate).
+- **URSRA (scalar) (A64 SIMD)** Unsigned Rounding Shift Right and Accumulate (immediate).
+- **USHL (scalar) (A64 SIMD)** Unsigned Shift Left (register).
+- **USHR (scalar) (A64 SIMD)** Unsigned Shift Right (immediate).
+- **USQADD (scalar) (A64 SIMD)** Unsigned saturating Accumulate of Signed value.
+- **USRA (scalar) (A64 SIMD)** Unsigned Shift Right and Accumulate (immediate).
 
-
-  
+ 
 
 
 
@@ -684,560 +583,522 @@ SIMD scalar和 vector 有一部分重复的
 
 
 
-- **A64 SIMD Vector instructions in alphabetical order**
-  A summary of the A64 SIMD Vector instructions that are supported.
-- **ABS (vector) (A64)**
-  Absolute value (vector).
-- **ADD (vector) (A64)**
-  Add (vector).
-- **ADDHN, ADDHN2 (vector) (A64)**
-  Add returning High Narrow.
-- **ADDP (vector) (A64)**
-  Add Pairwise (vector).
-- **ADDV (vector) (A64)**
-  Add across Vector.
-- **AND (vector) (A64)**
-  Bitwise AND (vector).
-- **BIC (vector, immediate) (A64)**
-  Bitwise bit Clear (vector, immediate).
-- **BIC (vector, register) (A64)**
-  Bitwise bit Clear (vector, register).
-- **BIF (vector) (A64)**
-  Bitwise Insert if False.
-- **BIT (vector) (A64)**
-  Bitwise Insert if True.
-- **BSL (vector) (A64)**
-  Bitwise Select.
-- **CLS (vector) (A64)**
-  Count Leading Sign bits (vector).
-- **CLZ (vector) (A64)**
-  Count Leading Zero bits (vector).
-- **CMEQ (vector, register) (A64)**
-  Compare bitwise Equal (vector).
-- **CMEQ (vector, zero) (A64)**
-  Compare bitwise Equal to zero (vector).
-- **CMGE (vector, register) (A64)**
-  Compare signed Greater than or Equal (vector).
-- **CMGE (vector, zero) (A64)**
-  Compare signed Greater than or Equal to zero (vector).
-- **CMGT (vector, register) (A64)**
-  Compare signed Greater than (vector).
-- **CMGT (vector, zero) (A64)**
-  Compare signed Greater than zero (vector).
-- **CMHI (vector, register) (A64)**
-  Compare unsigned Higher (vector).
-- **CMHS (vector, register) (A64)**
-  Compare unsigned Higher or Same (vector).
-- **CMLE (vector, zero) (A64)**
-  Compare signed Less than or Equal to zero (vector).
-- **CMLT (vector, zero) (A64)**
-  Compare signed Less than zero (vector).
-- **CMTST (vector) (A64)**
-  Compare bitwise Test bits nonzero (vector).
-- **CNT (vector) (A64)**
-  Population Count per byte.
-- **DUP (vector, element) (A64)**
-  vector.
-- **DUP (vector, general) (A64)**
-  Duplicate general-purpose register to vector.
-- **EOR (vector) (A64)**
-  Bitwise Exclusive OR (vector).
-- **EXT (vector) (A64)**
-  Extract vector from pair of vectors.
-- **FABD (vector) (A64)**
-  Floating-point Absolute Difference (vector).
-- **FABS (vector) (A64)**
-  Floating-point Absolute value (vector).
-- **FACGE (vector) (A64)**
-  Floating-point Absolute Compare Greater than or Equal (vector).
-- **FACGT (vector) (A64)**
-  Floating-point Absolute Compare Greater than (vector).
-- **FADD (vector) (A64)**
-  Floating-point Add (vector).
-- **FADDP (vector) (A64)**
-  Floating-point Add Pairwise (vector).
-- **FCADD (vector) (A64)**
-  Floating-point Complex Add.
-- **FCMEQ (vector, register) (A64)**
-  Floating-point Compare Equal (vector).
-- **FCMEQ (vector, zero) (A64)**
-  Floating-point Compare Equal to zero (vector).
-- **FCMGE (vector, register) (A64)**
-  Floating-point Compare Greater than or Equal (vector).
-- **FCMGE (vector, zero) (A64)**
-  Floating-point Compare Greater than or Equal to zero (vector).
-- **FCMGT (vector, register) (A64)**
-  Floating-point Compare Greater than (vector).
-- **FCMGT (vector, zero) (A64)**
-  Floating-point Compare Greater than zero (vector).
-- **FCMLA (vector) (A64)**
-  Floating-point Complex Multiply Accumulate.
-- **FCMLE (vector, zero) (A64)**
-  Floating-point Compare Less than or Equal to zero (vector).
-- **FCMLT (vector, zero) (A64)**
-  Floating-point Compare Less than zero (vector).
-- **FCVTAS (vector) (A64)**
-  Floating-point Convert to Signed integer, rounding to nearest with ties to Away (vector).
-- **FCVTAU (vector) (A64)**
-  Floating-point Convert to Unsigned integer, rounding to nearest with ties to Away (vector).
-- **FCVTL, FCVTL2 (vector) (A64)**
-  Floating-point Convert to higher precision Long (vector).
-- **FCVTMS (vector) (A64)**
-  Floating-point Convert to Signed integer, rounding toward Minus infinity (vector).
-- **FCVTMU (vector) (A64)**
-  Floating-point Convert to Unsigned integer, rounding toward Minus infinity (vector).
-- **FCVTN, FCVTN2 (vector) (A64)**
-  Floating-point Convert to lower precision Narrow (vector).
-- **FCVTNS (vector) (A64)**
-  Floating-point Convert to Signed integer, rounding to nearest with ties to even (vector).
-- **FCVTNU (vector) (A64)**
-  Floating-point Convert to Unsigned integer, rounding to nearest with ties to even (vector).
-- **FCVTPS (vector) (A64)**
-  Floating-point Convert to Signed integer, rounding toward Plus infinity (vector).
-- **FCVTPU (vector) (A64)**
-  Floating-point Convert to Unsigned integer, rounding toward Plus infinity (vector).
-- **FCVTXN, FCVTXN2 (vector) (A64)**
-  Floating-point Convert to lower precision Narrow, rounding to odd (vector).
-- **FCVTZS (vector, fixed-point) (A64)**
-  Floating-point Convert to Signed fixed-point, rounding toward Zero (vector).
-- **FCVTZS (vector, integer) (A64)**
-  Floating-point Convert to Signed integer, rounding toward Zero (vector).
-- **FCVTZU (vector, fixed-point) (A64)**
-  Floating-point Convert to Unsigned fixed-point, rounding toward Zero (vector).
-- **FCVTZU (vector, integer) (A64)**
-  Floating-point Convert to Unsigned integer, rounding toward Zero (vector).
-- **FDIV (vector) (A64)**
-  Floating-point Divide (vector).
-- **FMAX (vector) (A64)**
-  Floating-point Maximum (vector).
-- **FMAXNM (vector) (A64)**
-  Floating-point Maximum Number (vector).
-- **FMAXNMP (vector) (A64)**
-  Floating-point Maximum Number Pairwise (vector).
-- **FMAXNMV (vector) (A64)**
-  Floating-point Maximum Number across Vector.
-- **FMAXP (vector) (A64)**
-  Floating-point Maximum Pairwise (vector).
-- **FMAXV (vector) (A64)**
-  Floating-point Maximum across Vector.
-- **FMIN (vector) (A64)**
-  Floating-point minimum (vector).
-- **FMINNM (vector) (A64)**
-  Floating-point Minimum Number (vector).
-- **FMINNMP (vector) (A64)**
-  Floating-point Minimum Number Pairwise (vector).
-- **FMINNMV (vector) (A64)**
-  Floating-point Minimum Number across Vector.
-- **FMINP (vector) (A64)**
-  Floating-point Minimum Pairwise (vector).
-- **FMINV (vector) (A64)**
-  Floating-point Minimum across Vector.
-- **FMLA (vector, by element) (A64)**
-  Floating-point fused Multiply-Add to accumulator (by element).
-- **FMLA (vector) (A64)**
-  Floating-point fused Multiply-Add to accumulator (vector).
-- **FMLS (vector, by element) (A64)**
-  Floating-point fused Multiply-Subtract from accumulator (by element).
-- **FMLS (vector) (A64)**
-  Floating-point fused Multiply-Subtract from accumulator (vector).
-- **FMOV (vector, immediate) (A64)**
-  Floating-point move immediate (vector).
-- **FMUL (vector, by element) (A64)**
-  Floating-point Multiply (by element).
-- **FMUL (vector) (A64)**
-  Floating-point Multiply (vector).
-- **FMULX (vector, by element) (A64)**
-  Floating-point Multiply extended (by element).
-- **FMULX (vector) (A64)**
-  Floating-point Multiply extended.
-- **FNEG (vector) (A64)**
-  Floating-point Negate (vector).
-- **FRECPE (vector) (A64)**
-  Floating-point Reciprocal Estimate.
-- **FRECPS (vector) (A64)**
-  Floating-point Reciprocal Step.
-- **FRECPX (vector) (A64)**
-  Floating-point Reciprocal exponent (scalar).
-- **FRINTA (vector) (A64)**
-  Floating-point Round to Integral, to nearest with ties to Away (vector).
-- **FRINTI (vector) (A64)**
-  Floating-point Round to Integral, using current rounding mode (vector).
-- **FRINTM (vector) (A64)**
-  Floating-point Round to Integral, toward Minus infinity (vector).
-- **FRINTN (vector) (A64)**
-  Floating-point Round to Integral, to nearest with ties to even (vector).
-- **FRINTP (vector) (A64)**
-  Floating-point Round to Integral, toward Plus infinity (vector).
-- **FRINTX (vector) (A64)**
-  Floating-point Round to Integral exact, using current rounding mode (vector).
-- **FRINTZ (vector) (A64)**
-  Floating-point Round to Integral, toward Zero (vector).
-- **FRSQRTE (vector) (A64)**
-  Floating-point Reciprocal Square Root Estimate.
-- **FRSQRTS (vector) (A64)**
-  Floating-point Reciprocal Square Root Step.
-- **FSQRT (vector) (A64)**
-  Floating-point Square Root (vector).
-- **FSUB (vector) (A64)**
-  Floating-point Subtract (vector).
-- **INS (vector, element) (A64)**
-  Insert vector element from another vector element.
-- **INS (vector, general) (A64)**
-  Insert vector element from general-purpose register.
-- **LD1 (vector, multiple structures) (A64)**
-  Load multiple single-element structures to one, two, three, or four registers.
-- **LD1 (vector, single structure) (A64)**
-  Load one single-element structure to one lane of one register.
-- **LD1R (vector) (A64)**
-  Load one single-element structure and Replicate to all lanes (of one register).
-- **LD2 (vector, multiple structures) (A64)**
-  Load multiple 2-element structures to two registers.
-- **LD2 (vector, single structure) (A64)**
-  Load single 2-element structure to one lane of two registers.
-- **LD2R (vector) (A64)**
-  Load single 2-element structure and Replicate to all lanes of two registers.
-- **LD3 (vector, multiple structures) (A64)**
-  Load multiple 3-element structures to three registers.
-- **LD3 (vector, single structure) (A64)**
-  Load single 3-element structure to one lane of three registers).
-- **LD3R (vector) (A64)**
-  Load single 3-element structure and Replicate to all lanes of three registers.
-- **LD4 (vector, multiple structures) (A64)**
-  Load multiple 4-element structures to four registers.
-- **LD4 (vector, single structure) (A64)**
-  Load single 4-element structure to one lane of four registers.
-- **LD4R (vector) (A64)**
-  Load single 4-element structure and Replicate to all lanes of four registers.
-- **MLA (vector, by element) (A64)**
-  Multiply-Add to accumulator (vector, by element).
-- **MLA (vector) (A64)**
-  Multiply-Add to accumulator (vector).
-- **MLS (vector, by element) (A64)**
-  Multiply-Subtract from accumulator (vector, by element).
-- **MLS (vector) (A64)**
-  Multiply-Subtract from accumulator (vector).
-- **MOV (vector, element) (A64)**
-  Move vector element to another vector element.
-- **MOV (vector, from general) (A64)**
-  Move general-purpose register to a vector element.
-- **MOV (vector) (A64)**
-  Move vector.
-- **MOV (vector, to general) (A64)**
-  Move vector element to general-purpose register.
-- **MOVI (vector) (A64)**
-  Move Immediate (vector).
-- **MUL (vector, by element) (A64)**
-  Multiply (vector, by element).
-- **MUL (vector) (A64)**
-  Multiply (vector).
-- **MVN (vector) (A64)**
-  Bitwise NOT (vector).
-- **MVNI (vector) (A64)**
-  Move inverted Immediate (vector).
-- **NEG (vector) (A64)**
-  Negate (vector).
-- **NOT (vector) (A64)**
-  Bitwise NOT (vector).
-- **ORN (vector) (A64)**
-  Bitwise inclusive OR NOT (vector).
-- **ORR (vector, immediate) (A64)**
-  Bitwise inclusive OR (vector, immediate).
-- **ORR (vector, register) (A64)**
-  Bitwise inclusive OR (vector, register).
-- **PMUL (vector) (A64)**
-  Polynomial Multiply.
-- **PMULL, PMULL2 (vector) (A64)**
-  Polynomial Multiply Long.
-- **RADDHN, RADDHN2 (vector) (A64)**
-  Rounding Add returning High Narrow.
-- **RBIT (vector) (A64)**
-  Reverse Bit order (vector).
-- **REV16 (vector) (A64)**
-  Reverse elements in 16-bit halfwords (vector).
-- **REV32 (vector) (A64)**
-  Reverse elements in 32-bit words (vector).
-- **REV64 (vector) (A64)**
-  Reverse elements in 64-bit doublewords (vector).
-- **RSHRN, RSHRN2 (vector) (A64)**
-  Rounding Shift Right Narrow (immediate).
-- **RSUBHN, RSUBHN2 (vector) (A64)**
-  Rounding Subtract returning High Narrow.
-- **SABA (vector) (A64)**
-  Signed Absolute difference and Accumulate.
-- **SABAL, SABAL2 (vector) (A64)**
-  Signed Absolute difference and Accumulate Long.
-- **SABD (vector) (A64)**
-  Signed Absolute Difference.
-- **SABDL, SABDL2 (vector) (A64)**
-  Signed Absolute Difference Long.
-- **SADALP (vector) (A64)**
-  Signed Add and Accumulate Long Pairwise.
-- **SADDL, SADDL2 (vector) (A64)**
-  Signed Add Long (vector).
-- **SADDLP (vector) (A64)**
-  Signed Add Long Pairwise.
-- **SADDLV (vector) (A64)**
-  Signed Add Long across Vector.
-- **SADDW, SADDW2 (vector) (A64)**
-  Signed Add Wide.
-- **SCVTF (vector, fixed-point) (A64)**
-  Signed fixed-point Convert to Floating-point (vector).
-- **SCVTF (vector, integer) (A64)**
-  Signed integer Convert to Floating-point (vector).
-- **SHADD (vector) (A64)**
-  Signed Halving Add.
-- **SHL (vector) (A64)**
-  Shift Left (immediate).
-- **SHLL, SHLL2 (vector) (A64)**
-  Shift Left Long (by element size).
-- **SHRN, SHRN2 (vector) (A64)**
-  Shift Right Narrow (immediate).
-- **SHSUB (vector) (A64)**
-  Signed Halving Subtract.
-- **SLI (vector) (A64)**
-  Shift Left and Insert (immediate).
-- **SMAX (vector) (A64)**
-  Signed Maximum (vector).
-- **SMAXP (vector) (A64)**
-  Signed Maximum Pairwise.
-- **SMAXV (vector) (A64)**
-  Signed Maximum across Vector.
-- **SMIN (vector) (A64)**
-  Signed Minimum (vector).
-- **SMINP (vector) (A64)**
-  Signed Minimum Pairwise.
-- **SMINV (vector) (A64)**
-  Signed Minimum across Vector.
-- **SMLAL, SMLAL2 (vector, by element) (A64)**
-  Signed Multiply-Add Long (vector, by element).
-- **SMLAL, SMLAL2 (vector) (A64)**
-  Signed Multiply-Add Long (vector).
-- **SMLSL, SMLSL2 (vector, by element) (A64)**
-  Signed Multiply-Subtract Long (vector, by element).
-- **SMLSL, SMLSL2 (vector) (A64)**
-  Signed Multiply-Subtract Long (vector).
-- **SMOV (vector) (A64)**
-  Signed Move vector element to general-purpose register.
-- **SMULL, SMULL2 (vector, by element) (A64)**
-  Signed Multiply Long (vector, by element).
-- **SMULL, SMULL2 (vector) (A64)**
-  Signed Multiply Long (vector).
-- **SQABS (vector) (A64)**
-  Signed saturating Absolute value.
-- **SQADD (vector) (A64)**
-  Signed saturating Add.
-- **SQDMLAL, SQDMLAL2 (vector, by element) (A64)**
-  Signed saturating Doubling Multiply-Add Long (by element).
-- **SQDMLAL, SQDMLAL2 (vector) (A64)**
-  Signed saturating Doubling Multiply-Add Long.
-- **SQDMLSL, SQDMLSL2 (vector, by element) (A64)**
-  Signed saturating Doubling Multiply-Subtract Long (by element).
-- **SQDMLSL, SQDMLSL2 (vector) (A64)**
-  Signed saturating Doubling Multiply-Subtract Long.
-- **SQDMULH (vector, by element) (A64)**
-  Signed saturating Doubling Multiply returning High half (by element).
-- **SQDMULH (vector) (A64)**
-  Signed saturating Doubling Multiply returning High half.
-- **SQDMULL, SQDMULL2 (vector, by element) (A64)**
-  Signed saturating Doubling Multiply Long (by element).
-- **SQDMULL, SQDMULL2 (vector) (A64)**
-  Signed saturating Doubling Multiply Long.
-- **SQNEG (vector) (A64)**
-  Signed saturating Negate.
-- **SQRDMLAH (vector, by element) (A64)**
-  Signed Saturating Rounding Doubling Multiply Accumulate returning High Half (by element).
-- **SQRDMLAH (vector) (A64)**
-  Signed Saturating Rounding Doubling Multiply Accumulate returning High Half (vector).
-- **SQRDMLSH (vector, by element) (A64)**
-  Signed Saturating Rounding Doubling Multiply Subtract returning High Half (by element).
-- **SQRDMLSH (vector) (A64)**
-  Signed Saturating Rounding Doubling Multiply Subtract returning High Half (vector).
-- **SQRDMULH (vector, by element) (A64)**
-  Signed saturating Rounding Doubling Multiply returning High half (by element).
-- **SQRDMULH (vector) (A64)**
-  Signed saturating Rounding Doubling Multiply returning High half.
-- **SQRSHL (vector) (A64)**
-  Signed saturating Rounding Shift Left (register).
-- **SQRSHRN, SQRSHRN2 (vector) (A64)**
-  Signed saturating Rounded Shift Right Narrow (immediate).
-- **SQRSHRUN, SQRSHRUN2 (vector) (A64)**
-  Signed saturating Rounded Shift Right Unsigned Narrow (immediate).
-- **SQSHL (vector, immediate) (A64)**
-  Signed saturating Shift Left (immediate).
-- **SQSHL (vector, register) (A64)**
-  Signed saturating Shift Left (register).
-- **SQSHLU (vector) (A64)**
-  Signed saturating Shift Left Unsigned (immediate).
-- **SQSHRN, SQSHRN2 (vector) (A64)**
-  Signed saturating Shift Right Narrow (immediate).
-- **SQSHRUN, SQSHRUN2 (vector) (A64)**
-  Signed saturating Shift Right Unsigned Narrow (immediate).
-- **SQSUB (vector) (A64)**
-  Signed saturating Subtract.
-- **SQXTN, SQXTN2 (vector) (A64)**
-  Signed saturating extract Narrow.
-- **SQXTUN, SQXTUN2 (vector) (A64)**
-  Signed saturating extract Unsigned Narrow.
-- **SRHADD (vector) (A64)**
-  Signed Rounding Halving Add.
-- **SRI (vector) (A64)**
-  Shift Right and Insert (immediate).
-- **SRSHL (vector) (A64)**
-  Signed Rounding Shift Left (register).
-- **SRSHR (vector) (A64)**
-  Signed Rounding Shift Right (immediate).
-- **SRSRA (vector) (A64)**
-  Signed Rounding Shift Right and Accumulate (immediate).
-- **SSHL (vector) (A64)**
-  Signed Shift Left (register).
-- **SSHLL, SSHLL2 (vector) (A64)**
-  Signed Shift Left Long (immediate).
-- **SSHR (vector) (A64)**
-  Signed Shift Right (immediate).
-- **SSRA (vector) (A64)**
-  Signed Shift Right and Accumulate (immediate).
-- **SSUBL, SSUBL2 (vector) (A64)**
-  Signed Subtract Long.
-- **SSUBW, SSUBW2 (vector) (A64)**
-  Signed Subtract Wide.
-- **ST1 (vector, multiple structures) (A64)**
-  Store multiple single-element structures from one, two, three, or four registers.
-- **ST1 (vector, single structure) (A64)**
-  Store a single-element structure from one lane of one register.
-- **ST2 (vector, multiple structures) (A64)**
-  Store multiple 2-element structures from two registers.
-- **ST2 (vector, single structure) (A64)**
-  Store single 2-element structure from one lane of two registers.
-- **ST3 (vector, multiple structures) (A64)**
-  Store multiple 3-element structures from three registers.
-- **ST3 (vector, single structure) (A64)**
-  Store single 3-element structure from one lane of three registers.
-- **ST4 (vector, multiple structures) (A64)**
-  Store multiple 4-element structures from four registers.
-- **ST4 (vector, single structure) (A64)**
-  Store single 4-element structure from one lane of four registers.
-- **SUB (vector) (A64)**
-  Subtract (vector).
-- **SUBHN, SUBHN2 (vector) (A64)**
-  Subtract returning High Narrow.
-- **SUQADD (vector) (A64)**
-  Signed saturating Accumulate of Unsigned value.
-- **SXTL, SXTL2 (vector) (A64)**
-  Signed extend Long.
-- **TBL (vector) (A64)**
-  Table vector Lookup.
-- **TBX (vector) (A64)**
-  Table vector lookup extension.
-- **TRN1 (vector) (A64)**
-  Transpose vectors (primary).
-- **TRN2 (vector) (A64)**
-  Transpose vectors (secondary).
-- **UABA (vector) (A64)**
-  Unsigned Absolute difference and Accumulate.
-- **UABAL, UABAL2 (vector) (A64)**
-  Unsigned Absolute difference and Accumulate Long.
-- **UABD (vector) (A64)**
-  Unsigned Absolute Difference (vector).
-- **UABDL, UABDL2 (vector) (A64)**
-  Unsigned Absolute Difference Long.
-- **UADALP (vector) (A64)**
-  Unsigned Add and Accumulate Long Pairwise.
-- **UADDL, UADDL2 (vector) (A64)**
-  Unsigned Add Long (vector).
-- **UADDLP (vector) (A64)**
-  Unsigned Add Long Pairwise.
-- **UADDLV (vector) (A64)**
-  Unsigned sum Long across Vector.
-- **UADDW, UADDW2 (vector) (A64)**
-  Unsigned Add Wide.
-- **UCVTF (vector, fixed-point) (A64)**
-  Unsigned fixed-point Convert to Floating-point (vector).
-- **UCVTF (vector, integer) (A64)**
-  Unsigned integer Convert to Floating-point (vector).
-- **UHADD (vector) (A64)**
-  Unsigned Halving Add.
-- **UHSUB (vector) (A64)**
-  Unsigned Halving Subtract.
-- **UMAX (vector) (A64)**
-  Unsigned Maximum (vector).
-- **UMAXP (vector) (A64)**
-  Unsigned Maximum Pairwise.
-- **UMAXV (vector) (A64)**
-  Unsigned Maximum across Vector.
-- **UMIN (vector) (A64)**
-  Unsigned Minimum (vector).
-- **UMINP (vector) (A64)**
-  Unsigned Minimum Pairwise.
-- **UMINV (vector) (A64)**
-  Unsigned Minimum across Vector.
-- **UMLAL, UMLAL2 (vector, by element) (A64)**
-  Unsigned Multiply-Add Long (vector, by element).
-- **UMLAL, UMLAL2 (vector) (A64)**
-  Unsigned Multiply-Add Long (vector).
-- **UMLSL, UMLSL2 (vector, by element) (A64)**
-  Unsigned Multiply-Subtract Long (vector, by element).
-- **UMLSL, UMLSL2 (vector) (A64)**
-  Unsigned Multiply-Subtract Long (vector).
-- **UMOV (vector) (A64)**
-  Unsigned Move vector element to general-purpose register.
-- **UMULL, UMULL2 (vector, by element) (A64)**
-  Unsigned Multiply Long (vector, by element).
-- **UMULL, UMULL2 (vector) (A64)**
-  Unsigned Multiply long (vector).
-- **UQADD (vector) (A64)**
-  Unsigned saturating Add.
-- **UQRSHL (vector) (A64)**
-  Unsigned saturating Rounding Shift Left (register).
-- **UQRSHRN, UQRSHRN2 (vector) (A64)**
-  Unsigned saturating Rounded Shift Right Narrow (immediate).
-- **UQSHL (vector, immediate) (A64)**
-  Unsigned saturating Shift Left (immediate).
-- **UQSHL (vector, register) (A64)**
-  Unsigned saturating Shift Left (register).
-- **UQSHRN, UQSHRN2 (vector) (A64)**
-  Unsigned saturating Shift Right Narrow (immediate).
-- **UQSUB (vector) (A64)**
-  Unsigned saturating Subtract.
-- **UQXTN, UQXTN2 (vector) (A64)**
-  Unsigned saturating extract Narrow.
-- **URECPE (vector) (A64)**
-  Unsigned Reciprocal Estimate.
-- **URHADD (vector) (A64)**
-  Unsigned Rounding Halving Add.
-- **URSHL (vector) (A64)**
-  Unsigned Rounding Shift Left (register).
-- **URSHR (vector) (A64)**
-  Unsigned Rounding Shift Right (immediate).
-- **URSQRTE (vector) (A64)**
-  Unsigned Reciprocal Square Root Estimate.
-- **URSRA (vector) (A64)**
-  Unsigned Rounding Shift Right and Accumulate (immediate).
-- **USHL (vector) (A64)**
-  Unsigned Shift Left (register).
-- **USHLL, USHLL2 (vector) (A64)**
-  Unsigned Shift Left Long (immediate).
-- **USHR (vector) (A64)**
-  Unsigned Shift Right (immediate).
-- **USQADD (vector) (A64)**
-  Unsigned saturating Accumulate of Signed value.
-- **USRA (vector) (A64)**
-  Unsigned Shift Right and Accumulate (immediate).
-- **USUBL, USUBL2 (vector) (A64)**
-  Unsigned Subtract Long.
-- **USUBW, USUBW2 (vector) (A64)**
-  Unsigned Subtract Wide.
-- **UXTL, UXTL2 (vector) (A64)**
-  Unsigned extend Long.
-- **UZP1 (vector) (A64)**
-  Unzip vectors (primary).
-- **UZP2 (vector) (A64)**
-  Unzip vectors (secondary).
-- **XTN, XTN2 (vector) (A64)**
-  Extract Narrow.
-- **ZIP1 (vector) (A64)**
-  Zip vectors (primary).
-- **ZIP2 (vector) (A64)**
-  Zip vectors (secondary).
+- **A64 SIMD Vector instructions in alphabetical order** A summary of the A64 SIMD Vector instructions that are supported.
+
+- **ABS (vector) (A64)** Absolute value (vector).
+
+- **ADD (vector) (A64)** Add (vector).
+
+- **ADDHN, ADDHN2 (vector) (A64)** Add returning High Narrow.
+
+- **ADDP (vector) (A64)** Add Pairwise (vector).
+
+- **ADDV (vector) (A64)** Add across Vector.
+
+- **AND (vector) (A64)** Bitwise AND (vector).
+
+- **BIC (vector, immediate) (A64)** Bitwise bit Clear (vector, immediate).
+
+- **BIC (vector, register) (A64)** Bitwise bit Clear (vector, register).
+
+- **BIF (vector) (A64)** Bitwise Insert if False.  指令用于根据第三个操作数（掩码）的值选择数据，具体为：
+  如果掩码对应位为 0，则从第二个源寄存器中复制该位到dst，否则dst不变
+
+- **BIT (vector) (A64)** Bitwise Insert if True. 与BIF相反，如果掩码为1则复制，否则不变
+
+- **BSL (vector) (A64)** Bitwise Select.
+
+- **CLS (vector) (A64)** Count Leading Sign bits (vector).
+
+- **CLZ (vector) (A64)** Count Leading Zero bits (vector).
+
+- **CMEQ (vector, register) (A64)** Compare bitwise Equal (vector).
+
+- **CMEQ (vector, zero) (A64)** Compare bitwise Equal to zero (vector).
+
+- **CMGE (vector, register) (A64)** Compare signed Greater than or Equal (vector).
+
+- **CMGE (vector, zero) (A64)** Compare signed Greater than or Equal to zero (vector).
+
+- **CMGT (vector, register) (A64)** Compare signed Greater than (vector).
+
+- **CMGT (vector, zero) (A64)** Compare signed Greater than zero (vector).
+
+- **CMHI (vector, register) (A64)** Compare unsigned Higher (vector).
+
+- **CMHS (vector, register) (A64)** Compare unsigned Higher or Same (vector).
+
+- **CMLE (vector, zero) (A64)** Compare signed Less than or Equal to zero (vector).
+
+- **CMLT (vector, zero) (A64)** Compare signed Less than zero (vector).
+
+- **CMTST (vector) (A64)** Compare bitwise Test bits nonzero (vector).如果结果不为0，则把对应的元素每一位都设置为1(即整个元素的值为-1)，否则为每一位都设置为0. 
+
+- **CNT (vector) (A64)** Population Count per byte.
+
+- **DUP (vector, element) (A64)** vector.
+
+- **DUP (vector, general) (A64)** Duplicate general-purpose register to vector.
+
+- **EOR (vector) (A64)** Bitwise Exclusive OR (vector).
+
+- **EXT (vector) (A64)** Extract vector from pair of vectors.
+
+- **FABD (vector) (A64)** Floating-point Absolute Difference (vector).
+
+- **FABS (vector) (A64)** Floating-point Absolute value (vector).
+
+- **FACGE (vector) (A64)** Floating-point Absolute Compare Greater than or Equal (vector).
+
+- **FACGT (vector) (A64)** Floating-point Absolute Compare Greater than (vector).
+
+- **FADD (vector) (A64)** Floating-point Add (vector).
+
+- **FADDP (vector) (A64)** Floating-point Add Pairwise (vector).
+
+- **FCADD (vector) (A64)** Floating-point Complex Add.
+
+- **FCMEQ (vector, register) (A64)** Floating-point Compare Equal (vector).
+
+- **FCMEQ (vector, zero) (A64)** Floating-point Compare Equal to zero (vector).
+
+- **FCMGE (vector, register) (A64)** Floating-point Compare Greater than or Equal (vector).
+
+- **FCMGE (vector, zero) (A64)** Floating-point Compare Greater than or Equal to zero (vector).
+
+- **FCMGT (vector, register) (A64)** Floating-point Compare Greater than (vector).
+
+- **FCMGT (vector, zero) (A64)** Floating-point Compare Greater than zero (vector).
+
+- **FCMLA (vector) (A64)** Floating-point Complex Multiply Accumulate.
+
+- **FCMLE (vector, zero) (A64)** Floating-point Compare Less than or Equal to zero (vector).
+
+- **FCMLT (vector, zero) (A64)** Floating-point Compare Less than zero (vector).
+
+- **FCVTAS (vector) (A64)** Floating-point Convert to Signed integer, rounding to nearest with ties to Away (vector).
+
+- **FCVTAU (vector) (A64)** Floating-point Convert to Unsigned integer, rounding to nearest with ties to Away (vector).
+
+- **FCVTL, FCVTL2 (vector) (A64)** Floating-point Convert to higher precision Long (vector).
+
+- **FCVTMS (vector) (A64)** Floating-point Convert to Signed integer, rounding toward Minus infinity (vector).
+
+- **FCVTMU (vector) (A64)** Floating-point Convert to Unsigned integer, rounding toward Minus infinity (vector).
+
+- **FCVTN, FCVTN2 (vector) (A64)** Floating-point Convert to lower precision Narrow (vector).
+
+- **FCVTNS (vector) (A64)** Floating-point Convert to Signed integer, rounding to nearest with ties to even (vector).
+
+- **FCVTNU (vector) (A64)** Floating-point Convert to Unsigned integer, rounding to nearest with ties to even (vector).
+
+- **FCVTPS (vector) (A64)** Floating-point Convert to Signed integer, rounding toward Plus infinity (vector).
+
+- **FCVTPU (vector) (A64)** Floating-point Convert to Unsigned integer, rounding toward Plus infinity (vector).
+
+- **FCVTXN, FCVTXN2 (vector) (A64)** Floating-point Convert to lower precision Narrow, rounding to odd (vector).
+
+- **FCVTZS (vector, fixed-point) (A64)** Floating-point Convert to Signed fixed-point, rounding toward Zero (vector).
+
+- **FCVTZS (vector, integer) (A64)** Floating-point Convert to Signed integer, rounding toward Zero (vector).
+
+- **FCVTZU (vector, fixed-point) (A64)** Floating-point Convert to Unsigned fixed-point, rounding toward Zero (vector).
+
+- **FCVTZU (vector, integer) (A64)** Floating-point Convert to Unsigned integer, rounding toward Zero (vector).
+
+- **FDIV (vector) (A64)** Floating-point Divide (vector).
+
+- **FMAX (vector) (A64)** Floating-point Maximum (vector).
+
+- **FMAXNM (vector) (A64)** Floating-point Maximum Number (vector).
+
+- **FMAXNMP (vector) (A64)** Floating-point Maximum Number Pairwise (vector).
+
+- **FMAXNMV (vector) (A64)** Floating-point Maximum Number across Vector.
+
+- **FMAXP (vector) (A64)** Floating-point Maximum Pairwise (vector).
+
+- **FMAXV (vector) (A64)** Floating-point Maximum across Vector.
+
+- **FMIN (vector) (A64)** Floating-point minimum (vector).
+
+- **FMINNM (vector) (A64)** Floating-point Minimum Number (vector).
+
+- **FMINNMP (vector) (A64)** Floating-point Minimum Number Pairwise (vector).
+
+- **FMINNMV (vector) (A64)** Floating-point Minimum Number across Vector.
+
+- **FMINP (vector) (A64)** Floating-point Minimum Pairwise (vector).
+
+- **FMINV (vector) (A64)** Floating-point Minimum across Vector.
+
+- **FMLA (vector, by element) (A64)** Floating-point fused Multiply-Add to accumulator (by element).
+
+- **FMLA (vector) (A64)** Floating-point fused Multiply-Add to accumulator (vector).
+
+- **FMLS (vector, by element) (A64)** Floating-point fused Multiply-Subtract from accumulator (by element).
+
+- **FMLS (vector) (A64)** Floating-point fused Multiply-Subtract from accumulator (vector).
+
+- **FMOV (vector, immediate) (A64)** Floating-point move immediate (vector).
+
+- **FMUL (vector, by element) (A64)** Floating-point Multiply (by element).
+
+- **FMUL (vector) (A64)** Floating-point Multiply (vector).
+
+- **FMULX (vector, by element) (A64)** Floating-point Multiply extended (by element).
+
+- **FMULX (vector) (A64)** Floating-point Multiply extended.
+
+- **FNEG (vector) (A64)** Floating-point Negate (vector).
+
+- **FRECPE (vector) (A64)** Floating-point Reciprocal Estimate.
+
+- **FRECPS (vector) (A64)** Floating-point Reciprocal Step.
+
+- **FRECPX (vector) (A64)** Floating-point Reciprocal exponent (scalar).
+
+- **FRINTA (vector) (A64)** Floating-point Round to Integral, to nearest with ties to Away (vector).
+
+- **FRINTI (vector) (A64)** Floating-point Round to Integral, using current rounding mode (vector).
+
+- **FRINTM (vector) (A64)** Floating-point Round to Integral, toward Minus infinity (vector).
+
+- **FRINTN (vector) (A64)** Floating-point Round to Integral, to nearest with ties to even (vector).
+
+- **FRINTP (vector) (A64)** Floating-point Round to Integral, toward Plus infinity (vector).
+
+- **FRINTX (vector) (A64)** Floating-point Round to Integral exact, using current rounding mode (vector).
+
+- **FRINTZ (vector) (A64)** Floating-point Round to Integral, toward Zero (vector).
+
+- **FRSQRTE (vector) (A64)** Floating-point Reciprocal Square Root Estimate.
+
+- **FRSQRTS (vector) (A64)** Floating-point Reciprocal Square Root Step.
+
+- **FSQRT (vector) (A64)** Floating-point Square Root (vector).
+
+- **FSUB (vector) (A64)** Floating-point Subtract (vector).
+
+- **INS (vector, element) (A64)** Insert vector element from another vector element.
+
+- **INS (vector, general) (A64)** Insert vector element from general-purpose register.
+
+- **LD1 (vector, multiple structures) (A64)** Load multiple single-element structures to one, two, three, or four registers.
+
+- **LD1 (vector, single structure) (A64)** Load one single-element structure to one lane of one register.
+
+- **LD1R (vector) (A64)** Load one single-element structure and Replicate to all lanes (of one register).
+
+- **LD2 (vector, multiple structures) (A64)** Load multiple 2-element structures to two registers.
+
+- **LD2 (vector, single structure) (A64)** Load single 2-element structure to one lane of two registers.
+
+- **LD2R (vector) (A64)** Load single 2-element structure and Replicate to all lanes of two registers.
+
+- **LD3 (vector, multiple structures) (A64)** Load multiple 3-element structures to three registers.
+
+- **LD3 (vector, single structure) (A64)** Load single 3-element structure to one lane of three registers).
+
+- **LD3R (vector) (A64)** Load single 3-element structure and Replicate to all lanes of three registers.
+
+- **LD4 (vector, multiple structures) (A64)** Load multiple 4-element structures to four registers.
+
+- **LD4 (vector, single structure) (A64)** Load single 4-element structure to one lane of four registers.
+
+- **LD4R (vector) (A64)** Load single 4-element structure and Replicate to all lanes of four registers.
+
+- **MLA (vector, by element) (A64)** Multiply-Add to accumulator (vector, by element).
+
+- **MLA (vector) (A64)** Multiply-Add to accumulator (vector).
+
+- **MLS (vector, by element) (A64)** Multiply-Subtract from accumulator (vector, by element).
+
+- **MLS (vector) (A64)** Multiply-Subtract from accumulator (vector).
+
+- **MOV (vector, element) (A64)** Move vector element to another vector element.
+
+- **MOV (vector, from general) (A64)** Move general-purpose register to a vector element.
+
+- **MOV (vector) (A64)** Move vector.
+
+- **MOV (vector, to general) (A64)** Move vector element to general-purpose register.
+
+- **MOVI (vector) (A64)** Move Immediate (vector).
+
+- **MUL (vector, by element) (A64)** Multiply (vector, by element).
+
+- **MUL (vector) (A64)** Multiply (vector).
+
+- **MVN (vector) (A64)** Bitwise NOT (vector).
+
+- **MVNI (vector) (A64)** Move inverted Immediate (vector).
+
+- **NEG (vector) (A64)** Negate (vector).
+
+- **NOT (vector) (A64)** Bitwise NOT (vector).
+
+- **ORN (vector) (A64)** Bitwise inclusive OR NOT (vector).
+
+- **ORR (vector, immediate) (A64)** Bitwise inclusive OR (vector, immediate).
+
+- **ORR (vector, register) (A64)** Bitwise inclusive OR (vector, register).
+
+- **PMUL (vector) (A64)** Polynomial Multiply.
+
+- **PMULL, PMULL2 (vector) (A64)** Polynomial Multiply Long.
+
+- **RADDHN, RADDHN2 (vector) (A64)** Rounding Add returning High Narrow.
+
+- **RBIT (vector) (A64)** Reverse Bit order (vector).
+
+- **REV16 (vector) (A64)** Reverse elements in 16-bit halfwords (vector).
+
+- **REV32 (vector) (A64)** Reverse elements in 32-bit words (vector).
+
+- **REV64 (vector) (A64)** Reverse elements in 64-bit doublewords (vector).
+
+- **RSHRN, RSHRN2 (vector) (A64)** Rounding Shift Right Narrow (immediate).
+
+- **RSUBHN, RSUBHN2 (vector) (A64)** Rounding Subtract returning High Narrow.
+
+- **SABA (vector) (A64)** Signed Absolute difference and Accumulate.
+
+- **SABAL, SABAL2 (vector) (A64)** Signed Absolute difference and Accumulate Long.
+
+- **SABD (vector) (A64)** Signed Absolute Difference.
+
+- **SABDL, SABDL2 (vector) (A64)** Signed Absolute Difference Long.
+
+- **SADALP (vector) (A64)** Signed Add and Accumulate Long Pairwise.
+
+- **SADDL, SADDL2 (vector) (A64)** Signed Add Long (vector).
+
+- **SADDLP (vector) (A64)** Signed Add Long Pairwise.
+
+- **SADDLV (vector) (A64)** Signed Add Long across Vector.
+
+- **SADDW, SADDW2 (vector) (A64)** Signed Add Wide.
+
+- **SCVTF (vector, fixed-point) (A64)** Signed fixed-point Convert to Floating-point (vector).
+
+- **SCVTF (vector, integer) (A64)** Signed integer Convert to Floating-point (vector).
+
+- **SHADD (vector) (A64)** Signed Halving Add.
+
+- **SHL (vector) (A64)** Shift Left (immediate).
+
+- **SHLL, SHLL2 (vector) (A64)** Shift Left Long (by element size).
+
+- **SHRN, SHRN2 (vector) (A64)** Shift Right Narrow (immediate).
+
+- **SHSUB (vector) (A64)** Signed Halving Subtract.
+
+- **SLI (vector) (A64)** Shift Left and Insert (immediate).
+
+- **SMAX (vector) (A64)** Signed Maximum (vector).
+
+- **SMAXP (vector) (A64)** Signed Maximum Pairwise.
+
+- **SMAXV (vector) (A64)** Signed Maximum across Vector.
+
+- **SMIN (vector) (A64)** Signed Minimum (vector).
+
+- **SMINP (vector) (A64)** Signed Minimum Pairwise.
+
+- **SMINV (vector) (A64)** Signed Minimum across Vector.
+
+- **SMLAL, SMLAL2 (vector, by element) (A64)** Signed Multiply-Add Long (vector, by element).
+
+- **SMLAL, SMLAL2 (vector) (A64)** Signed Multiply-Add Long (vector).
+
+- **SMLSL, SMLSL2 (vector, by element) (A64)** Signed Multiply-Subtract Long (vector, by element).
+
+- **SMLSL, SMLSL2 (vector) (A64)** Signed Multiply-Subtract Long (vector).
+
+- **SMOV (vector) (A64)** Signed Move vector element to general-purpose register.
+
+- **SMULL, SMULL2 (vector, by element) (A64)** Signed Multiply Long (vector, by element).
+
+- **SMULL, SMULL2 (vector) (A64)** Signed Multiply Long (vector).
+
+- **SQABS (vector) (A64)** Signed saturating Absolute value.
+
+- **SQADD (vector) (A64)** Signed saturating Add.
+
+- **SQDMLAL, SQDMLAL2 (vector, by element) (A64)** Signed saturating Doubling Multiply-Add Long (by element).
+
+- **SQDMLAL, SQDMLAL2 (vector) (A64)** Signed saturating Doubling Multiply-Add Long.
+
+- **SQDMLSL, SQDMLSL2 (vector, by element) (A64)** Signed saturating Doubling Multiply-Subtract Long (by element).
+
+- **SQDMLSL, SQDMLSL2 (vector) (A64)** Signed saturating Doubling Multiply-Subtract Long.
+
+- **SQDMULH (vector, by element) (A64)** Signed saturating Doubling Multiply returning High half (by element).
+
+- **SQDMULH (vector) (A64)** Signed saturating Doubling Multiply returning High half.
+
+- **SQDMULL, SQDMULL2 (vector, by element) (A64)** Signed saturating Doubling Multiply Long (by element).
+
+- **SQDMULL, SQDMULL2 (vector) (A64)** Signed saturating Doubling Multiply Long.
+
+- **SQNEG (vector) (A64)** Signed saturating Negate.
+
+- **SQRDMLAH (vector, by element) (A64)** Signed Saturating Rounding Doubling Multiply Accumulate returning High Half (by element).
+
+- **SQRDMLAH (vector) (A64)** Signed Saturating Rounding Doubling Multiply Accumulate returning High Half (vector).
+
+- **SQRDMLSH (vector, by element) (A64)** Signed Saturating Rounding Doubling Multiply Subtract returning High Half (by element).
+
+- **SQRDMLSH (vector) (A64)** Signed Saturating Rounding Doubling Multiply Subtract returning High Half (vector).
+
+- **SQRDMULH (vector, by element) (A64)** Signed saturating Rounding Doubling Multiply returning High half (by element).
+
+- **SQRDMULH (vector) (A64)** Signed saturating Rounding Doubling Multiply returning High half.
+
+- **SQRSHL (vector) (A64)** Signed saturating Rounding Shift Left (register).
+
+- **SQRSHRN, SQRSHRN2 (vector) (A64)** Signed saturating Rounded Shift Right Narrow (immediate).
+
+- **SQRSHRUN, SQRSHRUN2 (vector) (A64)** Signed saturating Rounded Shift Right Unsigned Narrow (immediate).
+
+- **SQSHL (vector, immediate) (A64)** Signed saturating Shift Left (immediate).
+
+- **SQSHL (vector, register) (A64)** Signed saturating Shift Left (register).
+
+- **SQSHLU (vector) (A64)** Signed saturating Shift Left Unsigned (immediate).
+
+- **SQSHRN, SQSHRN2 (vector) (A64)** Signed saturating Shift Right Narrow (immediate).
+
+- **SQSHRUN, SQSHRUN2 (vector) (A64)** Signed saturating Shift Right Unsigned Narrow (immediate).
+
+- **SQSUB (vector) (A64)** Signed saturating Subtract.
+
+- **SQXTN, SQXTN2 (vector) (A64)** Signed saturating extract Narrow.
+
+- **SQXTUN, SQXTUN2 (vector) (A64)** Signed saturating extract Unsigned Narrow.
+
+- **SRHADD (vector) (A64)** Signed Rounding Halving Add.
+
+- **SRI (vector) (A64)** Shift Right and Insert (immediate).
+
+- **SRSHL (vector) (A64)** Signed Rounding Shift Left (register).
+
+- **SRSHR (vector) (A64)** Signed Rounding Shift Right (immediate).
+
+- **SRSRA (vector) (A64)** Signed Rounding Shift Right and Accumulate (immediate).
+
+- **SSHL (vector) (A64)** Signed Shift Left (register).
+
+- **SSHLL, SSHLL2 (vector) (A64)** Signed Shift Left Long (immediate).
+
+- **SSHR (vector) (A64)** Signed Shift Right (immediate).
+
+- **SSRA (vector) (A64)** Signed Shift Right and Accumulate (immediate).
+
+- **SSUBL, SSUBL2 (vector) (A64)** Signed Subtract Long.
+
+- **SSUBW, SSUBW2 (vector) (A64)** Signed Subtract Wide.
+
+- **ST1 (vector, multiple structures) (A64)** Store multiple single-element structures from one, two, three, or four registers.
+
+- **ST1 (vector, single structure) (A64)** Store a single-element structure from one lane of one register.
+
+- **ST2 (vector, multiple structures) (A64)** Store multiple 2-element structures from two registers.
+
+- **ST2 (vector, single structure) (A64)** Store single 2-element structure from one lane of two registers.
+
+- **ST3 (vector, multiple structures) (A64)** Store multiple 3-element structures from three registers.
+
+- **ST3 (vector, single structure) (A64)** Store single 3-element structure from one lane of three registers.
+
+- **ST4 (vector, multiple structures) (A64)** Store multiple 4-element structures from four registers.
+
+- **ST4 (vector, single structure) (A64)** Store single 4-element structure from one lane of four registers.
+
+- **SUB (vector) (A64)** Subtract (vector).
+
+- **SUBHN, SUBHN2 (vector) (A64)** Subtract returning High Narrow.
+
+- **SUQADD (vector) (A64)** Signed saturating Accumulate of Unsigned value.
+
+- **SXTL, SXTL2 (vector) (A64)** Signed extend Long.
+
+- **TBL (vector) (A64)** Table vector Lookup.
+
+- **TBX (vector) (A64)** Table vector lookup extension.
+
+- **TRN1 (vector) (A64)** Transpose vectors (primary).
+
+  TRN1:转置向量 Transpose vector(primary), 该指令从零开始读取两个源寄存器 SIMD&FP 的相应偶数向量元素，并将每个结果放到向量的连续元素，并将向量写到目的寄存器中。第一个源寄存器中的向量元素被放到目的寄存器的偶数元素位置，第二个源寄存器中的向量元素放到目的寄存器的奇数元素位置。
+
+![trn](neon_images/trn.png)
+
+
+
+- **TRN2 (vector) (A64)** Transpose vectors (secondary).
+
+​         转置向量 Transpose vectors(secondary)。该指令读取两个源寄存器 SIMD&FP 的相应奇数向量元素，并将每个结果放到向量的连续元素，并将向量写到目的寄存器         中。第一个源寄存器中的向量元素被放到目的寄存器的偶数元素位置，第二个源寄存器中的向量元素放到目的寄存器的奇数元素位置
+
+
+
+- **UABA (vector) (A64)** Unsigned Absolute difference and Accumulate.
+- **UABAL, UABAL2 (vector) (A64)** Unsigned Absolute difference and Accumulate Long.
+- **UABD (vector) (A64)** Unsigned Absolute Difference (vector).
+- **UABDL, UABDL2 (vector) (A64)** Unsigned Absolute Difference Long.
+- **UADALP (vector) (A64)** Unsigned Add and Accumulate Long Pairwise.
+- **UADDL, UADDL2 (vector) (A64)** Unsigned Add Long (vector).
+- **UADDLP (vector) (A64)** Unsigned Add Long Pairwise.
+- **UADDLV (vector) (A64)** Unsigned sum Long across Vector.
+- **UADDW, UADDW2 (vector) (A64)** Unsigned Add Wide.
+- **UCVTF (vector, fixed-point) (A64)** Unsigned fixed-point Convert to Floating-point (vector).
+- **UCVTF (vector, integer) (A64)** Unsigned integer Convert to Floating-point (vector).
+- **UHADD (vector) (A64)** Unsigned Halving Add.
+- **UHSUB (vector) (A64)** Unsigned Halving Subtract.
+- **UMAX (vector) (A64)** Unsigned Maximum (vector).
+- **UMAXP (vector) (A64)** Unsigned Maximum Pairwise.
+- **UMAXV (vector) (A64)** Unsigned Maximum across Vector.
+- **UMIN (vector) (A64)** Unsigned Minimum (vector).
+- **UMINP (vector) (A64)** Unsigned Minimum Pairwise.
+- **UMINV (vector) (A64)** Unsigned Minimum across Vector.
+- **UMLAL, UMLAL2 (vector, by element) (A64)** Unsigned Multiply-Add Long (vector, by element).
+- **UMLAL, UMLAL2 (vector) (A64)** Unsigned Multiply-Add Long (vector).
+- **UMLSL, UMLSL2 (vector, by element) (A64)** Unsigned Multiply-Subtract Long (vector, by element).
+- **UMLSL, UMLSL2 (vector) (A64)** Unsigned Multiply-Subtract Long (vector).
+- **UMOV (vector) (A64)** Unsigned Move vector element to general-purpose register.
+- **UMULL, UMULL2 (vector, by element) (A64)** Unsigned Multiply Long (vector, by element).
+- **UMULL, UMULL2 (vector) (A64)** Unsigned Multiply long (vector).
+- **UQADD (vector) (A64)** Unsigned saturating Add.
+- **UQRSHL (vector) (A64)** Unsigned saturating Rounding Shift Left (register).
+- **UQRSHRN, UQRSHRN2 (vector) (A64)** Unsigned saturating Rounded Shift Right Narrow (immediate).
+- **UQSHL (vector, immediate) (A64)** Unsigned saturating Shift Left (immediate).
+- **UQSHL (vector, register) (A64)** Unsigned saturating Shift Left (register).
+- **UQSHRN, UQSHRN2 (vector) (A64)** Unsigned saturating Shift Right Narrow (immediate).
+- **UQSUB (vector) (A64)** Unsigned saturating Subtract.
+- **UQXTN, UQXTN2 (vector) (A64)** Unsigned saturating extract Narrow.
+- **URECPE (vector) (A64)** Unsigned Reciprocal Estimate.
+- **URHADD (vector) (A64)** Unsigned Rounding Halving Add.
+- **URSHL (vector) (A64)** Unsigned Rounding Shift Left (register). 
+- **URSHR (vector) (A64)** Unsigned Rounding Shift Right (immediate).
+- **URSQRTE (vector) (A64)** Unsigned Reciprocal Square Root Estimate.
+- **URSRA (vector) (A64)** Unsigned Rounding Shift Right and Accumulate (immediate).
+- **USHL (vector) (A64)** Unsigned Shift Left (register).
+- **USHLL, USHLL2 (vector) (A64)** Unsigned Shift Left Long (immediate).
+- **USHR (vector) (A64)** Unsigned Shift Right (immediate).
+- **USQADD (vector) (A64)** Unsigned saturating Accumulate of Signed value.
+- **USRA (vector) (A64)** Unsigned Shift Right and Accumulate (immediate).
+- **USUBL, USUBL2 (vector) (A64)** Unsigned Subtract Long.
+- **USUBW, USUBW2 (vector) (A64)** Unsigned Subtract Wide.
+- **UXTL, UXTL2 (vector) (A64)** Unsigned extend Long. 扩展较窄寄存器中的值到更宽的寄存器中
+- 
+- **UZP1 (vector) (A64)** Unzip vectors (primary).  
+- **UZP2 (vector) (A64)** Unzip vectors (secondary).
+
+
+
+- **XTN, XTN2 (vector) (A64)** Extract Narrow. 和 uzp1,uzp2 相同？
+-  
+- ![zip](neon_images/zip.png)
 
 
 
@@ -1261,27 +1122,6 @@ vadd.16b
 vswp vtrn 这两个 arch64里面是没有的，arch里面用 trn1 trn2
 
 
-
-trn1（Transpose 1）
-trn1指令将两个源向量的对应元素交错地放入目标向量中。具体来说，对于每个源向量中的元素，trn1会取第一个源向量的第一个元素与第二个源向量的第一个元素，然后是第一个源向量的第二个元素与第二个源向量的第二个元素，以此类推。如果考虑的是半字（.4h）或单字（.2s）操作，它就是按照这种一一对应的交错方式进行排列。
-
-例如，如果有两个源向量：
-
-源向量1: [a0, a1, a2, a3]
-源向量2: [b0, b1, b2, b3]
-执行trn1操作后，结果会是：
-
-结果向量: [a0, b0, a1, b1]
-trn2（Transpose 2）
-与trn1类似，trn2也是进行元素转置，但它的交错方式不同。trn2会取第一个源向量的第一个元素与第二个源向量的第二个元素，接着是第一个源向量的第二个元素与第二个源向量的第一个元素，依此类推。这相当于在垂直方向上错开一位进行元素的交换。
-
-继续上面的例子，如果对相同的源向量执行trn2操作：
-
-源向量1: [a0, a1, a2, a3]
-源向量2: [b0, b1, b2, b3]
-执行trn2操作后，结果会是：
-
-结果向量: [a0, b1, a1, b0]
 
 mov             v19.16b, v23.16b  arch 64中 ，mov复制向量，必须是以 .b 也就是8位为单位
 

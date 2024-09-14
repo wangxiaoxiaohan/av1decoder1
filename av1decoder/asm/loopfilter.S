@@ -829,6 +829,7 @@ function lpf_\dir\()_sb_\type\()_16bpc_neon, export=1
         movi            v4.8b,   #1
         ld1r            {v6.8b}, [x5]             // sharp[1]
         sub             x5,  x5,  #8
+        //前面cmtst设置V3的值，要么为0，要么为-1，这里根据v3 确定要不要改V1
         bif             v1.8b,   v0.8b,   v3.8b   // if (!l[0][0]) L = l[offset][0]
         cmtst           v2.2s,   v1.2s,   v2.2s   // L != 0
         mul             v1.2s,   v1.2s,   v4.2s   // L
