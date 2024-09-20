@@ -449,7 +449,10 @@ XZR 64位零寄存器
 ● TCOMMIT：提交当前事务。
 ● TLBI：TLB使无效操作：SYS的别名。
 ● TSB CSYNC：跟踪同步屏障。
-● TST (immediate)：测试位（立即数）：ANDS (immediate)的别名。
+● TST (immediate)：测试位（立即数）：ANDS (immediate)的别名。按位与，根据结果设置标志位
+
+​	tst             w6,  #0x0f
+
 ● TST (shifted register)：测试（移位寄存器）：ANDS (shifted register)的别名。
 ● TSTART：开始事务。
 ● TTEST：测试事务状态。
