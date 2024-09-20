@@ -1,3 +1,5 @@
+
+
 cbnzarm64  SIMD 汇编学习笔记
 指令 XX XX2 这样两个一组的指令，不带2的操作低位，带2的操作高位，这里的高位 低位针对的是 source寄存器
 
@@ -36,6 +38,10 @@ ARM64（AArch64）：指令通常以“ADD”, “MUL”等标准操作符开头
 如果掩码对应位为 1，则从第二个源寄存器中复制该位。
 
 
+
+saturate VALUE 把一个变量饱和的意思就是限制某个变量在一定的范围内(clip3),这个范围有最大值，有最小值
+
+rounding value 把一个变量rounding  意思就是四舍五入？
 
 -------------------------------------------------------------------------ARM 64 基础 指令 （非SIMD）
 
@@ -298,10 +304,19 @@ XZR 64位零寄存器
 ● RBIT：位反转。
 ● RET：从子程序返回。
 ● RETAA, RETAB：带有指针认证的从子程序返回。
+
 ● REV：字节反转。
 ● REV16：在16位半字中反转字节。
+
+![2612962587-63d4851906213](neon_images/2612962587-63d4851906213.png)
+
 ● REV32：在32位字中反转字节。
-● REV64：字节反转：REV的别名。
+● REV64：字节反转：REV的别名。![3974128850-63d485232838c](neon_images/3974128850-63d485232838c.png)
+
+
+
+
+
 ● RMIF：旋转，掩码插入标志。
 ● ROR (immediate)：立即数右旋转：EXTR的别名。
 ● ROR (register)：寄存器右旋转：RORV的别名。
@@ -473,7 +488,7 @@ XZR 64位零寄存器
 - **CMHS (scalar, register) (A64 SIMD)** Compare unsigned Higher or Same (vector).
 - **CMLE (scalar, zero) (A64 SIMD)** Compare signed Less than or Equal to zero (vector).
 - **CMLT (scalar, zero) (A64 SIMD)** Compare signed Less than zero (vector).
-- **CMTST (scalar) (A64 SIMD)** Compare bitwise Test bits nonzero (vector).如果结果不为0，则把对应的元素每一位都设置为1(即整个元素的值为-1)，否则为每一位都设置为0
+- **CMTST (scalar) (A64 SIMD)** Compare bitwise Test bits nonzero (vector).
 - **DUP (scalar, element) (A64 SIMD)** Duplicate vector element to scalar.
 - **FABD (scalar) (A64 SIMD)** Floating-point Absolute Difference (vector).
 - **FACGE (scalar) (A64 SIMD)** Floating-point Absolute Compare Greater than or Equal (vector).
@@ -593,6 +608,19 @@ SIMD scalar和 vector 有一部分重复的
 
 - **ADDP (vector) (A64)** Add Pairwise (vector).
 
+  ```
+  	addp        v0.8h,  v1.8h,  v2.8h
+  	意思是像下面这样的操作
+  	v0.h[0] = v1.h[0] + v1.h[1]
+      v0.h[1] = v1.h[2] + v1.h[3]
+      v0.h[2] = v1.h[4] + v1.h[5]
+      v0.h[3] = v1.h[6] + v1.h[7]
+      v0.h[4] = v2.h[0] + v2.h[1]
+      v0.h[5] = v2.h[2] + v2.h[3]
+      v0.h[6] = v2.h[4] + v2.h[5]
+      v0.h[7] = v2.h[6] + v2.h[7]
+  ```
+
 - **ADDV (vector) (A64)** Add across Vector.
 
 - **AND (vector) (A64)** Bitwise AND (vector).
@@ -602,7 +630,11 @@ SIMD scalar和 vector 有一部分重复的
 - **BIC (vector, register) (A64)** Bitwise bit Clear (vector, register).
 
 - **BIF (vector) (A64)** Bitwise Insert if False.  指令用于根据第三个操作数（掩码）的值选择数据，具体为：
-  如果掩码对应位为 0，则从第二个源寄存器中复制该位到dst，否则dst不变
+  如果掩码对应位为 0，则从第二个的源寄存器中复制该位到dst，否则dst不变 
+
+  bif             v3.16b,  v21.16b, v15.16b
+
+  ​		dst          src           mask	
 
 - **BIT (vector) (A64)** Bitwise Insert if True. 与BIF相反，如果掩码为1则复制，否则不变
 
@@ -612,27 +644,53 @@ SIMD scalar和 vector 有一部分重复的
 
 - **CLZ (vector) (A64)** Count Leading Zero bits (vector).
 
-- **CMEQ (vector, register) (A64)** Compare bitwise Equal (vector).
+  
+
+- **CMEQ (vector, register) (A64)** Compare bitwise Equal (vector).比较元素(注意不是按位)，如果第一个等于第二个则dst的该元素每一位都设为1(即整个元素的值为-1)，否则为每一位都设置为0. 
 
 - **CMEQ (vector, zero) (A64)** Compare bitwise Equal to zero (vector).
 
-- **CMGE (vector, register) (A64)** Compare signed Greater than or Equal (vector).
 
-- **CMGE (vector, zero) (A64)** Compare signed Greater than or Equal to zero (vector).
 
-- **CMGT (vector, register) (A64)** Compare signed Greater than (vector).
+- **CMGE (vector, register) (A64)** Compare signed Greater than or Equal (vector).比较元素(注意不是按位)，如果第一个大于等于第二个则dst的该元素每一位都设为1(即整个元素的值为-1)，否则为每一位都设置为0. 
 
-- **CMGT (vector, zero) (A64)** Compare signed Greater than zero (vector).
+- **CMGE (vector, zero) (A64)** Compare signed Greater than or Equal to zero (vector).比较元素(注意不是按位)和0，如果大于等于0则dst的该元素每一位都设为1(即整个元素的值为-1)，否则为每一位都设置为0. 
 
-- **CMHI (vector, register) (A64)** Compare unsigned Higher (vector).
+  
 
-- **CMHS (vector, register) (A64)** Compare unsigned Higher or Same (vector).
+- **CMGT (vector, register) (A64)** Compare signed Greater than (vector). 跟 CMHI 一样，区别是CMGT 是有符号的，CMHI 是无符号的
 
-- **CMLE (vector, zero) (A64)** Compare signed Less than or Equal to zero (vector).
+- **CMGT (vector, zero) (A64)** Compare signed Greater than zero (vector).比较元素(注意不是按位)和0，如果大于0则dst的该元素每一位都设为1(即整个元素的值为-1)，否则为每一位都设置为0. 
 
-- **CMLT (vector, zero) (A64)** Compare signed Less than zero (vector).
+  
 
-- **CMTST (vector) (A64)** Compare bitwise Test bits nonzero (vector).如果结果不为0，则把对应的元素每一位都设置为1(即整个元素的值为-1)，否则为每一位都设置为0. 
+- **CMHI (vector, register) (A64)** Compare unsigned Higher (vector). 第一个大于第二个则设置dst元素的每一位都为1，否则每一位都为0
+
+  ​	 CMHI          v1.8h,   v11.8h,  v0.8h 
+
+- **CMHS (vector, register) (A64)** Compare unsigned Higher or Same (vector).   第一个大于或等于第二个则设置dst元素的每一位都为1，否则每一位都为0
+
+  ​	 cmhs            v1.8h,   v11.8h,  v0.8h 
+
+- **CMLE (vector, zero) (A64)** Compare signed Less than or Equal to zero (vector).比较元素(注意不是按位)和0，如果小于等于0则dst的该元素每一位都设为1(即整个元素的值为-1)，否则为每一位都设置为0. 
+
+  CMLE  v4.8h,   v2.8h,   #0  后面这个#0 是spec写法，不能改
+
+  
+
+- **CMLT (vector, zero) (A64)** Compare signed Less than zero (vector). 比较元素(注意不是按位)和0，如果小于0则dst的该元素每一位都设为1(即整个元素的值为-1)，否则为每一位都设置为0. 
+
+  cmlt            v4.8h,   v2.8h,   #0  后面这个#0 是spec写法，不能改
+
+---------------------------
+
+
+
+- **CMTST (vector) (A64)** Compare bitwise Test bits nonzero (vector).相应位置的元素按位与(AND)，如果结果不为0，则把DST对应的元素每一位都设置为1(即整个元素的值为-1)，否则为每一位都设置为0. 
+
+  cmtst           v13.4s,  v13.4s,  v16.4s
+
+  
 
 - **CNT (vector) (A64)** Population Count per byte.
 
@@ -644,145 +702,80 @@ SIMD scalar和 vector 有一部分重复的
 
 - **EXT (vector) (A64)** Extract vector from pair of vectors.
 
+![2249497726-63d4852f12888](neon_images/2249497726-63d4852f12888.png)
+
 - **FABD (vector) (A64)** Floating-point Absolute Difference (vector).
-
 - **FABS (vector) (A64)** Floating-point Absolute value (vector).
-
 - **FACGE (vector) (A64)** Floating-point Absolute Compare Greater than or Equal (vector).
-
 - **FACGT (vector) (A64)** Floating-point Absolute Compare Greater than (vector).
-
 - **FADD (vector) (A64)** Floating-point Add (vector).
-
 - **FADDP (vector) (A64)** Floating-point Add Pairwise (vector).
-
 - **FCADD (vector) (A64)** Floating-point Complex Add.
-
 - **FCMEQ (vector, register) (A64)** Floating-point Compare Equal (vector).
-
 - **FCMEQ (vector, zero) (A64)** Floating-point Compare Equal to zero (vector).
-
 - **FCMGE (vector, register) (A64)** Floating-point Compare Greater than or Equal (vector).
-
 - **FCMGE (vector, zero) (A64)** Floating-point Compare Greater than or Equal to zero (vector).
-
 - **FCMGT (vector, register) (A64)** Floating-point Compare Greater than (vector).
-
 - **FCMGT (vector, zero) (A64)** Floating-point Compare Greater than zero (vector).
-
 - **FCMLA (vector) (A64)** Floating-point Complex Multiply Accumulate.
-
 - **FCMLE (vector, zero) (A64)** Floating-point Compare Less than or Equal to zero (vector).
-
 - **FCMLT (vector, zero) (A64)** Floating-point Compare Less than zero (vector).
-
 - **FCVTAS (vector) (A64)** Floating-point Convert to Signed integer, rounding to nearest with ties to Away (vector).
-
 - **FCVTAU (vector) (A64)** Floating-point Convert to Unsigned integer, rounding to nearest with ties to Away (vector).
-
 - **FCVTL, FCVTL2 (vector) (A64)** Floating-point Convert to higher precision Long (vector).
-
 - **FCVTMS (vector) (A64)** Floating-point Convert to Signed integer, rounding toward Minus infinity (vector).
-
 - **FCVTMU (vector) (A64)** Floating-point Convert to Unsigned integer, rounding toward Minus infinity (vector).
-
 - **FCVTN, FCVTN2 (vector) (A64)** Floating-point Convert to lower precision Narrow (vector).
-
 - **FCVTNS (vector) (A64)** Floating-point Convert to Signed integer, rounding to nearest with ties to even (vector).
-
 - **FCVTNU (vector) (A64)** Floating-point Convert to Unsigned integer, rounding to nearest with ties to even (vector).
-
 - **FCVTPS (vector) (A64)** Floating-point Convert to Signed integer, rounding toward Plus infinity (vector).
-
 - **FCVTPU (vector) (A64)** Floating-point Convert to Unsigned integer, rounding toward Plus infinity (vector).
-
 - **FCVTXN, FCVTXN2 (vector) (A64)** Floating-point Convert to lower precision Narrow, rounding to odd (vector).
-
 - **FCVTZS (vector, fixed-point) (A64)** Floating-point Convert to Signed fixed-point, rounding toward Zero (vector).
-
 - **FCVTZS (vector, integer) (A64)** Floating-point Convert to Signed integer, rounding toward Zero (vector).
-
 - **FCVTZU (vector, fixed-point) (A64)** Floating-point Convert to Unsigned fixed-point, rounding toward Zero (vector).
-
 - **FCVTZU (vector, integer) (A64)** Floating-point Convert to Unsigned integer, rounding toward Zero (vector).
-
 - **FDIV (vector) (A64)** Floating-point Divide (vector).
-
 - **FMAX (vector) (A64)** Floating-point Maximum (vector).
-
 - **FMAXNM (vector) (A64)** Floating-point Maximum Number (vector).
-
 - **FMAXNMP (vector) (A64)** Floating-point Maximum Number Pairwise (vector).
-
 - **FMAXNMV (vector) (A64)** Floating-point Maximum Number across Vector.
-
 - **FMAXP (vector) (A64)** Floating-point Maximum Pairwise (vector).
-
 - **FMAXV (vector) (A64)** Floating-point Maximum across Vector.
-
 - **FMIN (vector) (A64)** Floating-point minimum (vector).
-
 - **FMINNM (vector) (A64)** Floating-point Minimum Number (vector).
-
 - **FMINNMP (vector) (A64)** Floating-point Minimum Number Pairwise (vector).
-
 - **FMINNMV (vector) (A64)** Floating-point Minimum Number across Vector.
-
 - **FMINP (vector) (A64)** Floating-point Minimum Pairwise (vector).
-
 - **FMINV (vector) (A64)** Floating-point Minimum across Vector.
-
 - **FMLA (vector, by element) (A64)** Floating-point fused Multiply-Add to accumulator (by element).
-
 - **FMLA (vector) (A64)** Floating-point fused Multiply-Add to accumulator (vector).
-
 - **FMLS (vector, by element) (A64)** Floating-point fused Multiply-Subtract from accumulator (by element).
-
 - **FMLS (vector) (A64)** Floating-point fused Multiply-Subtract from accumulator (vector).
-
 - **FMOV (vector, immediate) (A64)** Floating-point move immediate (vector).
-
 - **FMUL (vector, by element) (A64)** Floating-point Multiply (by element).
-
 - **FMUL (vector) (A64)** Floating-point Multiply (vector).
-
 - **FMULX (vector, by element) (A64)** Floating-point Multiply extended (by element).
-
 - **FMULX (vector) (A64)** Floating-point Multiply extended.
-
 - **FNEG (vector) (A64)** Floating-point Negate (vector).
-
 - **FRECPE (vector) (A64)** Floating-point Reciprocal Estimate.
-
 - **FRECPS (vector) (A64)** Floating-point Reciprocal Step.
-
 - **FRECPX (vector) (A64)** Floating-point Reciprocal exponent (scalar).
-
 - **FRINTA (vector) (A64)** Floating-point Round to Integral, to nearest with ties to Away (vector).
-
 - **FRINTI (vector) (A64)** Floating-point Round to Integral, using current rounding mode (vector).
-
 - **FRINTM (vector) (A64)** Floating-point Round to Integral, toward Minus infinity (vector).
-
 - **FRINTN (vector) (A64)** Floating-point Round to Integral, to nearest with ties to even (vector).
-
 - **FRINTP (vector) (A64)** Floating-point Round to Integral, toward Plus infinity (vector).
-
 - **FRINTX (vector) (A64)** Floating-point Round to Integral exact, using current rounding mode (vector).
-
 - **FRINTZ (vector) (A64)** Floating-point Round to Integral, toward Zero (vector).
-
 - **FRSQRTE (vector) (A64)** Floating-point Reciprocal Square Root Estimate.
-
 - **FRSQRTS (vector) (A64)** Floating-point Reciprocal Square Root Step.
-
 - **FSQRT (vector) (A64)** Floating-point Square Root (vector).
-
 - **FSUB (vector) (A64)** Floating-point Subtract (vector).
-
 - **INS (vector, element) (A64)** Insert vector element from another vector element.
-
 - **INS (vector, general) (A64)** Insert vector element from general-purpose register.
+
+
 
 - **LD1 (vector, multiple structures) (A64)** Load multiple single-element structures to one, two, three, or four registers.
 
@@ -808,9 +801,31 @@ SIMD scalar和 vector 有一部分重复的
 
 - **LD4R (vector) (A64)** Load single 4-element structure and Replicate to all lanes of four registers.
 
+  ​    LD1是最简单的形式，从内存加载一到四个数据寄存器。LD1指令没有解交织（deinterleaving）功能，可以用LD1处理非交错数据数组
+
+  ![680547425-63d4831d5acf6](neon_images/680547425-63d4831d5acf6.png)
+
+  ​    LD2加载两个或四个数据寄存器，可以将偶数和奇数元素解交织加载到寄存器中，可以用LD2处理分成左/右声道的立体声音频数据
+
+  ​    LD3加载三个寄存器并解交织。可以使用LD3将RGB像素数据拆分为独立的颜色通道
+
+  ![1459824571-63d483286a208](neon_images/1459824571-63d483286a208.png)
+
+  ​    LD4加载四个寄存器并解交织，可以使用LD4出力ARGB图像数据
+
+
+
+​	交换颜色顺序，将RGB转换为BGR，用LD3和ST3指令就很容易完成：先将RGB数据分别加载到V0-V2寄存器，然后交换V0和V2寄存器的数 据（V1保持不变），再用	ST3指令把V0-V2寄存器中的数据写回到内存。这里解释一下，之所以要用三条MOV指令交换V0和V2的数据，是因为 LD3/ST3指令要求三个Vn寄存器的编号必须是连	续递增的
+
+![76832917-63d48335299b0](neon_images/76832917-63d48335299b0.png)
+
+
+
 - **MLA (vector, by element) (A64)** Multiply-Add to accumulator (vector, by element).
 
 - **MLA (vector) (A64)** Multiply-Add to accumulator (vector).
+
+  ​	MLA  v20.8h,  v1.8h,   v6.8h
 
 - **MLS (vector, by element) (A64)** Multiply-Subtract from accumulator (vector, by element).
 
@@ -890,6 +905,10 @@ SIMD scalar和 vector 有一部分重复的
 
 - **SHLL, SHLL2 (vector) (A64)** Shift Left Long (by element size).
 
+  SHLL          v22.8h,  v4.8b,   #8 
+
+  SHLL2       v1.8h,   v1.16b,  #3
+
 - **SHRN, SHRN2 (vector) (A64)** Shift Right Narrow (immediate).
 
 - **SHSUB (vector) (A64)** Signed Halving Subtract.
@@ -958,9 +977,19 @@ SIMD scalar和 vector 有一部分重复的
 
 - **SQRSHL (vector) (A64)** Signed saturating Rounding Shift Left (register).
 
-- **SQRSHRN, SQRSHRN2 (vector) (A64)** Signed saturating Rounded Shift Right Narrow (immediate).
+- **SQRSHRN, SQRSHRN2 (vector) (A64)** Signed saturating Rounded Shift Right Narrow (immediate). 右移并饱和在src寄存器宽度一半(就是dst寄存器的宽度)的范围内，最后放入dst寄存器
+
+  ​        sqrshrn         v18.4h,  v18.4s, #12
+
+  ​        sqrshrn2        v18.8h,  v19.4s, #12
 
 - **SQRSHRUN, SQRSHRUN2 (vector) (A64)** Signed saturating Rounded Shift Right Unsigned Narrow (immediate).
+
+  参考上面两个，区别是，这两个右移后直接饱和成为无符号的
+
+  ​        SQRSHRUN   v18.4h,  v18.4s, #12
+
+  ​        SQRSHRUN2   v18.8h,  v19.4s, #12
 
 - **SQSHL (vector, immediate) (A64)** Signed saturating Shift Left (immediate).
 
@@ -991,6 +1020,10 @@ SIMD scalar和 vector 有一部分重复的
 - **SSHL (vector) (A64)** Signed Shift Left (register).
 
 - **SSHLL, SSHLL2 (vector) (A64)** Signed Shift Left Long (immediate).
+
+  SHLL          v22.8h,  v4.8b,   #8 
+
+  SSHLL2      v1.8h,   v1.16b,  #3
 
 - **SSHR (vector) (A64)** Signed Shift Right (immediate).
 
@@ -1038,66 +1071,144 @@ SIMD scalar和 vector 有一部分重复的
 
 - **TRN2 (vector) (A64)** Transpose vectors (secondary).
 
+
+
+![3158005807-63d48539b85c0](neon_images/3158005807-63d48539b85c0.png)
+
 ​         转置向量 Transpose vectors(secondary)。该指令读取两个源寄存器 SIMD&FP 的相应奇数向量元素，并将每个结果放到向量的连续元素，并将向量写到目的寄存器         中。第一个源寄存器中的向量元素被放到目的寄存器的偶数元素位置，第二个源寄存器中的向量元素放到目的寄存器的奇数元素位置
 
 
 
 - **UABA (vector) (A64)** Unsigned Absolute difference and Accumulate.
+
 - **UABAL, UABAL2 (vector) (A64)** Unsigned Absolute difference and Accumulate Long.
+
 - **UABD (vector) (A64)** Unsigned Absolute Difference (vector).
+
 - **UABDL, UABDL2 (vector) (A64)** Unsigned Absolute Difference Long.
+
 - **UADALP (vector) (A64)** Unsigned Add and Accumulate Long Pairwise.
-- **UADDL, UADDL2 (vector) (A64)** Unsigned Add Long (vector).
-- **UADDLP (vector) (A64)** Unsigned Add Long Pairwise.
+
+- **UADDL, UADDL2 (vector) (A64)** Unsigned Add Long (vector).无符号，相加并放入更宽寄存器
+
+  UADDL v16.8h,  v4.8b,   v5.8b 
+
+  UADDL2 v17.8h,  v4.16b,  v5.16b
+
+- **UADDLP (vector) (A64)** Unsigned Add Long Pairwise. 相邻的两个加一起，最后把结果放入更宽的寄存器
+
+  uaddlp          v1.4h,   v1.8b
+
 - **UADDLV (vector) (A64)** Unsigned sum Long across Vector.
+
 - **UADDW, UADDW2 (vector) (A64)** Unsigned Add Wide.
+
 - **UCVTF (vector, fixed-point) (A64)** Unsigned fixed-point Convert to Floating-point (vector).
+
 - **UCVTF (vector, integer) (A64)** Unsigned integer Convert to Floating-point (vector).
+
 - **UHADD (vector) (A64)** Unsigned Halving Add.
+
+  ​    uhsub           v20.8b,  v3.8b,   v20.8b
+
+  ​    两个source  向量加起来 然后右移一位 放入dst，可用于求平均？
+
 - **UHSUB (vector) (A64)** Unsigned Halving Subtract.
+
+     uhsub           v20.8b,  v3.8b,   v20.8b
+
+  ​     无符号减半减法。
+  ​     该指令从第一个源SIMD FP寄存器中的相应向量元素中减去第二个源SIMD和FP寄存器中的向量元素，将每个结果右移一位，将每个结果放入向量中，并将向量写      
+
+  ​     入目标SIMD和FP寄存器。
+
 - **UMAX (vector) (A64)** Unsigned Maximum (vector).
+
 - **UMAXP (vector) (A64)** Unsigned Maximum Pairwise.
+
 - **UMAXV (vector) (A64)** Unsigned Maximum across Vector.
+
 - **UMIN (vector) (A64)** Unsigned Minimum (vector).
+
 - **UMINP (vector) (A64)** Unsigned Minimum Pairwise.
+
 - **UMINV (vector) (A64)** Unsigned Minimum across Vector.
+
 - **UMLAL, UMLAL2 (vector, by element) (A64)** Unsigned Multiply-Add Long (vector, by element).
+
 - **UMLAL, UMLAL2 (vector) (A64)** Unsigned Multiply-Add Long (vector).
+
 - **UMLSL, UMLSL2 (vector, by element) (A64)** Unsigned Multiply-Subtract Long (vector, by element).
+
 - **UMLSL, UMLSL2 (vector) (A64)** Unsigned Multiply-Subtract Long (vector).
+
 - **UMOV (vector) (A64)** Unsigned Move vector element to general-purpose register.
+
 - **UMULL, UMULL2 (vector, by element) (A64)** Unsigned Multiply Long (vector, by element).
+
 - **UMULL, UMULL2 (vector) (A64)** Unsigned Multiply long (vector).
+
 - **UQADD (vector) (A64)** Unsigned saturating Add.
+
 - **UQRSHL (vector) (A64)** Unsigned saturating Rounding Shift Left (register).
+
 - **UQRSHRN, UQRSHRN2 (vector) (A64)** Unsigned saturating Rounded Shift Right Narrow (immediate).
+
 - **UQSHL (vector, immediate) (A64)** Unsigned saturating Shift Left (immediate).
+
 - **UQSHL (vector, register) (A64)** Unsigned saturating Shift Left (register).
+
 - **UQSHRN, UQSHRN2 (vector) (A64)** Unsigned saturating Shift Right Narrow (immediate).
+
 - **UQSUB (vector) (A64)** Unsigned saturating Subtract.
+
 - **UQXTN, UQXTN2 (vector) (A64)** Unsigned saturating extract Narrow.
+
 - **URECPE (vector) (A64)** Unsigned Reciprocal Estimate.
+
 - **URHADD (vector) (A64)** Unsigned Rounding Halving Add.
+
 - **URSHL (vector) (A64)** Unsigned Rounding Shift Left (register). 
+
 - **URSHR (vector) (A64)** Unsigned Rounding Shift Right (immediate).
+
 - **URSQRTE (vector) (A64)** Unsigned Reciprocal Square Root Estimate.
+
 - **URSRA (vector) (A64)** Unsigned Rounding Shift Right and Accumulate (immediate).
+
 - **USHL (vector) (A64)** Unsigned Shift Left (register).
-- **USHLL, USHLL2 (vector) (A64)** Unsigned Shift Left Long (immediate).
+
+- **USHLL, USHLL2 (vector) (A64)** Unsigned Shift Left Long (immediate).无符号右移并放入更宽的寄存器
+
+     USHLL  v22.8h,  v4.8b,   #8 
+
+     USHLL2  v1.8h,   v1.16b,  #3
+
 - **USHR (vector) (A64)** Unsigned Shift Right (immediate).
+
 - **USQADD (vector) (A64)** Unsigned saturating Accumulate of Signed value.
+
 - **USRA (vector) (A64)** Unsigned Shift Right and Accumulate (immediate).
+
 - **USUBL, USUBL2 (vector) (A64)** Unsigned Subtract Long.
+
 - **USUBW, USUBW2 (vector) (A64)** Unsigned Subtract Wide.
+
 - **UXTL, UXTL2 (vector) (A64)** Unsigned extend Long. 扩展较窄寄存器中的值到更宽的寄存器中
-- 
+
+  uxtl            v7.8h,   v7.8b
+
+  uxtl2           v7.8h,   v7.16b
+
 - **UZP1 (vector) (A64)** Unzip vectors (primary).  
+
 - **UZP2 (vector) (A64)** Unzip vectors (secondary).
 
 
 
 - **XTN, XTN2 (vector) (A64)** Extract Narrow. 和 uzp1,uzp2 相同？
--  
+- **ZIP1 (vector) (A64)** Zip vectors (primary).
+- **ZIP2 (vector) (A64)** Zip vectors (secondary).
 - ![zip](neon_images/zip.png)
 
 
@@ -1106,7 +1217,7 @@ SIMD scalar和 vector 有一部分重复的
 
 
 
-
+![19648263-63d485459c238](neon_images/19648263-63d485459c238.png)
 
 
 
