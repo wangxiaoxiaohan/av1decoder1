@@ -1,6 +1,8 @@
 
 
-cbnzarm64  SIMD 汇编学习笔记
+![arm_register](neon_images/arm_register.PNG)
+
+arm64  SIMD 汇编学习笔记
 指令 XX XX2 这样两个一组的指令，不带2的操作低位，带2的操作高位，这里的高位 低位针对的是 source寄存器
 
 arm 寄存器
@@ -65,7 +67,12 @@ XZR 64位零寄存器
 ● AND (shifted register)：移位寄存器位与操作。
 ● ANDS (immediate)：立即数位与操作，设置标志位。
 ● ANDS (shifted register)：移位寄存器位与操作，设置标志位。
-● ASR (immediate)：立即数算术右移：SBFM的别名。
+● ASR (immediate)：*Arithmetic Shift* 立即数算术右移：SBFM的别名。ASR 是算术右移，会保留符号，例如某个数字最高位为1(表示其为负数)，在数字右移后
+
+会在高位补1，否则会补0，lsl，lsr则只是补0
+
+![ls_as](neon_images/ls_as.png)
+
 ● ASR (register)：寄存器算术右移：ASRV的别名。
 ● ASRV：算术右移变量。
 ● AT：地址转换：SYS的别名。
@@ -152,6 +159,11 @@ XZR 64位零寄存器
 ● CRC32CB, CRC32CH, CRC32CW, CRC32CX：CRC32C校验和。
 ● CSDB：推测数据消费屏障。
 ● CSEL：条件选择。
+
+​	csel            x5,  x5,  x12, lt    第一个小于第二个 则第一个的值放入dst，否则第二个放入dst
+
+​	csel            x12, x12, x5,  ge 第一个大于第二个 则第一个的值放入dst，否则第二个放入dst
+
 ● CSET：条件设置：CSINC的别名。
 ● CSETM：条件设置掩码：CSINV的别名。
 ● CSINC：条件选择递增。
@@ -267,6 +279,13 @@ XZR 64位零寄存器
 ● LSR (register)：寄存器逻辑右移：LSRV的别名。
 ● LSRV：逻辑右移变量。
 ● MADD：乘加。
+
+​	madd            x8,  x12, x9,  x8
+
+​	                   Xd, Xn, Xm, Xa 
+
+​			   Xd = Xa + Xn * Xm,
+
 ● MNEG：乘取反：MSUB的别名。
 ● MOV (bitmask immediate)：位掩码立即数移动：ORR (immediate)的别名。
 ● MOV (inverted wide immediate)：取反宽立即数移动：MOVN的别名。
@@ -276,10 +295,25 @@ XZR 64位零寄存器
 ● MOVK：保持宽移动。
 ● MOVN：取反宽移动。
 ● MOVZ：零宽移动。
-● MRS：移动系统寄存器。
+● MRS： 将程序状态寄存器的内容传送到通用寄存器中
 ● MSR (immediate)：将立即值移动到特殊寄存器。
+
+MSR{条件}   程序状态寄存器（CPSR或SPSR）_<域>，操作数
+MSR指令用亍将操作数的内容传送到程序状态寄存器的特定域中。其中，操作数可以为通用寄存器或立即数。<域>用于设置程序状态寄存器中需要操作的位，32位的程序状态寄存器可分为4个域：
+位[31：24]为条件标志位域，用f表示；
+位[23：16]为状态位域，用s表示；
+位[15：8]为扩展位域，用x表示；
+位[7：0]为控制位域，用c表示；
+
 ● MSR (register)：将通用寄存器移动到系统寄存器。
 ● MSUB：乘减。
+
+​	 msub            x6,  x7,  x10,  x6 
+
+​			     Xd, Xn, Xm, Xa
+
+​			     Xd= Xa- Xn* Xm
+
 ● MUL：乘法：MADD的别名。
 ● MVN：位非：ORN (shifted register)的别名。
 ● NEG (shifted register)：移位寄存器取反：SUB (shifted register)的别名。
@@ -628,9 +662,24 @@ SIMD scalar和 vector 有一部分重复的
 
 - **AND (vector) (A64)** Bitwise AND (vector).
 
-- **BIC (vector, immediate) (A64)** Bitwise bit Clear (vector, immediate).
+- **BIC (vector, immediate) (A64)** Bitwise bit Clear (vector, immediate).  
+
+  bic             x9,  x9,  #7   根据operand(最后一个立即数)哪个位为1，清除Rn对应的位，然后将结果存入Rd
+
+  bic	    r0, r0, #0x00002000    // clear bit[13]   0010 0000 0000 0000
+  bic	    r0, r0, #0x00000007    // clear bit[2:0]  0000 0000 0000 0111
+
+  
+
+  bic             x13, x13, x13, asr #63  X13本身为64位 asr右移63位，只剩下最高位，由于asr特性，会把前面的63位补满最高位的值(1或者0)
+
+  ​						也就是最高位为1就全部清掉，最高位为0就不变 ，也就是如果是负数 就变成0，如果是整数就不变
+
+  ​						就是一个 max(X,0)的操作？
 
 - **BIC (vector, register) (A64)** Bitwise bit Clear (vector, register).
+
+  bic             v1.16b,  v1.16b,  v14.16b
 
 - **BIF (vector) (A64)** Bitwise Insert if False.  指令用于根据第三个操作数（掩码）的值选择数据，具体为：
   如果掩码对应位为 0，则从第二个的源寄存器中复制该位到dst，否则dst不变 
@@ -645,9 +694,9 @@ SIMD scalar和 vector 有一部分重复的
 
 - **CLS (vector) (A64)** Count Leading Sign bits (vector).
 
-- **CLZ (vector) (A64)** Count Leading Zero bits (vector).
+- **CLZ (vector) (A64)** Count Leading Zero bits (vector). 统计前置0
 
-  
+  clz             w8,  w5
 
 - **CMEQ (vector, register) (A64)** Compare bitwise Equal (vector).比较元素(注意不是按位)，如果第一个等于第二个则dst的该元素每一位都设为1(即整个元素的值为-1)，否则为每一位都设置为0. 
 
@@ -814,7 +863,7 @@ SIMD scalar和 vector 有一部分重复的
 
   ![1459824571-63d483286a208](neon_images/1459824571-63d483286a208.png)
 
-  ​    LD4加载四个寄存器并解交织，可以使用LD4出力ARGB图像数据
+  ​    LD4加载四个寄存器并解交织，可以使用LD4处理ARGB图像数据
 
 
 
@@ -877,6 +926,12 @@ SIMD scalar和 vector 有一部分重复的
 - **REV64 (vector) (A64)** Reverse elements in 64-bit doublewords (vector).
 
 - **RSHRN, RSHRN2 (vector) (A64)** Rounding Shift Right Narrow (immediate).
+
+  rshrn             v16.8b,  v16.8h,  #6
+
+  rshrn2          v20.16b, v21.8h,  #8
+
+  
 
 - **RSUBHN, RSUBHN2 (vector) (A64)** Rounding Subtract returning High Narrow.
 
@@ -1052,6 +1107,10 @@ SIMD scalar和 vector 有一部分重复的
 
 - **ST4 (vector, single structure) (A64)** Store single 4-element structure from one lane of four registers.
 
+  STX系列可以参考LDX系列
+
+  
+
 - **SUB (vector) (A64)** Subtract (vector).
 
 - **SUBHN, SUBHN2 (vector) (A64)** Subtract returning High Narrow.
@@ -1060,9 +1119,15 @@ SIMD scalar和 vector 有一部分重复的
 
 - **SXTL, SXTL2 (vector) (A64)** Signed extend Long.
 
-- **TBL (vector) (A64)** Table vector Lookup.
+- **TBL (vector) (A64)** Table vector Lookup.使用最后一个中的值作为index，在第二个中查值，把查到的放入dst，第二个可能有1-4个，按顺序递增地址
 
-- **TBX (vector) (A64)** Table vector lookup extension.
+  ​									如果index超过第二个的范围了，则设定查找值为0									
+
+  tbl             v4.8b, {v0.16b, v1.16b}, v26.8b 
+
+- **TBX (vector) (A64)** Table vector lookup extension. 参考tbl ，区别是 ，如果index超过第二个的范围了，则不会修改dst的相应值
+
+  tbx             v4.8b, {v0.16b, v1.16b}, v26.8b 
 
 - **TRN1 (vector) (A64)** Transpose vectors (primary).
 
