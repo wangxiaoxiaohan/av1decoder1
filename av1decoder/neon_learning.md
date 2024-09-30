@@ -45,6 +45,10 @@ saturate VALUE 把一个变量饱和的意思就是限制某个变量在一定�
 
 rounding value 把一个变量rounding  意思就是四舍五入？
 
+官方的语法描述中，像下面这样的 extend，表示 唯一操作等比如 lsl,lsr,asr等
+
+LDRH Wt, [Xn|SP, (Wm|Xm){, extend {amount}}]
+
 -------------------------------------------------------------------------ARM 64 基础 指令 （非SIMD）
 
 WSP 32位 栈指针
@@ -233,7 +237,15 @@ XZR 64位零寄存器
 ● LDRB (immediate)：立即数加载寄存器字节。
 ● LDRB (register)：寄存器加载寄存器字节。
 ● LDRH (immediate)：立即数加载寄存器半字。
-● LDRH (register)：寄存器加载寄存器半字。
+
+​	LDRH  w12, [x13, #4]
+
+● LDRH (register)：寄存器加载寄存器半字。dst 必须是 W 寄存器
+
+​     LDRH  w9,  [x10,  x9,  lsl #1]
+
+​    表示从X10的地址加载16位(h半字)数据，但是需要位移X9的值左移一位的偏移量
+
 ● LDRSB (immediate)：立即数加载寄存器有符号字节。
 ● LDRSB (register)：寄存器加载寄存器有符号字节。
 ● LDRSH (immediate)：立即数加载寄存器有符号半字。
@@ -466,8 +478,35 @@ MSR指令用亍将操作数的内容传送到程序状态寄存器的特定域�
 ● SUBP：减指针。
 ● SUBPS：减指针，设置标志。
 ● SUBS (extended register)：扩展寄存器减法，设置标志。
+
+​	SUBS Xd, Xn|SP, Rm, {extend #{amount}} ; 
+
+​	Rd = Rn - LSL(extend(Rm),
+
+
+
+​	会更新C标志
+
 ● SUBS (immediate)：立即数减法，设置标志。
+
+​	Rd = Rn - shift(imm)
+
+​	subs            w4,  w4,  #2
+
+	  	会更新C标志
+
 ● SUBS (shifted register)：移位寄存器减法，设置标志。
+
+​	SUBS Xd, Xn, Xm, {shift #amount} 
+
+​	Rd = Rn - shift(Rm, amount)
+
+​		例如  : SUBS V1 ,V2 ,V3 ,lsr #3
+
+​                 结果是V1等于 V2减去V3右移3位
+
+​      会更新C标志
+
 ● SVC：超级调用。
 ● SWP, SWPA, SWPAL, SWPL：内存中交换字或双字。
 ● SWPB, SWPAB, SWPALB, SWPLB：内存中交换字节。
@@ -475,6 +514,9 @@ MSR指令用亍将操作数的内容传送到程序状态寄存器的特定域�
 ● SXTB：有符号扩展字节：SBFM的别名。
 ● SXTH：有符号扩展半字：SBFM的别名。
 ● SXTW：有符号扩展字：SBFM的别名。
+
+● SXTX
+
 ● SYS：系统指令。
 ● SYSL：带结果的系统指令。
 ● TBNZ：测试位并如果非零则分支。如果第一个寄存器相应(由立即数指定)的位置的值不为0，则跳转
@@ -502,6 +544,9 @@ MSR指令用亍将操作数的内容传送到程序状态寄存器的特定域�
 ● UMULL：无符号乘长：UMADDL的别名。
 ● UXTB：无符号扩展字节：UBFM的别名。
 ● UXTH：无符号扩展半字：UBFM的别名。
+
+ UXTW：
+
 ● WFE：等待事件。
 ● WFET：带超时的等待事件。
 ● WFI：等待中断。
@@ -1079,7 +1124,7 @@ SIMD scalar和 vector 有一部分重复的
 
 - **SSHLL, SSHLL2 (vector) (A64)** Signed Shift Left Long (immediate).
 
-  SHLL          v22.8h,  v4.8b,   #8 
+  SSHLL          v22.8h,  v4.8b,   #8 
 
   SSHLL2      v1.8h,   v1.16b,  #3
 
@@ -1107,7 +1152,7 @@ SIMD scalar和 vector 有一部分重复的
 
 - **ST4 (vector, single structure) (A64)** Store single 4-element structure from one lane of four registers.
 
-  STX系列可以参考LDX系列
+  ST*系列可以参考LD*系列
 
   
 
@@ -1117,7 +1162,11 @@ SIMD scalar和 vector 有一部分重复的
 
 - **SUQADD (vector) (A64)** Signed saturating Accumulate of Unsigned value.
 
-- **SXTL, SXTL2 (vector) (A64)** Signed extend Long.
+- **SXTL, SXTL2 (vector) (A64)** Signed extend Long.  有符号/无符号 扩展较窄寄存器中的值到更宽的寄存器中
+
+    sxtl            v16.8h,  v16.8b
+
+    sxtl2           v17.8h,  v17.16b
 
 - **TBL (vector) (A64)** Table vector Lookup.使用最后一个中的值作为index，在第二个中查值，把查到的放入dst，第二个可能有1-4个，按顺序递增地址
 
@@ -1289,28 +1338,14 @@ SIMD scalar和 vector 有一部分重复的
 
 
 
---------------------------------------
 
-add 系列
-add
-sqadd
-usqadd
-vadd.8h
-vadd.16b 
-
-vswp vtrn 这两个 arch64里面是没有的，arch里面用 trn1 trn2
 
 
 
 mov             v19.16b, v23.16b  arch 64中 ，mov复制向量，必须是以 .b 也就是8位为单位
 
-rev64 
-例如
-rev64           v7.8h,   v7.8h
-前
-v7 = [H0, H1, H2, H3, H4, H5, H6, H7]
-后
-v7 = [H3, H2, H1, H0, H7, H6, H5, H4]
+
+
 
 ext
 此指令从第二个源SIMD和FP寄存器中提取最低位的向量元素，从第一个源SIMD和FP寄存器中提取最高位的向量元素，然后将这些结果连接成一个新的向量，并将其写入目标SIMD和FP寄存器中。index值指定了从第一个源寄存器中开始提取的最低位向量元素，随后连续的元素依次从第一个源寄存器和第二个源寄存器中提取，直到填满目标向量。
@@ -1328,18 +1363,5 @@ sqrdmulh        v0.4h,  v0.4h,  #2896*8
 把后面两个相乘结果再乘以2，只保留高半部分存入第一个
 
 uabd： Unsigned Absolute Difference Long 绝对值差
-tst：   按位与 并设置CPSR标志位，
-cmtst :Compare bitwise Test bits nonzero 按位与，
-            如果结果不为0，则把对应的元素每一位都设置为1(即整个元素的值为-1)，否则为每一位都设置为0. ？？
 
-sxtl / uxtl： 有符号/无符号 扩展较窄寄存器中的值到更宽的寄存器中
 
-ushl： 无符号左移
-    ushl            v12.8h,  v12.8h,  v31.8h :V12中的每一个元素移动 V31 中匹配的元素的位数
-urshl： 舍入无符号左移
-
-cmhs : Compare unsigned Higher or Same  第一个大于或等于第二个则设置dst元素的每一位都为1，否则每一位都为0
-        cmhs            v1.8h,   v11.8h,  v0.8h 
-
-BIF 指令用于根据第三个操作数（掩码）的值从两个源寄存器中选择数据，具体为：
-如果掩码对应位为 0，则从第一个源寄存器中复制该位。
