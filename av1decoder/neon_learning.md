@@ -84,7 +84,7 @@ XZR 64位零寄存器
 ● AUTDB, AUTDZB：使用密钥B验证数据地址。
 ● AUTIA, AUTIA1716, AUTIASP, AUTIAZ, AUTIZA：使用密钥A验证指令地址。AUTIB, AUTIB1716, AUTIBSP, AUTIBZ, AUTIZB：使用密钥B验证指令地址。
 ● AXFLAG：将浮点条件标志从ARM格式转换为外部格式。
-● B：分支。
+● B：跳转。
 ● B.cond：条件分支。
 ● BC.cond：条件分支一致性。
 ● BFC：位字段清除：BFM的别名。
@@ -93,10 +93,14 @@ XZR 64位零寄存器
 ● BFXIL：低位端位字段提取和插入：BFM的别名。
 ● BIC (shifted register)：移位寄存器位清除。
 ● BICS (shifted register)：移位寄存器位清除，设置标志位。
-● BL：带链接分支。
-● BLR：寄存器链接分支。
+● BL：跳转并会把当前地址保存到LR(在aarch64中是X30)。Branch with Link branches to a PC-relative offset, setting the register X30 to PC+4. It provides a
+												hint that this is a subroutine call.
+
+​	可以理解为BL就是调用子函数
+
+● BLR：参考BL，不过地址为一个寄存器所指向的地址
 ● BLRAA, BLRAAZ, BLRAB, BLRABZ：带有指针认证的寄存器链接分支。
-● BR：寄存器跳转。
+● BR：跳转到寄存器所指向的地址，通常寄存器在这之前已经使用adr 赋上了一个函数地址
 ● BRAA, BRAAZ, BRAB, BRABZ：带有指针认证的寄存器跳转。
 ● BRB：分支记录缓冲区：SYS的别名。
 ● BRK：断点指令。
@@ -348,6 +352,9 @@ MSR指令用亍将操作数的内容传送到程序状态寄存器的特定域�
 ● PSB CSYNC：性能分析同步屏障。
 ● PSSBB：物理推测存储绕过屏障：DSB的别名。
 ● RBIT：位反转。
+
+rbit            w7,  w7 
+
 ● RET：从子程序返回。
 ● RETAA, RETAB：带有指针认证的从子程序返回。
 
@@ -424,7 +431,16 @@ MSR指令用亍将操作数的内容传送到程序状态寄存器的特定域�
 ● STLXRB：存储释放排他寄存器字节。
 ● STLXRH：存储释放排他寄存器半字。
 ● STNP：带有非临时性提示的存储寄存器对。
-● STP：存储寄存器对。将提供的一堆寄存器中的值存储到内存中
+● STP：存储寄存器对。将提供的一对寄存器中的值存储到内存中
+
+​	stp             x29, x30, [sp, #-16]!
+
+​	stp             x29, x30, X8, #16
+
+​        stp             q1,  q1,  [x0, #32]
+
+​	
+
 ● STR (immediate)：立即数存储寄存器。
 ● STR (register)：寄存器存储寄存器。
 ● STRB (immediate)：立即数存储寄存器字节。
