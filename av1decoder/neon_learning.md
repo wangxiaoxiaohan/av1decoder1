@@ -45,7 +45,7 @@ saturate VALUE 把一个变量饱和的意思就是限制某个变量在一定�
 
 rounding value 把一个变量rounding  意思就是四舍五入？
 
-官方的语法描述中，像下面这样的 extend，表示 唯一操作等比如 lsl,lsr,asr等
+官方的语法描述中，像下面这样的 extend，表示 位移操作等比如 lsl,lsr,asr等
 
 LDRH Wt, [Xn|SP, (Wm|Xm){, extend {amount}}]
 
@@ -65,8 +65,16 @@ XZR 64位零寄存器
 ● ADDS (extended register)：扩展寄存器加法，设置标志位。
 ● ADDS (immediate)：立即数加法，设置标志位。
 ● ADDS (shifted register)：移位寄存器加法，设置标志位。
-● ADR：形成程序计数器相对地址。
-● ADRP：形成程序计数器相对地址到4KB页。
+● ADR：形成程序计数器（pc）相对地址。
+
+​	adr x0, my_test_data
+
+● ADRP：形成程序计数器（pc）相对地址到4KB页。
+
+		adrp x1, my_test_data
+​	add x1, x1, #:lo12:my_test_data
+​	ldr x3, [x1]
+
 ● AND (immediate)：立即数位与操作。
 ● AND (shifted register)：移位寄存器位与操作。
 ● ANDS (immediate)：立即数位与操作，设置标志位。
@@ -239,7 +247,17 @@ XZR 64位零寄存器
 ● LDR (register)：寄存器加载寄存器。
 ● LDRAA, LDRAB：带有指针认证的加载寄存器。
 ● LDRB (immediate)：立即数加载寄存器字节。
+
 ● LDRB (register)：寄存器加载寄存器字节。
+
+​	加载一个字节，后面的立即数是加载之后的位移
+
+​	ldrb            w9,  [x5] 
+
+​	ldrb            w8,  [x3], #1
+
+​	ldrb            w11, [x9, #10] 
+
 ● LDRH (immediate)：立即数加载寄存器半字。
 
 ​	LDRH  w12, [x13, #4]
@@ -465,9 +483,7 @@ rbit            w7,  w7
 ● STUMIN, STUMINL：内存中字或双字的原子无符号最小值，无返回：LDUMIN, LDUMINA, LDUMINAL, LDUMINL的别名。
 ● STUMINB, STUMINLB：内存中字节的原子无符号最小值，无返回：LDUMINB, LDUMINAB, LDUMINALB, LDUMINLB的别名。
 ● STUMINH, STUMINLH：内存中半字的原子无符号最小值，无返回：LDUMINH, LDUMINAH, LDUMINALH, LDUMINLH的别名。
-● STUR：未缩放存储寄存器。 offset 不需要对齐，str则需要对齐，例如在当前arm64的case中，str的offset需要8字节对齐（arm32是4字节对齐），也就是这个offset必须是
-
-​		8的倍数(不是8的倍数会不会编译不过？ 这个可以验证一下)	
+● STUR：未缩放存储寄存器。 offset 不需要对齐，str则需要对齐，例如在当前arm64的case中，str的offset需要8字节对齐？（arm32是4字节对齐），也就是这个offset必须		是8的倍数(不是8的倍数会不会编译不过？ 这个可以验证一下)	
 
 ​		如果移位的立即数 imm 						% 8 = 0，即为8的整数倍，那么，stur和str没有区别
 
@@ -477,6 +493,8 @@ rbit            w7,  w7
 ​                    but is must mutilple of 4, that is: pimm % 4 == 0
 ​       	64-bit : 0 ~ 32760
 ​          		 but is must mutilple of 8, that is: pimm % 8 == 0
+
+​		例：stur            q2, [x3, #(8*5-16)]
 
 ● STURB：未缩放存储寄存器字节。
 ● STURH：未缩放存储寄存器半字。
@@ -533,6 +551,16 @@ rbit            w7,  w7
 
 ● SXTX
 
+SXTX/SXTW/SXTH/SXTB：(64)/ Sign-extend single-word（32） / half-word（16） / byte（8）
+
+表示扩展，通常用于“修饰”,即作为其他指令的辅助
+
+例：add             x11, x2,  w11, sxtw #1
+
+
+
+如果带立即数 表示左移
+
 ● SYS：系统指令。
 ● SYSL：带结果的系统指令。
 ● TBNZ：测试位并如果非零则分支。如果第一个寄存器相应(由立即数指定)的位置的值不为0，则跳转
@@ -561,7 +589,17 @@ rbit            w7,  w7
 ● UXTB：无符号扩展字节：UBFM的别名。
 ● UXTH：无符号扩展半字：UBFM的别名。
 
- UXTW：
+● UXTW：
+
+UXTW/UXTH/UXTB：Zero-[extend](https://so.csdn.net/so/search?q=extend&spm=1001.2101.3001.7020) single-word（32） half-word（16） / byte（8）
+
+表示扩展，通常用于“修饰”,即作为其他指令的辅助
+
+如果带立即数 表示左移
+
+add             x10, x2,  w6,  uxtw #1
+
+
 
 ● WFE：等待事件。
 ● WFET：带超时的等待事件。
@@ -814,6 +852,10 @@ SIMD scalar和 vector 有一部分重复的
 - **EOR (vector) (A64)** Bitwise Exclusive OR (vector).
 
 - **EXT (vector) (A64)** Extract vector from pair of vectors.
+
+  此指令从第二个源SIMD和FP寄存器中提取最低位的向量元素，从第一个源SIMD和FP寄存器中提取最高位的向量元素，然后将这些结果连接成一个新的向量，并将其写入目标SIMD和FP寄存器中。index值指定了从第一个源寄存器中开始提取的最低位向量元素，随后连续的元素依次从第一个源寄存器和第二个源寄存器中提取，直到填满目标向量。
+  ext             v7.16b,  v7.16b,  v7.16b,  #8
+  这就相当于把自己的内容进行了一个循环
 
 ![2249497726-63d4852f12888](neon_images/2249497726-63d4852f12888.png)
 
@@ -1076,6 +1118,10 @@ SIMD scalar和 vector 有一部分重复的
 
 - **SQDMULH (vector) (A64)** Signed saturating Doubling Multiply returning High half.
 
+    sqdmulh         v0.4h,   v0.4h,   v16.4h
+
+    
+
 - **SQDMULL, SQDMULL2 (vector, by element) (A64)** Signed saturating Doubling Multiply Long (by element).
 
 - **SQDMULL, SQDMULL2 (vector) (A64)** Signed saturating Doubling Multiply Long.
@@ -1196,7 +1242,9 @@ SIMD scalar和 vector 有一部分重复的
 
 - **TRN1 (vector) (A64)** Transpose vectors (primary).
 
-  TRN1:转置向量 Transpose vector(primary), 该指令从零开始读取两个源寄存器 SIMD&FP 的相应偶数向量元素，并将每个结果放到向量的连续元素，并将向量写到目的寄存器中。第一个源寄存器中的向量元素被放到目的寄存器的偶数元素位置，第二个源寄存器中的向量元素放到目的寄存器的奇数元素位置。
+  
+
+  TRN1:转置向量 Transpose vector(primary), 该指令从零开始读取两个源寄存器 的向量元素（TRN1读取奇数下标（1为第一个），trn2读取偶数下标（0为第一个）），并将每个结果放到向量的连续元素，并将向量写到目的寄存器中。第一个源寄存器中的向量元素被放到目的寄存器的偶数元素位置，第二个源寄存器中的向量元素放到目的寄存器的奇数元素位置。
 
 ![trn](neon_images/trn.png)
 
@@ -1248,7 +1296,7 @@ SIMD scalar和 vector 有一部分重复的
 
 - **UHSUB (vector) (A64)** Unsigned Halving Subtract.
 
-     uhsub           v20.8b,  v3.8b,   v20.8b
+  uhsub           v20.8b,  v3.8b,   v20.8b
 
   ​     无符号减半减法。
   ​     该指令从第一个源SIMD FP寄存器中的相应向量元素中减去第二个源SIMD和FP寄存器中的向量元素，将每个结果右移一位，将每个结果放入向量中，并将向量写      
@@ -1276,6 +1324,10 @@ SIMD scalar和 vector 有一部分重复的
 - **UMLSL, UMLSL2 (vector) (A64)** Unsigned Multiply-Subtract Long (vector).
 
 - **UMOV (vector) (A64)** Unsigned Move vector element to general-purpose register.
+
+     ​      移动向量寄存器中的值到普通寄存器中
+
+     ​	umov            w16, v1.h[0] 
 
 - **UMULL, UMULL2 (vector, by element) (A64)** Unsigned Multiply Long (vector, by element).
 
@@ -1352,6 +1404,20 @@ SIMD scalar和 vector 有一部分重复的
 
 ![19648263-63d485459c238](neon_images/19648263-63d485459c238.png)
 
+zip1            v29.16b, v29.16b, v29.16b  也可以这样 把自己的低半部分和高半部分交叉存储
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1363,10 +1429,7 @@ mov             v19.16b, v23.16b  arch 64中 ，mov复制向量，必须是以 .
 
 
 
-ext
-此指令从第二个源SIMD和FP寄存器中提取最低位的向量元素，从第一个源SIMD和FP寄存器中提取最高位的向量元素，然后将这些结果连接成一个新的向量，并将其写入目标SIMD和FP寄存器中。index值指定了从第一个源寄存器中开始提取的最低位向量元素，随后连续的元素依次从第一个源寄存器和第二个源寄存器中提取，直到填满目标向量。
-ext             v7.16b,  v7.16b,  v7.16b,  #8
-这就相当于把自己的内容交错存储了
+
 
 .irp i x x x 
 
