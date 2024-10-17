@@ -75,6 +75,12 @@ XZR 64位零寄存器
 ​	add x1, x1, #:lo12:my_test_data
 ​	ldr x3, [x1]
 
+​	adrp指令将label的值传递给xd寄存器。label的值为pc所在页基值 + (立即数 * 4096) ，立即数就相当于是页索引
+
+​	使用adrp获取标签的相对pc的4K页基值，然后再搭配一个ldr register [register #offset] 即可得到标签实际地址，此处的offset是页内的偏移
+
+​	为什么默认页面基地址是相对于pc寄存器的，pc寄存器除了程序计数还有什么特点？
+
 ● AND (immediate)：立即数位与操作。
 ● AND (shifted register)：移位寄存器位与操作。
 ● ANDS (immediate)：立即数位与操作，设置标志位。
