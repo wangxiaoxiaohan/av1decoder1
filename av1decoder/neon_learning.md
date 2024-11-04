@@ -127,7 +127,16 @@ XZR 64位零寄存器
 ● CBZ：零比较并分支。 如果该寄存器的值为零，则跳转到指定的标签或地址
 ● CCMN (immediate)：立即数条件比较负数。
 ● CCMN (register)：寄存器条件比较负数。
-● CCMP (immediate)：立即数条件比较。
+● CCMP (immediate)：
+
+​	CCMP Rn, #imm, #nzcv, cond 
+
+​	flags = if cond then compare(Rn,#imm) else #nzcv, where R is either W or X.
+
+​	即如果 前两个满足最后的条件，则将Z标志设为比较结果，否则设为第三个
+
+​	ccmp            w3,  #0,  #0,  eq
+
 ● CCMP (register)：寄存器条件比较。
 ● CFINV：反转进位标志。
 ● CFP：上下文控制流预测限制：SYS的别名。
@@ -182,9 +191,13 @@ XZR 64位零寄存器
 ● CSDB：推测数据消费屏障。
 ● CSEL：条件选择。
 
-​	csel            x5,  x5,  x12, lt    第一个小于第二个 则第一个的值放入dst，否则第二个放入dst
+​	CSEL Wd, Wn, Wm, cond
 
-​	csel            x12, x12, x5,  ge 第一个大于第二个 则第一个的值放入dst，否则第二个放入dst
+​	Rd = if cond then Rn else Rm
+
+​	csel            x5,  x5,  x12, lt    第二个小于第三个 则第二个的值放入dst，否则第三个放入dst
+
+​	csel            x12, x12, x5,  ge 第二个大于第三个 则第二个的值放入dst，否则第二三放入dst
 
 ● CSET：条件设置：CSINC的别名。
 ● CSETM：条件设置掩码：CSINV的别名。
@@ -372,12 +385,25 @@ MSR指令用亍将操作数的内容传送到程序状态寄存器的特定域�
 ● PRFM (immediate)：立即数预取内存。
 ● PRFM (literal)：字面量预取内存。
 ● PRFM (register)：寄存器预取内存。
+
+用于执行预取操作，旨在减少未来的缓存缺失延迟。通过预先加载数据到缓存中，可以在后续访问这些数据时更快地获取它们，从而提高程序的整体	性能。所谓的缓存是指cpu的cache  也就是常说的L1,L2之类的
+
+​	prfm            pldl1strm, [x1]
+
+​	其中	pldl1strm是一个arm预设的标志 代表预期的类型 还有以下类型：
+
+PLDL1KEEP, PLDL1STRM, PLDL2KEEP, PLDL2STRM, PLDL3KEEP, PLDL3STRM PSTL1KEEP, PSTL1STRM, PSTL2KEEP, PSTL2STRM, PSTL3KEEP, PSTL3STRM
+
+<type> 指预取类型（PLD，PST）。PLD: load 策略 ；PST: store策略
+<target> 指加载到的目标位置（L1、L2、L3）。L1：L1 cache, L2: L2 cache, L3: L3 cache
+<policy>: KEEP 表示保留或临时预取，数据将正常加载到正常的cache中，可以重复使用这些数据。STRM：表示流式或非临时预取，意味着内存仅被使用一次，数据不会被缓存保留，而是被丢弃，因为它只被使用一次，不值得存储在缓存中。
+
 ● PRFUM：未缩放偏移预取内存。
 ● PSB CSYNC：性能分析同步屏障。
 ● PSSBB：物理推测存储绕过屏障：DSB的别名。
 ● RBIT：位反转。
 
-rbit            w7,  w7 
+​	rbit            w7,  w7 
 
 ● RET：从子程序返回。
 ● RETAA, RETAB：带有指针认证的从子程序返回。
@@ -388,7 +414,7 @@ rbit            w7,  w7
 ![2612962587-63d4851906213](neon_images/2612962587-63d4851906213.png)
 
 ● REV32：在32位字中反转字节。
-● REV64：字节反转：REV的别名。![3974128850-63d485232838c](neon_images/3974128850-63d485232838c.png)
+● REV64：![3974128850-63d485232838c](neon_images/3974128850-63d485232838c.png)
 
 
 
@@ -1323,6 +1349,10 @@ SIMD scalar和 vector 有一部分重复的
 
 - **UMLAL, UMLAL2 (vector, by element) (A64)** Unsigned Multiply-Add Long (vector, by element).
 
+- 加法，dst扩宽
+
+     v16.8H, v4.8B,  v0.8B
+
 - **UMLAL, UMLAL2 (vector) (A64)** Unsigned Multiply-Add Long (vector).
 
 - **UMLSL, UMLSL2 (vector, by element) (A64)** Unsigned Multiply-Subtract Long (vector, by element).
@@ -1336,6 +1366,10 @@ SIMD scalar和 vector 有一部分重复的
      ​	umov            w16, v1.h[0] 
 
 - **UMULL, UMULL2 (vector, by element) (A64)** Unsigned Multiply Long (vector, by element).
+
+     乘法，dst要扩宽
+
+     umull           v18.8H, v4.8B,  v0.8B
 
 - **UMULL, UMULL2 (vector) (A64)** Unsigned Multiply long (vector).
 
@@ -1358,6 +1392,10 @@ SIMD scalar和 vector 有一部分重复的
 - **URECPE (vector) (A64)** Unsigned Reciprocal Estimate.
 
 - **URHADD (vector) (A64)** Unsigned Rounding Halving Add.
+
+     每组对应的元素进行无符号加法，加了之后，结果要右移一位,然后还需要舍入
+
+     urhadd          v16.8B, v16.8B, v20.8B
 
 - **URSHL (vector) (A64)** Unsigned Rounding Shift Left (register). 
 
@@ -1395,11 +1433,28 @@ SIMD scalar和 vector 有一部分重复的
 
 - **UZP2 (vector) (A64)** Unzip vectors (secondary).
 
+     ZIP系列的逆向
 
+     ​        uzp2            v1.16b, v3.16b, v3.16b  
 
-- **XTN, XTN2 (vector) (A64)** Extract Narrow. 和 uzp1,uzp2 相同？
-- **ZIP1 (vector) (A64)** Zip vectors (primary).
+     ​        uzp1            v0.16b, v3.16b, v3.16b   
+
+- **XTN, XTN2 (vector) (A64)** Extract Narrow. 
+
+     
+
+     ![XTN1](neon_images/XTN1.png)
+
+     
+
+     ![XTN2](neon_images/XTN2.png)
+
+     
+
+- ZIP1 (vector) (A64)** Zip vectors (primary).
+
 - **ZIP2 (vector) (A64)** Zip vectors (secondary).
+
 - ![zip](neon_images/zip.png)
 
 

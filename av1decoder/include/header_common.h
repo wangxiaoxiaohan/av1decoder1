@@ -128,7 +128,7 @@ typedef struct frameHeader{
 	uint8_t force_integer_mv;
 	uint8_t current_frame_id;
 	uint8_t frame_size_override_flag;
-	uint8_t OrderHint; //order_hint ,其实就是poc
+	uint8_t OrderHint; //order_hint ,其实就是poc specifies OrderHintBits least significant bits of the expected output order for this frame.
 	uint8_t	OrderHints[TOTAL_REFS_PER_FRAME]; //OrderHints specifies the expected output order for each reference frame.
 	uint8_t primary_ref_frame;
 	uint8_t buffer_removal_time_present_flag;
