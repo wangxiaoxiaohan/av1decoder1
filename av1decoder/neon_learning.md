@@ -35,19 +35,19 @@ ld1 {Vt.<T>}[index], [Xn|SP], Xm
 ARM32（AArch32）：指令通常以“V”开头，如VADD, VMUL等。
 ARM64（AArch64）：指令通常以“ADD”, “MUL”等标准操作符开头，并且有更一致的命名规则，例如ADD, MLA, SADDL等。
 
-指令后面多个l ，也就是多个long，表示 扩宽，即src寄存器比dst寄存器窄
+**指令后面跟个 l  ，也就是多个long，表示 扩宽，即src寄存器比dst寄存器窄**
 
-如果掩码对应位为 1，则从第二个源寄存器中复制该位。
+**指令后面跟个w   表示wide，扩宽，与l不同的是，l 的两个source都是窄的，而w只有一个source是窄的**
 
+**指令中有前置的Q表示** **saturate ，VALUE 把一个变量饱和的意思就是限制某个变量在一定的范围内(clip3),这个范围有最大值，有最小值**
 
+**指令中有前置的R表示 rounding value 把一个变量rounding  意思就是四舍五入？**
 
-saturate VALUE 把一个变量饱和的意思就是限制某个变量在一定的范围内(clip3),这个范围有最大值，有最小值
+**指令中有前置的S表示有符号 U表示无符号**
 
-rounding value 把一个变量rounding  意思就是四舍五入？
+**官方的语法描述中，像下面这样的 extend，表示 位移操作等比如 lsl,lsr,asr等**
 
-官方的语法描述中，像下面这样的 extend，表示 位移操作等比如 lsl,lsr,asr等
-
-LDRH Wt, [Xn|SP, (Wm|Xm){, extend {amount}}]
+**LDRH Wt, [Xn|SP, (Wm|Xm){, extend {amount}}]**
 
 -------------------------------------------------------------------------ARM 64 基础 指令 （非SIMD）
 
@@ -367,7 +367,7 @@ MSR指令用亍将操作数的内容传送到程序状态寄存器的特定域�
 
 ​			     Xd= Xa- Xn* Xm
 
-● MUL：乘法：MADD的别名。
+● MUL：乘法：。
 ● MVN：位非：ORN (shifted register)的别名。
 ● NEG (shifted register)：移位寄存器取反：SUB (shifted register)的别名。
 ● NEGS：取反并设置标志位：SUBS (shifted register)的别名。
@@ -804,7 +804,7 @@ SIMD scalar和 vector 有一部分重复的
 
   bic             x13, x13, x13, asr #63  X13本身为64位 asr右移63位，只剩下最高位，由于asr特性，会把前面的63位补满最高位的值(1或者0)
 
-  ​						也就是最高位为1就全部清掉，最高位为0就不变 ，也就是如果是负数 就变成0，如果是整数就不变
+  ​						也就是最高位为1就全部清掉，最高位为0就不变 ，也就是如果是负数 就变成0，如果是正数就不变
 
   ​						就是一个 max(X,0)的操作？
 
@@ -877,7 +877,9 @@ SIMD scalar和 vector 有一部分重复的
 
 - **CNT (vector) (A64)** Population Count per byte.
 
-- **DUP (vector, element) (A64)** vector.
+- **DUP (vector, element) (A64)** vector. //复制 
+
+  dup             v6.4h,    w4 
 
 - **DUP (vector, general) (A64)** Duplicate general-purpose register to vector.
 
@@ -1088,6 +1090,10 @@ SIMD scalar和 vector 有一部分重复的
 
 - **SADDW, SADDW2 (vector) (A64)** Signed Add Wide.
 
+    ​        saddw           v2.4s,   v2.4s,   v19.4h
+
+    ​        saddw2          v3.4s,   v3.4s,   v19.8h
+
 - **SCVTF (vector, fixed-point) (A64)** Signed fixed-point Convert to Floating-point (vector).
 
 - **SCVTF (vector, integer) (A64)** Signed integer Convert to Floating-point (vector).
@@ -1107,6 +1113,20 @@ SIMD scalar和 vector 有一部分重复的
 - **SHSUB (vector) (A64)** Signed Halving Subtract.
 
 - **SLI (vector) (A64)** Shift Left and Insert (immediate).
+
+    左移，且移动后右边产生的0不会覆盖dst中原来的值，而是保留原来的值
+
+    Neon also supports shifts with insertion. This operation lets you combine bits from two vectors.
+    For example, the SLI shift left and insert instruction shifts each element of the source vector left.
+    The new bits that are inserted at the right of each element are the corresponding bits from the
+    destination vector.
+    The following image shows two vector registers v1 and v2, each containing four elements. The
+    SLI instruction takes each element from v1, shifts it left by 16 bits, then combines it with the
+    corresponding element in v0
+
+    
+
+    ![sli](neon_images/sli.png)
 
 - **SMAX (vector) (A64)** Signed Maximum (vector).
 
@@ -1228,7 +1248,15 @@ SIMD scalar和 vector 有一部分重复的
 
 - **SSUBL, SSUBL2 (vector) (A64)** Signed Subtract Long.
 
+    ​        ssubl           v2.4s,   v16.4h,  v18.4h
+
+    ​        ssubl2          v3.4s,   v16.8h,  v18.8h
+
 - **SSUBW, SSUBW2 (vector) (A64)** Signed Subtract Wide.
+
+    ​        ssubw           v22.8H,  v22.8H,  v4.8B
+
+    ​        ssubw2          v24.8H,  v24.8H,  v4.16B
 
 - **ST1 (vector, multiple structures) (A64)** Store multiple single-element structures from one, two, three, or four registers.
 
@@ -1298,6 +1326,8 @@ SIMD scalar和 vector 有一部分重复的
 
 - **UABD (vector) (A64)** Unsigned Absolute Difference (vector).
 
+     绝对值差
+
 - **UABDL, UABDL2 (vector) (A64)** Unsigned Absolute Difference Long.
 
 - **UADALP (vector) (A64)** Unsigned Add and Accumulate Long Pairwise.
@@ -1315,6 +1345,10 @@ SIMD scalar和 vector 有一部分重复的
 - **UADDLV (vector) (A64)** Unsigned sum Long across Vector.
 
 - **UADDW, UADDW2 (vector) (A64)** Unsigned Add Wide.
+
+     ​        uaddw           v22.8h,  v22.8h,  v0.8b
+
+     ​        uaddw2          v21.8h,  v21.8h,  v7.16b
 
 - **UCVTF (vector, fixed-point) (A64)** Unsigned fixed-point Convert to Floating-point (vector).
 
@@ -1349,7 +1383,7 @@ SIMD scalar和 vector 有一部分重复的
 
 - **UMLAL, UMLAL2 (vector, by element) (A64)** Unsigned Multiply-Add Long (vector, by element).
 
-- 加法，dst扩宽
+     加法，dst扩宽
 
      v16.8H, v4.8B,  v0.8B
 
@@ -1423,6 +1457,10 @@ SIMD scalar和 vector 有一部分重复的
 
 - **USUBW, USUBW2 (vector) (A64)** Unsigned Subtract Wide.
 
+     ​        usubw           v4.8H,    v4.8H,   v2.8B
+
+     ​        usubw2          v20.8H,  v20.8H,   v2.16B
+
 - **UXTL, UXTL2 (vector) (A64)** Unsigned extend Long. 扩展较窄寄存器中的值到更宽的寄存器中
 
   uxtl            v7.8h,   v7.8b
@@ -1431,13 +1469,15 @@ SIMD scalar和 vector 有一部分重复的
 
 - **UZP1 (vector) (A64)** Unzip vectors (primary).  
 
+     将两个source 中对应的偶数位提取出来，组成连续的数据，其中第一个source放在低位，第二个source放在高位
+
+     uzp1            v0.16b, v3.16b, v3.16b  //这个操作两个source相同，相当于把自己的偶数位的数据提取出来，连续放两次在dst中
+
 - **UZP2 (vector) (A64)** Unzip vectors (secondary).
 
-     ZIP系列的逆向
+     将两个source 中对应的奇数位提取出来，组成连续的数据，其中第一个source放在低位，第二个source放在高位
 
-     ​        uzp2            v1.16b, v3.16b, v3.16b  
-
-     ​        uzp1            v0.16b, v3.16b, v3.16b   
+       uzp2            v1.16b, v3.16b, v3.16b  
 
 - **XTN, XTN2 (vector) (A64)** Extract Narrow. 
 
@@ -1488,20 +1528,11 @@ zip1            v29.16b, v29.16b, v29.16b  也可以这样 把自己的低半部
 mov             v19.16b, v23.16b  arch 64中 ，mov复制向量，必须是以 .b 也就是8位为单位
 
 
-
-
-
-
 .irp i x x x 
 
 .endr 
 相当于汇编中的for 循环
 
-srshr 指令在 ARM64 架构中用于无符号右移并舍弃溢出的位
 
-sqrdmulh        v0.4h,  v0.4h,  #2896*8
-把后面两个相乘结果再乘以2，只保留高半部分存入第一个
-
-uabd： Unsigned Absolute Difference Long 绝对值差
 
 
