@@ -4470,7 +4470,7 @@ int decode::reconstruct(int plane, int x, int y, int txSz,BlockData *b_data,AV1D
 		delete [] Residual;
 	}
 	
-	//arm assembly transform
+	//arm assemble transform
 	{
 		//uint16_t *Residual = new uint16_t[h * w];
 		uint16_t Residual[h * w];

@@ -802,7 +802,7 @@ SIMD scalar和 vector 有一部分重复的
 
   
 
-  bic             x13, x13, x13, asr #63  X13本身为64位 asr右移63位，只剩下最高位，由于asr特性，会把前面的63位补满最高位的值(1或者0)
+   x13, x13, x13, asr #63  X13本身为64位 asr右移63位，只剩下最高位，由于asr特性，会把前面的63位补满最高位的值(1或者0)
 
   ​						也就是最高位为1就全部清掉，最高位为0就不变 ，也就是如果是负数 就变成0，如果是正数就不变
 
@@ -1469,19 +1469,21 @@ SIMD scalar和 vector 有一部分重复的
 
 - **UZP1 (vector) (A64)** Unzip vectors (primary).  
 
-     将两个source 中对应的偶数位提取出来，组成连续的数据，其中第一个source放在低位，第二个source放在高位
+     将两个source 中对应的偶数元素提取出来，组成连续的数据，其中第一个source放在低位，第二个source放在高位
 
      uzp1            v0.16b, v3.16b, v3.16b  //这个操作两个source相同，相当于把自己的偶数位的数据提取出来，连续放两次在dst中
 
 - **UZP2 (vector) (A64)** Unzip vectors (secondary).
 
-     将两个source 中对应的奇数位提取出来，组成连续的数据，其中第一个source放在低位，第二个source放在高位
+     将两个source 中对应的奇数元素提取出来，组成连续的数据，其中第一个source放在低位，第二个source放在高位
 
        uzp2            v1.16b, v3.16b, v3.16b  
 
-- **XTN, XTN2 (vector) (A64)** Extract Narrow. 
+- **XTN, XTN2 (vector) (A64)** Extract Narrow. //与UZP的区别是：uzp是提取奇数位或者偶数位的整个元素，而XTN是提取sorce的元素的低位，
 
-     
+      也就是说，拆分了完整的元素
+
+        
 
      ![XTN1](neon_images/XTN1.png)
 
