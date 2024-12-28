@@ -33,8 +33,8 @@
 #include <stdint.h>
 
 #ifdef __cplusplus
-extern "C" {
 #endif
+extern "C" {
 
 #ifndef DAV1D_API
     #if defined _WIN32

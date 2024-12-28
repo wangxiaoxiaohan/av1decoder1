@@ -25,8 +25,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *****************************************************************************/
 
-#include "src/arm/asm.S"
-#include "util.S"
+; #include "src/arm/asm.S"
+; #include "util.S"
 
 // The exported functions in this file have got the following signature:
 // void itxfm_add(pixel *dst, ptrdiff_t dst_stride, coef *coeff, int eob);
@@ -938,6 +938,7 @@ def_fn_8x8 flipadst, identity
 def_fn_8x8 identity, adst
 def_fn_8x8 identity, flipadst
 
+//这两个函数 在本文件内被宏定义引用 ，不在C中引用 所以搜不到
 function inv_txfm_add_8x4_neon
         movi            v30.8h,  #0
         movi            v31.8h,  #0
@@ -1000,7 +1001,7 @@ function inv_txfm_add_\txfm1\()_\txfm2\()_\w\()x\h\()_8bpc_neon, export=1
 .endif
         adr             x4,  inv_\txfm1\()_\h\()h_x\w\()_neon
         adr             x5,  inv_\txfm2\()_\w\()h_x\h\()_neon
-        b               inv_txfm_add_\w\()x\h\()_neon
+        b               inv_txfm_add_\w\()x\h\()_neon //这里 指向上面的实现  inv_txfm_add_4x8_neon / inv_txfm_add_8*4_neon 
 endfunc
 .endm
 
@@ -2543,7 +2544,7 @@ function inv_txfm_add_dct_dct_32x8_8bpc_neon, export=1
         mov             x8,  #2*32
         mov             w9,  #0
 1:
-        add             x6,  x0,  x9
+        add             x6,  x0,  x9  /* 这里用 了X9*/
         add             x7,  sp,  x9, lsl #1 // #(\i*2)
 
 .irp i, 16, 17, 18, 19, 20, 21, 22, 23

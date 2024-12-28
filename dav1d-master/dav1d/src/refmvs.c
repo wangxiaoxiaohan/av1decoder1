@@ -204,7 +204,7 @@ static void add_temporal_candidate(const refmvs_frame *const rf,
 {
     //printf("rb->mv.n %d\n",rb->mv.n );
     if (rb->mv.n == INVALID_MV){
-        //printf("add_temporal_candidate INVALID_MV\n");
+        printf("add_temporal_candidate INVALID_MV\n");
          return;
     }
     
@@ -758,6 +758,7 @@ static void load_tmvs_c(const refmvs_frame *const rf, int tile_row_idx,
                        // printf("posValid %d\n");
                         if (posvaild)
                         {
+                            printf("---------posValid %d PosX8 %d,PosY8 %d\n",posvaild,pos_x,pos_y);
                             rp_proj[pos + pos_x].mv = rb->mv;
                             rp_proj[pos + pos_x].ref = ref2ref;
                         }

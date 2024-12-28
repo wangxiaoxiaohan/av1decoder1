@@ -3,6 +3,9 @@
         "intops.h": "c",
         "string.h": "c",
         "frame.h": "c",
-        "decode.h": "c"
+        "decode.h": "c",
+        "typeinfo": "c",
+        "itx.h": "c",
+        "itx_1d.h": "c"
     }
 }

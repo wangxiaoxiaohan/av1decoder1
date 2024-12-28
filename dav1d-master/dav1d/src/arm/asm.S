@@ -245,11 +245,11 @@ EXTERN\name:
 #endif
     .endif
 \name:
-#if ARCH_AARCH64
+
     .if \export
          AARCH64_VALID_CALL_TARGET
     .endif
-#endif
+
 .endm
 
 .macro  const   name, export=0, align=2

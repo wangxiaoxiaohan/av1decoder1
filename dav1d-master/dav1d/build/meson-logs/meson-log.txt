@@ -1,6 +1,6 @@
-Build started at 2024-01-08T23:11:03.517002
+Build started at 2024-03-02T15:01:22.802849
 Main binary: /usr/bin/python3
-Build Options: 
+Build Options: -Dbackend=ninja
 Python system: Linux
 The Meson build system
 Version: 0.53.2
@@ -9,34 +9,8 @@ Build dir: /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/buil
 Build type: native build
 Project name: dav1d
 Project version: 1.3.0
-No CFLAGS in the environment, not changing global flags.
-No LDFLAGS in the environment, not changing global flags.
-No CPPFLAGS in the environment, not changing global flags.
-Sanity testing C compiler: cc
-Is cross compiler: False.
-Sanity check compiler command line: cc /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/sanitycheckc.c -o /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/sanitycheckc.exe -pipe -D_FILE_OFFSET_BITS=64
-Sanity check compile stdout:
-
------
-Sanity check compile stderr:
-
------
-Running test binary command: /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/sanitycheckc.exe
 C compiler for the build machine: cc (gcc 9.4.0 "cc (Ubuntu 9.4.0-1ubuntu1~20.04.2) 9.4.0")
 C linker for the build machine: cc ld.bfd 2.34
-No CFLAGS in the environment, not changing global flags.
-No LDFLAGS in the environment, not changing global flags.
-No CPPFLAGS in the environment, not changing global flags.
-Sanity testing C compiler: cc
-Is cross compiler: False.
-Sanity check compiler command line: cc /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/sanitycheckc.c -o /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/sanitycheckc.exe -pipe -D_FILE_OFFSET_BITS=64
-Sanity check compile stdout:
-
------
-Sanity check compile stderr:
-
------
-Running test binary command: /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/sanitycheckc.exe
 C compiler for the host machine: cc (gcc 9.4.0 "cc (Ubuntu 9.4.0-1ubuntu1~20.04.2) 9.4.0")
 C linker for the host machine: cc ld.bfd 2.34
 Build machine cpu family: x86_64
@@ -45,9 +19,8 @@ Host machine cpu family: x86_64
 Host machine cpu: x86_64
 Target machine cpu family: x86_64
 Target machine cpu: x86_64
-Running compile:
-Working directory:  /tmp/tmpoz_2wqdt
-Command line:  cc /tmp/tmpoz_2wqdt/testfile.c -pipe -E -P -D_FILE_OFFSET_BITS=64 -P -O0 -std=c99 
+Using cached compile:
+Cached command line:  cc /tmp/tmpoz_2wqdt/testfile.c -pipe -E -P -D_FILE_OFFSET_BITS=64 -P -O0 -std=c99 
 
 Code:
  
@@ -57,17 +30,16 @@ Code:
         #endif
         "MESON_GET_DEFINE_DELIMITER"
 __ILP32__
-Compiler stdout:
+Cached compiler stdout:
          "MESON_GET_DEFINE_DELIMITER"
 
 
-Compiler stderr:
+Cached compiler stderr:
  
-Fetching value of define "__ILP32__" :  
-Run-time dependency threads found: YES
-Running compile:
-Working directory:  /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpslh3b6of
-Command line:  cc /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpslh3b6of/testfile.c -o /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpslh3b6of/output.exe -pipe -D_FILE_OFFSET_BITS=64 -O0 -std=c99 -D_GNU_SOURCE 
+Fetching value of define "__ILP32__" :  (cached)
+Dependency threads found: YES unknown (cached)
+Using cached compile:
+Cached command line:  cc /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpslh3b6of/testfile.c -o /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpslh3b6of/output.exe -pipe -D_FILE_OFFSET_BITS=64 -O0 -std=c99 -D_GNU_SOURCE 
 
 Code:
  #include <time.h>
@@ -82,14 +54,13 @@ int main(void) {
             long b = (long) a;
             return (int) b;
         }
-Compiler stdout:
+Cached compiler stdout:
  
-Compiler stderr:
+Cached compiler stderr:
  
-Checking for function "clock_gettime" : YES 
-Running compile:
-Working directory:  /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmp4atmnfr4
-Command line:  cc /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmp4atmnfr4/testfile.c -o /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmp4atmnfr4/output.exe -pipe -D_FILE_OFFSET_BITS=64 -O0 -std=c99 -D_GNU_SOURCE 
+Checking for function "clock_gettime" : YES (cached)
+Using cached compile:
+Cached command line:  cc /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmp4atmnfr4/testfile.c -o /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmp4atmnfr4/output.exe -pipe -D_FILE_OFFSET_BITS=64 -O0 -std=c99 -D_GNU_SOURCE 
 
 Code:
  #include <stdlib.h>
@@ -104,14 +75,14 @@ int main(void) {
             long b = (long) a;
             return (int) b;
         }
-Compiler stdout:
+Cached compiler stdout:
  
-Compiler stderr:
+Cached compiler stderr:
  
-Checking for function "posix_memalign" : YES 
+Checking for function "posix_memalign" : YES (cached)
 Running compile:
-Working directory:  /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpumddaxu7
-Command line:  cc /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpumddaxu7/testfile.c -o /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpumddaxu7/output.exe -pipe -D_FILE_OFFSET_BITS=64 -O0 -Wl,--start-group -ldl -Wl,--end-group -Wl,--allow-shlib-undefined 
+Working directory:  /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpezu3n9w8
+Command line:  cc /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpezu3n9w8/testfile.c -o /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpezu3n9w8/output.exe -pipe -D_FILE_OFFSET_BITS=64 -O0 -Wl,--start-group -ldl -Wl,--end-group -Wl,--allow-shlib-undefined 
 
 Code:
  int main(void) { return 0; }
@@ -120,9 +91,8 @@ Compiler stdout:
 Compiler stderr:
  
 Library dl found: YES
-Running compile:
-Working directory:  /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpl7dqu47t
-Command line:  cc /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpl7dqu47t/testfile.c -o /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpl7dqu47t/output.exe -pipe -D_FILE_OFFSET_BITS=64 -O0 -std=c99 -D_GNU_SOURCE -Wl,--start-group -ldl -Wl,--end-group 
+Using cached compile:
+Cached command line:  cc /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpl7dqu47t/testfile.c -o /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpl7dqu47t/output.exe -pipe -D_FILE_OFFSET_BITS=64 -O0 -std=c99 -D_GNU_SOURCE -Wl,--start-group -ldl -Wl,--end-group 
 
 Code:
  #include <dlfcn.h>
@@ -137,14 +107,14 @@ int main(void) {
             long b = (long) a;
             return (int) b;
         }
-Compiler stdout:
+Cached compiler stdout:
  
-Compiler stderr:
+Cached compiler stderr:
  
-Checking for function "dlsym" with dependency -ldl: YES 
+Checking for function "dlsym" with dependency -ldl: YES (cached)
 Running compile:
-Working directory:  /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmp4iqkra9r
-Command line:  cc /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmp4iqkra9r/testfile.c -o /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmp4iqkra9r/output.exe -pipe -D_FILE_OFFSET_BITS=64 -O0 -Wl,--start-group -lm -Wl,--end-group -Wl,--allow-shlib-undefined 
+Working directory:  /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpd7jycwwr
+Command line:  cc /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpd7jycwwr/testfile.c -o /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpd7jycwwr/output.exe -pipe -D_FILE_OFFSET_BITS=64 -O0 -Wl,--start-group -lm -Wl,--end-group -Wl,--allow-shlib-undefined 
 
 Code:
  int main(void) { return 0; }
@@ -153,65 +123,60 @@ Compiler stdout:
 Compiler stderr:
  
 Library m found: YES
-Running compile:
-Working directory:  /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpl0dp2e2a
-Command line:  cc /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpl0dp2e2a/testfile.c -o /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpl0dp2e2a/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -std=c99 
+Using cached compile:
+Cached command line:  cc /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpl0dp2e2a/testfile.c -o /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpl0dp2e2a/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -std=c99 
 
 Code:
  
         #include <stdatomic.h>
-Compiler stdout:
+Cached compiler stdout:
  
-Compiler stderr:
+Cached compiler stderr:
  
-Check usable header "stdatomic.h" : YES 
-Running compile:
-Working directory:  /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpo_exnp_7
-Command line:  cc /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpo_exnp_7/testfile.c -o /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpo_exnp_7/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -std=c99 
+Check usable header "stdatomic.h" : YES (cached)
+Using cached compile:
+Cached command line:  cc /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpo_exnp_7/testfile.c -o /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpo_exnp_7/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -std=c99 
 
 Code:
  
         #include <unistd.h>
-Compiler stdout:
+Cached compiler stdout:
  
-Compiler stderr:
+Cached compiler stderr:
  
-Check usable header "unistd.h" : YES 
-Running compile:
-Working directory:  /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmp0kx_0h2q
-Command line:  cc /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmp0kx_0h2q/testfile.c -o /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmp0kx_0h2q/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -std=c99 
+Check usable header "unistd.h" : YES (cached)
+Using cached compile:
+Cached command line:  cc /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmp0kx_0h2q/testfile.c -o /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmp0kx_0h2q/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -std=c99 
 
 Code:
  
         #include <io.h>
-Compiler stdout:
+Cached compiler stdout:
  
-Compiler stderr:
+Cached compiler stderr:
  /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmp0kx_0h2q/testfile.c:2:18: fatal error: io.h: No such file or directory
     2 |         #include <io.h>
       |                  ^~~~~~
 compilation terminated.
 
-Check usable header "io.h" : NO 
-Running compile:
-Working directory:  /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpwvyyvexq
-Command line:  cc /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpwvyyvexq/testfile.c -o /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpwvyyvexq/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -std=c99 
+Check usable header "io.h" : NO (cached)
+Using cached compile:
+Cached command line:  cc /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpwvyyvexq/testfile.c -o /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpwvyyvexq/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -std=c99 
 
 Code:
  
         #include <pthread_np.h>
-Compiler stdout:
+Cached compiler stdout:
  
-Compiler stderr:
+Cached compiler stderr:
  /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpwvyyvexq/testfile.c:2:18: fatal error: pthread_np.h: No such file or directory
     2 |         #include <pthread_np.h>
       |                  ^~~~~~~~~~~~~~
 compilation terminated.
 
-Check usable header "pthread_np.h" : NO 
-Running compile:
-Working directory:  /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmppvhkled6
-Command line:  cc /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmppvhkled6/testfile.c -o /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmppvhkled6/output.exe -pipe -D_FILE_OFFSET_BITS=64 -O0 -std=c99 -D_GNU_SOURCE 
+Check usable header "pthread_np.h" : NO (cached)
+Using cached compile:
+Cached command line:  cc /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmppvhkled6/testfile.c -o /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmppvhkled6/output.exe -pipe -D_FILE_OFFSET_BITS=64 -O0 -std=c99 -D_GNU_SOURCE 
 
 Code:
  #include <getopt.h>
@@ -226,14 +191,13 @@ int main(void) {
             long b = (long) a;
             return (int) b;
         }
-Compiler stdout:
+Cached compiler stdout:
  
-Compiler stderr:
+Cached compiler stderr:
  
-Checking for function "getopt_long" : YES 
-Running compile:
-Working directory:  /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpleijzrs6
-Command line:  cc /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpleijzrs6/testfile.c -o /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpleijzrs6/output.exe -pipe -pthread -D_FILE_OFFSET_BITS=64 -O0 -std=c99 -D_GNU_SOURCE 
+Checking for function "getopt_long" : YES (cached)
+Using cached compile:
+Cached command line:  cc /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpleijzrs6/testfile.c -o /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpleijzrs6/output.exe -pipe -pthread -D_FILE_OFFSET_BITS=64 -O0 -std=c99 -D_GNU_SOURCE 
 
 Code:
  
@@ -253,14 +217,13 @@ int main(void) {
             long b = (long) a;
             return (int) b;
         }
-Compiler stdout:
+Cached compiler stdout:
  
-Compiler stderr:
+Cached compiler stderr:
  
-Checking for function "pthread_getaffinity_np" with dependency threads: YES 
-Running compile:
-Working directory:  /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpkgu5rqft
-Command line:  cc /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpkgu5rqft/testfile.c -o /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpkgu5rqft/output.exe -pipe -pthread -D_FILE_OFFSET_BITS=64 -O0 -std=c99 -D_GNU_SOURCE 
+Checking for function "pthread_getaffinity_np" with dependency threads: YES (cached)
+Using cached compile:
+Cached command line:  cc /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpkgu5rqft/testfile.c -o /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpkgu5rqft/output.exe -pipe -pthread -D_FILE_OFFSET_BITS=64 -O0 -std=c99 -D_GNU_SOURCE 
 
 Code:
  
@@ -280,25 +243,24 @@ int main(void) {
             long b = (long) a;
             return (int) b;
         }
-Compiler stdout:
+Cached compiler stdout:
  
-Compiler stderr:
+Cached compiler stderr:
  
-Checking for function "pthread_setaffinity_np" with dependency threads: YES 
-Running compile:
-Working directory:  /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpdzx5bytg
-Command line:  cc /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpdzx5bytg/testfile.c -o /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpdzx5bytg/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -std=c99 -D_GNU_SOURCE 
+Checking for function "pthread_setaffinity_np" with dependency threads: YES (cached)
+Using cached compile:
+Cached command line:  cc /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpdzx5bytg/testfile.c -o /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpdzx5bytg/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -std=c99 -D_GNU_SOURCE 
 
 Code:
  int x = _Generic(0, default: 0);
-Compiler stdout:
+Cached compiler stdout:
  
-Compiler stderr:
+Cached compiler stderr:
  
-Checking if "_Generic" compiles: YES 
+Checking if "_Generic" compiles: YES (cached)
 Running compile:
-Working directory:  /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmp2e3okbxw
-Command line:  cc /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmp2e3okbxw/testfile.c -o /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmp2e3okbxw/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -fvisibility=hidden 
+Working directory:  /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpfyapw7ch
+Command line:  cc /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpfyapw7ch/testfile.c -o /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpfyapw7ch/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -fvisibility=hidden 
 
 Code:
  int i;
@@ -309,8 +271,8 @@ Compiler stderr:
  
 Compiler for C supports arguments -fvisibility=hidden: YES 
 Running compile:
-Working directory:  /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpom8a8cvg
-Command line:  cc /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpom8a8cvg/testfile.c -o /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpom8a8cvg/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wundef 
+Working directory:  /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmprpff4m9q
+Command line:  cc /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmprpff4m9q/testfile.c -o /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmprpff4m9q/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wundef 
 
 Code:
  int i;
@@ -321,8 +283,8 @@ Compiler stderr:
  
 Compiler for C supports arguments -Wundef: YES 
 Running compile:
-Working directory:  /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpmanr_hgb
-Command line:  cc /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpmanr_hgb/testfile.c -o /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpmanr_hgb/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Werror=vla 
+Working directory:  /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpmd2p9lfb
+Command line:  cc /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpmd2p9lfb/testfile.c -o /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpmd2p9lfb/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Werror=vla 
 
 Code:
  int i;
@@ -333,8 +295,8 @@ Compiler stderr:
  
 Compiler for C supports arguments -Werror=vla: YES 
 Running compile:
-Working directory:  /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpohu0_mwc
-Command line:  cc /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpohu0_mwc/testfile.c -o /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpohu0_mwc/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wno-maybe-uninitialized -Wmaybe-uninitialized 
+Working directory:  /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpzsqfrwws
+Command line:  cc /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpzsqfrwws/testfile.c -o /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpzsqfrwws/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wno-maybe-uninitialized -Wmaybe-uninitialized 
 
 Code:
  int i;
@@ -345,8 +307,8 @@ Compiler stderr:
  
 Compiler for C supports arguments -Wno-maybe-uninitialized -Wmaybe-uninitialized: YES 
 Running compile:
-Working directory:  /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpu8uxvkgd
-Command line:  cc /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpu8uxvkgd/testfile.c -o /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpu8uxvkgd/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wno-missing-field-initializers -Wmissing-field-initializers 
+Working directory:  /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpyt9he4sp
+Command line:  cc /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpyt9he4sp/testfile.c -o /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpyt9he4sp/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wno-missing-field-initializers -Wmissing-field-initializers 
 
 Code:
  int i;
@@ -357,8 +319,8 @@ Compiler stderr:
  
 Compiler for C supports arguments -Wno-missing-field-initializers -Wmissing-field-initializers: YES 
 Running compile:
-Working directory:  /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmp5if_l40s
-Command line:  cc /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmp5if_l40s/testfile.c -o /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmp5if_l40s/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wno-unused-parameter -Wunused-parameter 
+Working directory:  /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpxdsozzhp
+Command line:  cc /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpxdsozzhp/testfile.c -o /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpxdsozzhp/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wno-unused-parameter -Wunused-parameter 
 
 Code:
  int i;
@@ -369,8 +331,8 @@ Compiler stderr:
  
 Compiler for C supports arguments -Wno-unused-parameter -Wunused-parameter: YES 
 Running compile:
-Working directory:  /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpunpn3x9k
-Command line:  cc /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpunpn3x9k/testfile.c -o /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpunpn3x9k/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wstrict-prototypes 
+Working directory:  /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmp186yejeu
+Command line:  cc /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmp186yejeu/testfile.c -o /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmp186yejeu/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wstrict-prototypes 
 
 Code:
  int i;
@@ -381,8 +343,8 @@ Compiler stderr:
  
 Compiler for C supports arguments -Wstrict-prototypes: YES 
 Running compile:
-Working directory:  /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpccyhe61v
-Command line:  cc /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpccyhe61v/testfile.c -o /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpccyhe61v/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Werror=missing-prototypes 
+Working directory:  /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpupc45e0g
+Command line:  cc /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpupc45e0g/testfile.c -o /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpupc45e0g/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Werror=missing-prototypes 
 
 Code:
  int i;
@@ -393,8 +355,8 @@ Compiler stderr:
  
 Compiler for C supports arguments -Werror=missing-prototypes: YES 
 Running compile:
-Working directory:  /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpppg22kpb
-Command line:  cc /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpppg22kpb/testfile.c -o /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpppg22kpb/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wshorten-64-to-32 
+Working directory:  /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpnqqxnely
+Command line:  cc /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpnqqxnely/testfile.c -o /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpnqqxnely/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Wshorten-64-to-32 
 
 Code:
  int i;
@@ -406,8 +368,8 @@ Compiler stderr:
 
 Compiler for C supports arguments -Wshorten-64-to-32: NO 
 Running compile:
-Working directory:  /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpg1c79gek
-Command line:  cc /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpg1c79gek/testfile.c -o /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpg1c79gek/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -fomit-frame-pointer 
+Working directory:  /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpoy11h366
+Command line:  cc /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpoy11h366/testfile.c -o /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpoy11h366/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -fomit-frame-pointer 
 
 Code:
  int i;
@@ -418,8 +380,8 @@ Compiler stderr:
  
 Compiler for C supports arguments -fomit-frame-pointer: YES 
 Running compile:
-Working directory:  /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpx0o0ww8c
-Command line:  cc /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpx0o0ww8c/testfile.c -o /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpx0o0ww8c/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -ffast-math 
+Working directory:  /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpezj3rn42
+Command line:  cc /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpezj3rn42/testfile.c -o /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpezj3rn42/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -ffast-math 
 
 Code:
  int i;
@@ -429,9 +391,8 @@ Compiler stdout:
 Compiler stderr:
  
 Compiler for C supports arguments -ffast-math: YES 
-Running compile:
-Working directory:  /tmp/tmp11yubdxm
-Command line:  cc /tmp/tmp11yubdxm/testfile.c -pipe -E -P -D_FILE_OFFSET_BITS=64 -P -O0 -std=c99 
+Using cached compile:
+Cached command line:  cc /tmp/tmp11yubdxm/testfile.c -pipe -E -P -D_FILE_OFFSET_BITS=64 -P -O0 -std=c99 
 
 Code:
  
@@ -441,13 +402,13 @@ Code:
         #endif
         "MESON_GET_DEFINE_DELIMITER"
 __AVX__
-Compiler stdout:
+Cached compiler stdout:
          "MESON_GET_DEFINE_DELIMITER"
 
 
-Compiler stderr:
+Cached compiler stderr:
  
-Fetching value of define "__AVX__" :  
+Fetching value of define "__AVX__" :  (cached)
 Program nasm found: YES (/usr/bin/nasm)
 Running command: /usr/bin/nasm -v
 --- stdout ---
@@ -459,9 +420,8 @@ NASM version 2.14.02
 Configuring config.asm using configuration
 Configuring config.h using configuration
 Configuring version.h using configuration
-Running compile:
-Working directory:  /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpz7n43g3r
-Command line:  cc -I/mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/tools/output /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpz7n43g3r/testfile.c -o /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpz7n43g3r/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -std=c99 
+Using cached compile:
+Cached command line:  cc -I/mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/tools/output /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpz7n43g3r/testfile.c -o /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpz7n43g3r/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -std=c99 
 
 Code:
  
@@ -473,23 +433,23 @@ Code:
             #endif
             return 0;
         }
-Compiler stdout:
+Cached compiler stdout:
  
-Compiler stderr:
+Cached compiler stderr:
  /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpz7n43g3r/testfile.c:2:18: fatal error: xxhash.h: No such file or directory
     2 |         #include <xxhash.h>
       |                  ^~~~~~~~~~
 compilation terminated.
 
-Header <xxhash.h> has symbol "XXH3_createState" : NO 
+Header <xxhash.h> has symbol "XXH3_createState" : NO (cached)
 Configuring cli_config.h using configuration
 tools/meson.build:109: WARNING: Passed invalid keyword argument "buildtype".
 WARNING: This will become a hard error in the future.
 Adding test "checkasm"
 Adding benchmark "checkasm"
 Running compile:
-Working directory:  /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpzc1q5_3b
-Command line:  cc /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpzc1q5_3b/testfile.c -o /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpzc1q5_3b/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Werror=c11-extensions 
+Working directory:  /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmp6u7rif2e
+Command line:  cc /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmp6u7rif2e/testfile.c -o /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmp6u7rif2e/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Werror=c11-extensions 
 
 Code:
  int i;
@@ -501,8 +461,8 @@ Compiler stderr:
 
 Compiler for C supports arguments -Werror=c11-extensions: NO 
 Running compile:
-Working directory:  /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpo4fkmao_
-Command line:  cc /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpo4fkmao_/testfile.c -o /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpo4fkmao_/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Werror=c99-c11-compat 
+Working directory:  /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpytfjydat
+Command line:  cc /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpytfjydat/testfile.c -o /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpytfjydat/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 -Werror=c99-c11-compat 
 
 Code:
  int i;
@@ -523,8 +483,8 @@ Build targets in project: 20
 
 Found ninja-1.10.0 at /usr/bin/ninja
 Running compile:
-Working directory:  /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpoei1mbhq
-Command line:  cc /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpoei1mbhq/testfile.c -o /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmpoei1mbhq/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 --print-search-dirs 
+Working directory:  /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmp57epgw1s
+Command line:  cc /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmp57epgw1s/testfile.c -o /mnt/hgfs/ubuntu_share/av1decoder/av1decoder1/dav1d-master/dav1d/build/meson-private/tmp57epgw1s/output.obj -pipe -c -D_FILE_OFFSET_BITS=64 -O0 --print-search-dirs 
 
 Code:
  
