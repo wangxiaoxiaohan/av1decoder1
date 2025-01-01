@@ -1,5 +1,3 @@
-
-
 ![arm_register](neon_images/arm_register.PNG)
 
 arm64  SIMD 汇编学习笔记
@@ -67,19 +65,20 @@ XZR 64位零寄存器
 ● ADDS (shifted register)：移位寄存器加法，设置标志位。
 ● ADR：形成程序计数器（pc）相对地址。
 
-​	adr x0, my_test_data
+​    adr x0, my_test_data
 
 ● ADRP：形成程序计数器（pc）相对地址到4KB页。
 
-		adrp x1, my_test_data
-​	add x1, x1, #:lo12:my_test_data
-​	ldr x3, [x1]
+        adrp x1, my_test_data
 
-​	adrp指令将label的值传递给xd寄存器。label的值为pc所在页基值 + (立即数 * 4096) ，立即数就相当于是页索引
+​    add x1, x1, #:lo12:my_test_data
+​    ldr x3, [x1]
 
-​	使用adrp获取标签的相对pc的4K页基值，然后再搭配一个ldr register [register #offset] 即可得到标签实际地址，此处的offset是页内的偏移
+​    adrp指令将label的值传递给xd寄存器。label的值为pc所在页基值 + (立即数 * 4096) ，立即数就相当于是页索引
 
-​	为什么默认页面基地址是相对于pc寄存器的，pc寄存器除了程序计数还有什么特点？
+​    使用adrp获取标签的相对pc的4K页基值，然后再搭配一个ldr register [register #offset] 即可得到标签实际地址，此处的offset是页内的偏移
+
+​    为什么默认页面基地址是相对于pc寄存器的，pc寄存器除了程序计数还有什么特点？
 
 ● AND (immediate)：立即数位与操作。
 ● AND (shifted register)：移位寄存器位与操作。
@@ -108,9 +107,9 @@ XZR 64位零寄存器
 ● BIC (shifted register)：移位寄存器位清除。
 ● BICS (shifted register)：移位寄存器位清除，设置标志位。
 ● BL：跳转并会把当前地址保存到LR(在aarch64中是X30)。Branch with Link branches to a PC-relative offset, setting the register X30 to PC+4. It provides a
-												hint that this is a subroutine call.
+                                                hint that this is a subroutine call.
 
-​	可以理解为BL就是调用子函数
+​    可以理解为BL就是调用子函数
 
 ● BLR：参考BL，不过地址为一个寄存器所指向的地址
 ● BLRAA, BLRAAZ, BLRAB, BLRABZ：带有指针认证的寄存器链接分支。
@@ -129,13 +128,13 @@ XZR 64位零寄存器
 ● CCMN (register)：寄存器条件比较负数。
 ● CCMP (immediate)：
 
-​	CCMP Rn, #imm, #nzcv, cond 
+​    CCMP Rn, #imm, #nzcv, cond 
 
-​	flags = if cond then compare(Rn,#imm) else #nzcv, where R is either W or X.
+​    flags = if cond then compare(Rn,#imm) else #nzcv, where R is either W or X.
 
-​	即如果 前两个满足最后的条件，则将Z标志设为比较结果，否则设为第三个
+​    即如果 前两个满足最后的条件，则将Z标志设为比较结果，否则设为第三个
 
-​	ccmp            w3,  #0,  #0,  eq
+​    ccmp            w3,  #0,  #0,  eq
 
 ● CCMP (register)：寄存器条件比较。
 ● CFINV：反转进位标志。
@@ -191,13 +190,13 @@ XZR 64位零寄存器
 ● CSDB：推测数据消费屏障。
 ● CSEL：条件选择。
 
-​	CSEL Wd, Wn, Wm, cond
+​    CSEL Wd, Wn, Wm, cond
 
-​	Rd = if cond then Rn else Rm
+​    Rd = if cond then Rn else Rm
 
-​	csel            x5,  x5,  x12, lt    第二个小于第三个 则第二个的值放入dst，否则第三个放入dst
+​    csel            x5,  x5,  x12, lt    第二个小于第三个 则第二个的值放入dst，否则第三个放入dst
 
-​	csel            x12, x12, x5,  ge 第二个大于第三个 则第二个的值放入dst，否则第二三放入dst
+​    csel            x12, x12, x5,  ge 第二个大于第三个 则第二个的值放入dst，否则第二三放入dst
 
 ● CSET：条件设置：CSINC的别名。
 ● CSETM：条件设置掩码：CSINV的别名。
@@ -269,17 +268,17 @@ XZR 64位零寄存器
 
 ● LDRB (register)：寄存器加载寄存器字节。
 
-​	加载一个字节，后面的立即数是加载之后的位移
+​    加载一个字节，后面的立即数是加载之后的位移
 
-​	ldrb            w9,  [x5] 
+​    ldrb            w9,  [x5] 
 
-​	ldrb            w8,  [x3], #1
+​    ldrb            w8,  [x3], #1
 
-​	ldrb            w11, [x9, #10] 
+​    ldrb            w11, [x9, #10] 
 
 ● LDRH (immediate)：立即数加载寄存器半字。
 
-​	LDRH  w12, [x13, #4]
+​    LDRH  w12, [x13, #4]
 
 ● LDRH (register)：寄存器加载寄存器半字。dst 必须是 W 寄存器
 
@@ -333,11 +332,11 @@ XZR 64位零寄存器
 ● LSRV：逻辑右移变量。
 ● MADD：乘加。
 
-​	madd            x8,  x12, x9,  x8
+​    madd            x8,  x12, x9,  x8
 
-​	                   Xd, Xn, Xm, Xa 
+​                       Xd, Xn, Xm, Xa 
 
-​			   Xd = Xa + Xn * Xm,
+​               Xd = Xa + Xn * Xm,
 
 ● MNEG：乘取反：MSUB的别名。
 ● MOV (bitmask immediate)：位掩码立即数移动：ORR (immediate)的别名。
@@ -361,11 +360,11 @@ MSR指令用亍将操作数的内容传送到程序状态寄存器的特定域�
 ● MSR (register)：将通用寄存器移动到系统寄存器。
 ● MSUB：乘减。
 
-​	 msub            x6,  x7,  x10,  x6 
+​     msub            x6,  x7,  x10,  x6 
 
-​			     Xd, Xn, Xm, Xa
+​                 Xd, Xn, Xm, Xa
 
-​			     Xd= Xa- Xn* Xm
+​                 Xd= Xa- Xn* Xm
 
 ● MUL：乘法：。
 ● MVN：位非：ORN (shifted register)的别名。
@@ -386,11 +385,11 @@ MSR指令用亍将操作数的内容传送到程序状态寄存器的特定域�
 ● PRFM (literal)：字面量预取内存。
 ● PRFM (register)：寄存器预取内存。
 
-用于执行预取操作，旨在减少未来的缓存缺失延迟。通过预先加载数据到缓存中，可以在后续访问这些数据时更快地获取它们，从而提高程序的整体	性能。所谓的缓存是指cpu的cache  也就是常说的L1,L2之类的
+用于执行预取操作，旨在减少未来的缓存缺失延迟。通过预先加载数据到缓存中，可以在后续访问这些数据时更快地获取它们，从而提高程序的整体    性能。所谓的缓存是指cpu的cache  也就是常说的L1,L2之类的
 
-​	prfm            pldl1strm, [x1]
+​    prfm            pldl1strm, [x1]
 
-​	其中	pldl1strm是一个arm预设的标志 代表预期的类型 还有以下类型：
+​    其中    pldl1strm是一个arm预设的标志 代表预期的类型 还有以下类型：
 
 PLDL1KEEP, PLDL1STRM, PLDL2KEEP, PLDL2STRM, PLDL3KEEP, PLDL3STRM PSTL1KEEP, PSTL1STRM, PSTL2KEEP, PSTL2STRM, PSTL3KEEP, PSTL3STRM
 
@@ -403,7 +402,7 @@ PLDL1KEEP, PLDL1STRM, PLDL2KEEP, PLDL2STRM, PLDL3KEEP, PLDL3STRM PSTL1KEEP, PSTL
 ● PSSBB：物理推测存储绕过屏障：DSB的别名。
 ● RBIT：位反转。
 
-​	rbit            w7,  w7 
+​    rbit            w7,  w7 
 
 ● RET：从子程序返回。
 ● RETAA, RETAB：带有指针认证的从子程序返回。
@@ -415,10 +414,6 @@ PLDL1KEEP, PLDL1STRM, PLDL2KEEP, PLDL2STRM, PLDL3KEEP, PLDL3STRM PSTL1KEEP, PSTL
 
 ● REV32：在32位字中反转字节。
 ● REV64：![3974128850-63d485232838c](neon_images/3974128850-63d485232838c.png)
-
-
-
-
 
 ● RMIF：旋转，掩码插入标志。
 ● ROR (immediate)：立即数右旋转：EXTR的别名。
@@ -483,13 +478,13 @@ PLDL1KEEP, PLDL1STRM, PLDL2KEEP, PLDL2STRM, PLDL3KEEP, PLDL3STRM PSTL1KEEP, PSTL
 ● STNP：带有非临时性提示的存储寄存器对。
 ● STP：存储寄存器对。将提供的一对寄存器中的值存储到内存中
 
-​	stp             x29, x30, [sp, #-16]!
+​    stp             x29, x30, [sp, #-16]!
 
-​	stp             x29, x30, X8, #16
+​    stp             x29, x30, X8, #16
 
 ​        stp             q1,  q1,  [x0, #32]
 
-​	
+​    
 
 ● STR (immediate)：立即数存储寄存器。
 ● STR (register)：寄存器存储寄存器。
@@ -515,18 +510,19 @@ PLDL1KEEP, PLDL1STRM, PLDL2KEEP, PLDL2STRM, PLDL3KEEP, PLDL3STRM PSTL1KEEP, PSTL
 ● STUMIN, STUMINL：内存中字或双字的原子无符号最小值，无返回：LDUMIN, LDUMINA, LDUMINAL, LDUMINL的别名。
 ● STUMINB, STUMINLB：内存中字节的原子无符号最小值，无返回：LDUMINB, LDUMINAB, LDUMINALB, LDUMINLB的别名。
 ● STUMINH, STUMINLH：内存中半字的原子无符号最小值，无返回：LDUMINH, LDUMINAH, LDUMINALH, LDUMINLH的别名。
-● STUR：未缩放存储寄存器。 offset 不需要对齐，str则需要对齐，例如在当前arm64的case中，str的offset需要8字节对齐？（arm32是4字节对齐），也就是这个offset必须		是8的倍数(不是8的倍数会不会编译不过？ 这个可以验证一下)	
+● STUR：未缩放存储寄存器。 offset 不需要对齐，str则需要对齐，例如在当前arm64的case中，str的offset需要8字节对齐？（arm32是4字节对齐），也就是这个offset必须        是8的倍数(不是8的倍数会不会编译不过？ 这个可以验证一下)    
 
-​		如果移位的立即数 imm 						% 8 = 0，即为8的整数倍，那么，stur和str没有区别
+​        如果移位的立即数 imm                         % 8 = 0，即为8的整数倍，那么，stur和str没有区别
 
-		    simm：也就是stur 使用的，不论平台 -256 ~ 255
+            simm：也就是stur 使用的，不论平台 -256 ~ 255
+
 ​                pimm 也就是str使用的
 ​                32-bit : 0 ~ 16380
 ​                    but is must mutilple of 4, that is: pimm % 4 == 0
-​       	64-bit : 0 ~ 32760
-​          		 but is must mutilple of 8, that is: pimm % 8 == 0
+​           64-bit : 0 ~ 32760
+​                   but is must mutilple of 8, that is: pimm % 8 == 0
 
-​		例：stur            q2, [x3, #(8*5-16)]
+​        例：stur            q2, [x3, #(8*5-16)]
 
 ● STURB：未缩放存储寄存器字节。
 ● STURH：未缩放存储寄存器半字。
@@ -545,29 +541,27 @@ PLDL1KEEP, PLDL1STRM, PLDL2KEEP, PLDL2STRM, PLDL3KEEP, PLDL3STRM PSTL1KEEP, PSTL
 ● SUBPS：减指针，设置标志。
 ● SUBS (extended register)：扩展寄存器减法，设置标志。
 
-​	SUBS Xd, Xn|SP, Rm, {extend #{amount}} ; 
+​    SUBS Xd, Xn|SP, Rm, {extend #{amount}} ; 
 
-​	Rd = Rn - LSL(extend(Rm),
+​    Rd = Rn - LSL(extend(Rm),
 
-
-
-​	会更新C标志
+​    会更新C标志
 
 ● SUBS (immediate)：立即数减法，设置标志。
 
-​	Rd = Rn - shift(imm)
+​    Rd = Rn - shift(imm)
 
-​	subs            w4,  w4,  #2
+​    subs            w4,  w4,  #2
 
-	  	会更新C标志
+          会更新C标志
 
 ● SUBS (shifted register)：移位寄存器减法，设置标志。
 
-​	SUBS Xd, Xn, Xm, {shift #amount} 
+​    SUBS Xd, Xn, Xm, {shift #amount} 
 
-​	Rd = Rn - shift(Rm, amount)
+​    Rd = Rn - shift(Rm, amount)
 
-​		例如  : SUBS V1 ,V2 ,V3 ,lsr #3
+​        例如  : SUBS V1 ,V2 ,V3 ,lsr #3
 
 ​                 结果是V1等于 V2减去V3右移3位
 
@@ -589,8 +583,6 @@ SXTX/SXTW/SXTH/SXTB：(64)/ Sign-extend single-word（32） / half-word（16） 
 
 例：add             x11, x2,  w11, sxtw #1
 
-
-
 如果带立即数 表示左移
 
 ● SYS：系统指令。
@@ -603,7 +595,7 @@ SXTX/SXTW/SXTH/SXTB：(64)/ Sign-extend single-word（32） / half-word（16） 
 ● TSB CSYNC：跟踪同步屏障。
 ● TST (immediate)：测试位（立即数）：ANDS (immediate)的别名。按位与，根据结果设置标志位
 
-​	tst             w6,  #0x0f
+​    tst             w6,  #0x0f
 
 ● TST (shifted register)：测试（移位寄存器）：ANDS (shifted register)的别名。
 ● TSTART：开始事务。
@@ -630,8 +622,6 @@ UXTW/UXTH/UXTB：Zero-[extend](https://so.csdn.net/so/search?q=extend&spm=1001.2
 如果带立即数 表示左移
 
 add             x10, x2,  w6,  uxtw #1
-
-
 
 ● WFE：等待事件。
 ● WFET：带超时的等待事件。
@@ -758,13 +748,7 @@ add             x10, x2,  w6,  uxtw #1
 - **USQADD (scalar) (A64 SIMD)** Unsigned saturating Accumulate of Signed value.
 - **USRA (scalar) (A64 SIMD)** Unsigned Shift Right and Accumulate (immediate).
 
- 
-
-
-
 SIMD scalar和 vector 有一部分重复的
-
-
 
 - **A64 SIMD Vector instructions in alphabetical order** A summary of the A64 SIMD Vector instructions that are supported.
 
@@ -775,11 +759,11 @@ SIMD scalar和 vector 有一部分重复的
 - **ADDHN, ADDHN2 (vector) (A64)** Add returning High Narrow.
 
 - **ADDP (vector) (A64)** Add Pairwise (vector).
-
+  
   ```
-  	addp        v0.8h,  v1.8h,  v2.8h
-  	意思是像下面这样的操作
-  	v0.h[0] = v1.h[0] + v1.h[1]
+      addp        v0.8h,  v1.8h,  v2.8h
+      意思是像下面这样的操作
+      v0.h[0] = v1.h[0] + v1.h[1]
       v0.h[1] = v1.h[2] + v1.h[3]
       v0.h[2] = v1.h[4] + v1.h[5]
       v0.h[3] = v1.h[6] + v1.h[7]
@@ -794,30 +778,28 @@ SIMD scalar和 vector 有一部分重复的
 - **AND (vector) (A64)** Bitwise AND (vector).
 
 - **BIC (vector, immediate) (A64)** Bitwise bit Clear (vector, immediate).  
-
-  bic             x9,  x9,  #7   根据operand(最后一个立即数)哪个位为1，清除Rn对应的位，然后将结果存入Rd
-
-  bic	    r0, r0, #0x00002000    // clear bit[13]   0010 0000 0000 0000
-  bic	    r0, r0, #0x00000007    // clear bit[2:0]  0000 0000 0000 0111
-
   
+  bic             x9,  x9,  #7   根据operand(最后一个立即数)哪个位为1，清除Rn对应的位，然后将结果存入Rd
+  
+  bic        r0, r0, #0x00002000    // clear bit[13]   0010 0000 0000 0000
+  bic        r0, r0, #0x00000007    // clear bit[2:0]  0000 0000 0000 0111
 
    x13, x13, x13, asr #63  X13本身为64位 asr右移63位，只剩下最高位，由于asr特性，会把前面的63位补满最高位的值(1或者0)
 
-  ​						也就是最高位为1就全部清掉，最高位为0就不变 ，也就是如果是负数 就变成0，如果是正数就不变
+  ​                        也就是最高位为1就全部清掉，最高位为0就不变 ，也就是如果是负数 就变成0，如果是正数就不变
 
-  ​						就是一个 max(X,0)的操作？
+  ​                        就是一个 max(X,0)的操作？
 
 - **BIC (vector, register) (A64)** Bitwise bit Clear (vector, register).
-
+  
   bic             v1.16b,  v1.16b,  v14.16b
 
 - **BIF (vector) (A64)** Bitwise Insert if False.  指令用于根据第三个操作数（掩码）的值选择数据，具体为：
   如果掩码对应位为 0，则从第二个的源寄存器中复制该位到dst，否则dst不变 
-
+  
   bif             v3.16b,  v21.16b, v15.16b
-
-  ​		dst          src           mask	
+  
+  ​        dst          src           mask    
 
 - **BIT (vector) (A64)** Bitwise Insert if True. 与BIF相反，如果掩码为1则复制，否则不变
 
@@ -826,59 +808,47 @@ SIMD scalar和 vector 有一部分重复的
 - **CLS (vector) (A64)** Count Leading Sign bits (vector).
 
 - **CLZ (vector) (A64)** Count Leading Zero bits (vector). 统计前置0
-
+  
   clz             w8,  w5
 
 - **CMEQ (vector, register) (A64)** Compare bitwise Equal (vector).比较元素(注意不是按位)，如果第一个等于第二个则dst的该元素每一位都设为1(即整个元素的值为-1)，否则为每一位都设置为0. 
 
 - **CMEQ (vector, zero) (A64)** Compare bitwise Equal to zero (vector).
 
-
-
 - **CMGE (vector, register) (A64)** Compare signed Greater than or Equal (vector).比较元素(注意不是按位)，如果第一个大于等于第二个则dst的该元素每一位都设为1(即整个元素的值为-1)，否则为每一位都设置为0. 
 
 - **CMGE (vector, zero) (A64)** Compare signed Greater than or Equal to zero (vector).比较元素(注意不是按位)和0，如果大于等于0则dst的该元素每一位都设为1(即整个元素的值为-1)，否则为每一位都设置为0. 
-
-  
 
 - **CMGT (vector, register) (A64)** Compare signed Greater than (vector). 跟 CMHI 一样，区别是CMGT 是有符号的，CMHI 是无符号的
 
 - **CMGT (vector, zero) (A64)** Compare signed Greater than zero (vector).比较元素(注意不是按位)和0，如果大于0则dst的该元素每一位都设为1(即整个元素的值为-1)，否则为每一位都设置为0. 
 
-  
-
 - **CMHI (vector, register) (A64)** Compare unsigned Higher (vector). 第一个大于第二个则设置dst元素的每一位都为1，否则每一位都为0
-
-  ​	 CMHI          v1.8h,   v11.8h,  v0.8h 
+  
+  ​     CMHI          v1.8h,   v11.8h,  v0.8h 
 
 - **CMHS (vector, register) (A64)** Compare unsigned Higher or Same (vector).   第一个大于或等于第二个则设置dst元素的每一位都为1，否则每一位都为0
-
-  ​	 cmhs            v1.8h,   v11.8h,  v0.8h 
+  
+  ​     cmhs            v1.8h,   v11.8h,  v0.8h 
 
 - **CMLE (vector, zero) (A64)** Compare signed Less than or Equal to zero (vector).比较元素(注意不是按位)和0，如果小于等于0则dst的该元素每一位都设为1(即整个元素的值为-1)，否则为每一位都设置为0. 
-
+  
   CMLE  v4.8h,   v2.8h,   #0  后面这个#0 是spec写法，不能改
 
-  
-
 - **CMLT (vector, zero) (A64)** Compare signed Less than zero (vector). 比较元素(注意不是按位)和0，如果小于0则dst的该元素每一位都设为1(即整个元素的值为-1)，否则为每一位都设置为0. 
-
+  
   cmlt            v4.8h,   v2.8h,   #0  后面这个#0 是spec写法，不能改
 
 ---------------------------
 
-
-
 - **CMTST (vector) (A64)** Compare bitwise Test bits nonzero (vector).相应位置的元素按位与(AND)，如果结果不为0，则把DST对应的元素每一位都设置为1(即整个元素的值为-1)，否则为每一位都设置为0. 
-
-  cmtst           v13.4s,  v13.4s,  v16.4s
-
   
+  cmtst           v13.4s,  v13.4s,  v16.4s
 
 - **CNT (vector) (A64)** Population Count per byte.
 
 - **DUP (vector, element) (A64)** vector. //复制 
-
+  
   dup             v6.4h,    w4 
 
 - **DUP (vector, general) (A64)** Duplicate general-purpose register to vector.
@@ -886,7 +856,7 @@ SIMD scalar和 vector 有一部分重复的
 - **EOR (vector) (A64)** Bitwise Exclusive OR (vector).
 
 - **EXT (vector) (A64)** Extract vector from pair of vectors.
-
+  
   此指令从第二个源SIMD和FP寄存器中提取最低位的向量元素，从第一个源SIMD和FP寄存器中提取最高位的向量元素，然后将这些结果连接成一个新的向量，并将其写入目标SIMD和FP寄存器中。index值指定了从第一个源寄存器中开始提取的最低位向量元素，随后连续的元素依次从第一个源寄存器和第二个源寄存器中提取，直到填满目标向量。
   ext             v7.16b,  v7.16b,  v7.16b,  #8
   这就相当于把自己的内容进行了一个循环
@@ -964,8 +934,6 @@ SIMD scalar和 vector 有一部分重复的
 - **INS (vector, element) (A64)** Insert vector element from another vector element.
 - **INS (vector, general) (A64)** Insert vector element from general-purpose register.
 
-
-
 - **LD1 (vector, multiple structures) (A64)** Load multiple single-element structures to one, two, three, or four registers.
 
 - **LD1 (vector, single structure) (A64)** Load one single-element structure to one lane of one register.
@@ -989,32 +957,28 @@ SIMD scalar和 vector 有一部分重复的
 - **LD4 (vector, single structure) (A64)** Load single 4-element structure to one lane of four registers.
 
 - **LD4R (vector) (A64)** Load single 4-element structure and Replicate to all lanes of four registers.
-
+  
   ​    LD1是最简单的形式，从内存加载一到四个数据寄存器。LD1指令没有解交织（deinterleaving）功能，可以用LD1处理非交错数据数组
-
+  
   ![680547425-63d4831d5acf6](neon_images/680547425-63d4831d5acf6.png)
-
+  
   ​    LD2加载两个或四个数据寄存器，可以将偶数和奇数元素解交织加载到寄存器中，可以用LD2处理分成左/右声道的立体声音频数据
-
+  
   ​    LD3加载三个寄存器并解交织。可以使用LD3将RGB像素数据拆分为独立的颜色通道
-
+  
   ![1459824571-63d483286a208](neon_images/1459824571-63d483286a208.png)
-
+  
   ​    LD4加载四个寄存器并解交织，可以使用LD4处理ARGB图像数据
 
-
-
-​	交换颜色顺序，将RGB转换为BGR，用LD3和ST3指令就很容易完成：先将RGB数据分别加载到V0-V2寄存器，然后交换V0和V2寄存器的数 据（V1保持不变），再用	ST3指令把V0-V2寄存器中的数据写回到内存。这里解释一下，之所以要用三条MOV指令交换V0和V2的数据，是因为 LD3/ST3指令要求三个Vn寄存器的编号必须是连	续递增的
+​    交换颜色顺序，将RGB转换为BGR，用LD3和ST3指令就很容易完成：先将RGB数据分别加载到V0-V2寄存器，然后交换V0和V2寄存器的数 据（V1保持不变），再用    ST3指令把V0-V2寄存器中的数据写回到内存。这里解释一下，之所以要用三条MOV指令交换V0和V2的数据，是因为 LD3/ST3指令要求三个Vn寄存器的编号必须是连    续递增的
 
 ![76832917-63d48335299b0](neon_images/76832917-63d48335299b0.png)
-
-
 
 - **MLA (vector, by element) (A64)** Multiply-Add to accumulator (vector, by element).
 
 - **MLA (vector) (A64)** Multiply-Add to accumulator (vector).
-
-  ​	MLA  v20.8h,  v1.8h,   v6.8h
+  
+  ​    MLA  v20.8h,  v1.8h,   v6.8h
 
 - **MLS (vector, by element) (A64)** Multiply-Subtract from accumulator (vector, by element).
 
@@ -1063,12 +1027,10 @@ SIMD scalar和 vector 有一部分重复的
 - **REV64 (vector) (A64)** Reverse elements in 64-bit doublewords (vector).
 
 - **RSHRN, RSHRN2 (vector) (A64)** Rounding Shift Right Narrow (immediate).
-
-  rshrn             v16.8b,  v16.8h,  #6
-
-  rshrn2          v20.16b, v21.8h,  #8
-
   
+  rshrn             v16.8b,  v16.8h,  #6
+  
+  rshrn2          v20.16b, v21.8h,  #8
 
 - **RSUBHN, RSUBHN2 (vector) (A64)** Rounding Subtract returning High Narrow.
 
@@ -1089,9 +1051,9 @@ SIMD scalar和 vector 有一部分重复的
 - **SADDLV (vector) (A64)** Signed Add Long across Vector.
 
 - **SADDW, SADDW2 (vector) (A64)** Signed Add Wide.
-
+  
     ​        saddw           v2.4s,   v2.4s,   v19.4h
-
+  
     ​        saddw2          v3.4s,   v3.4s,   v19.8h
 
 - **SCVTF (vector, fixed-point) (A64)** Signed fixed-point Convert to Floating-point (vector).
@@ -1103,9 +1065,9 @@ SIMD scalar和 vector 有一部分重复的
 - **SHL (vector) (A64)** Shift Left (immediate).
 
 - **SHLL, SHLL2 (vector) (A64)** Shift Left Long (by element size).
-
+  
   SHLL          v22.8h,  v4.8b,   #8 
-
+  
   SHLL2       v1.8h,   v1.16b,  #3
 
 - **SHRN, SHRN2 (vector) (A64)** Shift Right Narrow (immediate).
@@ -1113,9 +1075,9 @@ SIMD scalar和 vector 有一部分重复的
 - **SHSUB (vector) (A64)** Signed Halving Subtract.
 
 - **SLI (vector) (A64)** Shift Left and Insert (immediate).
-
+  
     左移，且移动后右边产生的0不会覆盖dst中原来的值，而是保留原来的值
-
+  
     Neon also supports shifts with insertion. This operation lets you combine bits from two vectors.
     For example, the SLI shift left and insert instruction shifts each element of the source vector left.
     The new bits that are inserted at the right of each element are the corresponding bits from the
@@ -1124,9 +1086,9 @@ SIMD scalar和 vector 有一部分重复的
     SLI instruction takes each element from v1, shifts it left by 16 bits, then combines it with the
     corresponding element in v0
 
-    
 
-    ![sli](neon_images/sli.png)
+
+![sli.png](neon_images/sli.png)
 
 - **SMAX (vector) (A64)** Signed Maximum (vector).
 
@@ -1169,10 +1131,8 @@ SIMD scalar和 vector 有一部分重复的
 - **SQDMULH (vector, by element) (A64)** Signed saturating Doubling Multiply returning High half (by element).
 
 - **SQDMULH (vector) (A64)** Signed saturating Doubling Multiply returning High half.
-
+  
     sqdmulh         v0.4h,   v0.4h,   v16.4h
-
-    
 
 - **SQDMULL, SQDMULL2 (vector, by element) (A64)** Signed saturating Doubling Multiply Long (by element).
 
@@ -1195,17 +1155,17 @@ SIMD scalar和 vector 有一部分重复的
 - **SQRSHL (vector) (A64)** Signed saturating Rounding Shift Left (register).
 
 - **SQRSHRN, SQRSHRN2 (vector) (A64)** Signed saturating Rounded Shift Right Narrow (immediate). 右移并饱和在src寄存器宽度一半(就是dst寄存器的宽度)的范围内，最后放入dst寄存器
-
+  
   ​        sqrshrn         v18.4h,  v18.4s, #12
-
+  
   ​        sqrshrn2        v18.8h,  v19.4s, #12
 
 - **SQRSHRUN, SQRSHRUN2 (vector) (A64)** Signed saturating Rounded Shift Right Unsigned Narrow (immediate).
-
+  
   参考上面两个，区别是，这两个右移后直接饱和成为无符号的
-
+  
   ​        SQRSHRUN   v18.4h,  v18.4s, #12
-
+  
   ​        SQRSHRUN2   v18.8h,  v19.4s, #12
 
 - **SQSHL (vector, immediate) (A64)** Signed saturating Shift Left (immediate).
@@ -1237,9 +1197,9 @@ SIMD scalar和 vector 有一部分重复的
 - **SSHL (vector) (A64)** Signed Shift Left (register).
 
 - **SSHLL, SSHLL2 (vector) (A64)** Signed Shift Left Long (immediate).
-
+  
   SSHLL          v22.8h,  v4.8b,   #8 
-
+  
   SSHLL2      v1.8h,   v1.16b,  #3
 
 - **SSHR (vector) (A64)** Signed Shift Right (immediate).
@@ -1247,15 +1207,15 @@ SIMD scalar和 vector 有一部分重复的
 - **SSRA (vector) (A64)** Signed Shift Right and Accumulate (immediate).
 
 - **SSUBL, SSUBL2 (vector) (A64)** Signed Subtract Long.
-
+  
     ​        ssubl           v2.4s,   v16.4h,  v18.4h
-
+  
     ​        ssubl2          v3.4s,   v16.8h,  v18.8h
 
 - **SSUBW, SSUBW2 (vector) (A64)** Signed Subtract Wide.
-
+  
     ​        ssubw           v22.8H,  v22.8H,  v4.8B
-
+  
     ​        ssubw2          v24.8H,  v24.8H,  v4.16B
 
 - **ST1 (vector, multiple structures) (A64)** Store multiple single-element structures from one, two, three, or four registers.
@@ -1273,10 +1233,8 @@ SIMD scalar和 vector 有一部分重复的
 - **ST4 (vector, multiple structures) (A64)** Store multiple 4-element structures from four registers.
 
 - **ST4 (vector, single structure) (A64)** Store single 4-element structure from one lane of four registers.
-
-  ST*系列可以参考LD*系列
-
   
+  ST*系列可以参考LD*系列
 
 - **SUB (vector) (A64)** Subtract (vector).
 
@@ -1285,47 +1243,37 @@ SIMD scalar和 vector 有一部分重复的
 - **SUQADD (vector) (A64)** Signed saturating Accumulate of Unsigned value.
 
 - **SXTL, SXTL2 (vector) (A64)** Signed extend Long.  有符号/无符号 扩展较窄寄存器中的值到更宽的寄存器中
-
+  
     sxtl            v16.8h,  v16.8b
-
+  
     sxtl2           v17.8h,  v17.16b
 
 - **TBL (vector) (A64)** Table vector Lookup.使用最后一个中的值作为index，在第二个中查值，把查到的放入dst，第二个可能有1-4个，按顺序递增地址
-
-  ​									如果index超过第二个的范围了，则设定查找值为0									
-
+  
+  ​                                    如果index超过第二个的范围了，则设定查找值为0                                    
+  
   tbl             v4.8b, {v0.16b, v1.16b}, v26.8b 
 
 - **TBX (vector) (A64)** Table vector lookup extension. 参考tbl ，区别是 ，如果index超过第二个的范围了，则不会修改dst的相应值
-
+  
   tbx             v4.8b, {v0.16b, v1.16b}, v26.8b 
 
 - **TRN1 (vector) (A64)** Transpose vectors (primary).
 
-  
-
   TRN1:转置向量 Transpose vector(primary), 该指令从零开始读取两个源寄存器 的向量元素（TRN1读取奇数下标（1为第一个），trn2读取偶数下标（0为第一个）），并将每个结果放到向量的连续元素，并将向量写到目的寄存器中。第一个源寄存器中的向量元素被放到目的寄存器的偶数元素位置，第二个源寄存器中的向量元素放到目的寄存器的奇数元素位置。
 
-
-
-
-
 - **TRN2 (vector) (A64)** Transpose vectors (secondary).
-
-
 
 ![3158005807-63d48539b85c0](neon_images/3158005807-63d48539b85c0.png)
 
 ​         转置向量 Transpose vectors(secondary)。该指令读取两个源寄存器 SIMD&FP 的相应奇数向量元素，并将每个结果放到向量的连续元素，并将向量写到目的寄存器         中。第一个源寄存器中的向量元素被放到目的寄存器的偶数元素位置，第二个源寄存器中的向量元素放到目的寄存器的奇数元素位置
-
-
 
 - **UABA (vector) (A64)** Unsigned Absolute difference and Accumulate.
 
 - **UABAL, UABAL2 (vector) (A64)** Unsigned Absolute difference and Accumulate Long.
 
 - **UABD (vector) (A64)** Unsigned Absolute Difference (vector).
-
+  
      绝对值差
 
 - **UABDL, UABDL2 (vector) (A64)** Unsigned Absolute Difference Long.
@@ -1333,21 +1281,21 @@ SIMD scalar和 vector 有一部分重复的
 - **UADALP (vector) (A64)** Unsigned Add and Accumulate Long Pairwise.
 
 - **UADDL, UADDL2 (vector) (A64)** Unsigned Add Long (vector).无符号，相加并放入更宽寄存器
-
+  
   UADDL v16.8h,  v4.8b,   v5.8b 
-
+  
   UADDL2 v17.8h,  v4.16b,  v5.16b
 
 - **UADDLP (vector) (A64)** Unsigned Add Long Pairwise. 相邻的两个加一起，最后把结果放入更宽的寄存器
-
+  
   uaddlp          v1.4h,   v1.8b
 
 - **UADDLV (vector) (A64)** Unsigned sum Long across Vector.
 
 - **UADDW, UADDW2 (vector) (A64)** Unsigned Add Wide.
-
+  
      ​        uaddw           v22.8h,  v22.8h,  v0.8b
-
+  
      ​        uaddw2          v21.8h,  v21.8h,  v7.16b
 
 - **UCVTF (vector, fixed-point) (A64)** Unsigned fixed-point Convert to Floating-point (vector).
@@ -1355,18 +1303,18 @@ SIMD scalar和 vector 有一部分重复的
 - **UCVTF (vector, integer) (A64)** Unsigned integer Convert to Floating-point (vector).
 
 - **UHADD (vector) (A64)** Unsigned Halving Add.
-
+  
   ​    uhsub           v20.8b,  v3.8b,   v20.8b
-
+  
   ​    两个source  向量加起来 然后右移一位 放入dst，可用于求平均？
 
 - **UHSUB (vector) (A64)** Unsigned Halving Subtract.
-
+  
   uhsub           v20.8b,  v3.8b,   v20.8b
-
+  
   ​     无符号减半减法。
   ​     该指令从第一个源SIMD FP寄存器中的相应向量元素中减去第二个源SIMD和FP寄存器中的向量元素，将每个结果右移一位，将每个结果放入向量中，并将向量写      
-
+  
   ​     入目标SIMD和FP寄存器。
 
 - **UMAX (vector) (A64)** Unsigned Maximum (vector).
@@ -1382,9 +1330,9 @@ SIMD scalar和 vector 有一部分重复的
 - **UMINV (vector) (A64)** Unsigned Minimum across Vector.
 
 - **UMLAL, UMLAL2 (vector, by element) (A64)** Unsigned Multiply-Add Long (vector, by element).
-
+  
      加法，dst扩宽
-
+  
      v16.8H, v4.8B,  v0.8B
 
 - **UMLAL, UMLAL2 (vector) (A64)** Unsigned Multiply-Add Long (vector).
@@ -1394,15 +1342,15 @@ SIMD scalar和 vector 有一部分重复的
 - **UMLSL, UMLSL2 (vector) (A64)** Unsigned Multiply-Subtract Long (vector).
 
 - **UMOV (vector) (A64)** Unsigned Move vector element to general-purpose register.
-
+  
      ​      移动向量寄存器中的值到普通寄存器中
-
-     ​	umov            w16, v1.h[0] 
+  
+     ​    umov            w16, v1.h[0] 
 
 - **UMULL, UMULL2 (vector, by element) (A64)** Unsigned Multiply Long (vector, by element).
-
+  
      乘法，dst要扩宽
-
+  
      umull           v18.8H, v4.8B,  v0.8B
 
 - **UMULL, UMULL2 (vector) (A64)** Unsigned Multiply long (vector).
@@ -1426,9 +1374,9 @@ SIMD scalar和 vector 有一部分重复的
 - **URECPE (vector) (A64)** Unsigned Reciprocal Estimate.
 
 - **URHADD (vector) (A64)** Unsigned Rounding Halving Add.
-
+  
      每组对应的元素进行无符号加法，加了之后，结果要右移一位,然后还需要舍入
-
+  
      urhadd          v16.8B, v16.8B, v20.8B
 
 - **URSHL (vector) (A64)** Unsigned Rounding Shift Left (register). 
@@ -1442,9 +1390,9 @@ SIMD scalar和 vector 有一部分重复的
 - **USHL (vector) (A64)** Unsigned Shift Left (register).
 
 - **USHLL, USHLL2 (vector) (A64)** Unsigned Shift Left Long (immediate).无符号右移并放入更宽的寄存器
-
+  
      USHLL  v22.8h,  v4.8b,   #8 
-
+  
      USHLL2  v1.8h,   v1.16b,  #3
 
 - **USHR (vector) (A64)** Unsigned Shift Right (immediate).
@@ -1456,42 +1404,38 @@ SIMD scalar和 vector 有一部分重复的
 - **USUBL, USUBL2 (vector) (A64)** Unsigned Subtract Long.
 
 - **USUBW, USUBW2 (vector) (A64)** Unsigned Subtract Wide.
-
+  
      ​        usubw           v4.8H,    v4.8H,   v2.8B
-
+  
      ​        usubw2          v20.8H,  v20.8H,   v2.16B
 
 - **UXTL, UXTL2 (vector) (A64)** Unsigned extend Long. 扩展较窄寄存器中的值到更宽的寄存器中
-
+  
   uxtl            v7.8h,   v7.8b
-
+  
   uxtl2           v7.8h,   v7.16b
 
 - **UZP1 (vector) (A64)** Unzip vectors (primary).  
-
+  
      将两个source 中对应的偶数元素提取出来，组成连续的数据，其中第一个source放在低位，第二个source放在高位
-
+  
      uzp1            v0.16b, v3.16b, v3.16b  //这个操作两个source相同，相当于把自己的偶数位的数据提取出来，连续放两次在dst中
 
 - **UZP2 (vector) (A64)** Unzip vectors (secondary).
-
+  
      将两个source 中对应的奇数元素提取出来，组成连续的数据，其中第一个source放在低位，第二个source放在高位
-
+  
        uzp2            v1.16b, v3.16b, v3.16b  
 
 - **XTN, XTN2 (vector) (A64)** Extract Narrow. //与UZP的区别是：uzp是提取奇数位或者偶数位的整个元素，而XTN是提取sorce的元素的低位，
-
+  
       也就是说，拆分了完整的元素
 
-        
+![XTN1.png](neon_images/XTN1.png)
 
-     ![XTN1](neon_images/XTN1.png)
+![XTN1.png](neon_images/XTN1.png)
 
-     
 
-     ![XTN2](neon_images/XTN2.png)
-
-     
 
 - ZIP1 (vector) (A64)** Zip vectors (primary).
 
@@ -1499,42 +1443,13 @@ SIMD scalar和 vector 有一部分重复的
 
 - ![zip](neon_images/zip.png)
 
-
-
-
-
-
-
 ![19648263-63d485459c238](neon_images/19648263-63d485459c238.png)
 
 zip1            v29.16b, v29.16b, v29.16b  也可以这样 把自己的低半部分和高半部分交叉存储
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 mov             v19.16b, v23.16b  arch 64中 ，mov复制向量，必须是以 .b 也就是8位为单位
-
 
 .irp i x x x 
 
 .endr 
 相当于汇编中的for 循环
-
-
-
-
