@@ -881,33 +881,38 @@ int decode::find_mv_stack(int isCompound,SymbolContext *sbCtx, bitSt *bs,
 
 	frameHeader *frameHdr = &av1Ctx->currentFrame->frameHdr;
 	sequenceHeader *seqHdr = &av1Ctx->seqHdr;
-									
+	//候选MV								
 	b_data->mvpCtx.NumMvFound = 0;
+	//新增MV
 	b_data->mvpCtx.NewMvCount = 0;
+	
 	setup_global_mv(0,b_data->mvpCtx.GlobalMvs[0],b_data,av1Ctx);
 	setup_global_mv(1,b_data->mvpCtx.GlobalMvs[1],b_data,av1Ctx);
 	// printf("GlobalMvs value %d %d %d %d\n",b_data->mvpCtx.GlobalMvs[0][0],
 	// 	b_data->mvpCtx.GlobalMvs[0][1],b_data->mvpCtx.GlobalMvs[1][0],
 	// 	b_data->mvpCtx.GlobalMvs[1][1]);
+	//扫描上方相邻块
 	b_data->mvpCtx.FoundMatch = 0;
 	scan_row(-1,isCompound,b_data,av1Ctx);
 	int foundAboveMatch,foundLeftMatch;
 
 	foundAboveMatch = b_data->mvpCtx.FoundMatch ;
 	b_data->mvpCtx.FoundMatch = 0;
+	//扫描左方相邻块
 	scan_col(-1,isCompound,b_data,av1Ctx);
 	foundLeftMatch = b_data->mvpCtx.FoundMatch ;
 	b_data->mvpCtx.FoundMatch = 0;
 
 	int bh4 = Num_4x4_Blocks_High[ b_data->MiSize ];
 	int bw4 = Num_4x4_Blocks_Wide[ b_data->MiSize ];
+	//扫描左上角
 	if(Max( bw4, bh4 ) <= 16){
 		scan_point(-1,bw4,isCompound,b_data,av1Ctx);
 	}
-
 	if(b_data->mvpCtx.FoundMatch == 1){
 		foundAboveMatch = 1;
 	}
+
 	b_data->mvpCtx.CloseMatches = foundAboveMatch + foundLeftMatch;
 	int numNearest = b_data->mvpCtx.NumMvFound;
 	int numNew = b_data->mvpCtx.NewMvCount;
@@ -917,6 +922,7 @@ int decode::find_mv_stack(int isCompound,SymbolContext *sbCtx, bitSt *bs,
 		}
 	}
 	b_data->mvpCtx.ZeroMvContext = 0;
+	//时域扫描
 	if(frameHdr->use_ref_frame_mvs == 1){
 		temporal_scan(isCompound,b_data,av1Ctx);
 	}
@@ -924,7 +930,7 @@ int decode::find_mv_stack(int isCompound,SymbolContext *sbCtx, bitSt *bs,
 	if(b_data->mvpCtx.FoundMatch == 1){
 		foundAboveMatch = 1;
 	}
-
+	//扫描更远的上方
 	b_data->mvpCtx.FoundMatch =0;
 	scan_row(-3,isCompound,b_data,av1Ctx);
 	if(b_data->mvpCtx.FoundMatch == 1){
@@ -932,6 +938,7 @@ int decode::find_mv_stack(int isCompound,SymbolContext *sbCtx, bitSt *bs,
 	}
 	b_data->mvpCtx.FoundMatch =0;
 
+	//扫描更远的左方
 	scan_col(-3,isCompound,b_data,av1Ctx);
 	if(b_data->mvpCtx.FoundMatch == 1){
 		foundLeftMatch = 1;
@@ -956,8 +963,11 @@ int decode::find_mv_stack(int isCompound,SymbolContext *sbCtx, bitSt *bs,
 
 	b_data->mvpCtx.TotalMatches = foundAboveMatch + foundLeftMatch;
 
+	//	对MV进行排序
 	Sorting(0,numNearest,isCompound,b_data,av1Ctx);
 	Sorting(numNearest,b_data->mvpCtx.NumMvFound,isCompound,b_data,av1Ctx);
+
+	//候选不足两个 进行补充搜索
 	if(b_data->mvpCtx.NumMvFound < 2){
 		extra_search(isCompound,b_data,av1Ctx);
 	}
