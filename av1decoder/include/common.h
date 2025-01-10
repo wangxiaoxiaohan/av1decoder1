@@ -22,11 +22,11 @@ enum tristate
 #define SEG_LVL_MAX 8 // 这个表示一个段内的 8个“feature”，(不是一个帧内最大8个段 ，这有另一个宏MAX_SEGMENTS 来表示)
 // 每一个feature的index 用宏来表示，并说明功能，
 // 比如下面的 SEG_LVL_REF_FRAME， SEG_LVL_GLOBALMV
-#define SEG_LVL_REF_FRAME 5
-#define SEG_LVL_GLOBALMV 7
-#define SEG_LVL_ALT_Q 0
-#define SEG_LVL_ALT_LF_Y_V 1
-#define SEG_LVL_SKIP 6
+#define SEG_LVL_REF_FRAME 5  //Index for reference frame segment feature
+#define SEG_LVL_GLOBALMV 7   //Index for global mv feature
+#define SEG_LVL_ALT_Q 0   //index for quantizer segment feature
+#define SEG_LVL_ALT_LF_Y_V 1  //Index for vertical luma loop filter segment feature
+#define SEG_LVL_SKIP 6    //Index for skip segment feature
 
 #define SELECT_SCREEN_CONTENT_TOOLS 2
 #define SELECT_INTEGER_MV 2
