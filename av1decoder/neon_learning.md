@@ -783,11 +783,11 @@ SIMD scalar和 vector 有一部分重复的
   
   bic        r0, r0, #0x00002000    // clear bit[13]   0010 0000 0000 0000
   bic        r0, r0, #0x00000007    // clear bit[2:0]  0000 0000 0000 0111
-
+  
    x13, x13, x13, asr #63  X13本身为64位 asr右移63位，只剩下最高位，由于asr特性，会把前面的63位补满最高位的值(1或者0)
-
+  
   ​                        也就是最高位为1就全部清掉，最高位为0就不变 ，也就是如果是负数 就变成0，如果是正数就不变
-
+  
   ​                        就是一个 max(X,0)的操作？
 
 - **BIC (vector, register) (A64)** Bitwise bit Clear (vector, register).
@@ -864,74 +864,143 @@ SIMD scalar和 vector 有一部分重复的
 ![2249497726-63d4852f12888](neon_images/2249497726-63d4852f12888.png)
 
 - **FABD (vector) (A64)** Floating-point Absolute Difference (vector).
+
 - **FABS (vector) (A64)** Floating-point Absolute value (vector).
+
 - **FACGE (vector) (A64)** Floating-point Absolute Compare Greater than or Equal (vector).
+
 - **FACGT (vector) (A64)** Floating-point Absolute Compare Greater than (vector).
+
 - **FADD (vector) (A64)** Floating-point Add (vector).
+
 - **FADDP (vector) (A64)** Floating-point Add Pairwise (vector).
+
 - **FCADD (vector) (A64)** Floating-point Complex Add.
+
 - **FCMEQ (vector, register) (A64)** Floating-point Compare Equal (vector).
+
 - **FCMEQ (vector, zero) (A64)** Floating-point Compare Equal to zero (vector).
+
 - **FCMGE (vector, register) (A64)** Floating-point Compare Greater than or Equal (vector).
+
 - **FCMGE (vector, zero) (A64)** Floating-point Compare Greater than or Equal to zero (vector).
+
 - **FCMGT (vector, register) (A64)** Floating-point Compare Greater than (vector).
+
 - **FCMGT (vector, zero) (A64)** Floating-point Compare Greater than zero (vector).
+
 - **FCMLA (vector) (A64)** Floating-point Complex Multiply Accumulate.
+
 - **FCMLE (vector, zero) (A64)** Floating-point Compare Less than or Equal to zero (vector).
+
 - **FCMLT (vector, zero) (A64)** Floating-point Compare Less than zero (vector).
+
 - **FCVTAS (vector) (A64)** Floating-point Convert to Signed integer, rounding to nearest with ties to Away (vector).
+
 - **FCVTAU (vector) (A64)** Floating-point Convert to Unsigned integer, rounding to nearest with ties to Away (vector).
+
 - **FCVTL, FCVTL2 (vector) (A64)** Floating-point Convert to higher precision Long (vector).
+
 - **FCVTMS (vector) (A64)** Floating-point Convert to Signed integer, rounding toward Minus infinity (vector).
+
 - **FCVTMU (vector) (A64)** Floating-point Convert to Unsigned integer, rounding toward Minus infinity (vector).
+
 - **FCVTN, FCVTN2 (vector) (A64)** Floating-point Convert to lower precision Narrow (vector).
+
 - **FCVTNS (vector) (A64)** Floating-point Convert to Signed integer, rounding to nearest with ties to even (vector).
+
 - **FCVTNU (vector) (A64)** Floating-point Convert to Unsigned integer, rounding to nearest with ties to even (vector).
+
 - **FCVTPS (vector) (A64)** Floating-point Convert to Signed integer, rounding toward Plus infinity (vector).
+
 - **FCVTPU (vector) (A64)** Floating-point Convert to Unsigned integer, rounding toward Plus infinity (vector).
+
 - **FCVTXN, FCVTXN2 (vector) (A64)** Floating-point Convert to lower precision Narrow, rounding to odd (vector).
+
 - **FCVTZS (vector, fixed-point) (A64)** Floating-point Convert to Signed fixed-point, rounding toward Zero (vector).
+
 - **FCVTZS (vector, integer) (A64)** Floating-point Convert to Signed integer, rounding toward Zero (vector).
+
 - **FCVTZU (vector, fixed-point) (A64)** Floating-point Convert to Unsigned fixed-point, rounding toward Zero (vector).
+
 - **FCVTZU (vector, integer) (A64)** Floating-point Convert to Unsigned integer, rounding toward Zero (vector).
+
 - **FDIV (vector) (A64)** Floating-point Divide (vector).
+
 - **FMAX (vector) (A64)** Floating-point Maximum (vector).
+
 - **FMAXNM (vector) (A64)** Floating-point Maximum Number (vector).
+
 - **FMAXNMP (vector) (A64)** Floating-point Maximum Number Pairwise (vector).
+
 - **FMAXNMV (vector) (A64)** Floating-point Maximum Number across Vector.
+
 - **FMAXP (vector) (A64)** Floating-point Maximum Pairwise (vector).
+
 - **FMAXV (vector) (A64)** Floating-point Maximum across Vector.
+
 - **FMIN (vector) (A64)** Floating-point minimum (vector).
+
 - **FMINNM (vector) (A64)** Floating-point Minimum Number (vector).
+
 - **FMINNMP (vector) (A64)** Floating-point Minimum Number Pairwise (vector).
+
 - **FMINNMV (vector) (A64)** Floating-point Minimum Number across Vector.
+
 - **FMINP (vector) (A64)** Floating-point Minimum Pairwise (vector).
+
 - **FMINV (vector) (A64)** Floating-point Minimum across Vector.
+
 - **FMLA (vector, by element) (A64)** Floating-point fused Multiply-Add to accumulator (by element).
+
 - **FMLA (vector) (A64)** Floating-point fused Multiply-Add to accumulator (vector).
+
 - **FMLS (vector, by element) (A64)** Floating-point fused Multiply-Subtract from accumulator (by element).
+
 - **FMLS (vector) (A64)** Floating-point fused Multiply-Subtract from accumulator (vector).
+
 - **FMOV (vector, immediate) (A64)** Floating-point move immediate (vector).
+
 - **FMUL (vector, by element) (A64)** Floating-point Multiply (by element).
+
 - **FMUL (vector) (A64)** Floating-point Multiply (vector).
+
 - **FMULX (vector, by element) (A64)** Floating-point Multiply extended (by element).
+
 - **FMULX (vector) (A64)** Floating-point Multiply extended.
+
 - **FNEG (vector) (A64)** Floating-point Negate (vector).
+
 - **FRECPE (vector) (A64)** Floating-point Reciprocal Estimate.
+
 - **FRECPS (vector) (A64)** Floating-point Reciprocal Step.
+
 - **FRECPX (vector) (A64)** Floating-point Reciprocal exponent (scalar).
+
 - **FRINTA (vector) (A64)** Floating-point Round to Integral, to nearest with ties to Away (vector).
+
 - **FRINTI (vector) (A64)** Floating-point Round to Integral, using current rounding mode (vector).
+
 - **FRINTM (vector) (A64)** Floating-point Round to Integral, toward Minus infinity (vector).
+
 - **FRINTN (vector) (A64)** Floating-point Round to Integral, to nearest with ties to even (vector).
+
 - **FRINTP (vector) (A64)** Floating-point Round to Integral, toward Plus infinity (vector).
+
 - **FRINTX (vector) (A64)** Floating-point Round to Integral exact, using current rounding mode (vector).
+
 - **FRINTZ (vector) (A64)** Floating-point Round to Integral, toward Zero (vector).
+
 - **FRSQRTE (vector) (A64)** Floating-point Reciprocal Square Root Estimate.
+
 - **FRSQRTS (vector) (A64)** Floating-point Reciprocal Square Root Step.
+
 - **FSQRT (vector) (A64)** Floating-point Square Root (vector).
+
 - **FSUB (vector) (A64)** Floating-point Subtract (vector).
+
 - **INS (vector, element) (A64)** Insert vector element from another vector element.
+
 - **INS (vector, general) (A64)** Insert vector element from general-purpose register.
 
 - **LD1 (vector, multiple structures) (A64)** Load multiple single-element structures to one, two, three, or four registers.
@@ -1085,8 +1154,6 @@ SIMD scalar和 vector 有一部分重复的
     The following image shows two vector registers v1 and v2, each containing four elements. The
     SLI instruction takes each element from v1, shifts it left by 16 bits, then combines it with the
     corresponding element in v0
-
-
 
 ![sli.png](neon_images/sli.png)
 
@@ -1259,7 +1326,7 @@ SIMD scalar和 vector 有一部分重复的
   tbx             v4.8b, {v0.16b, v1.16b}, v26.8b 
 
 - **TRN1 (vector) (A64)** Transpose vectors (primary).
-
+  
   TRN1:转置向量 Transpose vector(primary), 该指令从零开始读取两个源寄存器 的向量元素（TRN1读取奇数下标（1为第一个），trn2读取偶数下标（0为第一个）），并将每个结果放到向量的连续元素，并将向量写到目的寄存器中。第一个源寄存器中的向量元素被放到目的寄存器的偶数元素位置，第二个源寄存器中的向量元素放到目的寄存器的奇数元素位置。
 
 - **TRN2 (vector) (A64)** Transpose vectors (secondary).
@@ -1434,8 +1501,6 @@ SIMD scalar和 vector 有一部分重复的
 ![XTN1.png](neon_images/XTN1.png)
 
 ![XTN1.png](neon_images/XTN1.png)
-
-
 
 - ZIP1 (vector) (A64)** Zip vectors (primary).
 
