@@ -905,7 +905,7 @@ int decode::find_mv_stack(int isCompound,SymbolContext *sbCtx, bitSt *bs,
 
 	int bh4 = Num_4x4_Blocks_High[ b_data->MiSize ];
 	int bw4 = Num_4x4_Blocks_Wide[ b_data->MiSize ];
-	//扫描左上角
+	//扫描右上角
 	if(Max( bw4, bh4 ) <= 16){
 		scan_point(-1,bw4,isCompound,b_data,av1Ctx);
 	}
@@ -926,6 +926,7 @@ int decode::find_mv_stack(int isCompound,SymbolContext *sbCtx, bitSt *bs,
 	if(frameHdr->use_ref_frame_mvs == 1){
 		temporal_scan(isCompound,b_data,av1Ctx);
 	}
+	//左上角
 	scan_point(-1,-1,isCompound,b_data,av1Ctx);
 	if(b_data->mvpCtx.FoundMatch == 1){
 		foundAboveMatch = 1;
@@ -1274,6 +1275,7 @@ int decode::temporal_scan(int isCompound,BlockData *b_data,AV1DecodeContext *av1
 	int stepW4 = (bw4 >= 16) ? 4 : 2;
 	int stepH4 = (bh4 >= 16) ? 4 : 2;
 	//scans the locations within the block
+	//B0,B1,B2,B3
 	for (int deltaRow = 0; deltaRow < Min(bh4, 16); deltaRow += stepH4)
 	{
 		for (int deltaCol = 0; deltaCol < Min(bw4, 16); deltaCol += stepW4)
@@ -1282,6 +1284,7 @@ int decode::temporal_scan(int isCompound,BlockData *b_data,AV1DecodeContext *av1
 			add_tpl_ref_mv(deltaRow, deltaCol, isCompound,b_data,av1Ctx);
 		}
 	}
+	//B5,B6,B7
 	const int8_t tplSamplePos[3][2] = {
 		{ bh4, -2 }, { bh4, bw4 }, { bh4 - 2, bw4 }
 	};
