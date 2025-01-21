@@ -1337,10 +1337,14 @@ SIMD scalar和 vector 有一部分重复的
 
 - **UABA (vector) (A64)** Unsigned Absolute difference and Accumulate.
 
-- **UABAL, UABAL2 (vector) (A64)** Unsigned Absolute difference and Accumulate Long.
+- **UABAL, UABAL2 (vector) (A64)** Unsigned Absolute difference and Accumulate Long. 计算第一个source减去第二个source对应元素的差值， 并存入dst，dst必须是source的两倍长，UABAL用低位，UABAL2用高位
+
+  uabal           v18.8h, v0.8b, v3.8b
+
+  
 
 - **UABD (vector) (A64)** Unsigned Absolute Difference (vector).
-  
+
      绝对值差
 
 - **UABDL, UABDL2 (vector) (A64)** Unsigned Absolute Difference Long.
@@ -1348,21 +1352,23 @@ SIMD scalar和 vector 有一部分重复的
 - **UADALP (vector) (A64)** Unsigned Add and Accumulate Long Pairwise.
 
 - **UADDL, UADDL2 (vector) (A64)** Unsigned Add Long (vector).无符号，相加并放入更宽寄存器
-  
+
   UADDL v16.8h,  v4.8b,   v5.8b 
-  
+
   UADDL2 v17.8h,  v4.16b,  v5.16b
 
 - **UADDLP (vector) (A64)** Unsigned Add Long Pairwise. 相邻的两个加一起，最后把结果放入更宽的寄存器
-  
+
   uaddlp          v1.4h,   v1.8b
 
-- **UADDLV (vector) (A64)** Unsigned sum Long across Vector.
+- **UADDLV (vector) (A64)** Unsigned sum Long across Vector. 把source寄存器内的所有元素加在一起
+
+  uaddlv          s2, v18.8h
 
 - **UADDW, UADDW2 (vector) (A64)** Unsigned Add Wide.
-  
+
      ​        uaddw           v22.8h,  v22.8h,  v0.8b
-  
+
      ​        uaddw2          v21.8h,  v21.8h,  v7.16b
 
 - **UCVTF (vector, fixed-point) (A64)** Unsigned fixed-point Convert to Floating-point (vector).
@@ -1370,18 +1376,18 @@ SIMD scalar和 vector 有一部分重复的
 - **UCVTF (vector, integer) (A64)** Unsigned integer Convert to Floating-point (vector).
 
 - **UHADD (vector) (A64)** Unsigned Halving Add.
-  
+
   ​    uhsub           v20.8b,  v3.8b,   v20.8b
-  
+
   ​    两个source  向量加起来 然后右移一位 放入dst，可用于求平均？
 
 - **UHSUB (vector) (A64)** Unsigned Halving Subtract.
-  
+
   uhsub           v20.8b,  v3.8b,   v20.8b
-  
+
   ​     无符号减半减法。
   ​     该指令从第一个源SIMD FP寄存器中的相应向量元素中减去第二个源SIMD和FP寄存器中的向量元素，将每个结果右移一位，将每个结果放入向量中，并将向量写      
-  
+
   ​     入目标SIMD和FP寄存器。
 
 - **UMAX (vector) (A64)** Unsigned Maximum (vector).
@@ -1397,9 +1403,9 @@ SIMD scalar和 vector 有一部分重复的
 - **UMINV (vector) (A64)** Unsigned Minimum across Vector.
 
 - **UMLAL, UMLAL2 (vector, by element) (A64)** Unsigned Multiply-Add Long (vector, by element).
-  
+
      加法，dst扩宽
-  
+
      v16.8H, v4.8B,  v0.8B
 
 - **UMLAL, UMLAL2 (vector) (A64)** Unsigned Multiply-Add Long (vector).
@@ -1409,15 +1415,15 @@ SIMD scalar和 vector 有一部分重复的
 - **UMLSL, UMLSL2 (vector) (A64)** Unsigned Multiply-Subtract Long (vector).
 
 - **UMOV (vector) (A64)** Unsigned Move vector element to general-purpose register.
-  
+
      ​      移动向量寄存器中的值到普通寄存器中
-  
+
      ​    umov            w16, v1.h[0] 
 
 - **UMULL, UMULL2 (vector, by element) (A64)** Unsigned Multiply Long (vector, by element).
-  
+
      乘法，dst要扩宽
-  
+
      umull           v18.8H, v4.8B,  v0.8B
 
 - **UMULL, UMULL2 (vector) (A64)** Unsigned Multiply long (vector).
@@ -1441,9 +1447,9 @@ SIMD scalar和 vector 有一部分重复的
 - **URECPE (vector) (A64)** Unsigned Reciprocal Estimate.
 
 - **URHADD (vector) (A64)** Unsigned Rounding Halving Add.
-  
+
      每组对应的元素进行无符号加法，加了之后，结果要右移一位,然后还需要舍入
-  
+
      urhadd          v16.8B, v16.8B, v20.8B
 
 - **URSHL (vector) (A64)** Unsigned Rounding Shift Left (register). 
@@ -1457,9 +1463,9 @@ SIMD scalar和 vector 有一部分重复的
 - **USHL (vector) (A64)** Unsigned Shift Left (register).
 
 - **USHLL, USHLL2 (vector) (A64)** Unsigned Shift Left Long (immediate).无符号右移并放入更宽的寄存器
-  
+
      USHLL  v22.8h,  v4.8b,   #8 
-  
+
      USHLL2  v1.8h,   v1.16b,  #3
 
 - **USHR (vector) (A64)** Unsigned Shift Right (immediate).
@@ -1471,31 +1477,31 @@ SIMD scalar和 vector 有一部分重复的
 - **USUBL, USUBL2 (vector) (A64)** Unsigned Subtract Long.
 
 - **USUBW, USUBW2 (vector) (A64)** Unsigned Subtract Wide.
-  
+
      ​        usubw           v4.8H,    v4.8H,   v2.8B
-  
+
      ​        usubw2          v20.8H,  v20.8H,   v2.16B
 
 - **UXTL, UXTL2 (vector) (A64)** Unsigned extend Long. 扩展较窄寄存器中的值到更宽的寄存器中
-  
+
   uxtl            v7.8h,   v7.8b
-  
+
   uxtl2           v7.8h,   v7.16b
 
 - **UZP1 (vector) (A64)** Unzip vectors (primary).  
-  
+
      将两个source 中对应的偶数元素提取出来，组成连续的数据，其中第一个source放在低位，第二个source放在高位
-  
+
      uzp1            v0.16b, v3.16b, v3.16b  //这个操作两个source相同，相当于把自己的偶数位的数据提取出来，连续放两次在dst中
 
 - **UZP2 (vector) (A64)** Unzip vectors (secondary).
-  
+
      将两个source 中对应的奇数元素提取出来，组成连续的数据，其中第一个source放在低位，第二个source放在高位
-  
+
        uzp2            v1.16b, v3.16b, v3.16b  
 
 - **XTN, XTN2 (vector) (A64)** Extract Narrow. //与UZP的区别是：uzp是提取奇数位或者偶数位的整个元素，而XTN是提取sorce的元素的低位，
-  
+
       也就是说，拆分了完整的元素
 
 ![XTN1.png](neon_images/XTN1.png)

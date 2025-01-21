@@ -10,8 +10,9 @@ objdump -s elf-file：将所有段的内容以16进制打印出来。
 objdump -d elf-file：将所有代码段的内容反汇编，段表中flags为AX的都为代码段。
 readelf -p sh_name elf-file：查看字符串表，即sh_name的type为STRTAB的段的内容
 
-
-
+查看依赖的lib 这两条用处一样
+readelf -d 你的程序 | grep NEEDED                         
+objdump -p 你的程序     | grep NEEDED                   
 
 查看静态链接文件中的内容
 objdump -r elf-file：查看重定位表中的内容，rel.*和rela.*开头的段（type为RELA）均为重定位表。
