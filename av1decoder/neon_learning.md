@@ -1341,7 +1341,9 @@ SIMD scalar和 vector 有一部分重复的
 
   uabal           v18.8h, v0.8b, v3.8b
 
-  
+  uabal2           v18.8h, v0.16b, v3.16b
+
+  配合UADDLV ，这个可以用来计算SAD
 
 - **UABD (vector) (A64)** Unsigned Absolute Difference (vector).
 
@@ -1500,7 +1502,7 @@ SIMD scalar和 vector 有一部分重复的
 
        uzp2            v1.16b, v3.16b, v3.16b  
 
-- **XTN, XTN2 (vector) (A64)** Extract Narrow. //与UZP的区别是：uzp是提取奇数位或者偶数位的整个元素，而XTN是提取sorce的元素的低位，
+- **XTN, XTN2 (vector) (A64)** Extract Narrow. //与UZP的区别是：uzp是提取奇数位或者偶数位的整个元素，而XTN是提取source的元素的低位，
 
       也就是说，拆分了完整的元素
 
