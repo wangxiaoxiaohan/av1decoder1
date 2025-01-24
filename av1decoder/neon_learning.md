@@ -1520,7 +1520,7 @@ SIMD scalar和 vector 有一部分重复的
 
 zip1            v29.16b, v29.16b, v29.16b  也可以这样 把自己的低半部分和高半部分交叉存储
 
-mov             v19.16b, v23.16b  arch 64中 ，mov复制向量，必须是以 .b 也就是8位为单位
+mov             v19.16b, v23.16b  aarch 64中 ，mov复制向量，必须是以 .b 也就是8位为单位
 
 .irp i x x x 
 
