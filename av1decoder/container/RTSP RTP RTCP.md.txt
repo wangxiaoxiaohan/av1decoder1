@@ -1,0 +1,78 @@
+RTSP 一种应用层文本协议
+
+不传输视频流数据，传输信令
+
+分为请求消息结构
+
+​响应消息结构
+
+sdp（Session Description Protocol）会话描述协议的缩写
+
+v=0  // 协议版本
+o=- 0 0 IN IP4 192.168.1.1  // 会话创建者标识及IP地址
+s=Example Stream  // 会话名称
+c=IN IP4 192.168.1.1  // 连接信息（IP地址）
+m=video 5000 RTP/AVP 96  // 媒体类型、端口、传输协议
+a=rtpmap:96 H.264/90000  // 编码格式及时钟频率
+a=control:rtsp://server.com/video  // 媒体流控制地址
+a=fmtp:96 profile-level-id=42c01f  // 编码参数fmtp要根据码流的真实信息填写，不要随意填写，在网页无插件播放时，越来越多的播放插件对这个字段要求很严格，因为网页客户端解码时，一般通过此字段来初始化解码库，所以此字段的填写，需要注意，要根据真实的编码参数来编写
+m=audio 5002 RTP/AVP 0  // 音频流参数
+a=rtpmap:0 PCMU/8000  // 音频编码格式
+a=control:rtsp://server.com/audio  // 音频流控制地址
+
+​RTSP会话建立流程
+
+​步骤1：客户端发送OPTIONS和DESCRIBE请求，服务器返回包含SDP的响应（如200 OK）。
+​步骤2：客户端解析SDP后，通过SETUP请求建立RTP传输通道，指定端口和协议（如Transport: RTP/AVP;unicast;client_port=5000-5001）。
+​步骤3：客户端发送PLAY请求，服务器开始通过RTP发送媒体流
+
+rtp/rtcp
+TP在端口号1025到65535之间选择一个未使用的偶数UDP端口号，而在同一次会话中的RTCP则使用下一个基数UDP端口号。RTP默认端口号5004，所以RTCP端口号默认为5005。
+
+
+
+rtp一般是基于 udp 也可以 over tcp
+
+
+
+是的！​**RTP基础头部（Base Header）位于整个RTP包的最前端**，其后才是针对H264分片（如FU-A模式）的扩展字段（FU Indicator和FU Header）。以下是完整的RTP包结构分层解析：
+
+---
+
+### 一、**RTP包的分层结构**
+
+从外到内的封装顺序如下：
+
+1. ​**传输层协议头**​（如UDP头或TCP头）
+2. ​**RTP基础头部**​（Base Header）
+3. ​**H264分片扩展字段**​（FU Indicator + FU Header）
+4. ​**分片载荷数据**​（NALU分片内容）
+
+plaintext
+
+```plaintext
+| UDP Header | RTP Base Header | FU Indicator | FU Header | Payload Data |
+```
+
+rtp在分包处理 nalu的时候
+
+
+
+
+![](./2025-03-24-00-11-48-image.png)
+
+rtcp
+
+1. ​**RTCP报文类型**
+   
+   - ​**SR（Sender Report）​**：活跃发送者统计传输字节数、包数及NTP时间戳
+   
+   - ​**RR（Receiver Report）​**：接收端反馈丢包率、抖动和最大序列号
+   
+   - ​**SDES（Source Description）​**：携带CNAME等源描述信息
+   
+   - ​**BYE**：通知会话终止
+   
+   - ​**APP**：自定义应用扩展
+     
+     

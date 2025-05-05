@@ -1,3 +1,163 @@
+# 
+
+late_initcall 仅用于编译进内核的驱动，优先级低，在内核启动后期加载
+
+在 linux 内核中有很多的申请资源类的API 函数都有对应的“devm_”前缀版本。比如 devm_request_irq 和 request_irq 这两个函数，这两个函数都是申请中断的，我们使用request_irq 函数申请中断的时候，如果驱动初始化失败的话就要调用 free_irq 函数对申请成功的irq进行释放，卸载驱动的时候也需要我们手动调用 free_irq 来释放 irq。假如我们的驱动里面申请了很多资源，比如：gpio、irq、input_dev，那么就需要添加很多 goto 语句对其做处理，当这样的标签多了以后代码看起来就不整洁了。“devm_”函数就是为了处理这种情况而诞生的，“devm_”函数最大的作用就是：使用“devm_”前缀的函数申请到的资源可以由系统自动释放，不需要我们手动处理。如果我们使用devm_request_threaded_irq 函数来申请中断，那么就不需要我们再调用 free_irq 函数对其进行释放。大家可以注意一下，带有“devm_”前缀的都是一些和设备资源管理有关的函数。
+
+中断使用：注册中断函数，在中断函数里面读写寄存器，
+
+申请中断的同时传入中断处理函数
+
+# 香橙派 瑞芯微摄像头驱动链路
+
+​**​Sensor → MIPI DPHY/CPHY → CSI-2 控制器 → VICAP → `sditf` 节点 → ISP​**？
+
+[ov13850 sensor]
+  ↓
+  → ov13850_out2 → mipi_in_ucam0 → &csi2_dphy0
+     ↓
+     → csidphy0_out → mipi2_csi2_input → &mipi2_csi2
+        ↓
+        → mipi2_csi2_output → cif_mipi_in2 → &rkcif_mipi_lvds2
+           ↓
+           → mipi2_lvds_sditf → &rkcif_mipi_lvds2_sditf
+              ↓
+              → isp0_vir1 → &rkisp0_vir1
+
+# MIPI​
+
+## 层级依赖​​：
+
+- ​**​MIPI​**​ 是总框架，包含 D-PHY、CSI 等子标准。
+
+- ​**​D-PHY​**​ 是物理层实现，为 CSI 提供信号传输基础。
+
+- ​**​CSI​**​ 是摄像头专用协议，依赖 D-PHY 完成实际数据传输。
+
+- ​**​CIF（CSI-2 框架）​**​ 是 CSI 的扩展，优化多通道传输
+
+## 协作流程​：
+
+- 摄像头数据通过 CSI 协议封装 → 通过 D-PHY 物理层传输 → 处理器解析并处理数据。
+
+- 例如：手机拍摄 4K 视频时，CSI-2 将数据分配到 4 个 D-PHY 通道，每个通道以 1.5Gbps 传输，总带宽达 6Gbps
+
+**`sditf`​**​ 是 ​**​Stream Data Interface Transfer​**​ 的缩写，特指 ​**​数据流传输接口​**​，用于描述视频捕获模块（VICAP）与图像信号处理模块（ISP）之间的数据链路关系
+
+`sditf` 是 VICAP 和 ISP 之间的 ​**​虚拟中间节点​**​，负责将 MIPI/LVDS 接口采集的原始图像数据流（如 RAW、YUV 等格式）传递至 ISP 进行处理。它在数据链路中扮演 ​**​数据中转与格式适配​**​ 的角色
+
+## CSI：摄像头串行接口​
+
+- ​**​定义​**​：CSI（Camera Serial Interface）是 MIPI 中专门用于摄像头模组与处理器间数据传输的协议。
+
+- ​**​分层结构​**​：
+  
+  - ​**​物理层（PHY Layer）​**​：基于 D-PHY 或 C-PHY 实现，负责信号传输的电气特性
+  
+  - ​**​协议层（Protocol Layer）​**​：
+    
+    - ​**​Lane Management​**​：分配数据流到不同通道（Lane）
+      
+      ​**​Low-Level Protocol (LLP)​**​：封装数据为短包（控制命令）或长包（图像数据），支持错误检测
+    
+    - ​**​Pixel Packing/Unpacking​**​：将像素数据拆解为字节流，便于传输
+
+- ​**​应用层（Application Layer）​**​：定义像素格式（如 RAW、YUV）和数据处理逻辑
+
+## D-PHY：物理层基础​​
+
+- ​**​定义​**​：D-PHY 是 MIPI 的物理层标准之一，负责定义信号传输的电气特性、时钟机制和传输模式。
+
+- ​**​核心特性​**​：
+  
+  - ​**​双工作模式​**​：
+    
+    - ​**​高速模式（HS）​**​：支持 80Mbps~2.5Gbps 的数据速率，用于大流量传输（如视频流）
+    
+    - ​**​低功耗模式（LP）​**​：用于控制信号传输，速率≤10Mbps，功耗极低
+  
+  - ​**​通道配置​**​：
+    
+    - 包含 1 个差分时钟通道（Clock Lane）和 1~4 个数据通道（Data Lane），支持单向或双向传输
+  
+  - ​**​应用场景​**​：主要用于 CSI（摄像头接口）和 DSI（显示接口）
+
+# 设备树
+
+```
+// 摄像头端
+camera_out: endpoint {
+    remote-endpoint = <&mipi_csi_in>;
+};
+
+// 处理器端
+mipi_csi: receiver@1c {
+    ports {
+        port@0 {
+            mipi_csi_in: endpoint {
+                remote-endpoint = <&camera_out>;  // 反向引用
+            };
+        };
+    };
+};
+```
+
+## port
+
+port` 表示设备的一个 ​**​物理或逻辑接口​**​，通常用于描述设备的数据输入/输出通道。例如，摄像头模块的 MIPI 输出接口、显示控制器的 HDMI 输入接口等
+
+endpoint和他的remote-endpoint是成对的，互相指向对方
+
+## endpoint
+
+- **定义​**​：  
+  `endpoint` 是 `port` 的子节点，用于描述接口的 ​**​具体端点属性​**​，如数据通道（Lane）分配、时钟配置、物理层参数等
+
+- ​**​关键属性​**​：
+  
+  - `remote-endpoint`：指向对端设备的 `endpoint` 节点，形成数据链路；
+  - `data-lanes`：指定 MIPI 等总线使用的通道（如 `<1 2>` 表示使用 Lane 1 和 2）；
+  - `clock-frequency`：接口时钟频率（如 200MHz）。
+
+## remote-endpoint
+
+### **`remote-endpoint` 属性​**​
+
+- ​**​定义​**​：  
+  该属性用于 ​**​跨节点引用​**​，将当前 `endpoint` 与另一设备的 `endpoint` 绑定，形成完整的硬件链路
+
+- ​**​作用​**​：
+  
+  - 描述设备间的数据流方向（如摄像头 → 处理器）；
+  - 驱动通过解析此属性自动建立连接，无需硬编码拓扑关系
+
+# 中断：
+
+interrupts = <GIC_SPI 97 IRQ_TYPE_LEVEL_HIGH>;
+
+中段控制器 是一个硬件，由芯片厂商集成到soc里面
+
+- **SGI** (Software Generated Interrupt)：软件触发的中断。软件可以通过写 GICD_SGIR 寄存器来触发一个中断事件，一般用于核间通信，内核中的 IPI：inter-processor interrupts 就是基于 SGI。
+
+- **PPI** (Private Peripheral Interrupt)：私有外设中断。这是每个核心私有的中断。PPI会送达到指定的CPU上，应用场景有CPU本地时钟。
+
+- **SPI** (Shared Peripheral Interrupt)：公用的外部设备中断，也定义为共享中断。中断产生后，可以分发到某一个CPU上。比如按键触发一个中断，手机触摸屏触发的中断。
+
+- **LPI** (Locality-specific Peripheral Interrupt)：LPI 是 GICv3 中的新特性，它们在很多方面与其他类型的中断不同。LPI 始终是基于消息的中断，它们的配置保存在表中而不是寄存器。比如 PCIe 的 MSI/MSI-x 中断
+
+        gpio0: gpio@fd8a0000 {
+            compatible = "rockchip,gpio-bank";
+            reg = <0x0 0xfd8a0000 0x0 0x100>;
+            interrupts = <GIC_SPI 277 IRQ_TYPE_LEVEL_HIGH>;
+            clocks = <&cru PCLK_GPIO0>, <&cru DBCLK_GPIO0>;
+    
+            gpio-controller;
+            #gpio-cells = <2>;
+            gpio-ranges = <&pinctrl 0 0 32>;
+            interrupt-controller;
+            #interrupt-cells = <2>;
+        };
+
 # 1.内存划分
 
 以32位机器为例，cpu最大寻址范围为4G，Linux系统将4G虚拟地址空间划分为高1G，低3G。
@@ -105,16 +265,10 @@ ioremp是内核中用来将外设寄存器物理地址映射到主存上去的�
 **RCU（Read-Copy-Update）​**是一种针对多核环境的同步机制，核心目标是通过无锁读操作和延迟回收旧数据，实现高并发性能。其核心思想是：
 
 - ​**读操作无锁**：读者无需加锁即可访问数据，仅通过`rcu_read_lock()`和`rcu_read_unlock()`标记临界区
-  
-  
 
 - ​**写操作异步化**：写者通过复制数据副本完成修改，并在所有读者退出旧数据引用后（即**宽限期**结束）回收旧数据
-  
-  
 
 - ​**宽限期（Grace Period）​**：系统确保所有旧数据引用已结束的时间窗口，通过CPU调度（如进程切换）或计数器实现
-  
-  
 
 rcu是2.6出现的一种读写锁，可以说是老的读写锁的升级版，主要用在链表这种数据结构上，经典使用场景是多读者少写者的情况，rcu允许多个读者一个写者共同操作数据而不必加锁，这是经典用法，若出现多个写者时，写者与写者之间就得自己手动同步。当要删除一个节点时，删除后并不会马上释放节点，而是会等待在删除动作之前已经开始读该节点的读者都完成读操作之后才会释放此节点，这段时间被称为宽限期。
 
@@ -276,8 +430,6 @@ task_struct
 
 thread_info与task_struct头地址相同
 
-
-
 进程是指一个程序在一个数据集合上的一次运行过程。
 
 线程是进程中的一个实体，是被系统独立调度和执行的基本单位。
@@ -287,7 +439,6 @@ thread_info与task_struct头地址相同
 ## 30、在一个只有128M内存并且没有交换分区的机器上，说说下面两个程序的运行结果
 
 ```c
-
 #define MEMSIZE 1024*1024
 int count = 0;
 void *p = NULL;
@@ -338,6 +489,4 @@ cout << compare(a1, b1) << endl << compare(a2, b2) << endl << compare(a3, b3) <<
 return 0;
 
 }
-
-
 ```
