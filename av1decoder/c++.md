@@ -1163,3 +1163,266 @@ Dynamic_cast：其他三种都是在编译时完成的，它是在运行时处�
 # 92.make_shared函数的优点，缺点？
 
 # 93.函数调用进行的操作
+
+
+
+设计模式
+
+### **一、创建型模式​**​
+
+1. ​**​单例模式（Singleton）​**​
+   
+   - ​**​作用​**​：确保一个类仅有一个实例，并提供全局访问点，常用于配置管理、日志服务等场景。
+   
+   - ​**​C++ 实现要点​**​：通过私有构造函数和静态实例变量实现线程安全的单例（如双重检查锁或局部静态变量）
+   
+   - ​**​示例​**​：数据库连接池、全局配置管理器。
+
+2. ​**​工厂方法模式（Factory Method）​**​
+   
+   - ​**​作用​**​：将对象的创建延迟到子类，避免客户端直接依赖具体类。适用于需要动态扩展对象类型的场景
+   
+   - ​**​C++ 实现​**​：通过抽象基类定义接口，子类实现具体对象的创建逻辑。
+   
+   - ​**​示例​**​：图形库中根据用户输入创建不同形状（圆形、矩形）。
+
+3. ​**​抽象工厂模式（Abstract Factory）​**​
+   
+   - ​**​作用​**​：创建一系列相关或依赖对象的接口，隐藏具体实现类，适用于跨平台UI组件、数据库访问等需要兼容性的场
+   
+   - ​**​示例​**​：跨操作系统（Windows/Linux）的按钮和文本框组件工厂。
+
+---
+
+### ​**​二、结构型模式​**​
+
+1. ​**​适配器模式（Adapter）​**​
+   
+   - ​**​作用​**​：将不兼容的接口转换为客户端期望的接口，常用于整合第三方库或遗留代码
+   
+   - ​**​C++ 实现​**​：通过继承或组合现有类，包装其接口。
+   
+   - ​**​示例​**​：将旧版日志系统的接口适配到新系统。
+
+2. ​**​装饰器模式（Decorator）​**​
+   
+   - ​**​作用​**​：动态地为对象添加额外职责，避免通过继承导致类膨胀
+   
+   - ​**​C++ 实现​**​：通过组合和继承结合，装饰器类包裹原始对象并扩展功能。
+   
+   - ​**​示例​**​：为数据流动态添加加密、压缩功能。
+
+3. ​**​代理模式（Proxy）​**​
+   
+   - ​**​作用​**​：控制对对象的访问，常用于延迟加载、权限控制或远程调用
+   
+   - ​**​示例​**​：图片懒加载代理、网络请求的缓存代理。
+
+---
+
+### ​**​三、行为型模式​**​
+
+1. ​**​观察者模式（Observer）​**​
+   
+   - ​**​作用​**​：定义对象间的一对多依赖关系，当主题对象状态变化时自动通知观察者，适用于事件驱动系统（如GUI、实时数据监控）
+   
+   - ​**​C++ 实现​**​：通过主题（Subject）维护观察者列表，提供注册/通知接口。
+   
+   - ​**​示例​**​：股票价格变动时通知多个交易终端。
+
+2. ​**​策略模式（Strategy）​**​
+   
+   - ​**​作用​**​：将算法封装为独立类，支持运行时动态切换，适用于需要灵活调整业务逻辑的场景（如排序算法、支付方式）
+- ​**​C++ 实现​**​：通过接口定义策略，具体策略类实现不同算法。
+
+- ​**​示例​**​：电商系统中根据用户类型选择不同的折扣策略。
+3. ​**​模板方法模式（Template Method）​**​
+   
+   - ​**​作用​**​：定义算法骨架，将某些步骤延迟到子类实现，适用于框架设计或标准化流程
+- ​**​示例​**​：游戏引擎中固定渲染流程（初始化→更新→渲染→销毁），子类实现具体渲染细节。
+
+## 工厂模式例子
+
+工厂模式是一种创建型设计模式，通过封装对象的创建过程，将客户端代码与具体类解耦
+
+```
+// 抽象产品
+class Phone {
+public:
+    virtual void start() = 0;
+};
+
+// 具体产品
+class XiaomiPhone : public Phone {
+public:
+    void start() override { cout << "小米手机启动" << endl; }
+};
+
+class HuaweiPhone : public Phone {
+public:
+    void start() override { cout << "华为手机启动" << endl; }
+};
+
+// 工厂类
+class PhoneFactory {
+public:
+    static Phone* createPhone(const string& type) {
+        if (type == "xiaomi") return new XiaomiPhone();
+        if (type == "huawei") return new HuaweiPhone();
+        return nullptr;
+    }
+};
+
+// 客户端调用
+int main() {
+    Phone* phone = PhoneFactory::createPhone("huawei");
+    phone->start();  // 输出：华为手机启动
+    delete phone;
+    return 0;
+}
+```
+
+## 观察者模式例子：
+
+​观察者模式：定义对象间的一对多依赖关系，当主题对象状态变化时自动通知观察者，适用于事件驱动系统（如GUI、实时数据监控）
+
+定义对象间的一对多依赖关系，当一个对象（主题）状态变化时，自动通知所有依赖它的观察者
+
+```
+// 观察者接口
+class Observer {
+public:
+    virtual void update() = 0;
+};
+
+// 具体观察者
+class ConcreteObserver : public Observer {
+public:
+    void update() override { 
+        std::cout << "Observer received notification!" << std::endl; 
+    }
+};
+
+// 主题接口
+class Subject {
+public:
+    virtual void registerObserver(Observer* o) = 0;
+    virtual void removeObserver(Observer* o) = 0;
+    virtual void notifyObservers() = 0;
+}; 
+
+// 具体主题
+class ConcreteSubject : public Subject {
+private:
+    std::list<Observer*> observers;
+public:
+    void registerObserver(Observer* o) override { observers.push_back(o); }
+    void removeObserver(Observer* o) override { observers.remove(o); }
+    void notifyObservers() override {
+        for (auto& o : observers) o->update();
+    }
+    void changeState() { 
+        std::cout << "Subject state changed!" << std::endl; 
+        notifyObservers();
+    }
+};
+```
+
+## 适配器模式：
+
+适配器模式通过 ​**​转换接口​**​，解决现有类与目标接口不兼容的问题
+
+```
+#include <iostream>
+
+// 目标接口：国标插座
+class CN_Socket {
+public:
+    virtual void charge() = 0;
+};
+
+// 被适配者：美标插头
+class US_Plug {
+public:
+    void usCharge() {
+        std::cout << "美标插头充电中..." << std::endl;
+    }
+};
+
+// 类适配器（继承目标接口和被适配者）
+class Adapter : public CN_Socket, private US_Plug {
+public:
+    void charge() override {
+        std::cout << "适配器将国标转换为美标：";
+        usCharge();  // 调用被适配者的方法
+    }
+};
+
+int main() {
+    CN_Socket* socket = new Adapter();
+    socket->charge();  // 输出：适配器将国标转换为美标：美标插头充电中...
+    delete socket;
+    return 0;
+}
+```
+
+# lambda:
+
+- `[=]`：按值捕获所有外部变量。
+- `[&]`：按引用捕获所有外部变量。
+- `[this]`：捕获当前类的`this`指针（访问成员变量）。
+
+```
+int a = 10, b = 20;
+// 值捕获a，引用捕获b
+auto lambda = [a, &b]() { b += a; };
+lambda();  // b变为30
+
+// 隐式捕获所有变量（值捕获）
+auto sum = [=]() { return a + b; };
+
+// 隐式捕获所有变量（引用捕获）
+auto modify = [&]() { a++; b++; };
+```
+
+# 模板
+
+## 函数模板
+
+```
+template <typename T>
+T max(T a, T b) {
+    return (a > b) ? a : b;
+}
+```
+
+类模板
+
+```
+template <typename T>
+class Box {
+private:
+    T value;
+public:
+    Box(T val) : value(val) {}
+    T getValue() {
+        return value;
+    }
+};
+```
+
+使用
+
+```
+int main() {
+    Box<int> intBox(100);  // 使用int类型
+    Box<double> doubleBox(100.5);  // 使用double类型
+
+   std::cout << "intBox value: " << intBox.getValue() << std::endl;
+  std::cout << "doubleBox value: " << doubleBox.getValue() << std::endl;
+   return 0;
+
+
+
+}
+```
