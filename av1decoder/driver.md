@@ -24,112 +24,84 @@ late_initcall 仅用于编译进内核的驱动，优先级低，在内核启动
               ↓
               → isp0_vir1 → &rkisp0_vir1
 
-# MIPI​
+# V4L2 框架
 
-## 层级依赖​​：
+v4l2-ctl：查询设备信息、设置参数的工具
 
-- ​**​MIPI​**​ 是总框架，包含 D-PHY、CSI 等子标准。
+V4L2 的架构分为三个主要层次：
 
-- ​**​D-PHY​**​ 是物理层实现，为 CSI 提供信号传输基础。
+- **用户空间**：应用程序通过 `ioctl` 系统调用与 V4L2 设备交互。
 
-- ​**​CSI​**​ 是摄像头专用协议，依赖 D-PHY 完成实际数据传输。
+- **V4L2 核心层**：在内核中处理 API 请求，协调设备驱动与用户空间。
 
-- ​**​CIF（CSI-2 框架）​**​ 是 CSI 的扩展，优化多通道传输
+- **设备驱动层**：硬件设备的具体驱动实现（如 USB 摄像头、PCI 视频采集卡）
 
-## 协作流程​：
+## V4L2 应用开发
 
-- 摄像头数据通过 CSI 协议封装 → 通过 D-PHY 物理层传输 → 处理器解析并处理数据。
+V4L2：Video for Linux two，缩写 Video4Linux2，是 Linux 内核中的一个框架，提供了一套用于视频设备驱动程序开发的 API。
 
-- 例如：手机拍摄 4K 视频时，CSI-2 将数据分配到 4 个 D-PHY 通道，每个通道以 1.5Gbps 传输，总带宽达 6Gbps
+它是一个开放的、通用的、模块化的视频设备驱动程序框架，允许 Linux 操作系统和应用程序与各种视频设备（如摄像头、视频采集卡等）进行交互。
 
-**`sditf`​**​ 是 ​**​Stream Data Interface Transfer​**​ 的缩写，特指 ​**​数据流传输接口​**​，用于描述视频捕获模块（VICAP）与图像信号处理模块（ISP）之间的数据链路关系
+V4L2 提供了通用的 API，使应用程序能够访问和控制视频设备，包括获取设备信息、设置设备参数、采集视频数据、控制设备状态等。V4L2 还提供了一个统一的视频数据格式，允许应用程序在处理视频数据时无需考虑设备的具体格式。
 
-`sditf` 是 VICAP 和 ISP 之间的 ​**​虚拟中间节点​**​，负责将 MIPI/LVDS 接口采集的原始图像数据流（如 RAW、YUV 等格式）传递至 ISP 进行处理。它在数据链路中扮演 ​**​数据中转与格式适配​**​ 的角色
+V4L2 是 V4L 的改进版。V4L2 支持三种方式来采集图像：内存映射方式(mmap)、直接读取方式(read)和用户指针。内存映射的方式采集速度较快，一般用于连续视频数据的采集，实际工作中的应用多；直接读取的方式相对速度慢一些，常用于静态图片数据的采集；用户指针使用较少。
 
-## CSI：摄像头串行接口​
+### V4L2 的主要特性
 
-- ​**​定义​**​：CSI（Camera Serial Interface）是 MIPI 中专门用于摄像头模组与处理器间数据传输的协议。
+1. **模块化的架构：**V4L2 是一个模块化的架构，允许多个设备驱动程序同时存在并共享同一个 API。每个设备驱动程序都是一个独立的内核模块，可以在运行时加载和卸载。这种架构可以使开发人员更容易地开发新的视频设备驱动程序，并允许多个驱动程序同时使用相同的 API。
 
-- ​**​分层结构​**​：
-  
-  - ​**​物理层（PHY Layer）​**​：基于 D-PHY 或 C-PHY 实现，负责信号传输的电气特性
-  
-  - ​**​协议层（Protocol Layer）​**​：
-    
-    - ​**​Lane Management​**​：分配数据流到不同通道（Lane）
-      
-      ​**​Low-Level Protocol (LLP)​**​：封装数据为短包（控制命令）或长包（图像数据），支持错误检测
-    
-    - ​**​Pixel Packing/Unpacking​**​：将像素数据拆解为字节流，便于传输
+2. **统一的设备节点：**V4L2 提供了统一的设备节点，使应用程序可以使用相同的方式访问不同类型的视频设备。这种节点通常是 /dev/videoX，其中 X 是一个数字，表示设备的编号。应用程序可以通过打开这个节点来访问设备，并使用 V4L2 API 进行数据采集和控制。
 
-- ​**​应用层（Application Layer）​**​：定义像素格式（如 RAW、YUV）和数据处理逻辑
+3. **统一的视频数据格式：**V4L2 提供了一个统一的视频数据格式，称为 V4L2_PIX_FMT，允许应用程序在处理视频数据时无需考虑设备的具体格式。V4L2_PIX_FMT 包括了许多常见的视频格式，如 RGB、YUV 等。应用程序可以使用 V4L2 API 来查询设备支持的数据格式，并选择适当的格式进行数据采集和处理。
 
-## D-PHY：物理层基础​​
+4. **支持多种视频设备：**V4L2 支持许多不同类型的视频设备，包括摄像头、视频采集卡、TV 卡等。每个设备都有自己的驱动程序，提供了相应的 V4L2 API。这些驱动程序可以根据设备的不同特性，提供不同的采集模式、数据格式、控制参数等。
 
-- ​**​定义​**​：D-PHY 是 MIPI 的物理层标准之一，负责定义信号传输的电气特性、时钟机制和传输模式。
+5. **支持流式 I/O：**V4L2 支持流式 I/O，即通过内存映射的方式将视频数据从设备直接传输到应用程序中。这种方式可以减少数据复制的次数，提高数据传输的效率。
 
-- ​**​核心特性​**​：
-  
-  - ​**​双工作模式​**​：
-    
-    - ​**​高速模式（HS）​**​：支持 80Mbps~2.5Gbps 的数据速率，用于大流量传输（如视频流）
-    
-    - ​**​低功耗模式（LP）​**​：用于控制信号传输，速率≤10Mbps，功耗极低
-  
-  - ​**​通道配置​**​：
-    
-    - 包含 1 个差分时钟通道（Clock Lane）和 1~4 个数据通道（Data Lane），支持单向或双向传输
-  
-  - ​**​应用场景​**​：主要用于 CSI（摄像头接口）和 DSI（显示接口）
+6. **支持控制参数：**V4L2 允许应用程序通过 API 来控制视频设备的参数，包括亮度、对比度、色彩饱和度、曝光时间等。应用程序可以使用 V4L2 API 来查询设备支持的参数，并设置适当的值。
 
-# 设备树
+7. **支持事件通知：**V4L2 支持事件通知，当视频设备状态发生变化时，如视频信号丢失、帧率变化等，V4L2 驱动程序可以向应用程序发送通知，以便应用程序做出相应的处理。
 
-```
-// 摄像头端
-camera_out: endpoint {
-    remote-endpoint = <&mipi_csi_in>;
-};
+从上面的特征可以看出，V4L2 提供了一套通用、灵活、可扩展的视频设备驱动程序框架，使得 Linux 操作系统和应用程序可以方便地与各种视频设备进行交互，并且不需要关心设备的具体实现细节。从而让开发人员能够更加专注于应用程序的开发。
 
-// 处理器端
-mipi_csi: receiver@1c {
-    ports {
-        port@0 {
-            mipi_csi_in: endpoint {
-                remote-endpoint = <&camera_out>;  // 反向引用
-            };
-        };
-    };
-};
-```
+### V4L2 视频采集步骤
 
-## port
+![图片](https://mmbiz.qpic.cn/sz_mmbiz_png/hgnOITBSQYtyNuBc8arNysuYwafFZzNKfaEDQewIHqjaGdy1BNBxlKJDKSAW8483IboKWqR8G8QvFal3JiaMLLg/640?wx_fmt=png&from=appmsg&tp=webp&wxfrom=5&wx_lazy=1)
 
-port` 表示设备的一个 ​**​物理或逻辑接口​**​，通常用于描述设备的数据输入/输出通道。例如，摄像头模块的 MIPI 输出接口、显示控制器的 HDMI 输入接口等
+![图片](https://mmbiz.qpic.cn/sz_mmbiz_png/hgnOITBSQYtyNuBc8arNysuYwafFZzNKfSeM80pyT4Cfl2MHuvFWufm8G5upmrlNWiakcianDmibWTdKZ4icNmzGcg/640?wx_fmt=png&from=appmsg&tp=webp&wxfrom=5&wx_lazy=1)![图片](https://mmbiz.qpic.cn/sz_mmbiz_png/hgnOITBSQYtyNuBc8arNysuYwafFZzNK79RNMdm1gA2U17PMuyEVypJBVm29w7ffjEfrGWJjwWBhvuRjlqz5oA/640?wx_fmt=png&from=appmsg&tp=webp&wxfrom=5&wx_lazy=1)
 
-endpoint和他的remote-endpoint是成对的，互相指向对方
+![图片](https://mmbiz.qpic.cn/sz_mmbiz_png/hgnOITBSQYtyNuBc8arNysuYwafFZzNKH7HLSncuJh1NKFalOErUMbYNscDmP1mukXJRznmyog2EnEDU9kYXJg/640?wx_fmt=png&from=appmsg&tp=webp&wxfrom=5&wx_lazy=1)
 
-## endpoint
+## 内核数据流
 
-- **定义​**​：  
-  `endpoint` 是 `port` 的子节点，用于描述接口的 ​**​具体端点属性​**​，如数据通道（Lane）分配、时钟配置、物理层参数等
+流程
 
-- ​**​关键属性​**​：
-  
-  - `remote-endpoint`：指向对端设备的 `endpoint` 节点，形成数据链路；
-  - `data-lanes`：指定 MIPI 等总线使用的通道（如 `<1 2>` 表示使用 Lane 1 和 2）；
-  - `clock-frequency`：接口时钟频率（如 200MHz）。
+1. 驱动通过 `vb2_queue_init` 初始化缓冲区队列。
 
-## remote-endpoint
+2. 用户空间通过 `VIDIOC_REQBUFS` 请求缓冲区。
 
-### **`remote-endpoint` 属性​**​
+3. 内核分配缓冲区并返回给用户空间（MMAP 或 USERPTR）。
 
-- ​**​定义​**​：  
-  该属性用于 ​**​跨节点引用​**​，将当前 `endpoint` 与另一设备的 `endpoint` 绑定，形成完整的硬件链路
+4. 用户空间将缓冲区入队（`VIDIOC_QBUF`），驱动填充数据后通过中断或 DMA 通知完成。
 
-- ​**​作用​**​：
-  
-  - 描述设备间的数据流方向（如摄像头 → 处理器）；
-  - 驱动通过解析此属性自动建立连接，无需硬编码拓扑关系
+5. 用户空间通过 `VIDIOC_DQBUF` 取出已填充的缓冲区处理。
+
+### 内核数据结构
+
+**v4l2_device**​​：代表物理设备（如摄像头控制器），包含子设备链表
+
+​**v4l2_subdev**​：子设备实体（如传感器），通过`v4l2_subdev_ops`实现控制接口
+
+**v4l2_format**​：描述分辨率、像素格式等参数，支持动态协商（`VIDIOC_S_FMT`/`VIDIOC_G_FMT`）
+
+**video_device**
+表示一个 V4L2 设备，包含设备名称、操作函数集（`v4l2_file_operations`）、设备能力（如 `V4L2_CAP_VIDEO_CAPTURE`）等。
+
+**v4l2_device**
+管理多个子设备（如摄像头传感器、图像处理器），用于复杂设备的层次化控制。
+
+**v4l2_subdev**
+表示子设备（如摄像头传感器、ISP），通过媒体控制器框架与其他组件通信。
 
 # 中断：
 
@@ -144,13 +116,13 @@ interrupts = <GIC_SPI 97 IRQ_TYPE_LEVEL_HIGH>;
 - **SPI** (Shared Peripheral Interrupt)：公用的外部设备中断，也定义为共享中断。中断产生后，可以分发到某一个CPU上。比如按键触发一个中断，手机触摸屏触发的中断。
 
 - **LPI** (Locality-specific Peripheral Interrupt)：LPI 是 GICv3 中的新特性，它们在很多方面与其他类型的中断不同。LPI 始终是基于消息的中断，它们的配置保存在表中而不是寄存器。比如 PCIe 的 MSI/MSI-x 中断
-
+  
         gpio0: gpio@fd8a0000 {
             compatible = "rockchip,gpio-bank";
             reg = <0x0 0xfd8a0000 0x0 0x100>;
             interrupts = <GIC_SPI 277 IRQ_TYPE_LEVEL_HIGH>;
             clocks = <&cru PCLK_GPIO0>, <&cru DBCLK_GPIO0>;
-    
+      
             gpio-controller;
             #gpio-cells = <2>;
             gpio-ranges = <&pinctrl 0 0 32>;

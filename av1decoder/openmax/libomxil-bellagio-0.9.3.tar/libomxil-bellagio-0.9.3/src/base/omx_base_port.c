@@ -815,6 +815,8 @@ OMX_ERRORTYPE base_port_FreeTunnelBuffer(omx_base_PortType *openmaxStandPort,OMX
  * This function can be called by the EmptyThisBuffer or FillThisBuffer. It depends on
  * the nature of the port, that can be an input or output port.
  */
+
+//该函数用于将缓冲区提交到指定端口的队列中，触发组件对缓冲区的处理
 OMX_ERRORTYPE base_port_SendBufferFunction(
   omx_base_PortType *openmaxStandPort,
   OMX_BUFFERHEADERTYPE* pBuffer) {

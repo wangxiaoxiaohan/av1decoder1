@@ -1861,7 +1861,7 @@ OSCL_EXPORT_REF OMX_ERRORTYPE omx_base_component_FreeBuffer(
   DEBUG(DEB_LEV_FUNCTION_NAME, "Out of %s for component %p\n", __func__, hComponent);
   return OMX_ErrorNone;
 }
-
+//该函数用于将输入缓冲区传递给指定组件的输入端口进行处理,去empty
 OSCL_EXPORT_REF OMX_ERRORTYPE omx_base_component_EmptyThisBuffer(
 		OMX_HANDLETYPE hComponent,
 		OMX_BUFFERHEADERTYPE* pBuffer) {

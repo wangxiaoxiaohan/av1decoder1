@@ -1,6 +1,4 @@
-
-
-
+# 解码器
 
 以瑞芯微为例：
 
@@ -38,21 +36,18 @@
 
         .p.wrapper_name = "rkmpp", \
 
+# 编码器
+
 当前版本的主要就是要实现 receive_frame
 
 配合`avcodec_send_packet`和`avcodec_receive_frame`完成异步解码
 
 https://mp.weixin.qq.com/s?__biz=MzA4MjU1MDk3Ng==&mid=2451528347&idx=1&sn=79d74b8e7588fdaf2e511294a525c04b&chksm=898f653ead088b2af3e3de6bbd58aec49843472174d57490c4a3a88cf261b100adf90392286c#rd
 
-
-
-
-
-
-
-
-
 一个编码器实现
+
+-------------------------------------------------------
+
 #include "new_enc_h264.h"  
    
 const enum AVPixelFormat ff_new_enc_pix_fmts[] = {  
@@ -67,12 +62,9 @@ static av_cold int ff_new_enc_init(AVCodecContext *avctx)
     return 0;  
 }  
 
-
 该回调函数实现初始化工作，可能包括对编码器的硬件初始化、内存分配、私有数据的初始化等等
 
-
-
-   
+   ------------------------------------------------------
 static av_cold int ff_new_enc_close(AVCodecContext *avctx)  
 {  
     av_log(avctx, AV_LOG_VERBOSE, "NewEnc unloaded\n");  
@@ -80,19 +72,15 @@ static av_cold int ff_new_enc_close(AVCodecContext *avctx)
     return 0;  
 }  
 
-
 释放init中的分配的资源。
 
-
-
-   
+   -------------------------------------------------------------------
 static int ff_new_enc_receive_packet(AVCodecContext *avctx, AVPacket *pkt)  
 {  
     av_log(avctx, AV_LOG_WARNING, "Not implement.\n");  
     return AVERROR(EAGAIN);  
 }  
    
-
 
 该回调函数负责将编码后的数据放入到AVPacket中。ffmpeg使用AVPacket存放编码后的数据，与AVFrame相对应。
 
@@ -106,9 +94,7 @@ static int ff_new_enc_receive_packet(AVCodecContext *avctx, AVPacket *pkt)
 
 4. 调用FillThisBuffer将处理后的编码内存返回给编码器
 
-5. 
-
-
+-----------------------------------------------------------------------
 
 static int ff_new_enc_send_frame(AVCodecContext *avctx, const AVFrame *frame)  
 {  
@@ -138,11 +124,7 @@ static int ff_new_enc_send_frame(AVCodecContext *avctx, const AVFrame *fra
 
 这些是假设底层接入的是openmax il层的接口，所使用的函数
 
-
-
-
-
-
+另外 ffmpeg的 omx.c中 有 openxma_il的编码器实现 ，但是跟上述的实现不一样，应该属于是老版的encode接口，而不是send_frame这一套， 如下：
 
 AVCodec ff_h264_new_encoder = {  
     .name           = "new_enc",  
