@@ -1,5 +1,3 @@
-
-
 av_dict_set 函数设置参数对播放实时流的1一些效果影响：
 av_dict_set(&options, "fflags", "nobuffer", 0); 这个能降低延迟，但是如果最开始出现花屏，只显示残差，就是这个设置导致的，手动配置流参数，跳过avformat_find_stream_info 则不会有这个问题
 
@@ -82,7 +80,7 @@ void av_frame_move_ref(AVFrame *dst, AVFrame *src)
 }
 ```
 
-asd
+
 
 直接把src拷贝到dst，然后把src替换为一个默认空帧
 
@@ -92,26 +90,10 @@ windows下打印真的对时序有巨大影响
 
 # 同步机制：
 
-
-
-
-
-
-
 ![Snipaste_2025-06-30_17-20-29.png](ffmpegimages/Snipaste_2025-06-30_17-20-29.png)
-
-
-
-
 
 SVG代码：
 
-
-
-
-
-    
-    
     graph TD
      A["音视频播放器同步机制"] --> B["时钟管理"]
      A --> C["同步策略"]
@@ -153,22 +135,10 @@ SVG代码：
     style D fill:#fff3e0
     style E fill:#ffebee
 
-
-
-
-
 ---------------------------------------------------------------------------
-
-
-
-
-
-
 
 ![Snipaste_2025-06-30_17-20-29.png](ffmpegimages/Snipaste_2025-06-30_17-39-07.png)
 
-    
-    
     flowchart TD
     A["视频帧准备显示"] --> B["获取当前帧PTS"]
     B --> C["更新视频时钟"]
@@ -226,12 +196,8 @@ SVG代码：
 
 -------------------------------
 
-
-
 ![Snipaste_2025-06-30_17-20-29.png](ffmpegimages/Snipaste_2025-06-30_17-41-16.png)
 
-    
-    
     sequenceDiagram
      participant AT as 音频线程
      participant AC as 音频时钟
