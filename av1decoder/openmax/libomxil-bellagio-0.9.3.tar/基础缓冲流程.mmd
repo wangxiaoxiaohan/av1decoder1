@@ -1,0 +1,14 @@
+graph TD
+  SRC[源组件 omx_base_source.*] -->|输出端口| Q1[输出队列 queue.c]
+  Q1 --> TH1[源 BufferMgmt 线程]
+  TH1 --> SINK[汇组件 omx_base_sink.*]
+
+  FILT[滤波组件 omx_base_filter.*] -->|输入端口| Q2[输入队列]
+  Q2 --> TH2[滤波 BufferMgmt 线程]
+  TH2 -->|输出端口| Q3[输出队列]
+  Q3 --> NEXT[下游组件]
+
+  subgraph 同步
+    SEM[tsemaphore.c] --- TH1
+    SEM --- TH2
+  end

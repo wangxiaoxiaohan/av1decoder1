@@ -1,0 +1,12 @@
+flowchart TD
+  S[Core 调用 createComponentLoaders] --> C{检查 .omxloaders 与 libdir/omxloaders/}
+  C --> DEF[只添加静态装载器]
+  C --> LOADFILE[读取 .omxloaders 列表]
+  LOADFILE --> DLOPEN1[dlopen 库]
+  DLOPEN1 --> SETUP1[dlsym setup_component_loader]
+  SETUP1 --> ADD1[BOSA_AddComponentLoader]
+  C --> LOADDR[遍历目录 .so]
+  LOADDR --> DLOPEN2[dlopen]
+  DLOPEN2 --> SETUP2[dlsym setup_component_loader]
+  SETUP2 --> ADD2[BOSA_AddComponentLoader]
+  DEF --> ADDDEF[静态装载器 setup + Add]

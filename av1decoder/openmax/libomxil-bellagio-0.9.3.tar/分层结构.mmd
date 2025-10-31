@@ -1,0 +1,23 @@
+graph TD
+  A[应用层 / IL Client] --> B[OpenMAX IL Core src/omxcore.c]
+  B --> C{Loaders 列表 BOSA_COMPONENTLOADER}
+  C --> C1[静态装载器 src/st_static_component_loader.c]
+  C --> C2[动态装载器 src/dynamic_loader/ste_dynamic_component_loader.c]
+
+  C1 --> R[组件注册表 .omxregister src/omxregister.c + src/common.c]
+  C2 --> PLUG[插件目录 OMX_COMPONENT_PATH lib/plugindir]
+
+  C1 --> TPL1[模板列表 stLoaderComponentType]
+  C2 --> TPL2[模板列表 steLoaderComponentType]
+
+  B --> BASE[基础组件层 Base src/base]
+  BASE --> PORTS[端口模块 audio/video/image/clock]
+  BASE --> THREADS[Buffer 管理线程 compMessageHandler / BufferMgmtFunction]
+
+  B --> CP[内容管道 Content Pipe file / inet]
+  CP --> CPF[file:// 管道 content_pipe_file]
+  CP --> CPI[inet:// 管道 content_pipe_inet]
+
+  B --> RM[参考资源管理器 src/omx_reference_resource_manager]
+  B --> EXT[Core 扩展 src/core_extensions]
+  B --> INC[OpenMAX 头文件 include/OMX_*]

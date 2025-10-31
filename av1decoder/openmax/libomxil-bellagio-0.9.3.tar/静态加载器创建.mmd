@@ -1,0 +1,11 @@
+flowchart LR
+  R[打开 .omxregister] --> READ[按行读取库路径]
+  READ --> DL[dlopen 组件库]
+  DL --> SETUP[dlsym omx_component_library_Setup]
+  SETUP --> TPL[填充模板列表 stLoaderComponentType]
+  TPL --> MATCH{匹配 name 或 name_specific}
+  MATCH --> CTOR[调用组件构造函数]
+  CTOR --> BASE[装配 Base 能力和端口]
+  BASE --> CB[赋予 SetCallbacks]
+  CB --> RET[返回 OMX_COMPONENTTYPE 和 OMX_ErrorNone]
+  MATCH --> NEXT[继续遍历或返回未找到]

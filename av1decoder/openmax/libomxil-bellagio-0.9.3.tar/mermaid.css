@@ -1,0 +1,30 @@
+/* 强化对比度与线条粗细 */
+svg { font-family: Segoe UI, Arial, sans-serif; }
+
+.node rect, .cluster rect {
+  stroke-width: 2.5px;
+}
+
+.edgePath path {
+  stroke-width: 2.5px;
+  stroke-linecap: round;
+}
+
+.label, .node text {
+  fill: #ffffff;
+  font-weight: 600;
+}
+
+.cluster text {
+  fill: #00ffa3;
+}
+
+.node rect {
+  fill: #1e293b;
+}
+
+.edgeLabels .label rect {
+  fill: #0b0e15;
+  stroke: #00d1ff;
+  stroke-width: 1.5px;
+}

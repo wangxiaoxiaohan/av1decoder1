@@ -1,0 +1,8 @@
+flowchart TD
+  INIT[RM_Init] --> RUN[运行中]
+  RUN --> GET[RM_getResource]
+  GET --> USE[使用资源]
+  GET --> WAIT[等待资源]
+  USE --> REL[RM_releaseResource]
+  WAIT --> REL
+  REL --> DEINIT[RM_Deinit 清理]

@@ -1,0 +1,42 @@
+sequenceDiagram
+  autonumber
+  participant App as 应用层
+  participant Core as OMX Core omxcore.c
+  participant Loader as 静态装载器
+  participant Dyn as 动态装载器
+  participant Reg as omxregister 工具
+  participant Comp as 组件实例 OMX_COMPONENTTYPE
+
+  App->>Core: OMX_Init()
+  Core->>Core: createComponentLoaders()
+  Core->>Loader: BOSA_InitComponentLoader()
+  Loader->>Reg: 读取 .omxregister
+  Reg-->>Loader: 模板列表 (组件名称/角色/构造函数)
+  Core->>Dyn: BOSA_InitComponentLoader()
+  Dyn->>Dyn: 扫描插件目录 (.so)
+
+  App->>Core: OMX_GetHandle(name, appData, callbacks)
+  Core->>Loader: BOSA_CreateComponent(name,...)
+  alt 匹配成功
+    Loader->>Comp: 构造 Component + SetCallbacks
+    Loader-->>Core: OMX_ErrorNone + 句柄
+    Core-->>App: 返回句柄
+  else 未匹配
+    Core->>Dyn: BOSA_CreateComponent(name,...)
+    opt 资源不足
+      Dyn-->>Core: OMX_ErrorInsufficientResources
+      Core-->>App: 直接返回 InsufficientResources
+    end
+    opt 全部未找到
+      Core-->>App: OMX_ErrorComponentNotFound
+    end
+  end
+
+  App->>Comp: 配置端口/参数/命令
+  App->>Core: OMX_FreeHandle(hComponent)
+  Core->>Loader: BOSA_DestroyComponent(hComponent)
+  Loader->>Comp: ComponentDeInit()
+
+  App->>Core: OMX_Deinit()
+  Core->>Loader: BOSA_DeInitComponentLoader()
+  Core->>Dyn: BOSA_DeInitComponentLoader()

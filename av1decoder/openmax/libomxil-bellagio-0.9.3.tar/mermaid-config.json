@@ -1,0 +1,17 @@
+{
+  "theme": "dark",
+  "themeVariables": {
+    "background": "#0b0e15",
+    "primaryColor": "#1e293b",
+    "secondaryColor": "#0f172a",
+    "tertiaryColor": "#0a0f1e",
+    "lineColor": "#00d1ff",
+    "textColor": "#ffffff",
+    "fontFamily": "Segoe UI, Arial, Sans-Serif"
+  },
+  "flowchart": {
+    "htmlLabels": true,
+    "nodeSpacing": 50,
+    "rankSpacing": 60
+  }
+}

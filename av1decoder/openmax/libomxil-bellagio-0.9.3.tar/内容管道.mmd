@@ -1,0 +1,12 @@
+sequenceDiagram
+  participant Comp as 组件 (源/汇/滤波)
+  participant Pipe as CP_PIPETYPE
+  participant OS as OS I/O
+
+  Comp->>Pipe: Open(uri, access)
+  Pipe->>OS: open / socket + connect
+  Comp->>Pipe: Read/Write(buffer, size)
+  Pipe->>OS: read/write
+  Pipe-->>Comp: 返回状态 (0/错误码)
+  Comp->>Pipe: Close()
+  Pipe->>OS: close()
