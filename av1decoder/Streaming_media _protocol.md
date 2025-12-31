@@ -1,3 +1,5 @@
+####+---------------+
+
 # RTMP
 
 ### **一、RTMP协议基础​**​
@@ -146,9 +148,7 @@ RTP（Real-time Transport Protocol）和RTSP（Real Time Streaming Protocol）�
 
 #### ​**​2. RTP数据包结构​**​
 
-plaintext
 
-复制
 
 ```plaintext
  0                   1                   2                   3
@@ -177,13 +177,16 @@ rtp分包
 
 ```plaintext
 RTP Header | FU Indicator | FU Header | NALU Data Fragment
+
 ```
 
-#### ​**​FU Indicator​**​（1字节）：
+注意这里， ​ FU Indicator,FU Header,NALU Data Fragment都属于上面表格中的 Payload**​**
 
-plaintext
 
-复制
+
+#### **FU Indicator​**​（1字节）：
+
+假如是H264的nalu被分包传输，则FU Indicator中的Type为28 (FU-A) ，F,NRI都和NALU中的一样
 
 ```plaintext
 +---------------+
@@ -191,15 +194,81 @@ plaintext
 +---------------+​
 ```
 
-​**​FU Header​**​（1字节）：
+#### ​**​FU Header​**​（1字节）：
 
-plaintext 
+- S (Start) ：为1 表示这是分片的 第一个包 。
+- E (End) ：为1 表示这是分片的 最后一个包 。
+- R，没用
+- Type ：这里才保存了 原始 NALU 的 Type （比如 5，代表这是一个 IDR 帧的分片）。
+
+以下是rtp承载H264的FU header：
 
 ```plaintext
 +---------------+
 |S|E|R|  Type   |
-+---------------+**​**
++---------------+
 ```
+
+------------------------------------------------------分割线，以上都是针对H264的
+
+在rtp承载H265的时候，结构则发生变化，FU Indicator叫做PayloadHdr了，并且其长度变为2个字节，如下
+
+```
+RTP Header | PayloadHdr[0] + PayloadHdr[1] | FU Header | NALU Data Fragment
+```
+
+payloadHdr和nalu的原 NALU header非常类似：
+
+
+在分包的情况下Type会被改为49，单包的情况下就和原nalu header一样
+
+```
++---------------+---------------+
+|0|1|2|3|4|5|6|7|0|1|2|3|4|5|6|7|
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|F| Type | LayerId | TID |
++-------------+-----------------+
+```
+
+其FU Header结构也有变化：
+
+```
+
+S | E | Type (6 bit) 
+
+
+```
+
+没用的R没有了，Type变成6位，因为HEVC中type就是需要6位了
+
+
+
+另外，rtp除了分包，还有聚合
+
+#### 什么是聚合包 (Aggregation Packet)？
+
+“大包切片，小包聚合” 是 RTP 传输的两大原则。
+FU 是为了解决“包太大发不出去”的问题；而聚合包（Aggregation）是为了解决“包太小浪费带宽”的问题
+
+假设你要发两个极小的 NALU：
+
+1. SPS (Sequence Parameter Set)：20 字节
+2. PPS (Picture Parameter Set)：10 字节
+   如果分开成两个 RTP 包发：
+- 包1： IP头(20) + UDP头(8) + RTP头(12) + SPS(20) = 总共 60 字节，有效载荷仅 33%。
+
+- 包2： IP头(20) + UDP头(8) + RTP头(12) + PPS(10) = 总共 50 字节，有效载荷仅 20%。 网络开销巨大！ 聚合包机制
+  把这两个小兄弟塞进 同一个 RTP 包里发出去。
+
+- H.264 (STAP-A, Type 24) ：
+  
+  - 结构： [STAP-A Header] + [长度1][SPS] + [长度2][PPS]
+  - FFmpeg 收到后，会发现 Type=24，然后根据里面的长度字段，把它们拆出来，还原成两个独立的 NALU。
+
+- H.265 (AP, Type 48) ：
+  
+  - 结构： [PayloadHdr (Type=48)] + [长度1][SPS] + [长度2][PPS] ...
+  - 原理完全一样，只是 Header 格式遵循 H.265 的 2 字节规范。
 
 #### **3. RTCP：控制协议​**​
 

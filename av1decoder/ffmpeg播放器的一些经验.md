@@ -1,3 +1,12 @@
+# ffmpeg源码修改经验
+
+对方修改了rtp的header,除了 FU Indicator,FU Header,额外增加了一个字节的自定义数据标识当前的包类型（可见光，红外，tdlas）
+因此需要修改rtpdec.c，或者时候新增一个自定义的名字
+
+# 延时问题
+
+------------------------
+
 av_dict_set 函数设置参数对播放实时流的1一些效果影响：
 av_dict_set(&options, "fflags", "nobuffer", 0); 这个能降低延迟，但是如果最开始出现花屏，只显示残差，就是这个设置导致的，手动配置流参数，跳过avformat_find_stream_info 则不会有这个问题
 
@@ -80,13 +89,9 @@ void av_frame_move_ref(AVFrame *dst, AVFrame *src)
 }
 ```
 
-
-
 直接把src拷贝到dst，然后把src替换为一个默认空帧
 
 windows下打印真的对时序有巨大影响
-
-
 
 # 同步机制：
 
