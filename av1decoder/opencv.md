@@ -1,11 +1,3 @@
-
-
-
-
-
-
-
-
 ### **一、基础形态学操作​**​
 
 #### 1. ​**​腐蚀（Erosion）​**​
@@ -35,12 +27,10 @@
   - 加粗物体边缘
 
 - ​**​OpenCV函数​**​：
-  
-  
-  
-  ```python
-  cv2.dilate(src, kernel, iterations=1)
-  ```
+
+```python
+cv2.dilate(src, kernel, iterations=1)
+```
 
 ---
 
@@ -49,8 +39,6 @@
 #### 3. ​**​开运算（Opening）​**​
 
 - ​**​原理​**​：先腐蚀后膨胀，数学表达式为：开运算=膨胀(腐蚀(A)) 
-  
-  
 
 - ​**​作用​**​：
   
@@ -59,12 +47,10 @@
   - 断开狭窄的连接部分
 
 - ​**​OpenCV函数​**​：
-  
-  
-  
-  ```python
-  cv2.morphologyEx(src, cv2.MORPH_OPEN, kernel)
-  ```
+
+```python
+cv2.morphologyEx(src, cv2.MORPH_OPEN, kernel)
+```
 
 #### 4. ​**​闭运算（Closing）​**​
 
@@ -77,12 +63,10 @@
   - 平滑物体边界
 
 - ​**​OpenCV函数​**​：
-  
-  
-  
-  ```python
-  cv2.morphologyEx(src, cv2.MORPH_CLOSE, kernel)
-  ```
+
+```python
+cv2.morphologyEx(src, cv2.MORPH_CLOSE, kernel)
+```
 
 ---
 
@@ -91,8 +75,6 @@
 #### 5. ​**​形态学梯度（Morphological Gradient）​**​
 
 - ​**​原理​**​：膨胀图与腐蚀图的差值，数学表达式为：梯度=膨胀(A)−腐蚀(A) 
-  
-  
 
 - ​**​作用​**​：
   
@@ -100,12 +82,10 @@
   - 突出图像中强度变化剧烈的区域
 
 - ​**​OpenCV函数​**​：
-  
-  
-  
-  ```python
-  cv2.morphologyEx(src, cv2.MORPH_GRADIENT, kernel)
-  ```
+
+```python
+cv2.morphologyEx(src, cv2.MORPH_GRADIENT, kernel)
+```
 
 #### 6. ​**​顶帽运算（Top Hat）​**​
 
@@ -117,18 +97,14 @@
   - 增强低频背景中的高频特征
 
 - ​**​OpenCV函数​**​：
-  
-  
-  
-  ```python
-  cv2.morphologyEx(src, cv2.MORPH_TOPHAT, kernel)
-  ```
+
+```python
+cv2.morphologyEx(src, cv2.MORPH_TOPHAT, kernel)
+```
 
 #### 7. ​**​黑帽运算（Black Hat）​**​
 
 - ​**​原理​**​：闭运算结果与原始图像的差值，数学表达式为：黑帽=闭运算(A)−A 
-  
-  
 
 - ​**​作用​**​：
   
@@ -148,8 +124,6 @@
 ### ​**​四、结构元素（Structuring Element）​**​
 
 - ​**​作用​**​：形态学操作的核心工具，决定操作的方向和尺度
-  
-  
 
 - ​**​常见类型​**​：
   
@@ -291,5 +265,4 @@ for (size_t i = 0; i < colors.size(); ++i) {
 return 0;
 
 }
-
 ```

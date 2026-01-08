@@ -148,8 +148,6 @@ RTP（Real-time Transport Protocol）和RTSP（Real Time Streaming Protocol）�
 
 #### ​**​2. RTP数据包结构​**​
 
-
-
 ```plaintext
  0                   1                   2                   3
  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -177,12 +175,9 @@ rtp分包
 
 ```plaintext
 RTP Header | FU Indicator | FU Header | NALU Data Fragment
-
 ```
 
 注意这里， ​ FU Indicator,FU Header,NALU Data Fragment都属于上面表格中的 Payload**​**
-
-
 
 #### **FU Indicator​**​（1字节）：
 
@@ -219,7 +214,6 @@ RTP Header | PayloadHdr[0] + PayloadHdr[1] | FU Header | NALU Data Fragment
 
 payloadHdr和nalu的原 NALU header非常类似：
 
-
 在分包的情况下Type会被改为49，单包的情况下就和原nalu header一样
 
 ```
@@ -233,15 +227,10 @@ payloadHdr和nalu的原 NALU header非常类似：
 其FU Header结构也有变化：
 
 ```
-
 S | E | Type (6 bit) 
-
-
 ```
 
 没用的R没有了，Type变成6位，因为HEVC中type就是需要6位了
-
-
 
 另外，rtp除了分包，还有聚合
 
@@ -253,6 +242,7 @@ FU 是为了解决“包太大发不出去”的问题；而聚合包（Aggregat
 假设你要发两个极小的 NALU：
 
 1. SPS (Sequence Parameter Set)：20 字节
+
 2. PPS (Picture Parameter Set)：10 字节
    如果分开成两个 RTP 包发：
 - 包1： IP头(20) + UDP头(8) + RTP头(12) + SPS(20) = 总共 60 字节，有效载荷仅 33%。
@@ -288,6 +278,8 @@ FU 是为了解决“包太大发不出去”的问题；而聚合包（Aggregat
 - ​**​目标​**​：建立和控制媒体会话（如播放、暂停、定位），​**​不直接传输数据​**​。
 - ​**​层级​**​：应用层协议，默认端口​**​554​**​（支持TCP或UDP）。
 - ​**​类比​**​：类似HTTP的请求-响应模型，但支持长连接和状态保持。
+
+RTSP支持多track ，单url多路视频流
 
 #### ​**​2. 核心方法​**​
 
